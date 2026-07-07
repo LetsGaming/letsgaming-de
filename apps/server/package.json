@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "^11",
-    "@fastify/cors": "^10.0.1",
+    "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9",
     "@lg/core": "workspace:^",
     "@lg/db": "workspace:^",
