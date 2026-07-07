@@ -22,13 +22,11 @@
     "test": "node --test --import tsx ./src/*.test.ts"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7",
     "@types/node": "^22",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@lg/core": "workspace:^",
-    "better-sqlite3": "^11"
+    "@lg/core": "workspace:^"
   }
 }

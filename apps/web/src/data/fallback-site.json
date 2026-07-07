@@ -1,0 +1,543 @@
+{
+  "locale": "en",
+  "meta": {
+    "name": "Domenic",
+    "handle": "LetsGaming",
+    "location": "Germany",
+    "role": "web developer"
+  },
+  "nav": [
+    {
+      "id": "home",
+      "label": "Home",
+      "modules": [
+        "hero",
+        "featured",
+        "glance"
+      ]
+    },
+    {
+      "id": "work",
+      "label": "Work",
+      "modules": [
+        "activity",
+        "projects"
+      ]
+    },
+    {
+      "id": "life",
+      "label": "Life",
+      "modules": [
+        "hobbies",
+        "now"
+      ]
+    },
+    {
+      "id": "about",
+      "label": "About",
+      "modules": [
+        "bio",
+        "contact"
+      ]
+    }
+  ],
+  "modules": {
+    "hero": {
+      "id": "hero",
+      "kind": "hero",
+      "data": {
+        "eyebrow": "DOMENIC · WEB DEVELOPER · GERMANY",
+        "headline": {
+          "before": "I build for the web — and ",
+          "highlight": "tinker",
+          "after": " after hours."
+        },
+        "lede": "Full-time web developer, **Fachinformatiker Anwendungsentwicklung**. Clean, usable interfaces by day; plant sensors and LED strips by night.",
+        "status": {
+          "verb": "building",
+          "now": "plantcare-tracker"
+        },
+        "links": [
+          {
+            "id": "github",
+            "label": "GitHub",
+            "href": "https://github.com/LetsGaming",
+            "icon": "gh",
+            "primary": false
+          },
+          {
+            "id": "contact",
+            "label": "Get in touch",
+            "href": "#contact",
+            "icon": "mail",
+            "primary": true
+          }
+        ]
+      }
+    },
+    "featured": {
+      "id": "featured",
+      "kind": "featured",
+      "data": {
+        "heading": "Featured",
+        "project": {
+          "id": "plantcare-tracker",
+          "name": "plantcare-tracker",
+          "tag": "TypeScript",
+          "description": "A companion app that keeps my houseplants alive — tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
+          "meta": [
+            "★ 3",
+            "updated 2d ago"
+          ],
+          "href": "https://github.com/LetsGaming/plantcare-tracker",
+          "featured": true
+        }
+      }
+    },
+    "glance": {
+      "id": "glance",
+      "kind": "glance",
+      "data": {
+        "heading": "At a glance",
+        "stats": [
+          {
+            "value": "17",
+            "label": "public repos"
+          },
+          {
+            "value": "428",
+            "label": "commits this year"
+          },
+          {
+            "value": "2.1k",
+            "label": "commits all-time"
+          },
+          {
+            "value": "19",
+            "unit": "d",
+            "label": "longest streak"
+          }
+        ]
+      }
+    },
+    "activity": {
+      "id": "activity",
+      "kind": "activity",
+      "data": {
+        "heading": "Activity",
+        "note": "synced & accumulated by the backend",
+        "stats": [
+          {
+            "value": "17",
+            "label": "public repos"
+          },
+          {
+            "value": "428",
+            "label": "commits this year"
+          },
+          {
+            "value": "2.1k",
+            "label": "commits all-time"
+          },
+          {
+            "value": "19",
+            "unit": "d",
+            "label": "longest streak"
+          }
+        ],
+        "contributions": {
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            0,
+            0,
+            2,
+            2,
+            4,
+            2,
+            2,
+            0,
+            0,
+            4,
+            2,
+            3,
+            2,
+            2,
+            3,
+            0,
+            2,
+            2,
+            2,
+            3,
+            2,
+            0,
+            0,
+            2,
+            2,
+            1,
+            2,
+            2,
+            0,
+            1,
+            2,
+            2,
+            0,
+            2,
+            1,
+            0,
+            0,
+            2,
+            2,
+            1,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            1,
+            2,
+            2,
+            2,
+            0,
+            2,
+            2,
+            2,
+            3,
+            2,
+            0,
+            0,
+            2,
+            4,
+            3,
+            2,
+            2,
+            0,
+            3,
+            2,
+            2,
+            3,
+            2,
+            4,
+            0,
+            0,
+            2,
+            2,
+            3,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            0,
+            2,
+            2,
+            0,
+            1,
+            2,
+            0,
+            0,
+            2,
+            1,
+            0,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            1,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            2,
+            2,
+            2,
+            0,
+            0,
+            3,
+            2,
+            3,
+            2,
+            2,
+            3,
+            0,
+            2,
+            2,
+            3,
+            4,
+            2,
+            0,
+            0,
+            2,
+            3,
+            2,
+            2,
+            2,
+            0,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            1,
+            2,
+            2,
+            0,
+            0,
+            1,
+            2,
+            0,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            1,
+            2,
+            2,
+            0,
+            0,
+            2,
+            2,
+            2,
+            2,
+            2,
+            0,
+            2,
+            2,
+            2,
+            3,
+            2,
+            4,
+            0
+          ],
+          "total": 315
+        },
+        "languages": [
+          {
+            "name": "TypeScript",
+            "pct": 42
+          },
+          {
+            "name": "Python",
+            "pct": 31
+          },
+          {
+            "name": "JavaScript",
+            "pct": 14
+          },
+          {
+            "name": "CSS",
+            "pct": 8
+          },
+          {
+            "name": "Shell",
+            "pct": 5
+          }
+        ],
+        "events": [
+          {
+            "type": "commit",
+            "text": "Pushed 3 commits to plantcare-tracker",
+            "meta": "refactor watering schedule",
+            "at": "2026-07-05T20:55:24.429Z",
+            "relative": "2d"
+          },
+          {
+            "type": "pr",
+            "text": "Opened a PR in LED-Controller-Websocket",
+            "meta": "add effects API",
+            "at": "2026-07-01T20:55:24.429Z",
+            "relative": "6d"
+          },
+          {
+            "type": "star",
+            "text": "Starred tsparticles",
+            "at": "2026-06-28T20:55:24.429Z",
+            "relative": "1w"
+          },
+          {
+            "type": "repo",
+            "text": "Created dotfiles",
+            "meta": "initial commit",
+            "at": "2026-06-21T20:55:24.429Z",
+            "relative": "2w"
+          }
+        ],
+        "sources": [
+          "GitHub"
+        ]
+      }
+    },
+    "projects": {
+      "id": "projects",
+      "kind": "projects",
+      "data": {
+        "heading": "Stuff I make",
+        "note": "17 public repos",
+        "projects": [
+          {
+            "id": "plantcare-tracker",
+            "name": "plantcare-tracker",
+            "tag": "TypeScript",
+            "description": "A companion app that keeps my houseplants alive — tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
+            "meta": [
+              "★ 3",
+              "updated 2d ago"
+            ],
+            "href": "https://github.com/LetsGaming/plantcare-tracker",
+            "featured": true
+          },
+          {
+            "id": "led-controller-websocket",
+            "name": "LED-Controller-Websocket",
+            "tag": "Python",
+            "description": "Drives LED strips live over a websocket bridge, running on a Raspberry Pi.",
+            "meta": [
+              "★ 1",
+              "updated 6d ago"
+            ],
+            "href": "https://github.com/LetsGaming/LED-Controller-Websocket",
+            "featured": false
+          },
+          {
+            "id": "dotfiles",
+            "name": "dotfiles",
+            "tag": "Shell",
+            "description": "My terminal and editor setup, versioned so a fresh machine feels like home fast.",
+            "meta": [
+              "★ 0",
+              "updated 2w ago"
+            ],
+            "href": "https://github.com/LetsGaming/dotfiles",
+            "featured": false
+          }
+        ]
+      }
+    },
+    "hobbies": {
+      "id": "hobbies",
+      "kind": "hobbies",
+      "data": {
+        "heading": "Off the clock",
+        "note": "the non-code half",
+        "hobbies": [
+          {
+            "id": "gaming",
+            "title": "Gaming",
+            "blurb": "where the name comes from",
+            "icon": "game",
+            "tone": "purple"
+          },
+          {
+            "id": "plants",
+            "title": "Houseplants",
+            "blurb": "more than I can count",
+            "icon": "plant",
+            "tone": "mint"
+          },
+          {
+            "id": "leds",
+            "title": "LEDs & Pi",
+            "blurb": "lights that do things",
+            "icon": "chip",
+            "tone": "coral"
+          },
+          {
+            "id": "homelab",
+            "title": "Home lab",
+            "blurb": "automating the boring bits",
+            "icon": "server",
+            "tone": "sun"
+          }
+        ]
+      }
+    },
+    "now": {
+      "id": "now",
+      "kind": "now",
+      "data": {
+        "heading": "Right now",
+        "note": "kept fresh, not stale",
+        "items": [
+          {
+            "id": "building",
+            "key": "building",
+            "value": "**plantcare-tracker** — watering schedules"
+          },
+          {
+            "id": "playing",
+            "key": "playing",
+            "value": "whatever's in the backlog"
+          },
+          {
+            "id": "tinkering",
+            "key": "tinkering",
+            "value": "a Pi-driven LED shelf"
+          },
+          {
+            "id": "growing",
+            "key": "growing",
+            "value": "one more monstera, allegedly the last"
+          }
+        ]
+      }
+    },
+    "bio": {
+      "id": "bio",
+      "kind": "bio",
+      "data": {
+        "heading": "About",
+        "note": "the longer version",
+        "paragraphs": [
+          "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into making interfaces that are genuinely pleasant to use.",
+          "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby — usually attached to a plant, an LED strip, or some corner of my home lab that didn't strictly need automating.",
+          "This site is its own little project: a small custom CMS feeds the content, and a backend quietly accumulates data from GitHub (and whatever I plug in next) so it stays current on its own."
+        ]
+      }
+    },
+    "contact": {
+      "id": "contact",
+      "kind": "contact",
+      "data": {
+        "heading": "Get in touch",
+        "links": [
+          {
+            "id": "github",
+            "label": "GitHub",
+            "href": "https://github.com/LetsGaming",
+            "icon": "gh",
+            "primary": false
+          },
+          {
+            "id": "contact",
+            "label": "Get in touch",
+            "href": "#contact",
+            "icon": "mail",
+            "primary": true
+          }
+        ]
+      }
+    }
+  },
+  "syncedAt": "2026-07-07T20:55:24.443Z"
+}

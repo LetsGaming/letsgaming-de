@@ -44,7 +44,7 @@ pnpm test          # unit + integration
 pnpm build         # full build (also runs lint:nav)
 ```
 
-CI runs the same on every push and on pull requests (Node 20 + 22).
+CI runs the same on every push and on pull requests (Node 22 + 24).
 
 ## Adding things
 

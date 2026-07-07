@@ -23,10 +23,14 @@ export function analyticsRepo(db: DB) {
   return {
     /** Apply a batch of hits atomically. */
     record(hits: AnalyticsHit[]) {
-      const tx = db.transaction((batch: AnalyticsHit[]) => {
-        for (const h of batch) bump.run(h.day, h.dimension, h.key);
-      });
-      tx(hits);
+      db.exec("BEGIN");
+      try {
+        for (const h of hits) bump.run(h.day, h.dimension, h.key);
+        db.exec("COMMIT");
+      } catch (err) {
+        db.exec("ROLLBACK");
+        throw err;
+      }
     },
 
     /** Top keys for a dimension over an inclusive day range. */

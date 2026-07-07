@@ -25,11 +25,15 @@ export function sourceRepo(db: DB) {
         `INSERT INTO source_current (source_id, synced_at, data) VALUES (?, ?, ?)
          ON CONFLICT(source_id) DO UPDATE SET synced_at = excluded.synced_at, data = excluded.data`,
       );
-      const tx = db.transaction(() => {
+      db.exec("BEGIN");
+      try {
         appendStmt.run(sourceId, syncedAt, json);
         upsertStmt.run(sourceId, syncedAt, json);
-      });
-      tx();
+        db.exec("COMMIT");
+      } catch (err) {
+        db.exec("ROLLBACK");
+        throw err;
+      }
     },
 
     /** Current normalized data for one source, or undefined if never synced. */

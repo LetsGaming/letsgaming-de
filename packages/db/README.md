@@ -1,6 +1,6 @@
 # @lg/db
 
-The SQLite store (better-sqlite3) — the single source of truth.
+The SQLite store (node:sqlite, built into Node) — the single source of truth.
 
 - **`schema.sql`** — CMS tables, the source snapshot archive + current, and the
   analytics aggregates.
@@ -12,5 +12,4 @@ The SQLite store (better-sqlite3) — the single source of truth.
 - **`seed.ts`** — idempotent launch seed (content + IA).
 - **`index.ts`** — `openStore(path)` → `{ content, source, ia, analytics, close }`.
 
-Uses Node-native build tooling only via prebuilt binaries; see the Dockerfile note
-if a registry lacks one.
+Uses `node:sqlite` (built into Node) — no native build step, no node-gyp.

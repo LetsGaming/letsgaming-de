@@ -6,7 +6,7 @@
 #   PUBLIC_API_URL (build-time, client)    — how the browser reaches the API, and
 #                                            is baked into the CMS/client bundle.
 
-FROM node:22-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 RUN corepack enable
 ARG PUBLIC_API_URL=""
@@ -15,7 +15,7 @@ COPY . .
 RUN pnpm install --no-frozen-lockfile
 RUN pnpm --filter @lg/core build && pnpm --filter @lg/web build
 
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 WORKDIR /app
 RUN corepack enable
 ENV NODE_ENV=production

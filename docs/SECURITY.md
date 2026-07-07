@@ -22,7 +22,7 @@ matter.
 - Every CMS write body is validated against a JSON schema
   (`apps/server/src/schemas.ts`) with `additionalProperties: false`; bad input is
   rejected with `400` before it reaches the store.
-- All DB access uses parameterized statements (better-sqlite3 prepared
+- All DB access uses parameterized statements (node:sqlite prepared
   statements) — no string-built SQL.
 - Prose is stored as text; the frontend renders only a `**bold**` subset and never
   injects raw HTML, so stored content can't inject script.

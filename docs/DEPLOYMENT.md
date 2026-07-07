@@ -74,5 +74,5 @@ docker run --rm -v letsgamingde_store:/data -v "$PWD":/backup alpine \
 
 - The web tier is SSR (`@astrojs/node`), so content is always live — no rebuild on
   sync or CMS edit. A short in-process cache absorbs bursts.
-- If a registry can't fetch a `better-sqlite3` prebuilt, add build tools to the
-  server image's build stage (see the comment in `apps/server/Dockerfile`).
+- The store uses `node:sqlite` (built into Node ≥ 22.13) — images have no native
+  build step, so no compiler or node-gyp is needed.

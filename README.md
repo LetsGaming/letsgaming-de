@@ -14,7 +14,7 @@ like a person, not a company.
 
 TypeScript everywhere · pnpm monorepo · **Astro + Vue islands** (SSR web) ·
 **Fastify** (read API + CMS API + OAuth + sync worker) · **SQLite**
-(better-sqlite3) · GitHub as the first data source · Docker on a homelab. Dark +
+(node:sqlite) · GitHub as the first data source · Docker on a homelab. Dark +
 light themes, tactile design, self-hosted fonts.
 
 ```
@@ -31,7 +31,7 @@ Each workspace has its own README with the details.
 
 ## Quickstart
 
-Requires **Node ≥ 20** and **pnpm 9** (`corepack enable`).
+Requires **Node ≥ 22.13** and **pnpm 9** (`corepack enable`).
 
 ```bash
 pnpm install

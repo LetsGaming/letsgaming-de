@@ -1,7 +1,8 @@
 **/node_modules
 **/dist
 **/.astro
-data
+# root runtime data only (see .gitignore note) — keep apps/web/src/data
+/data
 *.sqlite
 *.sqlite-*
 .env

@@ -15,12 +15,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22]
+        # node:sqlite needs >= 22.13; test the LTS that ships it and current.
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
+      # pnpm version comes from package.json "packageManager" — don't also pass
+      # `version:` here or action-setup errors on the conflict.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}

@@ -34,7 +34,7 @@ and "the site never goes stale" true at once.
 | Package | Role |
 |---|---|
 | `@lg/core` | Contracts + pure logic: `Localized`, the `NavNode` tree + **nav lint**, the content model, the `Source` contract, the render-ready `SiteView`, and `resolveSiteView()`. No runtime deps. |
-| `@lg/db` | SQLite store (better-sqlite3): schema + repositories (content, source, ia, analytics) + seed. The archive lives here. |
+| `@lg/db` | SQLite store (node:sqlite, built in): schema + repositories (content, source, ia, analytics) + seed. The archive lives here. |
 | `@lg/sources` | Pluggable adapters: `githubSource` (real, GraphQL) + `githubMockSource` (dev) + the registry. |
 | `@lg/server` | Fastify: read API, CMS API + auth, media, analytics, and the in-process sync worker. |
 | `@lg/web` | Astro (SSR) shell + Vue islands: the public site and the `/admin` CMS. |

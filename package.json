@@ -1,13 +1,13 @@
 {
-  "name": "letsgaming-de",
+  "name": "letsgaming.de",
   "version": "0.1.0",
   "private": true,
-  "description": "Personal homepage for Domenic (@LetsGaming) \u2014 data-driven, self-updating, small-CMS.",
+  "description": "Personal homepage for Domenic (@LetsGaming) — data-driven, self-updating, small-CMS.",
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@11.10.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "scripts": {
     "build": "pnpm lint:nav && pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server build && pnpm --filter=@lg/web build",
