@@ -29,6 +29,6 @@
   },
   "dependencies": {
     "@lg/core": "workspace:^",
-    "better-sqlite3": "^11"
+    "better-sqlite3": "^12"
   }
 }
