@@ -44,7 +44,14 @@ pnpm test          # unit + integration
 pnpm build         # full build (also runs lint:nav)
 ```
 
-CI runs the same on every push and on pull requests (Node 22 + 24).
+CI runs the same on every push and on pull requests (Node 22 + 24). The
+**Release** workflow runs only on a version tag (`v*`): it builds and pushes the
+`server` and `web` images to GHCR (`:<version>` + `:latest`) and creates a
+GitHub Release. Nothing publishes on a normal push. Cut a release with:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
 
 ## Adding things
 

@@ -46,9 +46,9 @@ matter.
 
 - Secrets come from the environment, never committed (`.env` is git-ignored;
   `.env.example` holds only placeholders).
-- In CI, the Docker workflow uses the built-in `GITHUB_TOKEN` for GHCR and reads
-  `PUBLIC_API_URL` from a repo variable — no long-lived secrets required for the
-  default flow.
+- In CI, the tag-driven Release workflow uses the built-in `GITHUB_TOKEN` for
+  GHCR and reads `PUBLIC_API_URL` from a repo variable — no long-lived secrets
+  required for the default flow.
 
 ## Privacy posture (§9)
 
