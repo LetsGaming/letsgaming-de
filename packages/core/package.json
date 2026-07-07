@@ -1,0 +1,29 @@
+{
+  "name": "@lg/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared contracts: Localized i18n, the recursive NavNode tree + build-time lint, the content model, and the Source adapter contract. No runtime deps — pure TypeScript.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint:nav": "tsx scripts/lint-nav.ts",
+    "test": "node --test --import tsx ./src/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.3"
+  }
+}

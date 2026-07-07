@@ -1,0 +1,54 @@
+# Homelab deploy (§10). One container for the Fastify server (API + CMS + sync
+# worker) with SQLite + uploaded media on a mounted volume; one for the Astro SSR
+# site. Put TLS on your reverse proxy (Traefik/Caddy/nginx + Let's Encrypt).
+#
+# An analytics ingest runs as a scheduled `pnpm analytics <access.log>` on the
+# host (or a sidecar) pointed at the reverse proxy's log — see README.
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "8787"
+      DB_PATH: /data/letsgaming.sqlite
+      MEDIA_DIR: /data/media
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      GITHUB_USERNAME: ${GITHUB_USERNAME:-LetsGaming}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      CMS_TOKEN: ${CMS_TOKEN:-}
+      CMS_ALLOWED_LOGIN: ${CMS_ALLOWED_LOGIN:-LetsGaming}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      CONTACT_TO: ${CONTACT_TO:-}
+    volumes:
+      # The store + media are the archive — this volume is what you back up.
+      - store:/data
+    ports:
+      - "8787:8787"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into the client bundle (browser → API). Public API URL.
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8787}
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      # SSR (server → API) over the internal network.
+      API_URL: http://server:8787
+    ports:
+      - "8080:4321"
+
+volumes:
+  store:

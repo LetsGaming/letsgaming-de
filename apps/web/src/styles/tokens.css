@@ -1,0 +1,107 @@
+/* Design tokens — the prototype's "bold but soft" system, now themeable.
+   Dark is the default (:root); light overrides live under [data-theme="light"].
+   Everything the two themes disagree on is a token, so components never hardcode
+   a color that would break in the other theme. */
+
+:root {
+  --ink: #ece9f7;
+  --ink-strong: #fff;
+  --muted: #948cb6;
+
+  --purple: #8b5cf6;
+  --purple-br: #a78bfa;
+  --purple-d: #5b34d6;
+  --purple-wash: rgba(139, 92, 246, 0.16);
+
+  --coral: #ff7a5e;
+  --sun: #ffc64b;
+  --mint: #38d6a6;
+
+  --card: #1a1730;
+  --card-2: #211d3a;
+  --line: rgba(255, 255, 255, 0.07);
+
+  --bg-base: #0e0c18;
+  --bg-glow: radial-gradient(135% 105% at 82% -18%, #271b4e 0%, #140f26 46%, #0d0b16 100%);
+
+  /* heatmap shades, least -> most */
+  --heat-0: #241f3d;
+  --heat-1: #463a7d;
+  --heat-2: #6d54c9;
+  --heat-3: #916ff2;
+  --heat-4: #b39bff;
+
+  --lang-track: #221d3c;
+
+  --ghost-bg: var(--card-2);
+  --ghost-shadow: #100d20;
+
+  /* hobby tile backgrounds per tone */
+  --tile-purple: linear-gradient(160deg, #251d47, #1c1633);
+  --tile-coral: linear-gradient(160deg, #341f2a, #1e1830);
+  --tile-mint: linear-gradient(160deg, #183029, #191d36);
+  --tile-sun: linear-gradient(160deg, #332816, #201a31);
+
+  --r: 26px;
+  --r-sm: 18px;
+  --sh-1: 0 2px 10px rgba(0, 0, 0, 0.4), 0 14px 34px rgba(50, 25, 120, 0.22);
+  --sh-2: 0 10px 26px rgba(0, 0, 0, 0.5), 0 26px 64px rgba(120, 75, 250, 0.3);
+
+  --f-d: "Fredoka", system-ui, sans-serif;
+  --f-b: "Inter", system-ui, sans-serif;
+  --f-m: "Space Mono", ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --ink: #2c2748;
+  --ink-strong: #17122b;
+  --muted: #6b6494;
+
+  --purple: #6d48e5;
+  --purple-br: #7c5cf0;
+  --purple-d: #4d2fb0;
+  --purple-wash: rgba(109, 72, 229, 0.12);
+
+  --coral: #ef5f43;
+  --sun: #e0951a;
+  --mint: #16a179;
+
+  --card: #ffffff;
+  --card-2: #f3f0fb;
+  --line: rgba(24, 12, 60, 0.09);
+
+  --bg-base: #eee9fb;
+  --bg-glow: radial-gradient(135% 105% at 82% -18%, #e2d8fb 0%, #efeafc 46%, #f4f1fd 100%);
+
+  --heat-0: #e7e2f6;
+  --heat-1: #c4b6ef;
+  --heat-2: #9d87e7;
+  --heat-3: #7c5cf0;
+  --heat-4: #5836d4;
+
+  --lang-track: #e9e4f7;
+
+  --ghost-bg: #f3f0fb;
+  --ghost-shadow: #ddd5f2;
+
+  --tile-purple: linear-gradient(160deg, #efeafc, #e7defb);
+  --tile-coral: linear-gradient(160deg, #fdeee9, #f6e9fb);
+  --tile-mint: linear-gradient(160deg, #e4f7f0, #eae9fb);
+  --tile-sun: linear-gradient(160deg, #fbf1de, #f0ecfb);
+
+  --sh-1: 0 2px 8px rgba(80, 50, 160, 0.08), 0 12px 30px rgba(90, 55, 200, 0.1);
+  --sh-2: 0 8px 22px rgba(80, 50, 160, 0.14), 0 24px 56px rgba(100, 60, 220, 0.16);
+
+  color-scheme: light;
+}
+
+/* Respect the OS preference on first paint when no manual choice is stored.
+   The no-flash script in the layout sets data-theme before CSS applies; this
+   media query is the fallback if JS is disabled. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+  }
+}

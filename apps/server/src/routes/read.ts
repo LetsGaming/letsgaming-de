@@ -1,0 +1,25 @@
+/**
+ * The read API (PROJECT.md §4). One endpoint: the whole resolved site as
+ * normalized JSON. The site reads whatever the last sync wrote — nothing is
+ * fetched from an external API here.
+ */
+
+import { isLocale, resolveSiteView, type Locale } from "@lg/core";
+import type { Store } from "@lg/db";
+import type { FastifyInstance } from "fastify";
+
+export function registerReadRoutes(app: FastifyInstance, store: Store): void {
+  app.get<{ Querystring: { locale?: string } }>("/api/site", async (req) => {
+    const requested = req.query.locale;
+    const locale: Locale = requested && isLocale(requested) ? requested : "en";
+
+    return resolveSiteView({
+      content: store.content.getContent(),
+      source: store.source.getAllCurrent(),
+      nav: store.ia.getNav(),
+      modules: store.ia.getModules(),
+      locale,
+      syncedAt: store.source.latestSyncedAt(),
+    });
+  });
+}

@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.astro
+data
+*.sqlite
+*.sqlite-*
+.env
+.git

@@ -1,0 +1,15 @@
+---
+import TabbedSite from "../components/TabbedSite.vue";
+import Layout from "../layouts/Layout.astro";
+import { loadSite } from "../lib/site";
+
+// Runs at build time (static output). Reads the last-synced SiteView from the API,
+// falling back to the committed fixture if the API isn't reachable during build.
+const site = await loadSite("en");
+---
+
+<Layout title={`${site.meta.name} — web dev & tinkerer`}>
+  <main>
+    <TabbedSite site={site} client:load />
+  </main>
+</Layout>

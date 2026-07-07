@@ -1,0 +1,26 @@
+{
+  "name": "letsgaming-de",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal homepage for Domenic (@LetsGaming) \u2014 data-driven, self-updating, small-CMS.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm lint:nav && pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server build && pnpm --filter=@lg/web build",
+    "dev": "pnpm --parallel --filter=@lg/server --filter=@lg/web dev",
+    "dev:server": "pnpm --filter=@lg/server dev",
+    "dev:web": "pnpm --filter=@lg/web dev",
+    "sync": "pnpm --filter=@lg/server sync",
+    "lint:nav": "pnpm --filter=@lg/core lint:nav",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "analytics": "pnpm --filter=@lg/server analytics"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

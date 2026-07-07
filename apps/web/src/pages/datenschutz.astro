@@ -1,0 +1,73 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+// Static — no data needed. Prerendered even though the site is SSR.
+export const prerender = true;
+---
+
+<Layout title="Datenschutzerklärung — letsgaming.de">
+  <main class="wrap">
+    <div class="prose" style="max-width:680px">
+      <h1 style="font-size:clamp(30px,6vw,44px);margin-bottom:24px">Datenschutzerklärung</h1>
+
+      <p>
+        Diese Seite ist ein privates Projekt. Es werden so wenige Daten wie möglich
+        verarbeitet — im Zweifel gar keine (Datenschutz durch Vermeidung).
+      </p>
+
+      <h2 style="font-family:var(--f-d);margin:28px 0 10px">Server-Logs</h2>
+      <p>
+        Beim Aufruf der Seite fallen technische Zugriffsdaten an. Diese werden
+        ausschließlich zu anonymen, aggregierten Statistiken verarbeitet
+        (z. B. Seitenaufrufe pro Pfad, grobe Trends). Die IP-Adresse wird dabei zum
+        Zeitpunkt der Verarbeitung verworfen und <b>nicht gespeichert</b>. Es werden
+        keine personenbezogenen Einzeldatensätze vorgehalten.
+      </p>
+
+      <h2 style="font-family:var(--f-d);margin:28px 0 10px">Cookies &amp; Tracking</h2>
+      <p>
+        Es werden <b>keine</b> Cookies zu Analyse- oder Werbezwecken gesetzt, keine
+        Tracker, kein Fingerprinting und keine Dienste Dritter zum Nachverfolgen von
+        Besuchern eingebunden. Ein technisch notwendiges Sitzungs-Cookie wird
+        ausschließlich für den (nicht öffentlichen) Login des Seitenbetreibers ins
+        eigene Redaktionssystem verwendet.
+      </p>
+
+      <h2 style="font-family:var(--f-d);margin:28px 0 10px">Schriftarten</h2>
+      <p>
+        Alle Schriftarten werden lokal von diesem Server ausgeliefert. Es besteht
+        <b>keine</b> Verbindung zu Google Fonts oder anderen externen Anbietern.
+      </p>
+
+      <h2 style="font-family:var(--f-d);margin:28px 0 10px">Kontakt</h2>
+      <p>
+        Über das Kontaktformular gesendete Nachrichten werden ausschließlich per
+        E-Mail weitergeleitet und <b>nicht</b> in einer Datenbank gespeichert. Die
+        eingegebenen Angaben (Name, E-Mail, Nachricht) werden nur zur Bearbeitung
+        der Anfrage genutzt. Alternativ ist eine Kontaktaufnahme über die verlinkten
+        Profile möglich.
+      </p>
+
+      <h2 style="font-family:var(--f-d);margin:28px 0 10px">Externe Links</h2>
+      <p>
+        Diese Seite verlinkt auf externe Angebote (z. B. GitHub). Für deren Inhalte
+        und Datenschutz sind ausschließlich die jeweiligen Anbieter verantwortlich.
+      </p>
+
+      <h2 style="font-family:var(--f-d);margin:28px 0 10px">Ihre Rechte</h2>
+      <p>
+        Da keine personenbezogenen Daten gespeichert werden, liegen in der Regel
+        keine auskunftsfähigen Datensätze vor. Bei Fragen zum Datenschutz genügt eine
+        formlose Nachricht über die oben genannten Kontaktwege.
+      </p>
+
+      <p style="margin-top:28px;color:var(--muted);font-size:14px">
+        Hinweis: allgemeine Informationen, keine Rechtsberatung.
+      </p>
+
+      <p style="margin-top:24px">
+        <a href="/" style="color:var(--purple-br)">← zurück zur Startseite</a>
+      </p>
+    </div>
+  </main>
+</Layout>
