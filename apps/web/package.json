@@ -11,12 +11,12 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@astrojs/node": "^9",
-    "@astrojs/vue": "^5.0.0",
+    "@astrojs/node": "^10",
+    "@astrojs/vue": "^6",
     "@fontsource/fredoka": "^5",
     "@fontsource/inter": "^5",
     "@fontsource/space-mono": "^5",
-    "astro": "^5.1.0",
+    "astro": "^6.1.6",
     "vue": "^3.5.13"
   },
   "devDependencies": {

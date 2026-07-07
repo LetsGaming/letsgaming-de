@@ -132,21 +132,28 @@ async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Pro
     .join("\n");
   const query = `query($login: String!) { user(login: $login) { ${fields} } }`;
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `bearer ${config.token}`,
-      "Content-Type": "application/json",
-      "User-Agent": "letsgaming.de-sync",
-    },
-    body: JSON.stringify({ query, variables: { login: config.username } }),
-  });
-  if (!res.ok) return 0;
+  const body = JSON.stringify({ query, variables: { login: config.username } });
+  const headers = {
+    Authorization: `bearer ${config.token}`,
+    "Content-Type": "application/json",
+    "User-Agent": "letsgaming.de-sync",
+  };
+
+  // Retry once on a transient failure, then throw rather than return a misleading
+  // 0 — a failed sync keeps the last-good snapshot instead of zeroing the headline
+  // "commits all-time" number (BUG-03).
+  let res = await fetch(endpoint, { method: "POST", headers, body });
+  if (!res.ok) res = await fetch(endpoint, { method: "POST", headers, body });
+  if (!res.ok) {
+    throw new Error(`GitHub all-time commits HTTP ${res.status}: ${await res.text()}`);
+  }
   const json = (await res.json()) as {
     data?: { user: Record<string, { totalCommitContributions: number }> | null };
+    errors?: { message: string }[];
   };
+  if (json.errors?.length) throw new Error(`GitHub all-time commits: ${json.errors[0]!.message}`);
   const user = json.data?.user;
-  if (!user) return 0;
+  if (!user) throw new Error(`GitHub all-time commits: user "${config.username}" not found.`);
   return years.reduce((sum, y) => sum + (user[`y${y}`]?.totalCommitContributions ?? 0), 0);
 }
 

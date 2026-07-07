@@ -13,6 +13,12 @@ const localized = {
 
 const localizedArray = { type: "array", items: localized } as const;
 
+// href accepts http(s), mailto, or a site-relative path — never javascript:/data: (SEC-04).
+const href = {
+  type: "string",
+  pattern: "^(https?://|mailto:|/)[^\\s]*$",
+} as const;
+
 export const schemas = {
   localized,
 
@@ -54,7 +60,7 @@ export const schemas = {
       tag: localized,
       description: localized,
       meta: localizedArray,
-      href: { type: "string" },
+      href,
       featured: { type: "boolean" },
       repo: { type: "string" },
       sort: { type: "integer" },
@@ -82,7 +88,7 @@ export const schemas = {
     properties: {
       id: { type: "string", minLength: 1 },
       label: localized,
-      href: { type: "string" },
+      href,
       icon: { type: "string" },
       primary: { type: "boolean" },
       sort: { type: "integer" },

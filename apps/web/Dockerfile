@@ -12,7 +12,7 @@ RUN corepack enable
 ARG PUBLIC_API_URL=""
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 COPY . .
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @lg/core build && pnpm --filter @lg/web build
 
 FROM node:24-slim AS runtime
@@ -22,5 +22,7 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
 COPY --from=build /app .
+RUN chown -R node:node /app
+USER node
 EXPOSE 4321
 CMD ["node", "apps/web/dist/server/entry.mjs"]

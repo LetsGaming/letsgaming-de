@@ -1,18 +1,23 @@
 /**
- * Browser-side CMS API client. Authenticates with either a bearer token (entered
- * once, kept in this tab) or the OAuth session cookie (credentials: include).
+ * Browser-side CMS API client. The OAuth session cookie (http-only, credentials:
+ * include) is the primary auth. The bearer token is a fallback for scripts/first
+ * setup; when used interactively it's held in `sessionStorage` — scoped to the tab
+ * and cleared on close — rather than `localStorage`, to shrink the window in which
+ * a full-access credential sits readable in the browser (SEC-05). Prefer OAuth.
  * Runs only in the CMS, never on the public site.
  */
 
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const TOKEN_KEY = "cms_token";
 
 let token: string | null = null;
 
 export function setToken(value: string | null) {
   token = value && value.trim() ? value.trim() : null;
   try {
-    if (token) localStorage.setItem("cms_token", token);
-    else localStorage.removeItem("cms_token");
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY); // migrate off any previously-persisted token
   } catch {
     /* ignore */
   }
@@ -20,7 +25,7 @@ export function setToken(value: string | null) {
 
 export function loadToken(): string | null {
   try {
-    token = localStorage.getItem("cms_token");
+    token = sessionStorage.getItem(TOKEN_KEY);
   } catch {
     token = null;
   }

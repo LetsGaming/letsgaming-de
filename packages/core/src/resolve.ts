@@ -40,6 +40,17 @@ export interface ResolveInput {
 
 const SOURCE_LABELS: Record<string, string> = { github: "GitHub" };
 
+/**
+ * Neutralize any href that isn't http(s), mailto, or a site-relative path — so a
+ * `javascript:`/`data:` URL (from stored content or a future source) can't become
+ * a clickable script sink (SEC-04). Belt-and-braces with the CMS write schema.
+ */
+export function safeHref(href: string | undefined): string {
+  const value = (href ?? "").trim();
+  if (/^(https?:\/\/|mailto:|\/)/i.test(value)) return value;
+  return "#";
+}
+
 export function resolveSiteView(input: ResolveInput): SiteView {
   const locale = input.locale ?? DEFAULT_LOCALE;
   const now = input.now ?? new Date();
@@ -53,7 +64,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const resolveLink = (link: Link): LinkView => ({
     id: link.id,
     label: L(link.label),
-    href: link.href,
+    href: safeHref(link.href),
     icon: link.icon,
     primary: Boolean(link.primary),
   });
@@ -71,7 +82,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       tag: L(p.tag),
       description: L(p.description),
       meta,
-      href: p.href,
+      href: safeHref(p.href),
       featured: Boolean(p.featured),
     };
   };

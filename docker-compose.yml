@@ -15,7 +15,12 @@ services:
       PORT: "8787"
       DB_PATH: /data/letsgaming.sqlite
       MEDIA_DIR: /data/media
+      # Explicit origin(s) for the CMS — do NOT use "*" (that disables credentialed
+      # CORS, so the CMS session cookie won't be sent). Comma-separate if needed.
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      # This service sits behind a reverse proxy, so honour X-Forwarded-* for real
+      # client IPs (used by the contact rate-limiter).
+      TRUST_PROXY: ${TRUST_PROXY:-true}
       GITHUB_USERNAME: ${GITHUB_USERNAME:-LetsGaming}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       SESSION_SECRET: ${SESSION_SECRET:-}
@@ -27,6 +32,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
+      CONTACT_FROM: ${CONTACT_FROM:-}
       CONTACT_TO: ${CONTACT_TO:-}
     volumes:
       # The store + media are the archive — this volume is what you back up.
