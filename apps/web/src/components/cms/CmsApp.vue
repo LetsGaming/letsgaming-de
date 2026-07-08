@@ -571,13 +571,28 @@ function pick(v: View) {
   if ((v === "media" || v === "dashboard") && media.value.length === 0) void loadMedia();
   if ((v === "guestbook" || v === "dashboard") && !guestbook.value) void loadGuestbook();
   if (v === "analytics" && !analytics.value) void loadAnalytics();
+  if (AREA_FOR_VIEW[v]) previewArea.value = AREA_FOR_VIEW[v]!; // remember what to preview
   if (v === "preview") previewKey.value++; // always show the freshest render
 }
 
-// Live preview: an iframe of the actual site. Saves bump the key so it reloads.
+// Live preview: an iframe of the actual site, aimed at the area you're editing.
+// Content screens map to the site area that renders them, so the preview shows
+// "what you're working on", not the whole page. Saves bump the key to reload.
+const AREA_FOR_VIEW: Partial<Record<View, string>> = {
+  site: "home",
+  home: "home",
+  about: "about",
+  links: "about",
+  hobbies: "life",
+  now: "life",
+  gallery: "life",
+  presence: "life",
+};
+const previewArea = ref<string>("home");
 const previewKey = ref(0);
+const previewSrc = computed(() => `/?preview=1#${encodeURIComponent(previewArea.value)}`);
 function viewSite() {
-  window.open("/", "_blank", "noopener");
+  window.open(`/#${encodeURIComponent(previewArea.value)}`, "_blank", "noopener");
 }
 
 // Dashboard: quick counts + jump-in links (WP-style landing).
@@ -997,6 +1012,11 @@ onMounted(boot);
               </button>
             </div>
           </div>
+          <p v-if="analytics && !analytics.paths.length" class="muted" style="margin-top: 4px">
+            No traffic stats yet. These come from the reverse-proxy access log — set
+            <b>ACCESS_LOG</b> on the server (see <code>.env.example</code>). The cookieless
+            engagement stats below don't need it.
+          </p>
           <div class="cols">
             <div class="card"><h3>Top paths</h3><ul><li v-for="r in analytics.paths" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
             <div class="card"><h3>Referrers</h3><ul><li v-for="r in analytics.referrers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
@@ -1027,13 +1047,18 @@ onMounted(boot);
         <!-- PREVIEW -->
         <section v-show="tab === 'preview'" class="pane preview">
           <div class="prevbar">
-            <span class="muted">The live site — reflects everything you've saved. Reload after changes.</span>
+            <label class="prevpick">Showing
+              <select v-model="previewArea">
+                <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
+              </select>
+            </label>
+            <span class="muted">Reflects everything you've saved — reload after changes.</span>
             <span class="prevact">
               <button class="btn ghost" @click="previewKey++">Reload</button>
               <button class="btn ghost" @click="viewSite">Open in new tab ↗</button>
             </span>
           </div>
-          <iframe :key="previewKey" class="prevframe" src="/?preview=1" title="Site preview" />
+          <iframe :key="previewKey + '-' + previewArea" class="prevframe" :src="previewSrc" title="Site preview" />
         </section>
       </main>
 
@@ -1081,6 +1106,8 @@ h1, h3 { font-family: var(--f-d); color: var(--ink-strong); }
 /* preview */
 .preview { height: calc(100vh - 160px); }
 .prevbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.prevpick { display: flex; align-items: center; gap: 6px; font-family: var(--f-m); font-size: 12px; color: var(--muted); }
+.prevpick select { font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-2); color: var(--ink); }
 .prevact { display: flex; gap: 8px; }
 .prevframe { flex: 1; width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
 

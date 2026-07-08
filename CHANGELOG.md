@@ -4,7 +4,16 @@
 
 ### Features
 
-- **CMS: finish the module/media gaps.** Layout now does more than reorder within an area — you can
+- **CMS preview is now contextual.** The live-preview iframe opens the **area you're editing**
+  (editing Hobbies shows the Life section, About shows the bio, and so on) instead of the whole page
+  from the top, with an area picker to jump elsewhere. The public site now honours a `#area`/`#module`
+  URL hash on load, so these deep links work for shared links too. Still excluded from analytics.
+- **Traffic analytics populate on their own.** *Top paths / referrers / browsers / OS / devices* are
+  parsed from the reverse-proxy access log — previously only a manual CLI ran the ingest, so those
+  lists sat empty. The server now ingests a configured **`ACCESS_LOG`** in-process every 5 minutes
+  (incremental + idempotent; IP never stored). Point it at the mounted proxy log and the stats fill
+  in; without it, the cookieless engagement stats still work, and the CMS shows a hint. The CLI
+  (`pnpm analytics`) still works for host-side cron if preferred. Layout now does more than reorder within an area — you can
   **move a module to another area** or **hide it** (drop it from every area), all still validated
   against nav-lint (an area can't be left empty). Galleries went from one to **many**: create/delete
   named gallery instances (each is a gallery module you position via Layout; the built-in one is

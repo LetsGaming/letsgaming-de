@@ -2,6 +2,8 @@ import { buildApp } from "./app.js";
 import { loadEnv } from "./env.js";
 import { getStore } from "./store.js";
 import { SyncRunner } from "./sync/runner.js";
+import { ingestLog } from "./analytics/ingest.js";
+import cron from "node-cron";
 
 const env = loadEnv();
 const store = getStore(env.dbPath);
@@ -23,9 +25,39 @@ const runner = new SyncRunner(
 );
 runner.start();
 
+// Traffic analytics: if an access log is configured, ingest it in-process on a
+// schedule (incremental + idempotent) so path/referrer/browser/OS/device stats
+// populate without a separate cron. Engagement analytics come from the live
+// beacon; this is the log-derived half. Missing/rotated files degrade quietly.
+let ingestTask: ReturnType<typeof cron.schedule> | undefined;
+if (env.accessLog) {
+  const file = env.accessLog;
+  const ownHost =
+    env.analyticsOwnHost ??
+    (() => {
+      try {
+        return new URL(env.webOrigin).host;
+      } catch {
+        return undefined;
+      }
+    })();
+  const runIngest = () => {
+    try {
+      const r = ingestLog(store, file, ownHost);
+      if (r.hits) app.log.info(`[analytics] ingested ${r.linesRead} line(s), ${r.hits} hit(s)`);
+    } catch (err) {
+      app.log.warn(`[analytics] ingest skipped: ${(err as Error).message}`);
+    }
+  };
+  runIngest(); // once at boot
+  ingestTask = cron.schedule("*/5 * * * *", runIngest); // then every 5 minutes
+  app.log.info(`[analytics] access-log ingest scheduled for ${file}`);
+}
+
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down`);
   runner.stop();
+  ingestTask?.stop();
   await app.close();
   store.close();
   process.exit(0);

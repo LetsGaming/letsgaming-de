@@ -28,6 +28,10 @@ export interface ServerEnv {
   smtp?: { host: string; port: number; user?: string; pass?: string; from: string; to: string };
   /** Discord user id for the Lanyard presence widget (public, not a secret). */
   discordUserId?: string;
+  /** Reverse-proxy access log to ingest for traffic analytics (path/referrer/UA). */
+  accessLog?: string;
+  /** Own host, so self-referrals are excluded from the referrer list. */
+  analyticsOwnHost?: string;
   /** Wakapi coding-time tracker (LAN-only). Both parts required to activate. */
   wakapi?: { url: string; key: string };
   /** Steam Web API (public data, needs a key). Both parts required to activate. */
@@ -87,6 +91,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
     mediaDir: source.MEDIA_DIR ?? "./data/media",
     retainHourlyDays: num(source.RETAIN_HOURLY_DAYS, 90),
     ...(str(source.DISCORD_USER_ID) ? { discordUserId: str(source.DISCORD_USER_ID)! } : {}),
+    ...(str(source.ACCESS_LOG) ? { accessLog: str(source.ACCESS_LOG)! } : {}),
+    ...(str(source.ANALYTICS_OWN_HOST) ? { analyticsOwnHost: str(source.ANALYTICS_OWN_HOST)! } : {}),
     ...(str(source.WAKAPI_URL) && str(source.WAKAPI_KEY)
       ? { wakapi: { url: str(source.WAKAPI_URL)!, key: str(source.WAKAPI_KEY)! } }
       : {}),

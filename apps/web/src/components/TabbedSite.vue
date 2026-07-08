@@ -100,6 +100,10 @@ function setLocale(next: "en" | "de") {
 onMounted(() => {
   const current = document.documentElement.dataset.theme;
   theme.value = current === "light" ? "light" : "dark";
+  // Deep link: #<area> or #<moduleId> opens that section (used by the CMS preview
+  // and by shared links). Falls back to the first area.
+  const target = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+  if (target) goToAnchor(target);
   animate(active.value);
   initTracking(active.value, theme.value);
 });
