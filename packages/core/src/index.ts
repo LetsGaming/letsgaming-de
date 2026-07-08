@@ -7,4 +7,5 @@ export * from "./modules.js";
 export * from "./view.js";
 export * from "./ia.js";
 export * from "./format.js";
+export * from "./analytics.js";
 export * from "./resolve.js";

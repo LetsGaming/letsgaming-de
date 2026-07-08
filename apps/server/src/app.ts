@@ -11,6 +11,7 @@ import { registerContactRoutes } from "./routes/contact.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerMediaRoutes } from "./routes/media.js";
 import { registerReadRoutes } from "./routes/read.js";
+import { registerTrackRoutes } from "./routes/track.js";
 
 /** Build the Fastify app with all routes registered. Pure — no listening. */
 export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyInstance> {
@@ -50,6 +51,7 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
 
   registerHealthRoutes(app, store);
   registerReadRoutes(app, store);
+  registerTrackRoutes(app, store);
   registerContactRoutes(app, env);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);

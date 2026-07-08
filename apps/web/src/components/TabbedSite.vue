@@ -2,6 +2,7 @@
 import type { NavView, SiteView } from "@lg/core";
 import { nextTick, onMounted, ref } from "vue";
 import { icons } from "../lib/icons";
+import { initTracking, trackClick, trackSwitch } from "../lib/track";
 import Module from "./Module.vue";
 
 const props = defineProps<{ site: SiteView }>();
@@ -21,6 +22,7 @@ function areaModules(area: NavView) {
 function go(id: string) {
   if (id === active.value) return;
   active.value = id;
+  trackSwitch(id);
   if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   void nextTick(() => animate(id));
 }
@@ -34,6 +36,7 @@ function goToAnchor(target: string) {
   if (!area) return;
   if (area.id !== active.value) {
     active.value = area.id;
+    trackSwitch(area.id);
     void nextTick(() => animate(area.id));
   }
   void nextTick(() => {
@@ -71,6 +74,7 @@ function tilt(el: HTMLElement) {
 function toggleTheme() {
   theme.value = theme.value === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = theme.value;
+  trackClick("theme-toggle");
   try {
     localStorage.setItem("theme", theme.value);
   } catch {
@@ -82,6 +86,7 @@ onMounted(() => {
   const current = document.documentElement.dataset.theme;
   theme.value = current === "light" ? "light" : "dark";
   animate(active.value);
+  initTracking(active.value, theme.value);
 });
 </script>
 

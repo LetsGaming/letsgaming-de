@@ -25,7 +25,7 @@ Everything on the site that isn't pulled from an API is editable here:
 | **Links** | Social/contact buttons shown on Home and About. Set an `Icon` from: `gh, mail, x, linkedin, mastodon, youtube, discord, instagram, bluesky, globe`. A link with href `#contact` becomes the "Get in touch" jump. |
 | **Now** | The "Right now" rows. |
 | **Media** | Upload images (auto-converted to WebP); copy their URLs. |
-| **Analytics** | Anonymous aggregates (no cookies, no IPs). |
+| **Analytics** | Two sources, both anonymous: **traffic** (paths/referrers/browsers/OS/devices) from the reverse-proxy log, and **engagement** (sections viewed, dwell, transitions, scroll depth, clicks, visit length, theme) measured cookielessly in the browser. No cookies, no IPs, nothing personal. |
 
 **Projects and activity are not editable** — they come straight from GitHub. The Projects and
 Featured sections show your **pinned repositories first, then your most-recently-updated repos**

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { trackClick } from "../lib/track";
 
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
@@ -27,6 +28,7 @@ async function submit() {
     });
     if (res.ok) {
       state.value = "sent";
+      trackClick("contact-submit");
       name.value = email.value = message.value = "";
       return;
     }

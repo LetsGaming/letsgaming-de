@@ -23,12 +23,25 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const dim = (d: AnalyticsDimension) => store.analytics.top(d, from, to);
       return {
         range: { from, to },
+        // Log-derived (unchanged).
         paths: dim("path"),
         referrers: dim("referrer"),
         browsers: dim("browser"),
         os: dim("os"),
         devices: dim("device"),
         trend: store.analytics.trend("path", from, to),
+        // Engagement (cookieless beacon).
+        engagement: {
+          tabs: dim("tab"),
+          exits: dim("exit"),
+          transitions: dim("transition"),
+          dwell: dim("dwell"),
+          scroll: dim("scroll"),
+          sessionTabs: dim("session_tabs"),
+          sessionDwell: dim("session_dwell"),
+          clicks: dim("click"),
+          theme: dim("theme"),
+        },
       };
     },
   );

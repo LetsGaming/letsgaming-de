@@ -2,6 +2,7 @@
 import type { ResolvedModule } from "@lg/core";
 import { icons, langColor } from "../lib/icons";
 import { mdBold } from "../lib/site";
+import { trackClick } from "../lib/track";
 import ContactForm from "./ContactForm.vue";
 
 const props = defineProps<{
@@ -18,6 +19,9 @@ function onLink(e: MouseEvent, href: string) {
   if (href.startsWith("#")) {
     e.preventDefault();
     props.goAnchor?.(href.slice(1));
+    trackClick("contact-cta");
+  } else {
+    trackClick("social");
   }
 }
 </script>
@@ -53,13 +57,14 @@ function onLink(e: MouseEvent, href: string) {
   <section v-else-if="module.kind === 'featured'" class="sec rise">
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
-      <button class="more" @click="go('work')">see all my work →</button>
+      <button class="more" @click="() => { trackClick('more'); go('work'); }">see all my work →</button>
     </div>
     <div class="grid">
       <a
         v-if="module.data.project"
         class="card feature"
         :href="module.data.project.href"
+        @click="trackClick('featured')"
       >
         <div class="ptitle">
           {{ module.data.project.name }}<span class="arrow" v-html="icons.arrow" />
@@ -77,7 +82,7 @@ function onLink(e: MouseEvent, href: string) {
   <section v-else-if="module.kind === 'glance'" class="sec rise">
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
-      <button class="more" @click="go('work')">full activity →</button>
+      <button class="more" @click="() => { trackClick('more'); go('work'); }">full activity →</button>
     </div>
     <div class="stats">
       <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
@@ -154,6 +159,7 @@ function onLink(e: MouseEvent, href: string) {
         :href="module.data.githubUrl"
         target="_blank"
         rel="noreferrer noopener"
+        @click="trackClick('github-profile')"
       >all repos on GitHub →</a>
     </div>
     <div class="grid">
@@ -163,6 +169,7 @@ function onLink(e: MouseEvent, href: string) {
         class="card"
         :class="{ feature: p.featured }"
         :href="p.href"
+        @click="trackClick('project')"
       >
         <div class="ptitle">{{ p.name }}<span class="arrow" v-html="icons.arrow" /></div>
         <span class="tag">{{ p.tag }}</span>
@@ -229,6 +236,7 @@ function onLink(e: MouseEvent, href: string) {
         :href="l.href"
         target="_blank"
         rel="noreferrer noopener"
+        @click="trackClick('social')"
       >
         <span v-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
       </a>

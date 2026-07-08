@@ -1,6 +1,22 @@
 import type { DB } from "./database.js";
 
-export type AnalyticsDimension = "path" | "referrer" | "browser" | "os" | "device";
+export type AnalyticsDimension =
+  // log-derived
+  | "path"
+  | "referrer"
+  | "browser"
+  | "os"
+  | "device"
+  // engagement (cookieless beacon)
+  | "tab"
+  | "exit"
+  | "transition"
+  | "dwell"
+  | "scroll"
+  | "session_tabs"
+  | "session_dwell"
+  | "click"
+  | "theme";
 
 export interface AnalyticsHit {
   day: string; // YYYY-MM-DD
