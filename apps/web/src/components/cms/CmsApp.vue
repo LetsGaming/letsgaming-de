@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Hobby, Link, Localized, NowItem, Project } from "@lg/core";
+import type { Hobby, Link, Localized, NowItem } from "@lg/core";
 import { computed, onMounted, reactive, ref } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../../lib/cms";
 
-type Tab = "content" | "projects" | "hobbies" | "links" | "now" | "media" | "analytics";
-const TABS: Tab[] = ["content", "projects", "hobbies", "links", "now", "media", "analytics"];
+type Tab = "content" | "hobbies" | "links" | "now" | "media" | "analytics";
+const TABS: Tab[] = ["content", "hobbies", "links", "now", "media", "analytics"];
 
 const authed = ref(false);
 const login = ref<string | null>(null);
@@ -20,7 +20,6 @@ const headline = reactive<any>({ before: emptyL(), highlight: emptyL(), after: e
 const lede = reactive<Localized>(emptyL());
 const status = reactive<any>({ verb: emptyL(), now: emptyL() });
 const bio = ref<Localized[]>([]);
-const projects = ref<(Project & { sort?: number })[]>([]);
 const hobbies = ref<(Hobby & { sort?: number })[]>([]);
 const links = ref<(Link & { sort?: number })[]>([]);
 const now = ref<(NowItem & { sort?: number })[]>([]);
@@ -66,7 +65,6 @@ async function loadAll() {
   Object.assign(lede, data.content.lede);
   Object.assign(status, data.content.status);
   bio.value = data.content.bio;
-  projects.value = data.content.projects.map((p: Project, i: number) => ({ ...p, sort: i }));
   hobbies.value = data.content.hobbies.map((h: Hobby, i: number) => ({ ...h, sort: i }));
   links.value = data.content.links.map((l: Link, i: number) => ({ ...l, sort: i }));
   now.value = data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i }));
@@ -102,7 +100,6 @@ const saveHeadline = () => guarded(() => cms.put("headline", strip(headline)));
 const saveLede = () => guarded(() => cms.put("lede", strip(lede)));
 const saveStatus = () => guarded(() => cms.put("status", strip(status)));
 const saveBio = () => guarded(() => cms.put("bio", bio.value.map(strip)));
-const saveProject = (p: any) => guarded(() => cms.put(`projects/${p.id}`, strip(p)));
 const saveHobby = (h: any) => guarded(() => cms.put(`hobbies/${h.id}`, strip(h)));
 const saveLink = (l: any) => guarded(() => cms.put(`links/${l.id}`, strip(l)));
 const saveNow = (n: any) => guarded(() => cms.put(`now/${n.id}`, strip(n)));
@@ -116,8 +113,6 @@ const delItem = (arr: any, i: number, kind: string) =>
   }, "Deleted");
 
 // Adders
-const addProject = () =>
-  projects.value.push({ id: slug("new-project"), name: "new-project", tag: emptyL(), description: emptyL(), meta: [], href: "", sort: projects.value.length });
 const addHobby = () =>
   hobbies.value.push({ id: slug("new-hobby"), title: emptyL(), blurb: emptyL(), tone: "purple", sort: hobbies.value.length });
 const addLink = () =>
@@ -217,6 +212,12 @@ onMounted(boot);
 
       <!-- CONTENT -->
       <section v-show="tab === 'content'" class="pane">
+        <div class="card note">
+          Edits here go live immediately — no rebuild. The <b>Home</b> intro (headline, lede,
+          status) and the <b>About</b> bio all live on this tab. Projects and activity are pulled
+          from GitHub automatically, so there's no project editor. Add social/contact buttons under
+          <b>Links</b>.
+        </div>
         <div class="card">
           <h3>Identity</h3>
           <label>Name<input v-model="meta.name" /></label>
@@ -257,27 +258,6 @@ onMounted(boot);
         </div>
       </section>
 
-      <!-- PROJECTS -->
-      <section v-show="tab === 'projects'" class="pane">
-        <div v-for="p in projects" :key="p.id" class="card">
-          <div class="grid2">
-            <label>Name<input v-model="p.name" /></label>
-            <label>ID<input v-model="p.id" /></label>
-            <label>Tag<input :value="lv(p.tag, locale)" @input="setLv(p.tag, locale, ($event.target as HTMLInputElement).value)" /></label>
-            <label>Repo<input v-model="p.repo" placeholder="repo name (optional)" /></label>
-            <label>Href<input v-model="p.href" /></label>
-            <label>Sort<input type="number" v-model.number="p.sort" /></label>
-          </div>
-          <label>Description<textarea :value="lv(p.description, locale)" @input="setLv(p.description, locale, ($event.target as HTMLTextAreaElement).value)" rows="2" /></label>
-          <label class="check"><input type="checkbox" v-model="p.featured" /> featured</label>
-          <div class="actions">
-            <button class="link danger" @click="delItem(projects, projects.indexOf(p), 'projects')">delete</button>
-            <button class="btn" @click="saveProject(p)">Save</button>
-          </div>
-        </div>
-        <button class="btn ghost" @click="addProject">+ Add project</button>
-      </section>
-
       <!-- HOBBIES -->
       <section v-show="tab === 'hobbies'" class="pane">
         <div v-for="h in hobbies" :key="h.id" class="card">
@@ -304,7 +284,7 @@ onMounted(boot);
         <div v-for="l in links" :key="l.id" class="card">
           <div class="grid2">
             <label>ID<input v-model="l.id" /></label>
-            <label>Icon<input v-model="l.icon" placeholder="gh / mail" /></label>
+            <label>Icon<input v-model="l.icon" placeholder="gh, mail, x, linkedin, mastodon, youtube, discord, instagram, bluesky, globe" /></label>
             <label>Label<input :value="lv(l.label, locale)" @input="setLv(l.label, locale, ($event.target as HTMLInputElement).value)" /></label>
             <label>Href<input v-model="l.href" /></label>
             <label>Sort<input type="number" v-model.number="l.sort" /></label>
@@ -392,6 +372,7 @@ h1, h3 { font-family: var(--f-d); color: var(--ink-strong); }
 .tabs button.on { background: var(--purple); color: #fff; border-color: transparent; }
 .right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .pane { display: flex; flex-direction: column; gap: 16px; }
+.note { background: var(--purple-wash); border-color: var(--line); font-family: var(--f-m); font-size: 13px; line-height: 1.5; color: var(--ink); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--sh-1); display: flex; flex-direction: column; gap: 10px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-family: var(--f-m); }

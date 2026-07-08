@@ -87,6 +87,35 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     };
   };
 
+  /** Projects straight from GitHub: pinned first, then most-recently-updated. */
+  const githubProjectViews = (): ProjectView[] => {
+    const repos = gh?.repos ?? [];
+    if (repos.length === 0) return [];
+    const byName = new Map(repos.map((r) => [r.name.toLowerCase(), r]));
+    const pinned = (gh?.pinned ?? [])
+      .map((n) => byName.get(n.toLowerCase()))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+    const pinnedNames = new Set(pinned.map((r) => r.name));
+    const recent = repos.filter((r) => !pinnedNames.has(r.name)); // already push-desc
+    return [...pinned, ...recent].slice(0, 12).map((r) => ({
+      id: r.name,
+      name: r.name,
+      tag: r.language ?? "",
+      description: r.description ?? "",
+      meta: [`★ ${r.stars}`, `updated ${relativeTime(r.pushedAt, now)} ago`],
+      href: r.url,
+      featured: pinnedNames.has(r.name),
+    }));
+  };
+
+  // GitHub is the source of truth for projects; fall back to any CMS-authored
+  // projects only when there's no synced GitHub data yet.
+  const projectList: ProjectView[] = (() => {
+    const fromGitHub = githubProjectViews();
+    return fromGitHub.length > 0 ? fromGitHub : content.projects.map(resolveProject);
+  })();
+  const githubUrl = `https://github.com/${content.meta.handle}`;
+
   const statViews = (): StatView[] => {
     if (!gh) return [];
     const s = gh.stats;
@@ -129,17 +158,20 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         };
       }
       case "featured": {
-        const featured = content.projects.find((p) => p.featured) ?? content.projects[0];
+        const featured = projectList.find((p) => p.featured) ?? projectList[0] ?? null;
         return {
           id: descriptor.id,
           kind: "featured",
-          data: { heading, note, project: featured ? resolveProject(featured) : null },
+          data: { heading, note, project: featured },
         };
       }
       case "glance":
         return { id: descriptor.id, kind: "glance", data: { heading, note, stats: statViews() } };
       case "activity": {
-        const heat = gh ? bucketHeat(gh.contributions) : { levels: [], total: 0 };
+        // Show the last 26 weeks (182 days) so the calendar stays readable — a
+        // full GitHub year would cram ~53 columns into the card (see .heat CSS).
+        const windowed = gh ? gh.contributions.slice(-182) : [];
+        const heat = gh ? bucketHeat(windowed) : { levels: [], total: 0 };
         return {
           id: descriptor.id,
           kind: "activity",
@@ -170,7 +202,8 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           data: {
             heading,
             note: note ?? (repoCount != null ? `${compactNumber(repoCount)} public repos` : undefined),
-            projects: content.projects.map(resolveProject),
+            projects: projectList,
+            githubUrl,
           },
         };
       }

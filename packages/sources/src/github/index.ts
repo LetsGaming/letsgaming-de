@@ -77,9 +77,19 @@ export function normalizeGitHub(raw: GitHubRaw): GitHubData {
       .map(normalizeEvent)
       .filter((e): e is GitHubEvent => e !== null)
       .slice(0, 8),
+    // Newest-push first (the query orders by PUSHED_AT desc); forks are excluded
+    // at the query, archived repos are dropped here.
     repos: raw.repos
-      .filter((r) => !r.isFork)
-      .map((r) => ({ name: r.name, stars: r.stargazerCount, pushedAt: r.pushedAt })),
+      .filter((r) => !r.isFork && !r.isArchived)
+      .map((r) => ({
+        name: r.name,
+        stars: r.stargazerCount,
+        pushedAt: r.pushedAt,
+        url: r.url ?? `https://github.com/${raw.login}/${r.name}`,
+        ...(r.description ? { description: r.description } : {}),
+        ...(r.primaryLanguage?.name ? { language: r.primaryLanguage.name } : {}),
+      })),
+    pinned: raw.pinned ?? [],
   };
 }
 

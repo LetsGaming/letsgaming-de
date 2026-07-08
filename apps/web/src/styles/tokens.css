@@ -22,7 +22,7 @@
   --line: rgba(255, 255, 255, 0.07);
 
   --bg-base: #0e0c18;
-  --bg-glow: radial-gradient(135% 105% at 82% -18%, #271b4e 0%, #140f26 46%, #0d0b16 100%);
+  --bg-glow: radial-gradient(120% 100% at 84% -22%, #201743 0%, #140f26 50%, #0d0b16 100%);
 
   /* heatmap shades, least -> most */
   --heat-0: #241f3d;
@@ -73,7 +73,7 @@
   --line: rgba(24, 12, 60, 0.09);
 
   --bg-base: #eee9fb;
-  --bg-glow: radial-gradient(135% 105% at 82% -18%, #e2d8fb 0%, #efeafc 46%, #f4f1fd 100%);
+  --bg-glow: radial-gradient(120% 100% at 84% -22%, #ece7fb 0%, #f3effc 52%, #f6f4fd 100%);
 
   --heat-0: #e7e2f6;
   --heat-1: #c4b6ef;

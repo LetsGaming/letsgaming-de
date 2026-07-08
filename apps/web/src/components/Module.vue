@@ -2,10 +2,24 @@
 import type { ResolvedModule } from "@lg/core";
 import { icons, langColor } from "../lib/icons";
 import { mdBold } from "../lib/site";
+import ContactForm from "./ContactForm.vue";
 
-defineProps<{ module: ResolvedModule; go: (id: string) => void }>();
+const props = defineProps<{
+  module: ResolvedModule;
+  go: (id: string) => void;
+  goAnchor?: (target: string) => void;
+}>();
 
 const heatVar = (level: number) => `var(--heat-${level})`;
+
+/** Intercept internal `#anchor` links (e.g. "Get in touch") so they switch to
+ *  the tab that holds the target section and scroll to it, instead of no-oping. */
+function onLink(e: MouseEvent, href: string) {
+  if (href.startsWith("#")) {
+    e.preventDefault();
+    props.goAnchor?.(href.slice(1));
+  }
+}
 </script>
 
 <template>
@@ -28,6 +42,7 @@ const heatVar = (level: number) => `var(--heat-${level})`;
         class="btn"
         :class="l.primary ? 'btn-primary' : 'btn-ghost'"
         :href="l.href"
+        @click="onLink($event, l.href)"
       >
         <span v-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
       </a>
@@ -126,10 +141,6 @@ const heatVar = (level: number) => `var(--heat-${level})`;
           <span class="tm">{{ e.relative }}</span>
         </div>
       </div>
-      <div class="src-note">
-        ◆ <b>sources:</b> {{ module.data.sources.join(", ") }} — new integrations plug in here
-        without touching the page
-      </div>
     </div>
   </section>
 
@@ -137,7 +148,13 @@ const heatVar = (level: number) => `var(--heat-${level})`;
   <section v-else-if="module.kind === 'projects'" class="sec">
     <div class="sec-head rise">
       <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
+      <a
+        v-if="module.data.githubUrl"
+        class="more"
+        :href="module.data.githubUrl"
+        target="_blank"
+        rel="noreferrer noopener"
+      >all repos on GitHub →</a>
     </div>
     <div class="grid">
       <a
@@ -200,16 +217,22 @@ const heatVar = (level: number) => `var(--heat-${level})`;
   <!-- CONTACT -->
   <section v-else-if="module.kind === 'contact'" id="contact" class="sec">
     <div class="sec-head rise"><h2>{{ module.data.heading }}</h2></div>
-    <div class="links rise">
+    <div
+      v-if="module.data.links.filter((l) => !l.href.startsWith('#')).length"
+      class="links rise"
+    >
       <a
-        v-for="l in module.data.links"
+        v-for="l in module.data.links.filter((l) => !l.href.startsWith('#'))"
         :key="l.id"
         class="btn"
         :class="l.primary ? 'btn-primary' : 'btn-ghost'"
         :href="l.href"
+        target="_blank"
+        rel="noreferrer noopener"
       >
         <span v-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
       </a>
     </div>
+    <div class="rise" style="margin-top: 20px"><ContactForm /></div>
   </section>
 </template>

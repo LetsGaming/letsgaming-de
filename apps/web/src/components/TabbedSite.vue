@@ -25,6 +25,23 @@ function go(id: string) {
   void nextTick(() => animate(id));
 }
 
+/** Jump to a section by module id (e.g. "contact"): switch to the tab that holds
+ *  it, then scroll it into view. Powers internal `#anchor` links like "Get in touch". */
+function goToAnchor(target: string) {
+  const area =
+    props.site.nav.find((a) => (a.modules ?? []).includes(target)) ??
+    props.site.nav.find((a) => a.id === target);
+  if (!area) return;
+  if (area.id !== active.value) {
+    active.value = area.id;
+    void nextTick(() => animate(area.id));
+  }
+  void nextTick(() => {
+    if (typeof document === "undefined") return;
+    document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 /** Re-trigger the staggered entrance and (re)attach tilt within a panel. */
 function animate(id: string) {
   const panel = root.value?.querySelector<HTMLElement>(`[data-panel="${id}"]`);
@@ -101,7 +118,7 @@ onMounted(() => {
       :data-panel="area.id"
       :hidden="area.id !== active"
     >
-      <Module v-for="m in areaModules(area)" :key="m!.id" :module="m!" :go="go" />
+      <Module v-for="m in areaModules(area)" :key="m!.id" :module="m!" :go="go" :go-anchor="goToAnchor" />
     </section>
 
     <footer>

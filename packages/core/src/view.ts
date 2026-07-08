@@ -105,7 +105,7 @@ export type ResolvedModule =
   | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null } }
   | { id: string; kind: "glance"; data: SectionMeta & { stats: StatView[] } }
   | { id: string; kind: "activity"; data: ActivityView }
-  | { id: string; kind: "projects"; data: SectionMeta & { projects: ProjectView[] } }
+  | { id: string; kind: "projects"; data: SectionMeta & { projects: ProjectView[]; githubUrl?: string } }
   | { id: string; kind: "hobbies"; data: SectionMeta & { hobbies: HobbyView[] } }
   | { id: string; kind: "now"; data: SectionMeta & { items: NowView[] } }
   | { id: string; kind: "bio"; data: SectionMeta & { paragraphs: string[] } }

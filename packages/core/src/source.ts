@@ -56,10 +56,12 @@ export interface GitHubData {
   contributions: number[];
   events: GitHubEvent[];
   /**
-   * Lightweight per-repo facts, used to enrich curated project cards (stars,
-   * freshness) so authored meta doesn't drift. Keyed lookups happen by name.
+   * Per-repo facts, newest-push first. Drives the Projects section directly
+   * (pinned first, then most-recently-updated) and enriches any curated cards.
    */
   repos?: GitHubRepo[];
+  /** Repo names the owner pinned on their profile, in pin order. */
+  pinned?: string[];
 }
 
 export interface GitHubRepo {
@@ -67,6 +69,12 @@ export interface GitHubRepo {
   stars: number;
   /** ISO timestamp of the last push. */
   pushedAt: string;
+  /** Repo description, if any. */
+  description?: string;
+  /** Canonical GitHub URL for the repo. */
+  url: string;
+  /** Primary language, if GitHub reports one. */
+  language?: string;
 }
 
 export type GitHubEventType = "commit" | "pr" | "star" | "repo";

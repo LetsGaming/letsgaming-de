@@ -48,38 +48,10 @@ const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
   ],
 };
 
-const PROJECTS: Project[] = [
-  {
-    id: "plantcare-tracker",
-    name: "plantcare-tracker",
-    tag: en("TypeScript"),
-    description: en(
-      "A companion app that keeps my houseplants alive — tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
-    ),
-    meta: [en("★ 3"), en("updated 2d ago")],
-    href: "https://github.com/LetsGaming/plantcare-tracker",
-    featured: true,
-    repo: "plantcare-tracker",
-  },
-  {
-    id: "led-controller-websocket",
-    name: "LED-Controller-Websocket",
-    tag: en("Python"),
-    description: en("Drives LED strips live over a websocket bridge, running on a Raspberry Pi."),
-    meta: [en("★ 1"), en("Raspberry Pi")],
-    href: "https://github.com/LetsGaming/LED-Controller-Websocket",
-    repo: "LED-Controller-Websocket",
-  },
-  {
-    id: "dotfiles",
-    name: "dotfiles",
-    tag: en("Shell"),
-    description: en("My terminal and editor setup, versioned so a fresh machine feels like home fast."),
-    meta: [en("★ 0"), en("always tweaking")],
-    href: "https://github.com/LetsGaming/dotfiles",
-    repo: "dotfiles",
-  },
-];
+// Projects are no longer seeded: the Projects/Featured sections are driven by
+// GitHub (pinned repos first, then most-recently-updated). The CMS project
+// entity remains as an optional fallback for when no GitHub data is synced yet.
+const PROJECTS: Project[] = [];
 
 const HOBBIES: Hobby[] = [
   { id: "gaming", title: en("Gaming"), blurb: en("where the name comes from"), tone: "purple", icon: "game" },

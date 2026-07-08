@@ -13,14 +13,23 @@ const sampleGitHub: GitHubData = {
   events: [
     { type: "commit", text: "Pushed 3 commits to plantcare-tracker", at: new Date().toISOString() },
   ],
+  // Provided newest-push first (as the GraphQL query returns them).
+  repos: [
+    { name: "recent-a", stars: 5, pushedAt: "2026-01-04T00:00:00Z", url: "https://github.com/x/recent-a", language: "TypeScript", description: "A" },
+    { name: "recent-c", stars: 0, pushedAt: "2026-01-03T00:00:00Z", url: "https://github.com/x/recent-c" },
+    { name: "pinned-b", stars: 2, pushedAt: "2026-01-01T00:00:00Z", url: "https://github.com/x/pinned-b", language: "Python", description: "B" },
+  ],
+  pinned: ["pinned-b"],
 };
 
 test("seed populates content and IA", () => {
   const store = openStore(":memory:");
   const content = store.content.getContent();
   assert.equal(content.meta.name, "Domenic");
-  assert.equal(content.projects.length, 3);
-  assert.ok(content.projects.some((p) => p.featured));
+  // Projects are now driven by GitHub (pinned + recent), so the seed intentionally
+  // populates none — the seed provides identity, bio, hobbies, links and IA.
+  assert.equal(content.projects.length, 0);
+  assert.ok(content.hobbies.length > 0);
   const nav = store.ia.getNav();
   const modules = store.ia.getModules();
   assert.equal(nav.length, 4);
@@ -69,5 +78,29 @@ test("store + core resolve into a render-ready SiteView", () => {
   }
   const hero = view.modules["hero"];
   assert.equal(hero?.kind, "hero");
+  store.close();
+});
+
+test("projects come from GitHub — pinned first, then most-recent", () => {
+  const store = openStore(":memory:");
+  store.source.record("github", "2026-01-02T00:00:00.000Z", sampleGitHub);
+
+  const view = resolveSiteView({
+    content: store.content.getContent(),
+    source: store.source.getAllCurrent(),
+    nav: store.ia.getNav(),
+    modules: store.ia.getModules(),
+    now: new Date("2026-01-05T00:00:00.000Z"),
+  });
+
+  const projects = view.modules["projects"];
+  assert.equal(projects?.kind, "projects");
+  if (projects?.kind === "projects") {
+    const names = projects.data.projects.map((p) => p.name);
+    assert.deepEqual(names, ["pinned-b", "recent-a", "recent-c"]);
+    assert.equal(projects.data.projects[0]?.featured, true);
+    assert.equal(projects.data.githubUrl, "https://github.com/LetsGaming");
+    assert.equal(projects.data.projects[0]?.href, "https://github.com/x/pinned-b");
+  }
   store.close();
 });

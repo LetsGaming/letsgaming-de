@@ -32,10 +32,32 @@ const DEMO: GitHubData = {
     { name: "Shell", pct: 5 },
   ],
   contributions: demoContributions(),
+  pinned: ["plantcare-tracker", "LED-Controller-Websocket"],
   repos: [
-    { name: "plantcare-tracker", stars: 3, pushedAt: daysAgo(2) },
-    { name: "LED-Controller-Websocket", stars: 1, pushedAt: daysAgo(6) },
-    { name: "dotfiles", stars: 0, pushedAt: daysAgo(16) },
+    {
+      name: "plantcare-tracker",
+      stars: 3,
+      pushedAt: daysAgo(2),
+      url: "https://github.com/LetsGaming/plantcare-tracker",
+      description: "Keeps my houseplants alive — tracks watering, light and health.",
+      language: "TypeScript",
+    },
+    {
+      name: "LED-Controller-Websocket",
+      stars: 1,
+      pushedAt: daysAgo(6),
+      url: "https://github.com/LetsGaming/LED-Controller-Websocket",
+      description: "Drives LED strips live over a websocket bridge on a Raspberry Pi.",
+      language: "Python",
+    },
+    {
+      name: "homelab",
+      stars: 0,
+      pushedAt: daysAgo(11),
+      url: "https://github.com/LetsGaming/homelab",
+      description: "Compose files and notes for the boxes that run this site.",
+      language: "Shell",
+    },
   ],
   events: [
     {

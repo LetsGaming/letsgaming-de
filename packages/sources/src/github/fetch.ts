@@ -21,6 +21,9 @@ export interface RawRepo {
   pushedAt: string;
   primaryLanguage: { name: string } | null;
   languages: { edges: { size: number; node: { name: string } }[] };
+  description?: string | null;
+  url?: string;
+  isArchived?: boolean;
 }
 
 export interface RawContributionDay {
@@ -32,6 +35,8 @@ export interface GitHubRaw {
   login: string;
   repositoriesTotal: number;
   repos: RawRepo[];
+  /** Repo names pinned on the profile, in pin order. */
+  pinned?: string[];
   yearCommits: number;
   /** Sum of commit contributions across every year since the account was created. */
   allTimeCommits: number;
@@ -52,12 +57,18 @@ const QUERY = /* GraphQL */ `
 query($login: String!) {
   user(login: $login) {
     createdAt
-    repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
+    pinnedItems(first: 6, types: REPOSITORY) {
+      nodes { ... on Repository { name } }
+    }
+    repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
       totalCount
       nodes {
         name
-        stargazerCount
+        description
+        url
         isFork
+        isArchived
+        stargazerCount
         pushedAt
         primaryLanguage { name }
         languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
@@ -104,6 +115,7 @@ export async function fetchGitHub(config: GitHubConfig): Promise<GitHubRaw> {
     login: config.username,
     repositoriesTotal: user.repositories.totalCount,
     repos: user.repositories.nodes,
+    pinned: (user.pinnedItems?.nodes ?? []).map((n) => n.name).filter((n): n is string => !!n),
     yearCommits: user.contributionsCollection.totalCommitContributions,
     allTimeCommits: await fetchAllTimeCommits(config, user.createdAt),
     calendarTotal: user.contributionsCollection.contributionCalendar.totalContributions,
@@ -159,6 +171,7 @@ async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Pro
 
 interface RawUser {
   createdAt: string;
+  pinnedItems?: { nodes: { name?: string }[] };
   repositories: { totalCount: number; nodes: RawRepo[] };
   contributionsCollection: {
     totalCommitContributions: number;
