@@ -17,6 +17,7 @@ import {
   dwellBucket,
   scrollDepthsReached,
   sessionTabsBucket,
+  viewportBucket,
 } from "@lg/core";
 
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
@@ -33,13 +34,51 @@ const tabsVisited = new Set<string>();
 const scrollReached = new Set<string>(); // `${section}|${depth}` already sent
 let ended = false;
 
-function privacyOptOut(): boolean {
-  const n = navigator as Navigator & { globalPrivacyControl?: boolean; doNotTrack?: string };
+const OPTOUT_KEY = "lg-analytics-optout";
+
+/** The browser's explicit Do-Not-Track signal (we honour DNT, but not GPC). */
+export function dntActive(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const n = navigator as Navigator & { msDoNotTrack?: string };
   const dnt =
-    n.doNotTrack ??
-    (window as unknown as { doNotTrack?: string }).doNotTrack ??
-    (n as unknown as { msDoNotTrack?: string }).msDoNotTrack;
-  return dnt === "1" || dnt === "yes" || n.globalPrivacyControl === true;
+    n.doNotTrack ?? (window as unknown as { doNotTrack?: string }).doNotTrack ?? n.msDoNotTrack;
+  return dnt === "1" || dnt === "yes";
+}
+
+/** The visitor's own opt-out choice, remembered locally (a functional preference). */
+export function isOptedOut(): boolean {
+  try {
+    return localStorage.getItem(OPTOUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** May we measure this visit? False if DNT is on, the visitor opted out, or no API. */
+export function analyticsAllowed(): boolean {
+  return typeof window !== "undefined" && !!API_BASE && !dntActive() && !isOptedOut();
+}
+
+/** Flip the opt-out at runtime (from the settings panel) and persist it. */
+export function setOptedOut(optout: boolean) {
+  try {
+    if (optout) localStorage.setItem(OPTOUT_KEY, "1");
+    else localStorage.removeItem(OPTOUT_KEY);
+  } catch {
+    /* private mode — ignore */
+  }
+  if (optout) {
+    enabled = false;
+    queue = [];
+  } else if (!dntActive() && API_BASE) {
+    // Opting back in mid-visit: register the current section so the visit counts.
+    enabled = true;
+    if (current) {
+      q("tab", current);
+      q("viewport", viewportBucket(window.innerWidth));
+    }
+    flush();
+  }
 }
 
 function q(d: TrackEvent["d"], k: string) {
@@ -53,7 +92,7 @@ function flush() {
   queue = [];
   // text/plain keeps this a CORS-"simple" request (no preflight for beacons).
   const blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
-  const url = `${API_BASE}/api/track`;
+  const url = `${API_BASE}/api/pulse`;
   if (navigator.sendBeacon?.(url, blob)) return;
   // Fallback for the rare browser without sendBeacon.
   void fetch(url, { method: "POST", body, keepalive: true }).catch(() => {});
@@ -117,18 +156,23 @@ function end() {
 /** Start tracking a visit. Safe to call once, client-side only. */
 export function initTracking(initialSection: string, theme?: "dark" | "light") {
   if (typeof window === "undefined" || !API_BASE) return;
-  if (privacyOptOut()) return;
-  enabled = true;
-
+  // Listeners are always attached so the settings toggle can start/stop measuring
+  // live; whether anything is actually sent is gated on `enabled` below.
   enterSection(initialSection);
-  q("tab", initialSection);
-  if (theme) q("theme", theme);
-  flush();
-
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("scroll", onScroll, { passive: true });
   // pagehide is the reliable "leaving" signal (covers close, nav, bfcache).
   window.addEventListener("pagehide", end);
+
+  // We honour Do-Not-Track and the visitor's own opt-out. Nothing personal is
+  // stored either way; this is a courtesy, not a legal requirement.
+  enabled = analyticsAllowed();
+  if (enabled) {
+    q("tab", initialSection);
+    q("viewport", viewportBucket(window.innerWidth));
+    if (theme) q("theme", theme);
+    flush();
+  }
 }
 
 /** Record a move to another section: dwell on the old one + the transition. */
@@ -148,4 +192,9 @@ export function trackSwitch(to: string) {
 export function trackClick(action: ClickAction) {
   q("click", action);
   // clicks ship on the next flush (visibility/switch/end) to avoid a beacon per tap
+}
+
+/** Record which project (repo) card was opened. Repo names are public data. */
+export function trackProject(name: string) {
+  q("project", name);
 }

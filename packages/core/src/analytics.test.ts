@@ -37,6 +37,8 @@ test("validateTrackEvent accepts well-formed events against known sections", () 
   assert.ok(validateTrackEvent({ d: "scroll", k: "about|75" }, sections));
   assert.ok(validateTrackEvent({ d: "session_tabs", k: "3" }, sections));
   assert.ok(validateTrackEvent({ d: "click", k: "contact-cta" }, sections));
+  assert.ok(validateTrackEvent({ d: "viewport", k: "mobile" }, sections));
+  assert.ok(validateTrackEvent({ d: "project", k: "plantcare-tracker" }, sections));
   assert.ok(validateTrackEvent({ d: "theme", k: "dark" }, sections));
 });
 
@@ -46,6 +48,8 @@ test("validateTrackEvent rejects unknown sections, buckets, and free text", () =
   assert.equal(validateTrackEvent({ d: "dwell", k: "work|9999ms" }, sections), null);
   assert.equal(validateTrackEvent({ d: "scroll", k: "work|33" }, sections), null);
   assert.equal(validateTrackEvent({ d: "click", k: "buy-now" }, sections), null);
+  assert.equal(validateTrackEvent({ d: "viewport", k: "watch" }, sections), null);
+  assert.equal(validateTrackEvent({ d: "project", k: "bad name!" }, sections), null);
   assert.equal(validateTrackEvent({ d: "theme", k: "neon" }, sections), null);
   assert.equal(
     validateTrackEvent({ d: "evil" as never, k: "x" }, sections),

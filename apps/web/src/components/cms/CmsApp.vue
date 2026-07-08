@@ -159,14 +159,79 @@ function copy(text: string) {
 }
 
 // Analytics
-async function loadAnalytics() {
-  await guarded(async () => {
-    analytics.value = await cms.analytics();
-  }, "");
+type SeriesKey = "pageviews" | "visits" | "sections" | "clicks";
+const SERIES_LABELS: Record<SeriesKey, string> = {
+  pageviews: "Page views",
+  visits: "Visits",
+  sections: "Section views",
+  clicks: "Clicks",
+};
+const RANGES = [3, 7, 30, 90];
+const seriesKeys = Object.keys(SERIES_LABELS) as SeriesKey[];
+const range = ref(30);
+const series = ref<SeriesKey>("pageviews");
+const loadingA = ref(false);
+
+function isoDay(d: Date) {
+  return d.toISOString().slice(0, 10);
 }
-const maxTrend = computed(() =>
-  Math.max(1, ...(analytics.value?.trend?.map((t: any) => t.count) ?? [1])),
-);
+function daysBetween(from: string, to: string): string[] {
+  const out: string[] = [];
+  const d = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  while (d <= end) {
+    out.push(d.toISOString().slice(0, 10));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+}
+
+async function loadAnalytics() {
+  loadingA.value = true;
+  const to = isoDay(new Date());
+  const from = isoDay(new Date(Date.now() - (range.value - 1) * 86400000));
+  await guarded(async () => {
+    analytics.value = await cms.analytics(from, to);
+  }, "");
+  loadingA.value = false;
+}
+function setRange(d: number) {
+  range.value = d;
+  void loadAnalytics();
+}
+
+const seriesTotals = computed<Record<SeriesKey, number>>(() => {
+  const t = analytics.value?.trends;
+  const sum = (a?: { count: number }[]) => (a ?? []).reduce((s, r) => s + r.count, 0);
+  return {
+    pageviews: sum(t?.pageviews),
+    visits: sum(t?.visits),
+    sections: sum(t?.sections),
+    clicks: sum(t?.clicks),
+  };
+});
+
+/** Continuous daily line for the selected series (missing days filled with 0). */
+const chart = computed(() => {
+  const a = analytics.value;
+  if (!a?.trends) return null;
+  const rows: { key: string; count: number }[] = a.trends[series.value] ?? [];
+  const byDay = new Map(rows.map((r) => [r.key, r.count]));
+  const days = daysBetween(a.range.from, a.range.to);
+  const counts = days.map((d) => byDay.get(d) ?? 0);
+  const max = Math.max(1, ...counts);
+  const W = 700;
+  const H = 150;
+  const PAD = 8;
+  const n = days.length;
+  const xAt = (i: number) => (n <= 1 ? W / 2 : PAD + (i / (n - 1)) * (W - 2 * PAD));
+  const yAt = (c: number) => H - 6 - (c / max) * (H - 24);
+  const pts = counts.map((c, i) => ({ x: xAt(i), y: yAt(c), day: days[i], count: c }));
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const area = `M${xAt(0).toFixed(1)} ${H} ${pts.map((p) => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ")} L${xAt(n - 1).toFixed(1)} ${H} Z`;
+  const total = counts.reduce((s, c) => s + c, 0);
+  return { W, H, line, area, pts, max, total };
+});
 
 function pickTab(t: Tab) {
   tab.value = t;
@@ -334,12 +399,39 @@ onMounted(boot);
       <section v-show="tab === 'analytics'" class="pane">
         <div v-if="!analytics" class="muted">Loading…</div>
         <template v-else>
-          <div class="card">
-            <h3>Page views · {{ analytics.range.from }} → {{ analytics.range.to }}</h3>
-            <div class="trend">
-              <div v-for="t in analytics.trend" :key="t.key" class="tbar" :title="`${t.key}: ${t.count}`">
-                <div :style="{ height: (t.count / maxTrend) * 100 + '%' }" />
+          <div class="card chartcard">
+            <div class="charthead">
+              <div class="seg">
+                <button
+                  v-for="k in seriesKeys"
+                  :key="k"
+                  :class="{ on: series === k }"
+                  @click="series = k"
+                >
+                  <span class="slabel">{{ SERIES_LABELS[k] }}</span>
+                  <span class="sval">{{ seriesTotals[k] }}</span>
+                </button>
               </div>
+              <div class="seg ranges">
+                <button v-for="r in RANGES" :key="r" :class="{ on: range === r }" @click="setRange(r)">
+                  {{ r }}d
+                </button>
+              </div>
+            </div>
+            <svg v-if="chart" class="chart" :viewBox="`0 0 ${chart.W} ${chart.H}`">
+              <path :d="chart.area" class="c-area" />
+              <path :d="chart.line" class="c-line" />
+              <circle v-for="(p, i) in chart.pts" :key="i" :cx="p.x" :cy="p.y" r="2.5" class="c-dot">
+                <title>{{ p.day }}: {{ p.count }}</title>
+              </circle>
+            </svg>
+            <p v-if="chart && chart.total === 0" class="muted empty">
+              No {{ SERIES_LABELS[series].toLowerCase() }} recorded in this range yet.
+            </p>
+            <div class="xaxis">
+              <span>{{ analytics.range.from }}</span>
+              <span v-if="loadingA" class="muted">updating…</span>
+              <span>{{ analytics.range.to }}</span>
             </div>
           </div>
           <div class="cols">
@@ -358,6 +450,8 @@ onMounted(boot);
               <div class="card"><h3>Dwell / section</h3><ul><li v-for="r in analytics.engagement.dwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
               <div class="card"><h3>Scroll depth</h3><ul><li v-for="r in analytics.engagement.scroll" :key="r.key"><span>{{ r.key }}%</span><b>{{ r.count }}</b></li></ul></div>
               <div class="card"><h3>Clicks</h3><ul><li v-for="r in analytics.engagement.clicks" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Projects opened</h3><ul><li v-for="r in analytics.engagement.projects" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Viewport</h3><ul><li v-for="r in analytics.engagement.viewport" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
               <div class="card"><h3>Sections / visit</h3><ul><li v-for="r in analytics.engagement.sessionTabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
               <div class="card"><h3>Visit length</h3><ul><li v-for="r in analytics.engagement.sessionDwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
               <div class="card"><h3>Theme</h3><ul><li v-for="r in analytics.engagement.theme" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
@@ -407,8 +501,20 @@ input, textarea, select { font-family: var(--f-b); font-size: 14px; color: var(-
 .cols ul { list-style: none; padding: 0; margin: 0; }
 .cols li { display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid var(--line); font-size: 13px; }
 .cols li:first-child { border-top: none; }
-.trend { display: flex; gap: 3px; align-items: flex-end; height: 90px; }
-.tbar { flex: 1; display: flex; align-items: flex-end; }
-.tbar > div { width: 100%; background: var(--purple); border-radius: 3px 3px 0 0; min-height: 2px; }
+.chartcard { padding: 14px 16px; }
+.charthead { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.seg button { font-family: var(--f-m); font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; cursor: pointer; display: inline-flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.seg.ranges button { flex-direction: row; align-items: center; }
+.seg button.on { color: var(--ink-strong); border-color: var(--purple-br); background: var(--purple-wash); }
+.seg .slabel { font-size: 11px; }
+.seg .sval { font-size: 16px; color: var(--ink); font-family: var(--f-d); }
+.seg button.on .sval { color: var(--purple-br); }
+.chart { width: 100%; height: auto; display: block; }
+.c-area { fill: var(--purple); opacity: 0.14; }
+.c-line { fill: none; stroke: var(--purple-br); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.c-dot { fill: var(--purple-br); }
+.empty { text-align: center; padding: 8px 0; }
+.xaxis { display: flex; justify-content: space-between; font-family: var(--f-m); font-size: 11px; color: var(--muted); margin-top: 4px; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg-base); padding: 10px 18px; border-radius: 10px; font-size: 14px; box-shadow: var(--sh-2); }
 </style>

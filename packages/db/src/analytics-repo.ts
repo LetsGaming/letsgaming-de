@@ -16,6 +16,8 @@ export type AnalyticsDimension =
   | "session_tabs"
   | "session_dwell"
   | "click"
+  | "project"
+  | "viewport"
   | "theme";
 
 export interface AnalyticsHit {

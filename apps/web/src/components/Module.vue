@@ -2,7 +2,7 @@
 import type { ResolvedModule } from "@lg/core";
 import { icons, langColor } from "../lib/icons";
 import { mdBold } from "../lib/site";
-import { trackClick } from "../lib/track";
+import { trackClick, trackProject } from "../lib/track";
 import ContactForm from "./ContactForm.vue";
 
 const props = defineProps<{
@@ -64,7 +64,7 @@ function onLink(e: MouseEvent, href: string) {
         v-if="module.data.project"
         class="card feature"
         :href="module.data.project.href"
-        @click="trackClick('featured')"
+        @click="() => { trackClick('featured'); trackProject(module.data.project.name); }"
       >
         <div class="ptitle">
           {{ module.data.project.name }}<span class="arrow" v-html="icons.arrow" />
@@ -169,7 +169,7 @@ function onLink(e: MouseEvent, href: string) {
         class="card"
         :class="{ feature: p.featured }"
         :href="p.href"
-        @click="trackClick('project')"
+        @click="() => { trackClick('project'); trackProject(p.name); }"
       >
         <div class="ptitle">{{ p.name }}<span class="arrow" v-html="icons.arrow" /></div>
         <span class="tag">{{ p.tag }}</span>

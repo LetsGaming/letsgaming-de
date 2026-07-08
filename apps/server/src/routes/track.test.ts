@@ -19,7 +19,7 @@ test("records valid engagement events and drops invalid ones", async () => {
   const { app, store } = await appWithStore();
   const res = await app.inject({
     method: "POST",
-    url: "/api/track",
+    url: "/api/pulse",
     headers: { "content-type": "text/plain" },
     payload: JSON.stringify({
       events: [
@@ -49,7 +49,7 @@ test("rejects a malformed body (400)", async () => {
   const { app } = await appWithStore();
   const res = await app.inject({
     method: "POST",
-    url: "/api/track",
+    url: "/api/pulse",
     headers: { "content-type": "text/plain" },
     payload: "not json",
   });
@@ -61,7 +61,7 @@ test("track endpoint needs no auth and sets no cookie", async () => {
   const { app } = await appWithStore();
   const res = await app.inject({
     method: "POST",
-    url: "/api/track",
+    url: "/api/pulse",
     headers: { "content-type": "text/plain" },
     payload: JSON.stringify({ events: [{ d: "theme", k: "dark" }] }),
   });

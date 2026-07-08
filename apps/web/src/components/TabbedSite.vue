@@ -4,11 +4,13 @@ import { nextTick, onMounted, ref } from "vue";
 import { icons } from "../lib/icons";
 import { initTracking, trackClick, trackSwitch } from "../lib/track";
 import Module from "./Module.vue";
+import SettingsModal from "./SettingsModal.vue";
 
 const props = defineProps<{ site: SiteView }>();
 
 const active = ref(props.site.nav[0]?.id ?? "home");
 const theme = ref<"dark" | "light">("dark");
+const settingsOpen = ref(false);
 const root = ref<HTMLElement | null>(null);
 
 const prefersReduced = () =>
@@ -109,12 +111,19 @@ onMounted(() => {
         </nav>
         <button
           class="theme-toggle"
-          :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-          @click="toggleTheme"
-          v-html="theme === 'dark' ? icons.sun : icons.moon"
+          aria-label="Settings"
+          @click="settingsOpen = true"
+          v-html="icons.settings"
         />
       </div>
     </div>
+
+    <SettingsModal
+      :open="settingsOpen"
+      :theme="theme"
+      @close="settingsOpen = false"
+      @toggle-theme="toggleTheme"
+    />
 
     <section
       v-for="area in site.nav"

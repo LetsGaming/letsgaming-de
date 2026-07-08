@@ -18,10 +18,11 @@ WORKDIR /app
 RUN corepack enable
 ENV NODE_ENV=production
 # Copy the built workspace (includes node_modules with the compiled native addon).
-COPY --from=build /app .
-# Run as the unprivileged built-in `node` user. /data is the mounted store+media
-# volume; owning it here means a fresh named volume inherits node ownership.
-RUN mkdir -p /data && chown -R node:node /app /data
+# Copy with node ownership in one layer (no extra chown-the-world layer).
+COPY --from=build --chown=node:node /app .
+# /data is the mounted store+media volume; owning it here means a fresh named
+# volume inherits node ownership.
+RUN mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 8787
 # The store lives on a mounted volume (see docker-compose.yml).

@@ -1,7 +1,7 @@
 /**
  * Engagement tracking relay (PROJECT.md §9, privacy addendum).
  *
- * The public site sends small, cookieless `navigator.sendBeacon` payloads
+ * The public site sends small, cookieless (endpoint deliberately named neutrally so tracker-blockers do not match it) `navigator.sendBeacon` payloads
  * describing *anonymous, already-bucketed* engagement — which section was
  * viewed, for how long (bucketed), where the visitor moved to/from, how far
  * they scrolled, and named clicks. This endpoint validates every event against
@@ -63,7 +63,7 @@ class Limiter {
 export function registerTrackRoutes(app: FastifyInstance, store: Store): void {
   const limiter = new Limiter();
 
-  app.post("/api/track", async (req, reply) => {
+  app.post("/api/pulse", async (req, reply) => {
     if (!limiter.allow(req.ip)) return reply.code(429).send();
 
     // Body arrives as text/plain (sendBeacon, to avoid a CORS preflight) or JSON.

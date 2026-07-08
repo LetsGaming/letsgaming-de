@@ -68,8 +68,21 @@ export const CLICK_ACTIONS = [
 ] as const;
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 
+/** Coarse viewport class (never a precise size — that would be fingerprinting). */
+export const VIEWPORT_BUCKETS = ["mobile", "tablet", "desktop"] as const;
+export type ViewportBucket = (typeof VIEWPORT_BUCKETS)[number];
+
+export function viewportBucket(width: number): ViewportBucket {
+  if (width < 768) return "mobile";
+  if (width < 1024) return "tablet";
+  return "desktop";
+}
+
 /** Themes a visit can be viewed in. */
 export const THEME_KEYS = ["dark", "light"] as const;
+
+/** A project (repo) name is public, non-personal data. Bound the shape anyway. */
+const PROJECT_KEY = /^[A-Za-z0-9._-]{1,64}$/;
 
 /**
  * The engagement dimensions written to `analytics_daily` (alongside the
@@ -85,6 +98,8 @@ export const ENGAGEMENT_DIMENSIONS = [
   "session_tabs", // sections touched per visit → key: <SessionTabBucket>
   "session_dwell", // total visit length        → key: <DwellBucket>
   "click", // a named interaction               → key: <ClickAction>
+  "project", // which project card was opened   → key: <repo name>
+  "viewport", // coarse device class            → key: mobile|tablet|desktop
   "theme", // theme active during the visit     → key: dark|light
 ] as const;
 export type EngagementDimension = (typeof ENGAGEMENT_DIMENSIONS)[number];
@@ -134,6 +149,10 @@ export function validateTrackEvent(
       return ok(dwellOk(k));
     case "click":
       return ok((CLICK_ACTIONS as readonly string[]).includes(k));
+    case "project":
+      return ok(PROJECT_KEY.test(k));
+    case "viewport":
+      return ok((VIEWPORT_BUCKETS as readonly string[]).includes(k));
     case "theme":
       return ok((THEME_KEYS as readonly string[]).includes(k));
     default:

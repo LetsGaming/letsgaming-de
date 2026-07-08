@@ -21,8 +21,7 @@ RUN corepack enable
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
-COPY --from=build /app .
-RUN chown -R node:node /app
+COPY --from=build --chown=node:node /app .
 USER node
 EXPOSE 4321
 CMD ["node", "apps/web/dist/server/entry.mjs"]

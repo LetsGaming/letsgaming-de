@@ -21,6 +21,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const from =
         req.query.from ?? isoDay(new Date(Date.now() - 29 * 24 * 60 * 60 * 1000)); // 30 days
       const dim = (d: AnalyticsDimension) => store.analytics.top(d, from, to);
+      const trend = (d: AnalyticsDimension) => store.analytics.trend(d, from, to);
       return {
         range: { from, to },
         // Log-derived (unchanged).
@@ -29,7 +30,14 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         browsers: dim("browser"),
         os: dim("os"),
         devices: dim("device"),
-        trend: store.analytics.trend("path", from, to),
+        // Graphable day-series. `visits` uses session_dwell (one event per
+        // completed visit); `sections` = section views; `clicks` = interactions.
+        trends: {
+          pageviews: trend("path"),
+          visits: trend("session_dwell"),
+          sections: trend("tab"),
+          clicks: trend("click"),
+        },
         // Engagement (cookieless beacon).
         engagement: {
           tabs: dim("tab"),
@@ -40,6 +48,8 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
           sessionTabs: dim("session_tabs"),
           sessionDwell: dim("session_dwell"),
           clicks: dim("click"),
+          projects: dim("project"),
+          viewport: dim("viewport"),
           theme: dim("theme"),
         },
       };
