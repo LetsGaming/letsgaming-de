@@ -37,9 +37,12 @@ services:
       # Discord presence widget (Lanyard). The user id is public; the server does
       # the fetching + filtering. Which categories show is edited in the CMS.
       DISCORD_USER_ID: ${DISCORD_USER_ID:-}
-      # Traffic analytics: mount your reverse-proxy access log (read-only) and set
-      # ACCESS_LOG to its path; the server ingests it every 5 min. IP is never stored.
-      ACCESS_LOG: ${ACCESS_LOG:-}
+      # Traffic analytics (Top paths/referrers/browsers/OS/devices). Set the ONE
+      # var ACCESS_LOG_HOST in .env to the host path of your reverse-proxy access
+      # log; the mount + in-container path below are derived from it, so you never
+      # edit this file. Leave it unset to disable (engagement stats still work).
+      # IP is dropped at parse time and never stored.
+      ACCESS_LOG: ${ACCESS_LOG_HOST:+/logs/access.log}
       ANALYTICS_OWN_HOST: ${ANALYTICS_OWN_HOST:-}
       # Wakapi (coding time) — LAN-only; the sync worker reaches it over the local
       # network, so no ports are published and nothing is exposed to the internet.
@@ -51,6 +54,10 @@ services:
     volumes:
       # The store + media are the archive — this volume is what you back up.
       - store:/data
+      # Access log for analytics, driven entirely by ACCESS_LOG_HOST in .env.
+      # Defaults to /dev/null (a valid, empty file) when unset, so the mount is
+      # always valid and the server simply ingests nothing until you set it.
+      - ${ACCESS_LOG_HOST:-/dev/null}:/logs/access.log:ro
     ports:
       - "8787:8787"
 

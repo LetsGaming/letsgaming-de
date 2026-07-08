@@ -50,15 +50,48 @@ with the site origin in `WEB_ORIGIN`).
 
 ## 4. Analytics
 
-Analytics is log-based. Point the ingester at your reverse-proxy access log on a
-schedule (host cron / systemd timer):
+Engagement stats (sections, dwell, clicks, …) are cookieless and work out of the box.
+The *traffic* stats (Top paths / referrers / browsers / OS / devices) come from your
+reverse-proxy access log. Enable them by setting **one** variable in `.env`:
+
+```dotenv
+ACCESS_LOG_HOST=/opt/lg/logs/access.log   # path to the log ON THE DOCKER HOST
+ANALYTICS_OWN_HOST=letsgaming.de          # optional; keeps your domain out of Referrers
+```
+
+Compose mounts that path read-only into the container and the server ingests it every
+5 minutes (incremental + idempotent). You never edit `docker-compose.yml`. Leave the
+variable unset to disable. The IP is dropped at parse time and never stored. The log
+must be in Nginx **combined** format (NPMplus's per-host `*_combined.log` already is).
+
+**If the proxy runs on another host** (e.g. an NPMplus LXC), the container can't read
+its filesystem — sync the log to the Docker host first, then point `ACCESS_LOG_HOST`
+at the synced copy. A small `scp` timer does it:
+
+```bash
+mkdir -p /opt/lg/logs
+cat >/opt/lg/pull-access-log.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+scp -q -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new \
+  root@192.168.2.12:/opt/npmplus/nginx/logs/letsgaming_combined.log \
+  /opt/lg/logs/access.log.tmp
+mv -f /opt/lg/logs/access.log.tmp /opt/lg/logs/access.log   # atomic swap
+EOF
+chmod +x /opt/lg/pull-access-log.sh
+```
+
+Run it from a systemd timer every couple of minutes (`Type=oneshot` service +
+`OnUnitActiveSec=2min`). The temp-file + `mv` keeps the container from ever reading a
+half-written file. On log rotation the file shrinks and the ingest resets automatically.
+
+Prefer host-side cron instead? The CLI still works and bypasses `ACCESS_LOG_HOST`:
 
 ```bash
 docker compose exec server node dist/analytics/cli.js /path/to/access.log letsgaming.de
 ```
 
-It reads only new lines each run, drops the IP at parse time, and stores anonymous
-aggregates. View them in the CMS analytics tab.
+View the results in the CMS **Analytics** screen.
 
 ## 5. Backups
 
