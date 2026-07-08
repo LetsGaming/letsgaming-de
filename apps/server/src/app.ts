@@ -6,11 +6,11 @@ import type { Store } from "@lg/db";
 import type { ServerEnv } from "./env.js";
 import { registerOAuthRoutes } from "./auth/github-oauth.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
+import { registerAssetRoutes } from "./routes/assets.js";
 import { registerCmsRoutes } from "./routes/cms.js";
 import { registerContactRoutes } from "./routes/contact.js";
 import { registerGuestbookRoutes } from "./routes/guestbook.js";
 import { registerHealthRoutes } from "./routes/health.js";
-import { registerMediaRoutes } from "./routes/media.js";
 import { registerPresenceRoutes } from "./routes/presence.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
@@ -59,7 +59,7 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   registerPresenceRoutes(app, env, store);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);
-  await registerMediaRoutes(app, env);
+  await registerAssetRoutes(app, store, env);
   registerOAuthRoutes(app, env);
 
   return app;

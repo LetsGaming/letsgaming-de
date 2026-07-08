@@ -4,7 +4,27 @@
 
 ### Features
 
-- **CMS preview is now contextual — and dockable.** A **Show preview** toggle in the top bar opens
+- **Asset library, continued: SVG icons, a hero image, and drag-and-drop.** Link icons can now be
+  **uploaded SVGs** (pick one in the Links editor) instead of only the built-in set — they're inlined
+  and inherit `currentColor` for theming, just like the built-ins. The home hero gained an optional
+  **portrait/avatar** (Site identity → *Choose image*), resolved and rendered as a responsive
+  `<picture>`. The library now accepts **drag-and-drop** uploads, and the asset **picker can be
+  scoped to a type** (SVG for icons, image for the avatar). The **bio** can now contain **inline
+  images** too (About → *+ image*), so library assets are usable everywhere content lives.
+
+- **Asset library — a central, reusable media manager** (replaces the old flat "Media" tab and
+  gallery-owns-its-files model). Upload images, SVGs, GIFs, PDFs and Markdown once and reference
+  them anywhere; identity is the content hash, so the same file is **never stored twice**. Images
+  keep a clean original and get **responsive WebP/AVIF variants generated lazily on first request**
+  (cached to disk), so uploads stay fast and pages stay light. Organize with **folders + tags +
+  search**, edit **alt/title/caption/description**, and see **where each asset is used** — deleting
+  warns you first. SVGs are **sanitized on upload** (they're inlined for `currentColor` theming);
+  Markdown assets publish at **`/md/<slug>`** in the site shell (with a link back so it's not a dead
+  end); PDFs get a download link. The gallery now **picks from the library** (with usage tracked),
+  and the site renders images as proper `<picture>` elements. The old `/media` routes + Media screen
+  were removed. New surface area: `assets` / `asset_variants` / `asset_folders` / `asset_tags` /
+  `asset_usages` tables, an `asset:<id>` reference format resolved server-side, and `/assets/<id>`
+  serving. A **Show preview** toggle in the top bar opens
   a live preview *beside* the editor (editor left, site right), so you can see changes without
   leaving the field you're editing; it reloads on save and follows the area you're working in
   (Hobbies → Life, About → bio, …), with an area picker to jump elsewhere. A full-width Preview

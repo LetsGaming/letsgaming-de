@@ -22,6 +22,8 @@ export interface SiteMeta {
   location: Localized;
   /** Eyebrow role line, e.g. "web developer". */
   role: Localized;
+  /** Optional portrait/avatar — a reference to a library image asset. */
+  avatar?: string;
 }
 
 /** The hero headline, split so one word can carry the highlight underline. */
@@ -103,15 +105,13 @@ export interface SiteContent {
   gallery?: GalleryItem[];
 }
 
-/** One image placed on the site via the CMS (chosen from the media library). */
+/** One image placed on the site via the CMS (chosen from the asset library). */
 export interface GalleryItem {
   id: string;
   /** Which gallery module this image belongs to (supports multiple galleries). */
   module: string;
-  /** Media path as stored/served, e.g. "/media/<uuid>.webp". */
-  src: string;
-  /** Optional localized caption (shown under the image). */
+  /** Reference to a library asset, "asset:<id>". */
+  asset: string;
+  /** Optional localized caption (shown under the image; overrides the asset's). */
   caption: Localized;
-  /** Optional alt text for screen readers; falls back to the caption. */
-  alt?: string;
 }

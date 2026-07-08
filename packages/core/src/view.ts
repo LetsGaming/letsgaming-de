@@ -11,6 +11,7 @@
  */
 
 import type { Locale } from "./i18n.js";
+import type { ImageAssetView, GifAssetView } from "./assets.js";
 import type { ModuleKind } from "./modules.js";
 
 export interface ProjectView {
@@ -28,6 +29,8 @@ export interface LinkView {
   label: string;
   href: string;
   icon?: string;
+  /** Inline SVG markup when the icon is an uploaded asset (else use `icon`). */
+  iconSvg?: string;
   primary: boolean;
 }
 
@@ -121,14 +124,17 @@ export interface PresenceModuleView {
   };
 }
 
-/** One resolved gallery image, ready to render (src prefixed client-side). */
+/** One resolved gallery image: a client-ready picture spec plus its caption. */
 export interface GalleryImageView {
   id: string;
-  src: string;
+  image: ImageAssetView | GifAssetView;
   caption: string;
-  /** Alt text (owner-set, else the caption). */
-  alt: string;
 }
+
+/** One block of the bio: a paragraph of text, or an inline image. */
+export type BioBlock =
+  | { kind: "text"; text: string }
+  | { kind: "image"; image: ImageAssetView | GifAssetView };
 
 export interface HeroView {
   eyebrow: string;
@@ -136,6 +142,8 @@ export interface HeroView {
   lede: string;
   status: { verb: string; now: string };
   links: LinkView[];
+  /** Optional portrait/avatar, resolved from meta.avatar. */
+  avatar?: ImageAssetView | GifAssetView;
 }
 
 export interface ActivityView {
@@ -168,7 +176,7 @@ export type ResolvedModule =
   | { id: string; kind: "guestbook"; data: SectionMeta & { entries: GuestbookEntryView[] } }
   | { id: string; kind: "presence"; data: SectionMeta & PresenceModuleView }
   | { id: string; kind: "gallery"; data: SectionMeta & { images: GalleryImageView[] } }
-  | { id: string; kind: "bio"; data: SectionMeta & { paragraphs: string[] } }
+  | { id: string; kind: "bio"; data: SectionMeta & { blocks: BioBlock[] } }
   | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
 
 /** A nav node with its label already localized (children/modules preserved). */

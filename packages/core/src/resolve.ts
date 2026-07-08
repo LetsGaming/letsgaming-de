@@ -19,6 +19,12 @@ import { collectModuleIds, type NavNode } from "./nav.js";
 import type { GitHubData, SourceData } from "./source.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import { defaultPresenceSettings } from "./presence.js";
+import {
+  resolveAsset,
+  type ImageAssetView,
+  type GifAssetView,
+  type ResolvableAsset,
+} from "./assets.js";
 import type {
   CodingView,
   GalleryImageView,
@@ -45,6 +51,8 @@ export interface ResolveInput {
   guestbook?: PublicGuestbookEntry[];
   /** Discord presence: the Lanyard id (env config). Categories are CMS-owned. */
   presence?: { discordId?: string };
+  /** Library assets referenced by content, keyed by id (built by the read route). */
+  assets?: Map<string, ResolvableAsset>;
   /** Injectable clock for deterministic relative times (tests). */
   now?: Date;
 }
@@ -67,18 +75,28 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const now = input.now ?? new Date();
   const L = (v: Parameters<typeof localize>[0]) => localize(v, locale);
   const { content, source } = input;
+  const assets = input.assets ?? new Map<string, ResolvableAsset>();
 
   const descriptorById = new Map(input.modules.map((m) => [m.id, m]));
   const gh = source.github;
   const repoByName = new Map((gh?.repos ?? []).map((r) => [r.name.toLowerCase(), r]));
 
-  const resolveLink = (link: Link): LinkView => ({
-    id: link.id,
-    label: L(link.label),
-    href: safeHref(link.href),
-    icon: link.icon,
-    primary: Boolean(link.primary),
-  });
+  const resolveLink = (link: Link): LinkView => {
+    const view: LinkView = {
+      id: link.id,
+      label: L(link.label),
+      href: safeHref(link.href),
+      icon: link.icon,
+      primary: Boolean(link.primary),
+    };
+    // An icon may be an uploaded SVG asset (asset:<id>) instead of a built-in name.
+    const asset = resolveAsset(link.icon, assets);
+    if (asset && asset.kind === "svg") {
+      view.iconSvg = asset.svg;
+      delete view.icon;
+    }
+    return view;
+  };
 
   const resolveProject = (p: Project): ProjectView => {
     // Enrich meta from synced repo data when a repo link resolves; otherwise use
@@ -182,6 +200,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const eyebrow = `${content.meta.name} · ${L(content.meta.role)} · ${L(
           content.meta.location,
         )}`.toUpperCase();
+        const avatar = resolveAsset(content.meta.avatar, assets);
         return {
           id: descriptor.id,
           kind: "hero",
@@ -195,6 +214,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             lede: L(content.lede),
             status: { verb: L(content.status.verb), now: L(content.status.now) },
             links: content.links.map(resolveLink),
+            ...(avatar && (avatar.kind === "image" || avatar.kind === "gif")
+              ? { avatar }
+              : {}),
           },
         };
       }
@@ -325,15 +347,28 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           .filter((g) => g.module === descriptor.id)
           .map((g) => {
             const caption = L(g.caption);
-            return { id: g.id, src: g.src, caption, alt: g.alt || caption };
-          });
+            const view = resolveAsset(g.asset, assets, caption);
+            if (!view || (view.kind !== "image" && view.kind !== "gif")) return null;
+            return { id: g.id, image: view as ImageAssetView | GifAssetView, caption };
+          })
+          .filter((x): x is GalleryImageView => x !== null);
         return { id: descriptor.id, kind: "gallery", data: { heading, note, images } };
       }
       case "bio":
         return {
           id: descriptor.id,
           kind: "bio",
-          data: { heading, note, paragraphs: content.bio.map(L) },
+          data: {
+            heading,
+            note,
+            blocks: content.bio.map((p) => {
+              const text = L(p);
+              const view = resolveAsset(text, assets);
+              return view && (view.kind === "image" || view.kind === "gif")
+                ? ({ kind: "image", image: view } as const)
+                : ({ kind: "text", text } as const);
+            }),
+          },
         };
       case "contact":
         return {

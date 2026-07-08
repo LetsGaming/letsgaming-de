@@ -1,0 +1,59 @@
+---
+// Runtime-rendered Markdown asset. Fetches the raw markdown from the API and
+// renders it in the site shell with a clear way back to the homepage, so a
+// visitor who lands here can keep browsing (no dead end).
+import { marked } from "marked";
+import Layout from "../../layouts/Layout.astro";
+
+const { slug } = Astro.params;
+const base = import.meta.env.API_URL ?? process.env.API_URL;
+
+let title = "Not found";
+let html = "";
+let found = false;
+
+if (base && slug) {
+  try {
+    const res = await fetch(`${base}/api/assets/md/${encodeURIComponent(slug)}`);
+    if (res.ok) {
+      const doc = (await res.json()) as { title: string; markdown: string };
+      title = doc.title;
+      html = await marked.parse(doc.markdown, { async: true });
+      found = true;
+    }
+  } catch {
+    /* falls through to the not-found state */
+  }
+}
+if (!found) Astro.response.status = 404;
+---
+
+<Layout title={`${title} — letsgaming.de`}>
+  <div class="md-wrap">
+    <a class="md-home" href="/">← letsgaming.de</a>
+    {found ? (
+      <article class="md-body" set:html={html} />
+    ) : (
+      <article class="md-body">
+        <h1>Not found</h1>
+        <p>That page doesn’t exist (or isn’t published). Head back to the homepage to keep exploring.</p>
+      </article>
+    )}
+  </div>
+</Layout>
+
+<style>
+  .md-wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+  .md-home { display: inline-block; margin-bottom: 20px; font-family: var(--f-m); font-size: 13px; color: var(--muted); text-decoration: none; }
+  .md-home:hover { color: var(--ink-strong); }
+  .md-body { font-family: var(--f-b); color: var(--ink); line-height: 1.7; }
+  .md-body :global(h1), .md-body :global(h2), .md-body :global(h3) { font-family: var(--f-d); color: var(--ink-strong); line-height: 1.25; margin: 1.4em 0 0.5em; }
+  .md-body :global(h1) { font-size: 30px; }
+  .md-body :global(h2) { font-size: 23px; }
+  .md-body :global(p), .md-body :global(ul), .md-body :global(ol) { margin: 0 0 1em; }
+  .md-body :global(a) { color: var(--purple); }
+  .md-body :global(img) { max-width: 100%; height: auto; border-radius: 12px; }
+  .md-body :global(pre) { background: var(--card-2); padding: 14px; border-radius: 12px; overflow: auto; }
+  .md-body :global(code) { font-family: var(--f-m); font-size: 0.9em; }
+  .md-body :global(blockquote) { border-left: 3px solid var(--line); margin: 0 0 1em; padding-left: 16px; color: var(--muted); }
+</style>

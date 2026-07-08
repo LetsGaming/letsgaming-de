@@ -34,7 +34,8 @@ test("resolver localizes to the requested locale and falls back to English per-f
   assert.equal(view.nav[0]?.label, "Über"); // nav label translated
   const bio = view.modules["bio"];
   if (!bio || bio.kind !== "bio") throw new Error("expected a bio module");
-  assert.equal(bio.data.paragraphs[0], "Deutsche Bio");
+  const first = bio.data.blocks[0];
+  assert.equal(first?.kind === "text" ? first.text : "", "Deutsche Bio");
 });
 
 test("resolver folds Wakapi into coding and presence config + Steam into presence", () => {
@@ -197,4 +198,45 @@ test("safeHref neutralizes script-bearing and unknown schemes (SEC-04)", () => {
   assert.equal(safeHref("  javascript:alert(1)  "), "#");
   assert.equal(safeHref(undefined), "#");
   assert.equal(safeHref(""), "#");
+});
+
+test("resolver expands asset refs: hero avatar + SVG link icon", () => {
+  const content: SiteContent = {
+    meta: {
+      name: "D",
+      handle: "LetsGaming",
+      location: en("DE"),
+      role: en("dev"),
+      avatar: "asset:av1",
+    },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p1")],
+    links: [
+      { id: "gh", label: en("GitHub"), href: "https://github.com/x", icon: "gh" }, // built-in
+      { id: "co", label: en("Co"), href: "https://co", icon: "asset:ic1" }, // uploaded svg
+    ],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "home", label: en("Home"), modules: ["hero"] }];
+  const modules: ModuleDescriptor[] = [{ id: "hero", kind: "hero", heading: en("Home") }];
+  const assets = new Map([
+    ["av1", { id: "av1", kind: "image" as const, width: 1200, variantWidths: [320, 640, 960] }],
+    ["ic1", { id: "ic1", kind: "svg" as const, svg: "<svg><path/></svg>" }],
+  ]);
+
+  const view = resolveSiteView({ content, source: {}, nav, modules, assets });
+  const hero = view.modules["hero"];
+  if (!hero || hero.kind !== "hero") throw new Error("expected hero");
+  assert.equal(hero.data.avatar?.kind, "image");
+  assert.equal(hero.data.avatar?.src, "/assets/av1");
+  // Built-in icon stays a name; uploaded icon becomes inline svg.
+  const [gh, co] = hero.data.links;
+  assert.equal(gh?.icon, "gh");
+  assert.equal(gh?.iconSvg, undefined);
+  assert.equal(co?.icon, undefined);
+  assert.equal(co?.iconSvg, "<svg><path/></svg>");
 });

@@ -31,7 +31,7 @@ export function openDatabase(path: string): DB {
 function migrateColumns(db: DB): void {
   const adds = [
     "ALTER TABLE gallery ADD COLUMN module TEXT NOT NULL DEFAULT 'gallery'",
-    "ALTER TABLE gallery ADD COLUMN alt TEXT",
+    "ALTER TABLE gallery ADD COLUMN asset TEXT",
   ];
   for (const sql of adds) {
     try {

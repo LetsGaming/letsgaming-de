@@ -47,7 +47,7 @@ const site = {
     bio: {
       id: "bio",
       kind: "bio",
-      data: { heading: "About", paragraphs: ["I like building things."] },
+      data: { heading: "About", blocks: [{ kind: "text", text: "I like building things." }] },
     },
     guestbook: {
       id: "guestbook",
@@ -75,7 +75,7 @@ const site = {
       data: {
         heading: "Snapshots",
         note: "a few pictures",
-        images: [{ id: "i1", src: "/media/pic.webp", caption: "A sunset", alt: "Sunset over hills" }],
+        images: [{ id: "i1", image: { kind: "image", src: "/assets/i1", srcsetWebp: "/assets/i1/w320.webp 320w", alt: "Sunset over hills" }, caption: "A sunset" }],
       },
     },
   },
@@ -126,7 +126,7 @@ describe("TabbedSite (public island) smoke", () => {
     expect(wrapper.find("form.gform").exists()).toBe(true);
     // The gallery module renders its image + caption.
     expect(wrapper.text()).toContain("A sunset");
-    const gimg = wrapper.findAll("img").find((im) => im.attributes("src")?.includes("/media/pic.webp"));
+    const gimg = wrapper.findAll("img").find((im) => im.attributes("src")?.includes("/assets/i1"));
     expect(gimg).toBeTruthy();
   });
 });

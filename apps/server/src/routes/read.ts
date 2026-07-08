@@ -8,6 +8,7 @@ import { isLocale, resolveSiteView, type Locale } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
+import { buildAssetLookup } from "../assets-lookup.js";
 
 export function registerReadRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   app.get<{ Querystring: { locale?: string } }>("/api/site", async (req) => {
@@ -25,6 +26,7 @@ export function registerReadRoutes(app: FastifyInstance, store: Store, env: Serv
       presence: {
         ...(env.discordUserId ? { discordId: env.discordUserId } : {}),
       },
+      assets: await buildAssetLookup(store, env.mediaDir),
     });
   });
 }

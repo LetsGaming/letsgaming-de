@@ -80,14 +80,67 @@ CREATE TABLE IF NOT EXISTS now_items (
   sort  INTEGER NOT NULL DEFAULT 0
 );
 
--- Images placed on the site via the CMS (chosen from the media library).
+-- Asset library (media manager): a central, reusable set of files referenced
+-- from anywhere by id. Identity is the content hash (dedupe: one row per file).
+CREATE TABLE IF NOT EXISTS asset_folders (
+  id        TEXT PRIMARY KEY,
+  name      TEXT NOT NULL,
+  parent_id TEXT REFERENCES asset_folders(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+  id          TEXT PRIMARY KEY,
+  hash        TEXT NOT NULL UNIQUE,   -- sha256 of original bytes (dedupe key)
+  kind        TEXT NOT NULL,          -- image | svg | gif | pdf | markdown | file
+  ext         TEXT NOT NULL,
+  mime        TEXT NOT NULL,
+  bytes       INTEGER NOT NULL,
+  width       INTEGER,
+  height      INTEGER,
+  slug        TEXT UNIQUE,            -- markdown page slug (/md/<slug>); null otherwise
+  filename    TEXT NOT NULL,
+  alt         TEXT,
+  title       TEXT,
+  caption     TEXT,
+  description TEXT,
+  folder_id   TEXT REFERENCES asset_folders(id) ON DELETE SET NULL,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_assets_folder ON assets(folder_id);
+CREATE INDEX IF NOT EXISTS idx_assets_kind ON assets(kind);
+
+-- Cached derived renditions of image assets (one width in one format).
+CREATE TABLE IF NOT EXISTS asset_variants (
+  asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  format   TEXT NOT NULL,          -- webp | avif
+  width    INTEGER NOT NULL,
+  bytes    INTEGER NOT NULL,
+  PRIMARY KEY (asset_id, format, width)
+);
+
+CREATE TABLE IF NOT EXISTS asset_tags (
+  asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  tag      TEXT NOT NULL,
+  PRIMARY KEY (asset_id, tag)
+);
+CREATE INDEX IF NOT EXISTS idx_asset_tags_tag ON asset_tags(tag);
+
+-- Where each asset is referenced, so the CMS can show "used in" and warn on delete.
+CREATE TABLE IF NOT EXISTS asset_usages (
+  asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  context  TEXT NOT NULL,          -- e.g. gallery:travel, hero, link:github, md:about
+  label    TEXT,
+  PRIMARY KEY (asset_id, context)
+);
+CREATE INDEX IF NOT EXISTS idx_asset_usages_ctx ON asset_usages(context);
+
+-- Images placed on the site via the CMS. Each references a library asset.
 -- `module` groups images by which gallery module they belong to (multiple galleries).
 CREATE TABLE IF NOT EXISTS gallery (
   id      TEXT PRIMARY KEY,
   module  TEXT NOT NULL DEFAULT 'gallery',  -- owning gallery module id
-  src     TEXT NOT NULL,        -- media path, e.g. /media/<uuid>.webp
+  asset   TEXT NOT NULL,        -- reference to an asset, "asset:<id>"
   caption TEXT NOT NULL,        -- JSON Localized
-  alt     TEXT,                 -- optional plain-text alt (falls back to caption)
   sort    INTEGER NOT NULL DEFAULT 0
 );
 

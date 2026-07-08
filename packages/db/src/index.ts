@@ -1,5 +1,6 @@
 import { openDatabase } from "./database.js";
 import { analyticsRepo, type AnalyticsRepo } from "./analytics-repo.js";
+import { assetsRepo, type AssetsRepo } from "./assets-repo.js";
 import { contentRepo, type ContentRepo } from "./content-repo.js";
 import { guestbookRepo, type GuestbookRepo } from "./guestbook-repo.js";
 import { iaRepo, type IaRepo } from "./ia-repo.js";
@@ -11,6 +12,7 @@ export * from "./content-repo.js";
 export * from "./source-repo.js";
 export * from "./ia-repo.js";
 export * from "./analytics-repo.js";
+export * from "./assets-repo.js";
 export * from "./guestbook-repo.js";
 export * from "./seed.js";
 
@@ -19,6 +21,7 @@ export interface Store {
   source: SourceRepo;
   ia: IaRepo;
   analytics: AnalyticsRepo;
+  assets: AssetsRepo;
   guestbook: GuestbookRepo;
   close(): void;
 }
@@ -36,6 +39,7 @@ export function openStore(path: string): Store {
     source: sourceRepo(db),
     ia: iaRepo(db),
     analytics: analyticsRepo(db),
+    assets: assetsRepo(db),
     guestbook: guestbookRepo(db),
     close: () => db.close(),
   };

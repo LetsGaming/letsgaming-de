@@ -238,6 +238,16 @@ h1 .pop::after {
   width: 17px;
   height: 17px;
 }
+.btn .lico { display: inline-flex; }
+.btn .lico svg { width: 17px; height: 17px; }
+.avatar img {
+  width: 104px;
+  height: 104px;
+  border-radius: 24px;
+  object-fit: cover;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+}
 .btn-primary {
   background: var(--purple);
   color: #fff;
@@ -769,6 +779,15 @@ a.ev-link:hover .ei svg {
 }
 .prose p {
   margin-bottom: 16px;
+}
+.bio-img {
+  margin: 18px 0;
+}
+.bio-img img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
 }
 .prose p:last-child {
   margin-bottom: 0;

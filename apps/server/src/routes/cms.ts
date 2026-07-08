@@ -73,18 +73,32 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     },
   );
 
-  // ── gallery (images placed on the site, chosen from the media library) ──────
+  // ── gallery (images placed on the site, chosen from the asset library) ─────
+  // Recompute which assets each gallery module references, so the library's
+  // "used in" list + delete-warning stay accurate.
+  const syncGalleryUsages = () => {
+    const items = store.content.getGallery();
+    for (const m of store.ia.getModules().filter((mm) => mm.kind === "gallery")) {
+      const entries = items
+        .filter((g) => g.module === m.id)
+        .map((g) => ({ assetId: g.asset.replace(/^asset:/, ""), label: `Gallery: ${m.id}` }));
+      store.assets.recordUsage(`gallery:${m.id}`, entries);
+    }
+  };
+
   app.put<{ Body: GalleryItem & { sort?: number } }>(
     "/api/cms/gallery/:id",
     write(schemas.galleryItem),
     async (req) => {
       const { sort, ...item } = req.body;
       store.content.upsertGalleryItem(item, sort ?? 0);
+      syncGalleryUsages();
       return { ok: true };
     },
   );
   app.delete<{ Params: { id: string } }>("/api/cms/gallery/:id", guard, async (req) => {
     store.content.deleteGalleryItem(req.params.id);
+    syncGalleryUsages();
     return { ok: true };
   });
 
@@ -112,6 +126,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     }
     store.content.deleteGalleryModule(id);
     store.ia.removeModule(id);
+    store.assets.clearUsageContext(`gallery:${id}`);
     return { ok: true };
   });
 

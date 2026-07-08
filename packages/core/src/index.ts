@@ -10,4 +10,5 @@ export * from "./format.js";
 export * from "./analytics.js";
 export * from "./guestbook.js";
 export * from "./presence.js";
+export * from "./assets.js";
 export * from "./resolve.js";

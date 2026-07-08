@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { openStore } from "@lg/db";
+import { openStore, type Store } from "@lg/db";
 import { buildApp } from "../app.js";
 import { loadEnv } from "../env.js";
 
@@ -9,7 +9,14 @@ const TOKEN = "b".repeat(40);
 /** A CMS-enabled app (bearer token) backed by an empty in-memory store. */
 async function enabledApp(extra: NodeJS.ProcessEnv = {}) {
   const env = loadEnv({ CMS_TOKEN: TOKEN, WEB_ORIGIN: "http://localhost:4321", ...extra });
-  return buildApp(openStore(":memory:"), env);
+  const store = openStore(":memory:");
+  const app = await buildApp(store, env);
+  (app as unknown as { __store: Store }).__store = store;
+  return app;
+}
+/** Reach the in-memory store an enabledApp() was built with (for seeding). */
+function getTestStore(app: Awaited<ReturnType<typeof enabledApp>>): Store {
+  return (app as unknown as { __store: Store }).__store;
 }
 
 test("CMS write is rejected without auth (401)", async () => {
@@ -141,41 +148,53 @@ test("cms presence: the category allow-list validates and persists", async () =>
   await app.close();
 });
 
-test("cms gallery: add validates the media path, persists with alt, and deletes", async () => {
+test("cms gallery: references a library asset, resolves to a picture, and deletes", async () => {
   const app = await enabledApp();
   const auth = { authorization: `Bearer ${TOKEN}` };
 
+  // A non-asset reference is rejected by the schema.
   const bad = await app.inject({
     method: "PUT",
     url: "/api/cms/gallery/x1",
     headers: auth,
-    payload: { id: "x1", module: "gallery", src: "http://evil/x.webp", caption: { en: "" } },
+    payload: { id: "x1", module: "gallery", asset: "/media/x.webp", caption: { en: "" } },
   });
   assert.equal(bad.statusCode, 400);
+
+  // Seed a real image asset directly in the store, then reference it.
+  const store = getTestStore(app);
+  store.assets.create({ id: "img1", hash: "h".repeat(64), kind: "image", ext: "png", mime: "image/png", bytes: 10, width: 800, height: 600, filename: "p.png", alt: "A cat" });
 
   const ok = await app.inject({
     method: "PUT",
     url: "/api/cms/gallery/x1",
     headers: auth,
-    payload: { id: "x1", module: "gallery", src: "/media/pic.webp", caption: { en: "Hi" }, alt: "A cat", sort: 0 },
+    payload: { id: "x1", module: "gallery", asset: "asset:img1", caption: { en: "Hi" }, sort: 0 },
   });
   assert.equal(ok.statusCode, 200);
 
   const site = await app.inject({ method: "GET", url: "/api/site" });
-  const gal = site.json().modules.gallery;
-  assert.equal(gal.data.images[0].src, "/media/pic.webp");
-  assert.equal(gal.data.images[0].caption, "Hi");
-  assert.equal(gal.data.images[0].alt, "A cat");
+  const img = site.json().modules.gallery.data.images[0];
+  assert.equal(img.image.kind, "image");
+  assert.equal(img.image.src, "/assets/img1");
+  assert.ok(img.image.srcsetWebp.includes("/assets/img1/w640.webp 640w"));
+  assert.equal(img.caption, "Hi");
+  assert.equal(img.image.alt, "Hi"); // caption overrides the asset's alt
+
+  // Usage is now recorded, so the library can warn before deleting the asset.
+  assert.deepEqual(store.assets.usagesFor("img1").map((u) => u.context), ["gallery:gallery"]);
 
   await app.inject({ method: "DELETE", url: "/api/cms/gallery/x1", headers: auth });
   const after = await app.inject({ method: "GET", url: "/api/site" });
   assert.deepEqual(after.json().modules.gallery.data.images, []);
+  assert.equal(store.assets.usageCount("img1"), 0); // usage cleared on removal
   await app.close();
 });
 
 test("cms gallery instances: create a second gallery, images stay scoped, delete cleans up", async () => {
   const app = await enabledApp();
   const auth = { authorization: `Bearer ${TOKEN}` };
+  getTestStore(app).assets.create({ id: "trip1", hash: "t".repeat(64), kind: "image", ext: "png", mime: "image/png", bytes: 10, width: 800, filename: "t.png" });
 
   const created = await app.inject({
     method: "POST",
@@ -191,7 +210,7 @@ test("cms gallery instances: create a second gallery, images stay scoped, delete
     method: "PUT",
     url: "/api/cms/gallery/t1",
     headers: auth,
-    payload: { id: "t1", module: newId, src: "/media/trip.webp", caption: { en: "Trip" } },
+    payload: { id: "t1", module: newId, asset: "asset:trip1", caption: { en: "Trip" } },
   });
   const site = await app.inject({ method: "GET", url: "/api/site" });
   assert.deepEqual(site.json().modules.gallery.data.images, []); // default gallery still empty
@@ -263,20 +282,6 @@ test("cms layout: reorder, move across areas, hide, and reject empty/duplicate/u
     (await app.inject({ method: "PUT", url: "/api/cms/layout", headers: auth, payload: { order: [{ area: "ghost", modules: [] }] } })).statusCode,
     400,
   );
-  await app.close();
-});
-
-test("cms media delete: bad filenames are rejected, missing files 404", async () => {
-  const app = await enabledApp();
-  const auth = { authorization: `Bearer ${TOKEN}` };
-  const bad = await app.inject({ method: "DELETE", url: "/api/cms/media/xyz.webp", headers: auth });
-  assert.equal(bad.statusCode, 400);
-  const missing = await app.inject({
-    method: "DELETE",
-    url: "/api/cms/media/00000000-0000-0000-0000-000000000000.webp",
-    headers: auth,
-  });
-  assert.equal(missing.statusCode, 404);
   await app.close();
 });
 

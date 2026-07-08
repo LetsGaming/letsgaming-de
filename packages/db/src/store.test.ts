@@ -75,19 +75,19 @@ test("gallery: CRUD + ordering, module grouping, and it flows through getContent
   const store = openStore(":memory:");
   assert.deepEqual(store.content.getGallery(), []);
   store.content.upsertGalleryItem(
-    { id: "a", module: "gallery", src: "/media/a.webp", caption: { en: "One" }, alt: "First" },
+    { id: "a", module: "gallery", asset: "asset:aaa", caption: { en: "One" } },
     0,
   );
   store.content.upsertGalleryItem(
-    { id: "b", module: "gallery", src: "/media/b.webp", caption: { en: "Two" } },
+    { id: "b", module: "gallery", asset: "asset:bbb", caption: { en: "Two" } },
     1,
   );
   store.content.upsertGalleryItem(
-    { id: "c", module: "gallery-travel", src: "/media/c.webp", caption: { en: "Trip" } },
+    { id: "c", module: "gallery-travel", asset: "asset:ccc", caption: { en: "Trip" } },
     0,
   );
   assert.deepEqual(store.content.getGallery().map((g) => g.id).sort(), ["a", "b", "c"]);
-  assert.equal(store.content.getGallery().find((g) => g.id === "a")?.alt, "First");
+  assert.equal(store.content.getGallery().find((g) => g.id === "a")?.asset, "asset:aaa");
 
   // Deleting a whole gallery module drops only its images.
   store.content.deleteGalleryModule("gallery-travel");
@@ -233,5 +233,74 @@ test("rollupAndPrune bundles old hourly into daily and prunes", () => {
   const daily = store.analytics.top("path", day, day);
   assert.equal(daily[0]?.key, "/");
   assert.equal(daily[0]?.count, 2);
+  store.close();
+});
+
+test("assets: content-hash dedupe — same bytes never create a second asset", () => {
+  const store = openStore(":memory:");
+  const a = store.assets.create({
+    id: "a1", hash: "sha-AAA", kind: "image", ext: "png", mime: "image/png",
+    bytes: 1000, width: 800, height: 600, filename: "photo.png", tags: ["trip"],
+  });
+  // Same hash, different id/name → returns the ORIGINAL, no new row.
+  const dup = store.assets.create({
+    id: "a2", hash: "sha-AAA", kind: "image", ext: "png", mime: "image/png",
+    bytes: 1000, filename: "copy.png",
+  });
+  assert.equal(dup.id, "a1");
+  assert.equal(store.assets.list().length, 1);
+  assert.deepEqual(a.tags, ["trip"]);
+  store.close();
+});
+
+test("assets: folders, tags, kind, and search all filter the library", () => {
+  const store = openStore(":memory:");
+  store.assets.createFolder({ id: "f1", name: "Travel", parentId: null });
+  store.assets.create({ id: "i1", hash: "h1", kind: "image", ext: "jpg", mime: "image/jpeg", bytes: 1, filename: "alps.jpg", folderId: "f1", tags: ["mountains"], title: "Alps" });
+  store.assets.create({ id: "p1", hash: "h2", kind: "pdf", ext: "pdf", mime: "application/pdf", bytes: 2, filename: "cv.pdf", tags: ["docs"] });
+
+  assert.deepEqual(store.assets.list({ folderId: "f1" }).map((a) => a.id), ["i1"]);
+  assert.deepEqual(store.assets.list({ folderId: null }).map((a) => a.id), ["p1"]);
+  assert.deepEqual(store.assets.list({ kind: "pdf" }).map((a) => a.id), ["p1"]);
+  assert.deepEqual(store.assets.list({ tag: "mountains" }).map((a) => a.id), ["i1"]);
+  assert.deepEqual(store.assets.list({ q: "alp" }).map((a) => a.id), ["i1"]);
+  assert.deepEqual(store.assets.allTags(), ["docs", "mountains"]);
+
+  // Deleting the folder drops the asset back to root (ON DELETE SET NULL).
+  store.assets.deleteFolder("f1");
+  assert.equal(store.assets.getById("i1")?.folderId, null);
+  store.close();
+});
+
+test("assets: variants cache + usage tracking + cascade on delete", () => {
+  const store = openStore(":memory:");
+  store.assets.create({ id: "i1", hash: "h1", kind: "image", ext: "png", mime: "image/png", bytes: 1, filename: "x.png" });
+
+  assert.equal(store.assets.hasVariant("i1", "webp", 800), false);
+  store.assets.addVariant("i1", { format: "webp", width: 800, bytes: 12000 });
+  store.assets.addVariant("i1", { format: "avif", width: 800, bytes: 9000 });
+  assert.equal(store.assets.hasVariant("i1", "webp", 800), true);
+  assert.equal(store.assets.listVariants("i1").length, 2);
+
+  // Usage: recording a context replaces that context's rows.
+  store.assets.recordUsage("hero", [{ assetId: "i1", label: "Home hero" }]);
+  store.assets.recordUsage("gallery:travel", [{ assetId: "i1", label: "Travel gallery" }]);
+  assert.equal(store.assets.usageCount("i1"), 2);
+  store.assets.recordUsage("hero", []); // hero no longer uses it
+  assert.equal(store.assets.usageCount("i1"), 1);
+  assert.deepEqual(store.assets.usagesFor("i1").map((u) => u.context), ["gallery:travel"]);
+
+  // Deleting the asset cascades variants + usages.
+  assert.equal(store.assets.remove("i1"), true);
+  assert.equal(store.assets.listVariants("i1").length, 0);
+  assert.equal(store.assets.usageCount("i1"), 0);
+  store.close();
+});
+
+test("assets: markdown slug lookup", () => {
+  const store = openStore(":memory:");
+  store.assets.create({ id: "m1", hash: "h1", kind: "markdown", ext: "md", mime: "text/markdown", bytes: 10, filename: "About.md", slug: "about" });
+  assert.equal(store.assets.getBySlug("about")?.id, "m1");
+  assert.equal(store.assets.getBySlug("missing"), null);
   store.close();
 });

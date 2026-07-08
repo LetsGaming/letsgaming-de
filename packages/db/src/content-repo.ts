@@ -110,15 +110,13 @@ export function contentRepo(db: DB) {
     (db.prepare("SELECT * FROM gallery ORDER BY sort, id").all() as unknown as {
       id: string;
       module: string;
-      src: string;
+      asset: string;
       caption: string;
-      alt: string | null;
     }[]).map((r) => ({
       id: r.id,
       module: r.module ?? "gallery",
-      src: r.src,
+      asset: r.asset,
       caption: parse<Localized>(r.caption),
-      ...(r.alt ? { alt: r.alt } : {}),
     }));
 
   return {
@@ -174,10 +172,10 @@ export function contentRepo(db: DB) {
     getGallery: readGallery,
     upsertGalleryItem(item: GalleryItem, sort = 0) {
       db.prepare(
-        `INSERT INTO gallery (id, module, src, caption, alt, sort) VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET module = excluded.module, src = excluded.src,
-           caption = excluded.caption, alt = excluded.alt, sort = excluded.sort`,
-      ).run(item.id, item.module, item.src, JSON.stringify(item.caption), item.alt ?? null, sort);
+        `INSERT INTO gallery (id, module, asset, caption, sort) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET module = excluded.module, asset = excluded.asset,
+           caption = excluded.caption, sort = excluded.sort`,
+      ).run(item.id, item.module, item.asset, JSON.stringify(item.caption), sort);
     },
     deleteGalleryItem(id: string) {
       db.prepare("DELETE FROM gallery WHERE id = ?").run(id);

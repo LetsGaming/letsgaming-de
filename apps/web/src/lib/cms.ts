@@ -106,16 +106,6 @@ export const cms = {
       credentials: "include",
     }).then(handle),
 
-  listMedia: () =>
-    fetch(`${API_BASE}/api/cms/media`, { headers: headers(false), credentials: "include" }).then(
-      handle,
-    ),
-  deleteMedia: (path: string) =>
-    fetch(`${API_BASE}/api/cms/media/${path.replace(/^\/media\//, "")}`, {
-      method: "DELETE",
-      headers: headers(false),
-      credentials: "include",
-    }).then(handle),
   createGallery: (heading: { en: string; de?: string }) =>
     fetch(`${API_BASE}/api/cms/gallery-module`, {
       method: "POST",
@@ -129,17 +119,54 @@ export const cms = {
       headers: headers(false),
       credentials: "include",
     }).then(handle),
-  upload: (file: File) => {
+
+  // ── asset library ──────────────────────────────────────────────────────────
+  assetUrl: (id: string, variant?: string) =>
+    `${API_BASE}/assets/${id}${variant ? `/${variant}` : ""}`,
+  listAssets: (params: { folder?: string; tag?: string; kind?: string; q?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
+    return fetch(`${API_BASE}/api/cms/assets${qs ? `?${qs}` : ""}`, {
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle);
+  },
+  getAsset: (id: string) =>
+    fetch(`${API_BASE}/api/cms/assets/${id}`, { headers: headers(false), credentials: "include" }).then(handle),
+  uploadAsset: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return fetch(`${API_BASE}/api/cms/media`, {
+    return fetch(`${API_BASE}/api/cms/assets`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: "include",
       body: fd,
     }).then(handle);
   },
-
-  mediaUrl: (path: string) => `${API_BASE}${path}`,
+  updateAsset: (id: string, patch: Record<string, unknown>) =>
+    fetch(`${API_BASE}/api/cms/assets/${id}`, {
+      method: "PATCH",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify(patch),
+    }).then(handle),
+  deleteAsset: (id: string) =>
+    fetch(`${API_BASE}/api/cms/assets/${id}`, {
+      method: "DELETE",
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
+  createAssetFolder: (name: string, parentId: string | null = null) =>
+    fetch(`${API_BASE}/api/cms/assets/folders`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({ name, parentId }),
+    }).then(handle),
+  deleteAssetFolder: (id: string) =>
+    fetch(`${API_BASE}/api/cms/assets/folders/${id}`, {
+      method: "DELETE",
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
   loginUrl: () => `${API_BASE}/auth/github/login`,
 };

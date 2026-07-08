@@ -6,6 +6,7 @@ import { trackClick, trackProject } from "../lib/track";
 import ContactForm from "./ContactForm.vue";
 import GuestbookForm from "./GuestbookForm.vue";
 import PresenceWidget from "./PresenceWidget.vue";
+import AssetPicture from "./AssetPicture.vue";
 
 const props = defineProps<{
   module: ResolvedModule;
@@ -14,11 +15,6 @@ const props = defineProps<{
 }>();
 
 const heatVar = (level: number) => `var(--heat-${level})`;
-
-// Media is served from the server origin; on the public site prefix relative
-// /media paths with the API base (same convention the CMS/forms use).
-const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
-const mediaSrc = (p: string) => (p.startsWith("/") ? API_BASE + p : p);
 
 /** Intercept internal `#anchor` links (e.g. "Get in touch") so they switch to
  *  the tab that holds the target section and scroll to it, instead of no-oping. */
@@ -36,6 +32,7 @@ function onLink(e: MouseEvent, href: string) {
 <template>
   <!-- HERO -->
   <template v-if="module.kind === 'hero'">
+    <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar rise" />
     <span class="eyebrow rise">{{ module.data.eyebrow }}</span>
     <h1 class="rise">
       {{ module.data.headline.before
@@ -55,7 +52,10 @@ function onLink(e: MouseEvent, href: string) {
         :href="l.href"
         @click="onLink($event, l.href)"
       >
-        <span v-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
+        <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span
+          v-else-if="l.icon"
+          v-html="icons[l.icon]"
+        />{{ l.label }}
       </a>
     </div>
   </template>
@@ -289,7 +289,7 @@ function onLink(e: MouseEvent, href: string) {
     </div>
     <div v-if="module.data.images.length" class="gal rise">
       <figure v-for="img in module.data.images" :key="img.id" class="gal-item">
-        <img :src="mediaSrc(img.src)" :alt="img.alt" loading="lazy" />
+        <AssetPicture :view="img.image" />
         <figcaption v-if="img.caption">{{ img.caption }}</figcaption>
       </figure>
     </div>
@@ -314,7 +314,10 @@ function onLink(e: MouseEvent, href: string) {
       <span v-if="module.data.note">{{ module.data.note }}</span>
     </div>
     <div class="prose rise">
-      <p v-for="(p, i) in module.data.paragraphs" :key="i" v-html="mdBold(p)" />
+      <template v-for="(b, i) in module.data.blocks" :key="i">
+        <p v-if="b.kind === 'text'" v-html="mdBold(b.text)" />
+        <figure v-else class="bio-img"><AssetPicture :view="b.image" /></figure>
+      </template>
     </div>
   </section>
 
@@ -335,7 +338,7 @@ function onLink(e: MouseEvent, href: string) {
         rel="noreferrer noopener"
         @click="trackClick('social')"
       >
-        <span v-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
+        <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span v-else-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
       </a>
     </div>
     <div class="rise" style="margin-top: 20px"><ContactForm /></div>

@@ -34,8 +34,8 @@ Everything on the site that isn't pulled from an API is editable. The menu group
 | Content | **Links** | Social/contact buttons. Icons: `gh, mail, x, linkedin, mastodon, youtube, discord, instagram, bluesky, globe`. A link with href `#contact` becomes the "Get in touch" jump. |
 | Content | **Right now** | The "Right now" rows. |
 | Structure & media | **Layout** | Reorder modules within an area, move them between areas, or hide them. |
-| Structure & media | **Gallery** | Curate the image galleries that appear on the site. |
-| Structure & media | **Media** | Upload images (auto-WebP), delete them, or add them to a gallery. |
+| Structure & media | **Asset library** | Your central store of reusable files — images, SVGs, GIFs, PDFs, Markdown. Upload, organize (folders + tags), edit metadata, see where each is used. |
+| Structure & media | **Gallery** | Curate the image galleries that appear on the site (images picked from the library). |
 | Widgets | **Presence** | Which Discord/Steam categories the "Right now-ish" widget may show. |
 | Community | **Guestbook** | Approve, reject, or delete visitor entries (nothing is public until you approve it). |
 | Insights | **Analytics** | Anonymous traffic + engagement. No cookies, no IPs, nothing personal. |
@@ -56,16 +56,27 @@ Each area (Home, Work, Life, About) renders its modules top-to-bottom. On **Layo
 Then click **Save layout**. One rule: an area must keep at least one module (you can't leave an
 area empty). Changes take effect on the next page load.
 
-## Working with images (Media + Gallery)
+## Working with images and files (Asset library + Gallery)
 
-1. **Media** → *Upload image* (JPEG/PNG/WebP/GIF; it's resized and converted to WebP).
-2. On the image, click **+ gallery** to place it into the gallery currently selected on the
-   **Gallery** screen. **delete** removes the upload (and any gallery placement of it).
-3. On **Gallery**, give each image a **caption** (shown) and optional **alt text** (for screen
-   readers; defaults to the caption), and reorder or remove them.
-4. Want more than one gallery? **Gallery → + New gallery** creates another one. It starts
-   **Hidden** — use **Layout** to drop it into an area. Delete a gallery from the same screen
-   (the built-in one can't be deleted; media files are never touched).
+The **Asset library** is your central, reusable media store. One upload can be used in many places,
+and the same file is never stored twice (identical uploads are de-duplicated by content).
+
+1. **Asset library** → **Upload** (images, SVGs, GIFs, PDFs, Markdown). Images get optimized,
+   responsive versions automatically; nothing is stored twice.
+2. Organize with **folders** and **tags**, and use search/type filters to find things.
+3. Click an asset to edit its **alt text, title, caption, description**, move it between folders, or
+   retag it. The panel shows **where it's used**; deleting warns you if it's referenced anywhere.
+4. To place images on the site, go to **Gallery → + Add image** and pick from the library. The
+   caption there is gallery-specific; alt text comes from the asset. Reorder or remove as needed.
+5. Want more than one gallery? **Gallery → + New gallery** creates another (it starts **Hidden** —
+   use **Layout** to place it). The built-in gallery can't be deleted.
+
+Markdown assets are published as their own page at **/md/&lt;slug&gt;** (with a link back to the
+site); PDFs get a download link; SVGs can be used as themeable icons.
+
+Library images can also be placed directly into content: a **hero portrait** (Site identity →
+*Choose image*), **inline images in the bio** (About → *+ image*), and **uploaded SVG link icons**
+(Links → *pick SVG*).
 
 ## Previewing
 

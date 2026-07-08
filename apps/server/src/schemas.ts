@@ -30,6 +30,7 @@ export const schemas = {
       handle: { type: "string", minLength: 1 },
       location: localized,
       role: localized,
+      avatar: { type: "string", pattern: "^(asset:[A-Za-z0-9_-]+)?$" },
     },
     additionalProperties: false,
   },
@@ -121,13 +122,12 @@ export const schemas = {
   },
   galleryItem: {
     type: "object",
-    required: ["id", "module", "src", "caption"],
+    required: ["id", "module", "asset", "caption"],
     properties: {
       id: { type: "string", minLength: 1 },
       module: { type: "string", minLength: 1 },
-      src: { type: "string", pattern: "^/media/[A-Za-z0-9._-]+$" },
+      asset: { type: "string", pattern: "^asset:[A-Za-z0-9_-]+$" },
       caption: localized,
-      alt: { type: "string", maxLength: 200 },
       sort: { type: "integer" },
     },
     additionalProperties: false,

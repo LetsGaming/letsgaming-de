@@ -2,6 +2,7 @@
 import type { Hobby, Link, Localized, NavNode, NowItem } from "@lg/core";
 import { computed, onMounted, reactive, ref } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../../lib/cms";
+import AssetLibrary from "./AssetLibrary.vue";
 
 type View =
   | "dashboard"
@@ -13,7 +14,7 @@ type View =
   | "now"
   | "layout"
   | "gallery"
-  | "media"
+  | "library"
   | "presence"
   | "guestbook"
   | "analytics"
@@ -37,8 +38,8 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
     label: "Structure & media",
     items: [
       { id: "layout", label: "Layout" },
+      { id: "library", label: "Asset library" },
       { id: "gallery", label: "Gallery" },
-      { id: "media", label: "Media" },
     ],
   },
   { label: "Widgets", items: [{ id: "presence", label: "Presence" }] },
@@ -55,8 +56,8 @@ const VIEW_TITLES: Record<View, string> = {
   links: "Links",
   now: "Right now",
   layout: "Layout — module order",
+  library: "Asset library",
   gallery: "Gallery",
-  media: "Media library",
   presence: "Presence widget",
   guestbook: "Guestbook",
   analytics: "Analytics",
@@ -80,11 +81,10 @@ const bio = ref<Localized[]>([]);
 const hobbies = ref<(Hobby & { sort?: number })[]>([]);
 const links = ref<(Link & { sort?: number })[]>([]);
 const now = ref<(NowItem & { sort?: number })[]>([]);
-const media = ref<string[]>([]);
 const analytics = ref<any>(null);
 
 // Layout (module order per area) + gallery images.
-interface GalleryRow { id: string; module: string; src: string; caption: Localized; alt?: string; sort?: number }
+interface GalleryRow { id: string; module: string; asset: string; caption: Localized; sort?: number }
 const modules = ref<{ id: string; kind?: string; heading?: Localized }[]>([]);
 const layoutAreas = ref<{ id: string; label: string; modules: string[] }[]>([]);
 const hiddenModules = ref<string[]>([]);
@@ -167,8 +167,7 @@ async function boot() {
     login.value = me.login;
     authed.value = true;
     await loadAll();
-    // Warm the dashboard's counts/badge (both are cheap, cached after).
-    void loadMedia();
+    // Warm the dashboard's badge (cheap, cached after).
     void loadGuestbook();
   } catch (e) {
     authed.value = false;
@@ -249,15 +248,16 @@ const galleryModules = computed(() => modules.value.filter((m) => m.kind === "ga
 const activeGalleryItems = computed(() =>
   gallery.value.filter((g) => g.module === activeGallery.value),
 );
-function addToGallery(path: string, target = activeGallery.value) {
-  if (gallery.value.some((g) => g.src === path && g.module === target)) {
+function addGalleryAsset(assetId: string, target = activeGallery.value) {
+  const ref = `asset:${assetId}`;
+  if (gallery.value.some((g) => g.asset === ref && g.module === target)) {
     flash("Already in this gallery.");
     return;
   }
   const item: GalleryRow = {
     id: newId("img"),
     module: target,
-    src: path,
+    asset: ref,
     caption: emptyL(),
     sort: gallery.value.filter((g) => g.module === target).length,
   };
@@ -265,6 +265,29 @@ function addToGallery(path: string, target = activeGallery.value) {
   void guarded(() => cms.put(`gallery/${item.id}`, strip(item)), "Added to gallery");
 }
 const saveGalleryItem = (g: GalleryRow) => guarded(() => cms.put(`gallery/${g.id}`, strip(g)));
+
+// Reusable asset picker (modal): openPicker(cb) opens the library in pick mode;
+// selecting an asset invokes cb with its id.
+const pickerOpen = ref(false);
+const pickerOnly = ref("");
+let pickerCb: ((id: string) => void) | null = null;
+function openPicker(cb: (id: string) => void, only = "") {
+  pickerCb = cb;
+  pickerOnly.value = only;
+  pickerOpen.value = true;
+}
+function onPick(asset: { id: string }) {
+  const cb = pickerCb;
+  pickerCb = null;
+  pickerOpen.value = false;
+  cb?.(asset.id);
+}
+function closePicker() {
+  pickerCb = null;
+  pickerOpen.value = false;
+}
+const assetIdOf = (ref: string) => ref.replace(/^asset:/, "");
+const galleryThumb = (ref: string) => cms.assetUrl(assetIdOf(ref), "w320.webp");
 function removeGalleryItem(id: string) {
   gallery.value = gallery.value.filter((g) => g.id !== id);
   void guarded(() => cms.del(`gallery/${id}`), "Removed");
@@ -297,20 +320,13 @@ async function createGallery() {
   }, "Gallery created");
 }
 function deleteGallery(id: string) {
-  if (!confirm("Delete this gallery and all its image placements? (Media files stay.)")) return;
+  if (!confirm("Delete this gallery and all its image placements? (Library assets stay.)")) return;
   void guarded(async () => {
     await cms.deleteGallery(id);
     await loadAll();
   }, "Gallery deleted");
 }
 
-// ── media: delete an upload ─────────────────────────────────────────────────
-function removeMedia(path: string) {
-  if (!confirm("Delete this image? It will disappear from anywhere it's used.")) return;
-  media.value = media.value.filter((m) => m !== path);
-  gallery.value = gallery.value.filter((g) => g.src !== path);
-  void guarded(() => cms.deleteMedia(path), "Deleted");
-}
 
 async function signIn() {
   setToken(tokenInput.value);
@@ -383,6 +399,11 @@ const addLink = () =>
 const addNow = () =>
   now.value.push({ id: newId("now"), key: emptyL(), value: emptyL(), sort: now.value.length });
 const addBio = () => bio.value.push(emptyL());
+// A bio paragraph is an "image block" when its (locale-independent) value is an asset ref.
+function bioImageRef(p: Localized): string {
+  const v = (p.en ?? "").trim();
+  return /^asset:[A-Za-z0-9_-]+$/.test(v) ? v : "";
+}
 
 /** Drop empty `de` keys so we don't persist blank translations. */
 function strip<T>(obj: T): T {
@@ -397,29 +418,6 @@ function strip<T>(obj: T): T {
   return clone;
 }
 
-// Media
-const uploading = ref(false);
-async function onUpload(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  uploading.value = true;
-  await guarded(async () => {
-    await cms.upload(file);
-    media.value = (await cms.listMedia()).files;
-  }, "Uploaded");
-  uploading.value = false;
-  input.value = "";
-}
-async function loadMedia() {
-  await guarded(async () => {
-    media.value = (await cms.listMedia()).files;
-  }, "");
-}
-function copy(text: string) {
-  navigator.clipboard?.writeText(cms.mediaUrl(text));
-  flash("URL copied");
-}
 
 // Analytics
 type MetricKey = "pageviews" | "sections" | "clicks" | "visitLength";
@@ -568,7 +566,6 @@ const chart = computed(() => {
 
 function pick(v: View) {
   tab.value = v;
-  if ((v === "media" || v === "dashboard") && media.value.length === 0) void loadMedia();
   if ((v === "guestbook" || v === "dashboard") && !guestbook.value) void loadGuestbook();
   if (v === "analytics" && !analytics.value) void loadAnalytics();
   if (AREA_FOR_VIEW[v]) previewArea.value = AREA_FOR_VIEW[v]!; // remember what to preview
@@ -605,7 +602,6 @@ const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
   { label: "Links", n: links.value.length, to: "links" },
   { label: "Right-now items", n: now.value.length, to: "now" },
   { label: "Gallery images", n: gallery.value.length, to: "gallery" },
-  { label: "Media files", n: media.value.length, to: "media" },
   { label: "Modules", n: modules.value.length, to: "layout" },
 ]);
 
@@ -695,6 +691,17 @@ onMounted(boot);
             <label>Handle<input v-model="meta.handle" /></label>
             <label>Location<input :value="lv(meta.location, locale)" @input="setLv(meta.location, locale, ($event.target as HTMLInputElement).value)" /></label>
             <label>Role<input :value="lv(meta.role, locale)" @input="setLv(meta.role, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <div class="avatarrow">
+              <span class="avatarprev">
+                <img v-if="meta.avatar" :src="galleryThumb(meta.avatar)" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
+                <span v-else class="muted">no image</span>
+              </span>
+              <div>
+                <div class="fieldlabel">Hero image <span class="muted">(optional portrait)</span></div>
+                <button class="btn ghost" @click="openPicker((id) => { meta.avatar = 'asset:' + id; saveMeta(); }, 'image')">Choose image</button>
+                <button v-if="meta.avatar" class="link danger" @click="meta.avatar = ''; saveMeta();">remove</button>
+              </div>
+            </div>
             <button class="btn" @click="saveMeta">Save identity</button>
           </div>
         </section>
@@ -725,12 +732,20 @@ onMounted(boot);
         <!-- ABOUT / BIO -->
         <section v-show="tab === 'about'" class="pane">
           <div class="card">
-            <h3>Bio <span class="muted">(paragraphs, **bold** supported)</span></h3>
+            <h3>Bio <span class="muted">(paragraphs, **bold** supported; images are library assets)</span></h3>
             <div v-for="(p, i) in bio" :key="i" class="row">
-              <textarea :value="lv(p, locale)" @input="setLv(p, locale, ($event.target as HTMLTextAreaElement).value)" rows="2" />
+              <div v-if="bioImageRef(p)" class="bioimg">
+                <img :src="galleryThumb(bioImageRef(p))" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
+                <span class="muted">image</span>
+              </div>
+              <textarea v-else :value="lv(p, locale)" @input="setLv(p, locale, ($event.target as HTMLTextAreaElement).value)" rows="2" />
               <button class="link danger" @click="bio.splice(i, 1)">remove</button>
             </div>
-            <div class="actions"><button class="link" @click="addBio">+ paragraph</button><button class="btn" @click="saveBio">Save bio</button></div>
+            <div class="actions">
+              <button class="link" @click="addBio">+ paragraph</button>
+              <button class="link" @click="openPicker((id) => { bio.push({ en: 'asset:' + id }); saveBio(); }, 'image')">+ image</button>
+              <button class="btn" @click="saveBio">Save bio</button>
+            </div>
           </div>
         </section>
 
@@ -751,6 +766,16 @@ onMounted(boot);
             <div class="actions"><button class="btn" @click="savePresence">Save presence</button></div>
           </div>
         </section>
+
+      <!-- ASSET LIBRARY -->
+      <section v-show="tab === 'library'" class="pane">
+        <div class="card note">
+          Your central media library — reusable images, SVGs, GIFs, PDFs and Markdown, referenced
+          from anywhere on the site. Upload here, organize with folders and tags, and edit alt/caption
+          metadata. Deleting warns you if an asset is in use.
+        </div>
+        <AssetLibrary v-if="tab === 'library'" />
+      </section>
 
       <!-- LAYOUT (module order per area) -->
       <section v-show="tab === 'layout'" class="pane">
@@ -820,7 +845,12 @@ onMounted(boot);
         <div v-for="l in links" :key="l.id" class="card">
           <div class="grid2">
             <label>ID<input v-model="l.id" /></label>
-            <label>Icon<input v-model="l.icon" placeholder="gh, mail, x, linkedin, mastodon, youtube, discord, instagram, bluesky, globe" /></label>
+            <label>Icon
+              <span class="iconfield">
+                <input v-model="l.icon" placeholder="gh, mail, x, linkedin, … or pick an SVG" />
+                <button class="link" type="button" @click="openPicker((id) => { l.icon = 'asset:' + id; saveLink(l); }, 'svg')">pick SVG</button>
+              </span>
+            </label>
             <label>Label<input :value="lv(l.label, locale)" @input="setLv(l.label, locale, ($event.target as HTMLInputElement).value)" /></label>
             <label>Href<input v-model="l.href" /></label>
             <label>Sort<input type="number" v-model.number="l.sort" /></label>
@@ -855,7 +885,7 @@ onMounted(boot);
         <button class="btn ghost" @click="addNow">+ Add row</button>
       </section>
 
-      <!-- GALLERY (images placed on the site) -->
+      <!-- GALLERY (images placed on the site, chosen from the library) -->
       <section v-show="tab === 'gallery'" class="pane">
         <div class="card">
           <div class="galhead">
@@ -865,27 +895,25 @@ onMounted(boot);
               </select>
             </label>
             <span class="galact">
+              <button class="btn" @click="openPicker((id) => addGalleryAsset(id))">+ Add image</button>
               <button class="btn ghost" @click="createGallery">+ New gallery</button>
               <button v-if="activeGallery !== 'gallery'" class="link danger" @click="deleteGallery(activeGallery)">delete this gallery</button>
             </span>
           </div>
           <p class="muted">
-            Images shown on the site. Add them from the <b>Media</b> tab (“+ gallery” adds to the
-            gallery selected here). Each gallery is a module — position it via <b>Layout</b>. New
+            Pick images from the <b>Asset library</b>. Alt text comes from the asset; the caption here
+            is gallery-specific. Each gallery is a module — position it via <b>Layout</b>. New
             galleries start hidden until you place them.
           </p>
         </div>
         <div v-if="!activeGalleryItems.length" class="muted">
-          This gallery is empty — upload in <b>Media</b>, then hit “+ gallery”.
+          This gallery is empty — hit <b>+ Add image</b> to choose from your library.
         </div>
         <div v-for="(g, i) in activeGalleryItems" :key="g.id" class="card gitem">
-          <img :src="cms.mediaUrl(g.src)" class="gthumb" loading="lazy" />
+          <img :src="galleryThumb(g.asset)" class="gthumb" loading="lazy" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
           <div class="gbody">
             <label>Caption ({{ locale }})
               <input v-model="g.caption[locale]" maxlength="120" placeholder="optional" @blur="saveGalleryItem(g)" />
-            </label>
-            <label>Alt text <span class="muted">(screen readers; defaults to caption)</span>
-              <input v-model="g.alt" maxlength="200" placeholder="describe the image" @blur="saveGalleryItem(g)" />
             </label>
             <div class="actions">
               <button class="link" :disabled="i === 0" @click="moveGallery(i, -1)">↑ up</button>
@@ -893,31 +921,6 @@ onMounted(boot);
               <button class="link danger" @click="removeGalleryItem(g.id)">remove</button>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- MEDIA -->
-      <section v-show="tab === 'media'" class="pane">
-        <div class="card">
-          <h3>Upload image</h3>
-          <input type="file" accept="image/*" :disabled="uploading" @change="onUpload" />
-          <p class="muted">
-            Resized to WebP and stored locally. “+ gallery” places an image into the gallery
-            currently selected on the <b>Gallery</b> screen (<b>{{ moduleHeading(activeGallery) }}</b>).
-          </p>
-        </div>
-        <div class="mediagrid">
-          <figure v-for="m in media" :key="m">
-            <img :src="cms.mediaUrl(m)" loading="lazy" />
-            <div class="mactions">
-              <button class="link" :disabled="activeGalleryItems.some((g) => g.src === m)" @click="addToGallery(m)">
-                {{ activeGalleryItems.some((g) => g.src === m) ? "in gallery" : "+ gallery" }}
-              </button>
-              <button class="link" @click="copy(m)">copy URL</button>
-              <button class="link danger" @click="removeMedia(m)">delete</button>
-            </div>
-          </figure>
-          <p v-if="!media.length" class="muted">No uploads yet.</p>
         </div>
       </section>
 
@@ -1094,6 +1097,17 @@ onMounted(boot);
       </main>
 
       <div v-if="toast" class="toast">{{ toast }}</div>
+
+      <!-- Asset picker (reused across fields): the library in pick mode -->
+      <div v-if="pickerOpen" class="pickmask" @click.self="closePicker">
+        <div class="pickbox">
+          <div class="pickhead">
+            <b>Choose an asset</b>
+            <button class="link" @click="closePicker">close</button>
+          </div>
+          <AssetLibrary pick :only="pickerOnly" @select="onPick" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -1237,4 +1251,15 @@ input, textarea, select { font-family: var(--f-b); font-size: 14px; color: var(-
 .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 4px 0 12px; }
 .ptoggle { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); }
 .ptoggle input { width: auto; margin-top: 2px; }
+.pickmask { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 20px; z-index: 50; }
+.pickbox { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 18px; width: min(1000px, 96vw); max-height: 88vh; overflow: auto; }
+.pickhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.avatarrow { display: flex; gap: 14px; align-items: center; margin: 4px 0 8px; }
+.avatarprev { width: 72px; height: 72px; border-radius: 16px; border: 1px solid var(--line); background: var(--card-2); display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; font-size: 11px; }
+.avatarprev img { width: 100%; height: 100%; object-fit: cover; }
+.fieldlabel { font-family: var(--f-m); font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.iconfield { display: flex; gap: 8px; align-items: center; }
+.iconfield input { flex: 1; }
+.bioimg { flex: 1; display: flex; align-items: center; gap: 10px; }
+.bioimg img { width: 80px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 </style>
