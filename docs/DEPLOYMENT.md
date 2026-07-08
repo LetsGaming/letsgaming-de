@@ -34,10 +34,11 @@ docker compose up -d --build
 - **web** → port 8080 (SSR), reads the API over the internal network.
 
 On first boot the store seeds and the sync worker runs once (mock data if no
-token). Run a real sync anytime:
+token). Run a real sync anytime (the runtime image is prod-pruned, so invoke the
+built CLI directly rather than `pnpm sync`):
 
 ```bash
-docker compose exec server pnpm sync
+docker compose exec server node dist/sync/cli.js
 ```
 
 ## 3. Reverse proxy + TLS
@@ -53,7 +54,7 @@ Analytics is log-based. Point the ingester at your reverse-proxy access log on a
 schedule (host cron / systemd timer):
 
 ```bash
-docker compose exec server pnpm analytics /path/to/access.log letsgaming.de
+docker compose exec server node dist/analytics/cli.js /path/to/access.log letsgaming.de
 ```
 
 It reads only new lines each run, drops the IP at parse time, and stores anonymous

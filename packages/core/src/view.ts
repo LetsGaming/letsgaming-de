@@ -75,6 +75,52 @@ export interface HeatView {
   total: number;
 }
 
+/** One entry in the Highlights feed — a release, a merged PR, or a gist. */
+export interface HighlightView {
+  type: "release" | "pr" | "gist";
+  /** Ready-to-read sentence, e.g. "Released plantcare-tracker v1.2.0". */
+  text: string;
+  /** Optional secondary label (tag, repo, or "N files"). */
+  meta?: string;
+  href: string;
+  /** ISO timestamp (kept for tooltips / machine use). */
+  at: string;
+  /** Pre-computed short relative time, e.g. "3d". */
+  relative: string;
+}
+
+/** One approved guestbook entry, as shown publicly. */
+export interface GuestbookEntryView {
+  id: number;
+  name: string;
+  message: string;
+  /** ISO timestamp (kept for tooltips / machine use). */
+  at: string;
+  /** Pre-computed short relative time, e.g. "3d". */
+  relative: string;
+}
+
+/** Wakapi coding time, resolved for display. */
+export interface CodingView {
+  range: string;
+  totalHours: number;
+  languages: { name: string; pct: number; hours: number }[];
+}
+
+/**
+ * What the *client* is allowed to know about presence. Deliberately minimal: no
+ * Discord id, no category list — the browser never talks to Lanyard and never
+ * learns what was disabled. `live` just says whether to poll the server's
+ * already-filtered `/api/presence`; `steam` is included only when enabled.
+ */
+export interface PresenceModuleView {
+  live: boolean;
+  steam?: {
+    playing?: { name: string; appId: number };
+    recent: { name: string; appId: number; minutes2Weeks: number; iconUrl?: string }[];
+  };
+}
+
 export interface HeroView {
   eyebrow: string;
   headline: { before: string; highlight: string; after: string };
@@ -105,9 +151,13 @@ export type ResolvedModule =
   | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null } }
   | { id: string; kind: "glance"; data: SectionMeta & { stats: StatView[] } }
   | { id: string; kind: "activity"; data: ActivityView }
+  | { id: string; kind: "highlights"; data: SectionMeta & { items: HighlightView[]; sources: string[] } }
+  | { id: string; kind: "coding"; data: SectionMeta & { coding: CodingView | null } }
   | { id: string; kind: "projects"; data: SectionMeta & { projects: ProjectView[]; githubUrl?: string } }
   | { id: string; kind: "hobbies"; data: SectionMeta & { hobbies: HobbyView[] } }
   | { id: string; kind: "now"; data: SectionMeta & { items: NowView[] } }
+  | { id: string; kind: "guestbook"; data: SectionMeta & { entries: GuestbookEntryView[] } }
+  | { id: string; kind: "presence"; data: SectionMeta & PresenceModuleView }
   | { id: string; kind: "bio"; data: SectionMeta & { paragraphs: string[] } }
   | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
 
@@ -138,9 +188,13 @@ export function isModuleKind(value: string): value is ModuleKind {
     "featured",
     "glance",
     "activity",
+    "highlights",
+    "coding",
     "projects",
     "hobbies",
     "now",
+    "guestbook",
+    "presence",
     "bio",
     "contact",
   ].includes(value);

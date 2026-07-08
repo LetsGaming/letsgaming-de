@@ -1,6 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+overrides:
+  # Dev/build-only (astro's bundler); low-sev Windows-only file read. Force patched.
+  "esbuild@<0.28.1": ">=0.28.1"
 allowBuilds:
   esbuild: true
   sharp: true

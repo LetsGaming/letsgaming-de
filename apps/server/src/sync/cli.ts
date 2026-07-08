@@ -12,6 +12,9 @@ const store = openStore(env.dbPath);
 const runner = new SyncRunner(store, {
   githubUsername: env.github.username,
   githubToken: env.github.token,
+  ...(env.wakapi ? { wakapiUrl: env.wakapi.url, wakapiKey: env.wakapi.key } : {}),
+  ...(env.steam ? { steamApiKey: env.steam.apiKey, steamId: env.steam.steamId } : {}),
+  useMocks: process.env.NODE_ENV !== "production",
 });
 
 const results = await runner.runAll();

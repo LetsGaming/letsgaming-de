@@ -14,15 +14,20 @@ import "../styles/app.css";
 interface Props {
   title?: string;
   description?: string;
+  locale?: "en" | "de";
+  /** Only the SSR index reacts to ?lang; prerendered pages opt out of the redirect. */
+  localeAware?: boolean;
 }
 const {
   title = "Domenic — web dev & tinkerer",
   description = "Personal homepage of Domenic (@LetsGaming) — full-time web developer in Germany. Clean interfaces by day; plant sensors and LED strips by night.",
+  locale = "en",
+  localeAware = false,
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -51,6 +56,28 @@ const {
         }
       })();
     </script>
+    <!-- No-flash locale: if the URL carries no explicit ?lang but the visitor
+         previously chose one that differs from what the server rendered, redirect
+         once so the whole page is server-rendered in their language. Cookieless
+         (localStorage), guarded against loops (only when ?lang is absent). Only on
+         the locale-aware index — prerendered pages ignore ?lang. -->
+    {
+      localeAware && (
+        <script is:inline>
+          {`(function () {
+            try {
+              var url = new URL(location.href);
+              if (url.searchParams.has("lang")) return;
+              var saved = localStorage.getItem("lang");
+              if ((saved === "en" || saved === "de") && saved !== document.documentElement.lang) {
+                url.searchParams.set("lang", saved);
+                location.replace(url.toString());
+              }
+            } catch (e) {}
+          })();`}
+        </script>
+      )
+    }
   </head>
   <body>
     <slot />

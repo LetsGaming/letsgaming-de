@@ -1,0 +1,49 @@
+---
+export const prerender = true;
+
+import { getCollection, render } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import { buildDocTree, docTitle, type DocGroup } from "../../lib/docs";
+
+// Build-time: one static page per doc, each with the full sidebar tree.
+export async function getStaticPaths() {
+  const entries = await getCollection("docs");
+  const tree = buildDocTree(entries.map((e) => ({ slug: e.id, title: docTitle(e.body ?? "", e.id) })));
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry, tree } }));
+}
+
+const { entry, tree } = Astro.props as {
+  entry: Awaited<ReturnType<typeof getCollection>>[number];
+  tree: DocGroup[];
+};
+const { Content } = await render(entry);
+const title = docTitle(entry.body ?? "", entry.id);
+const active = entry.id;
+---
+
+<Layout title={`${title} — letsgaming.de docs`}>
+  <div class="doc-wrap">
+    <aside class="doc-nav" aria-label="Documentation">
+      <a class="doc-home" href="/">← letsgaming.de</a>
+      {
+        tree.map((group) => (
+          <div class="doc-group">
+            <h4>{group.label}</h4>
+            <ul>
+              {group.items.map((it) => (
+                <li>
+                  <a href={`/docs/${it.slug}`} class={it.slug === active ? "on" : undefined}>
+                    {it.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </aside>
+    <article class="doc-body prose">
+      <Content />
+    </article>
+  </div>
+</Layout>

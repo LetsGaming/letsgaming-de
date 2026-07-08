@@ -8,8 +8,10 @@ import { registerOAuthRoutes } from "./auth/github-oauth.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerCmsRoutes } from "./routes/cms.js";
 import { registerContactRoutes } from "./routes/contact.js";
+import { registerGuestbookRoutes } from "./routes/guestbook.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerMediaRoutes } from "./routes/media.js";
+import { registerPresenceRoutes } from "./routes/presence.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
 
@@ -50,9 +52,11 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   });
 
   registerHealthRoutes(app, store);
-  registerReadRoutes(app, store);
+  registerReadRoutes(app, store, env);
   registerTrackRoutes(app, store);
   registerContactRoutes(app, env);
+  registerGuestbookRoutes(app, store);
+  registerPresenceRoutes(app, env);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);
   await registerMediaRoutes(app, env);

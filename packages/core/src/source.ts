@@ -62,6 +62,43 @@ export interface GitHubData {
   repos?: GitHubRepo[];
   /** Repo names the owner pinned on their profile, in pin order. */
   pinned?: string[];
+  /** Latest published releases across repos, newest first (§ GitHub extras). */
+  releases?: GitHubRelease[];
+  /** Recently merged pull requests, newest first. */
+  mergedPrs?: GitHubPullRequest[];
+  /** Public gists, most-recently-updated first. */
+  gists?: GitHubGist[];
+}
+
+/** A published release, friendly-facing (repo + tag + when). */
+export interface GitHubRelease {
+  repo: string;
+  /** Release title; falls back to the tag when GitHub has no name. */
+  name: string;
+  tagName: string;
+  url: string;
+  /** ISO timestamp. */
+  publishedAt: string;
+}
+
+/** A merged pull request — "shipped this" for non-devs. */
+export interface GitHubPullRequest {
+  repo: string;
+  title: string;
+  url: string;
+  /** ISO timestamp. */
+  mergedAt: string;
+}
+
+/** A public gist — a shared snippet. */
+export interface GitHubGist {
+  /** Human description; may be empty (GitHub allows it). */
+  description: string;
+  url: string;
+  /** File count, for a "N files" chip. */
+  files: number;
+  /** ISO timestamp. */
+  updatedAt: string;
 }
 
 export interface GitHubRepo {
@@ -90,6 +127,26 @@ export interface GitHubEvent {
 /** Registry of every source's normalized shape, keyed by source id. */
 export interface SourceData {
   github?: GitHubData;
+  wakapi?: WakapiData;
+  steam?: SteamData;
+}
+
+/** Wakapi (self-hosted WakaTime): coding time by language over a range. */
+export interface WakapiData {
+  /** Human range label, e.g. "last 7 days". */
+  range: string;
+  /** Total tracked seconds in the range. */
+  totalSeconds: number;
+  /** Coding time by language, most-used first, as percentages. */
+  languages: { name: string; pct: number; seconds: number }[];
+}
+
+/** Steam (public Web API): what I actually play. Enriches the Discord widget. */
+export interface SteamData {
+  /** Currently in-game, if the public profile exposes it. */
+  playing?: { name: string; appId: number };
+  /** Recently played (last 2 weeks), most-played first. */
+  recent: { name: string; appId: number; minutes2Weeks: number; iconUrl?: string }[];
 }
 
 export type SourceId = keyof SourceData;

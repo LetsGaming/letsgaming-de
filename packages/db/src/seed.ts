@@ -4,12 +4,15 @@ import {
   LAUNCH_NAV,
   type Hobby,
   type Link,
+  type ModuleDescriptor,
+  type NavNode,
   type NowItem,
   type Project,
   type SiteContent,
 } from "@lg/core";
 import type { DB } from "./database.js";
 import { contentRepo } from "./content-repo.js";
+import { iaRepo } from "./ia-repo.js";
 
 /**
  * Launch seed content. Real where it's ready (bio direction, the real projects
@@ -98,4 +101,72 @@ export function seedIfEmpty(db: DB): { seeded: boolean } {
   NOW.forEach((n, i) => content.upsertNow(n, i));
 
   return { seeded: true };
+}
+
+/**
+ * Idempotent IA reconciliation for an *already-seeded* store. The nav tree and
+ * module registry live in the DB (seeded once), but module placement isn't
+ * CMS-editable — so a new launch module (e.g. `highlights`) would never reach a
+ * DB seeded by an earlier version. This additively:
+ *   1. registers any `LAUNCH_MODULES` descriptor the store doesn't have yet, and
+ *   2. places each such module into its launch leaf, in launch order, without
+ *      removing or reordering anything the store already had.
+ * Running it twice is a no-op. Called on every boot alongside `seedIfEmpty`.
+ */
+export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] } {
+  const ia = iaRepo(db);
+  let modules: ModuleDescriptor[];
+  let nav: NavNode[];
+  try {
+    modules = ia.getModules();
+    nav = ia.getNav();
+  } catch {
+    return { addedModules: [], placed: [] }; // not seeded yet — seedIfEmpty handles it
+  }
+
+  // 1. Append missing launch-module descriptors.
+  const known = new Set(modules.map((m) => m.id));
+  const addedModules: string[] = [];
+  for (const m of LAUNCH_MODULES) {
+    if (!known.has(m.id)) {
+      modules.push(m);
+      addedModules.push(m.id);
+    }
+  }
+
+  // 2. Ensure each launch leaf contains its launch module ids (launch order for
+  //    known/new ids; any store-only extras are preserved at the end).
+  const launchLeafOrder = new Map<string, string[]>();
+  const collectLaunchLeaves = (nodes: NavNode[]): void => {
+    for (const n of nodes) {
+      if (n.modules) launchLeafOrder.set(n.id, n.modules);
+      if (n.children) collectLaunchLeaves(n.children);
+    }
+  };
+  collectLaunchLeaves(LAUNCH_NAV);
+
+  const placed: string[] = [];
+  const reconcileLeaves = (nodes: NavNode[]): void => {
+    for (const n of nodes) {
+      const launch = n.modules ? launchLeafOrder.get(n.id) : undefined;
+      if (n.modules && launch) {
+        const have = new Set(n.modules);
+        const merged: string[] = [];
+        for (const id of launch) {
+          if (have.has(id) || addedModules.includes(id)) {
+            if (!merged.includes(id)) merged.push(id);
+            if (!have.has(id)) placed.push(id);
+          }
+        }
+        for (const id of n.modules) if (!merged.includes(id)) merged.push(id);
+        n.modules = merged;
+      }
+      if (n.children) reconcileLeaves(n.children);
+    }
+  };
+  reconcileLeaves(nav);
+
+  if (addedModules.length) ia.setModules(modules);
+  if (placed.length) ia.setNav(nav);
+  return { addedModules, placed };
 }

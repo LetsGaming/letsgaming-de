@@ -2,8 +2,8 @@
 import { onMounted, ref, watch } from "vue";
 import { analyticsAllowed, dntActive, setOptedOut } from "../lib/track";
 
-const props = defineProps<{ open: boolean; theme: "dark" | "light" }>();
-const emit = defineEmits<{ close: []; "toggle-theme": [] }>();
+const props = defineProps<{ open: boolean; theme: "dark" | "light"; locale: "en" | "de" }>();
+const emit = defineEmits<{ close: []; "toggle-theme": []; "set-locale": ["en" | "de"] }>();
 
 // Teleport must not render during SSR inside an Astro island (it corrupts
 // hydration). Only mount it after the client takes over.
@@ -29,6 +29,10 @@ function toggleAnalytics() {
 
 function setTheme(next: "dark" | "light") {
   if (next !== props.theme) emit("toggle-theme");
+}
+
+function setLocale(next: "en" | "de") {
+  if (next !== props.locale) emit("set-locale", next);
 }
 
 function onKey(e: KeyboardEvent) {
@@ -94,7 +98,16 @@ watch(
             </p>
           </section>
 
-          <!-- Future settings (e.g. language) slot in as new <section> blocks here. -->
+          <section>
+            <h3>Language</h3>
+            <div class="seg">
+              <button :class="{ on: locale === 'en' }" @click="setLocale('en')">English</button>
+              <button :class="{ on: locale === 'de' }" @click="setLocale('de')">Deutsch</button>
+            </div>
+            <p class="note">
+              Reloads the page in your language. Untranslated bits fall back to English.
+            </p>
+          </section>
         </div>
       </div>
     </Transition>

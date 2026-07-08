@@ -75,6 +75,44 @@ const DEMO: GitHubData = {
     { type: "star", text: "Starred tsparticles", at: daysAgo(9) },
     { type: "repo", text: "Created dotfiles", meta: "initial commit", at: daysAgo(16) },
   ],
+  releases: [
+    {
+      repo: "plantcare-tracker",
+      name: "Watering v1.2.0",
+      tagName: "v1.2.0",
+      url: "https://github.com/LetsGaming/plantcare-tracker/releases/tag/v1.2.0",
+      publishedAt: daysAgo(3),
+    },
+    {
+      repo: "LED-Controller-Websocket",
+      name: "Effects API",
+      tagName: "v0.9.0",
+      url: "https://github.com/LetsGaming/LED-Controller-Websocket/releases/tag/v0.9.0",
+      publishedAt: daysAgo(7),
+    },
+  ],
+  mergedPrs: [
+    {
+      repo: "LED-Controller-Websocket",
+      title: "Add effects API",
+      url: "https://github.com/LetsGaming/LED-Controller-Websocket/pull/12",
+      mergedAt: daysAgo(6),
+    },
+    {
+      repo: "plantcare-tracker",
+      title: "Refactor watering schedule",
+      url: "https://github.com/LetsGaming/plantcare-tracker/pull/34",
+      mergedAt: daysAgo(4),
+    },
+  ],
+  gists: [
+    {
+      description: "Quick SQLite WAL-checkpoint backup script",
+      url: "https://gist.github.com/LetsGaming/deadbeefcafe",
+      files: 1,
+      updatedAt: daysAgo(10),
+    },
+  ],
 };
 
 function daysAgo(n: number): string {

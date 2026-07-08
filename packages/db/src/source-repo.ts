@@ -1,4 +1,4 @@
-import type { GitHubData, SourceData } from "@lg/core";
+import type { GitHubData, SourceData, SteamData, WakapiData } from "@lg/core";
 import type { DB } from "./database.js";
 
 interface CurrentRow {
@@ -50,6 +50,8 @@ export function sourceRepo(db: DB) {
       const out: SourceData = {};
       for (const row of rows) {
         if (row.source_id === "github") out.github = JSON.parse(row.data) as GitHubData;
+        else if (row.source_id === "wakapi") out.wakapi = JSON.parse(row.data) as WakapiData;
+        else if (row.source_id === "steam") out.steam = JSON.parse(row.data) as SteamData;
         // future sources get folded in here — one line each.
       }
       return out;

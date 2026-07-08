@@ -27,4 +27,4 @@ mkdir -p "$LOCAL_DIR"
 scp -q "${PROXY_HOST}:${PROXY_LOG}" "${LOCAL_LOG}"
 
 docker compose -f "$COMPOSE" exec -T server \
-  node apps/server/dist/analytics/cli.js /logs/"$(basename "$LOCAL_LOG")" "$OWN_HOST"
+  node dist/analytics/cli.js /logs/"$(basename "$LOCAL_LOG")" "$OWN_HOST"

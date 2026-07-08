@@ -59,9 +59,11 @@ export function sessionTabsBucket(n: number): SessionTabBucket {
 export const CLICK_ACTIONS = [
   "contact-cta",
   "contact-submit",
+  "guestbook-submit",
   "project",
   "featured",
   "github-profile",
+  "highlight",
   "social",
   "theme-toggle",
   "more",

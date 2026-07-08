@@ -116,4 +116,41 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     store.content.deleteNow(req.params.id);
     return { ok: true };
   });
+
+  // ── guestbook moderation ───────────────────────────────────────────────────
+  // The queue: pending first (most-suspicious first), then approved/rejected.
+  app.get("/api/cms/guestbook", guard, async () => ({
+    entries: store.guestbook.listForModeration(),
+    pending: store.guestbook.countPending(),
+  }));
+
+  // Approve or reject one entry. Only these two transitions are allowed.
+  app.post<{ Params: { id: string; action: string } }>(
+    "/api/cms/guestbook/:id/:action",
+    guard,
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      const status =
+        req.params.action === "approve"
+          ? "approved"
+          : req.params.action === "reject"
+            ? "rejected"
+            : null;
+      if (!Number.isInteger(id) || !status) {
+        return reply.code(400).send({ error: "Invalid id or action." });
+      }
+      if (!store.guestbook.setStatus(id, status)) {
+        return reply.code(404).send({ error: "Entry not found." });
+      }
+      return { ok: true };
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>("/api/cms/guestbook/:id", guard, async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || !store.guestbook.remove(id)) {
+      return reply.code(404).send({ error: "Entry not found." });
+    }
+    return { ok: true };
+  });
 }

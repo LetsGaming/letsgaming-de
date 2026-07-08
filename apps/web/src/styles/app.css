@@ -570,6 +570,19 @@ h1 .pop::after {
   color: var(--muted);
   white-space: nowrap;
 }
+/* Clickable feed rows (highlights): no underline; nudge the title on hover. */
+a.ev-link {
+  text-decoration: none;
+}
+a.ev-link:hover .et {
+  color: var(--purple-br);
+}
+a.ev-link:hover .ei {
+  background: var(--purple-br);
+}
+a.ev-link:hover .ei svg {
+  color: #fff;
+}
 .src-note {
   margin-top: 18px;
   font-family: var(--f-m);
@@ -684,6 +697,45 @@ h1 .pop::after {
   font-weight: 600;
 }
 
+/* guestbook */
+.gb-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.gb-entry {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin: 0;
+}
+.gb-entry blockquote {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.gb-entry figcaption {
+  font-family: var(--f-m);
+  font-size: 12px;
+  color: var(--ink-strong);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.gb-entry figcaption .tm {
+  color: var(--muted);
+  margin-left: auto;
+}
+.gb-empty {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
 /* prose */
 .prose {
   max-width: 600px;
@@ -699,6 +751,174 @@ h1 .pop::after {
 .prose b {
   color: var(--ink-strong);
   font-weight: 600;
+}
+
+/* ── /docs renderer ──────────────────────────────────────────────────────── */
+.doc-wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.doc-nav {
+  position: sticky;
+  top: 24px;
+  font-size: 14px;
+}
+.doc-home {
+  display: inline-block;
+  font-family: var(--f-m);
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 16px;
+  text-decoration: none;
+}
+.doc-home:hover {
+  color: var(--purple-br);
+}
+.doc-group {
+  margin-bottom: 18px;
+}
+.doc-group h4 {
+  font-family: var(--f-m);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.doc-group ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.doc-group a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  line-height: 1.35;
+}
+.doc-group a:hover {
+  background: var(--purple-wash);
+}
+.doc-group a.on {
+  background: var(--purple-wash);
+  color: var(--purple-br);
+  font-weight: 600;
+}
+/* Rendered markdown */
+.doc-body {
+  max-width: 760px;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.doc-body > :first-child {
+  margin-top: 0;
+}
+.doc-body h1 {
+  font-family: var(--f-d);
+  font-size: 30px;
+  color: var(--ink-strong);
+  margin: 4px 0 18px;
+}
+.doc-body h2 {
+  font-family: var(--f-d);
+  font-size: 22px;
+  color: var(--ink-strong);
+  margin: 34px 0 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.doc-body h3 {
+  font-size: 17px;
+  color: var(--ink-strong);
+  margin: 24px 0 8px;
+}
+.doc-body p {
+  margin: 0 0 14px;
+}
+.doc-body a {
+  color: var(--purple-br);
+  text-decoration: none;
+}
+.doc-body a:hover {
+  text-decoration: underline;
+}
+.doc-body ul,
+.doc-body ol {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+.doc-body li {
+  margin: 4px 0;
+}
+.doc-body code {
+  font-family: var(--f-m);
+  font-size: 0.88em;
+  background: var(--purple-wash);
+  color: var(--purple-br);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+.doc-body pre {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.doc-body pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+.doc-body blockquote {
+  margin: 0 0 16px;
+  padding: 4px 16px;
+  border-left: 3px solid var(--purple);
+  color: var(--muted);
+}
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+.doc-body th,
+.doc-body td {
+  border: 1px solid var(--line);
+  padding: 7px 11px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-body th {
+  background: var(--purple-wash);
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+.doc-body hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 28px 0;
+}
+@media (max-width: 720px) {
+  .doc-wrap {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .doc-nav {
+    position: static;
+  }
 }
 
 footer {

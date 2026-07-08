@@ -7,8 +7,9 @@
 import { isLocale, resolveSiteView, type Locale } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
+import type { ServerEnv } from "../env.js";
 
-export function registerReadRoutes(app: FastifyInstance, store: Store): void {
+export function registerReadRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   app.get<{ Querystring: { locale?: string } }>("/api/site", async (req) => {
     const requested = req.query.locale;
     const locale: Locale = requested && isLocale(requested) ? requested : "en";
@@ -20,6 +21,11 @@ export function registerReadRoutes(app: FastifyInstance, store: Store): void {
       modules: store.ia.getModules(),
       locale,
       syncedAt: store.source.latestSyncedAt(),
+      guestbook: store.guestbook.listApproved(),
+      presence: {
+        show: env.presenceShow,
+        ...(env.discordUserId ? { discordId: env.discordUserId } : {}),
+      },
     });
   });
 }

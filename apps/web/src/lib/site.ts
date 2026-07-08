@@ -1,5 +1,21 @@
 import type { SiteView } from "@lg/core";
+import { isLocale, type Locale } from "@lg/core";
 import fallback from "../data/fallback-site.json";
+
+/**
+ * Decide which locale to render, SSR-side. Precedence: an explicit `?lang`
+ * choice, then the browser's `Accept-Language` (first tag whose base is a known
+ * locale — browsers send these in descending preference), then English. Pure so
+ * it's unit-testable; the page passes the request's param + header.
+ */
+export function pickLocale(param?: string | null, acceptLanguage?: string | null): Locale {
+  if (param && isLocale(param)) return param;
+  for (const part of (acceptLanguage ?? "").split(",")) {
+    const base = part.split(";")[0]?.trim().toLowerCase().split("-")[0] ?? "";
+    if (isLocale(base)) return base;
+  }
+  return "en";
+}
 
 /** Escape HTML, then turn `**bold**` into <b>…</b>. Safe for v-html: the only
  *  markup introduced is <b>, and all original characters are escaped first. */

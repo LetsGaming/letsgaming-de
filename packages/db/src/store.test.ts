@@ -1,7 +1,7 @@
 import { lintNav, resolveSiteView, type GitHubData } from "@lg/core";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { openStore } from "./index.js";
+import { openDatabase, openStore, iaRepo, reconcileIa, seedIfEmpty } from "./index.js";
 
 const sampleGitHub: GitHubData = {
   stats: { repos: 17, commitsYear: 428, commitsAllTime: 2100, longestStreakDays: 19 },
@@ -35,6 +35,70 @@ test("seed populates content and IA", () => {
   assert.equal(nav.length, 4);
   assert.ok(lintNav(nav, { knownModuleIds: modules.map((m) => m.id) }).ok);
   store.close();
+});
+
+test("guestbook: new entries are pending (hidden), approving reveals them", () => {
+  const store = openStore(":memory:");
+  const id1 = store.guestbook.add({ name: "A", message: "hi", createdAt: "2026-01-01T00:00:00Z", flags: [], score: 0 });
+  store.guestbook.add({ name: "B", message: "spammy", createdAt: "2026-01-02T00:00:00Z", flags: ["links"], score: 3 });
+
+  assert.equal(store.guestbook.listApproved().length, 0);
+  assert.equal(store.guestbook.countPending(), 2);
+
+  store.guestbook.setStatus(id1, "approved");
+  const pub = store.guestbook.listApproved();
+  assert.equal(pub.length, 1);
+  assert.equal(pub[0]?.name, "A");
+  assert.equal(store.guestbook.countPending(), 1);
+  assert.ok(!("flags" in (pub[0] as object)) && !("status" in (pub[0] as object)));
+  store.close();
+});
+
+test("guestbook: moderation queue puts pending first, most-suspicious first", () => {
+  const store = openStore(":memory:");
+  const low = store.guestbook.add({ name: "L", message: "hi", createdAt: "2026-01-03T00:00:00Z", flags: [], score: 0 });
+  const high = store.guestbook.add({ name: "H", message: "buy", createdAt: "2026-01-01T00:00:00Z", flags: ["links", "profanity"], score: 4 });
+  const approved = store.guestbook.add({ name: "OK", message: "nice", createdAt: "2026-01-05T00:00:00Z", flags: [], score: 0 });
+  store.guestbook.setStatus(approved, "approved");
+
+  const queue = store.guestbook.listForModeration();
+  assert.equal(queue[0]?.id, high);
+  assert.equal(queue[1]?.id, low);
+  assert.equal(queue[2]?.status, "approved");
+
+  assert.equal(store.guestbook.remove(low), true);
+  assert.equal(store.guestbook.remove(9999), false);
+  store.close();
+});
+
+test("reconcileIa adds and places a newly-registered launch module (IA migration)", () => {
+  const db = openDatabase(":memory:");
+  seedIfEmpty(db);
+  const ia = iaRepo(db);
+
+  // Simulate a store seeded before `highlights` existed: drop its descriptor and
+  // its placement in the Work leaf.
+  const nav = ia.getNav();
+  const work = nav.find((n) => n.id === "work");
+  if (!work) throw new Error("expected a work leaf");
+  work.modules = ["activity", "projects"];
+  ia.setNav(nav);
+  ia.setModules(ia.getModules().filter((m) => m.id !== "highlights"));
+  assert.ok(!ia.getModules().some((m) => m.id === "highlights"));
+
+  const res = reconcileIa(db);
+  assert.deepEqual(res.addedModules, ["highlights"]);
+  assert.deepEqual(res.placed, ["highlights"]);
+  assert.ok(ia.getModules().some((m) => m.id === "highlights"));
+  const work2 = ia.getNav().find((n) => n.id === "work");
+  // Placed in launch order — between activity and projects — without disturbing them.
+  assert.deepEqual(work2?.modules, ["activity", "highlights", "projects"]);
+
+  // Idempotent: running again changes nothing.
+  const again = reconcileIa(db);
+  assert.deepEqual(again.addedModules, []);
+  assert.deepEqual(again.placed, []);
+  db.close();
 });
 
 test("recording a snapshot updates current and appends history", () => {

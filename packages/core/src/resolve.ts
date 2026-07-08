@@ -17,9 +17,14 @@ import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
 import { collectModuleIds, type NavNode } from "./nav.js";
 import type { GitHubData, SourceData } from "./source.js";
+import type { PublicGuestbookEntry } from "./guestbook.js";
 import type {
+  CodingView,
+  GuestbookEntryView,
+  HighlightView,
   LinkView,
   NavView,
+  PresenceModuleView,
   ProjectView,
   ResolvedModule,
   SiteView,
@@ -34,6 +39,10 @@ export interface ResolveInput {
   locale?: Locale;
   /** ISO timestamp of the last sync, surfaced to the client. */
   syncedAt?: string;
+  /** Approved guestbook entries, newest first (the store filters + orders). */
+  guestbook?: PublicGuestbookEntry[];
+  /** Discord presence widget config (from env): the Lanyard id + category allow-list. */
+  presence?: { discordId?: string; show: string[] };
   /** Injectable clock for deterministic relative times (tests). */
   now?: Date;
 }
@@ -127,6 +136,36 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     ];
   };
 
+  /** Merge GitHub releases, merged PRs, and gists into one newest-first feed. */
+  const highlightViews = (data: GitHubData): HighlightView[] => {
+    const rel = (iso: string) => relativeTime(iso, now);
+    const releases: HighlightView[] = (data.releases ?? []).map((r) => ({
+      type: "release",
+      text: `Released ${r.repo} ${r.name || r.tagName}`,
+      meta: r.tagName,
+      href: safeHref(r.url),
+      at: r.publishedAt,
+      relative: rel(r.publishedAt),
+    }));
+    const prs: HighlightView[] = (data.mergedPrs ?? []).map((p) => ({
+      type: "pr",
+      text: `Merged “${p.title}” in ${p.repo}`,
+      href: safeHref(p.url),
+      at: p.mergedAt,
+      relative: rel(p.mergedAt),
+    }));
+    const gists: HighlightView[] = (data.gists ?? []).map((g) => ({
+      type: "gist",
+      text: g.description ? `Shared a gist: ${g.description}` : "Shared a gist",
+      meta: `${g.files} file${g.files === 1 ? "" : "s"}`,
+      href: safeHref(g.url),
+      at: g.updatedAt,
+      relative: rel(g.updatedAt),
+    }));
+    // ISO timestamps sort lexicographically == chronologically; newest first.
+    return [...releases, ...prs, ...gists].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
+  };
+
   const activeSources = (): string[] =>
     (Object.keys(source) as (keyof SourceData)[])
       .filter((id) => source[id])
@@ -194,6 +233,27 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           },
         };
       }
+      case "highlights":
+        return {
+          id: descriptor.id,
+          kind: "highlights",
+          data: { heading, note, items: gh ? highlightViews(gh) : [], sources: activeSources() },
+        };
+      case "coding": {
+        const w = source.wakapi;
+        const coding: CodingView | null = w
+          ? {
+              range: w.range,
+              totalHours: Math.round((w.totalSeconds / 3600) * 10) / 10,
+              languages: w.languages.map((l) => ({
+                name: l.name,
+                pct: l.pct,
+                hours: Math.round((l.seconds / 3600) * 10) / 10,
+              })),
+            }
+          : null;
+        return { id: descriptor.id, kind: "coding", data: { heading, note, coding } };
+      }
       case "projects": {
         const repoCount = gh?.stats.repos;
         return {
@@ -233,6 +293,33 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             items: content.now.map((n) => ({ id: n.id, key: L(n.key), value: L(n.value) })),
           },
         };
+      case "guestbook": {
+        const entries: GuestbookEntryView[] = (input.guestbook ?? []).map((e) => ({
+          id: e.id,
+          name: e.name,
+          message: e.message,
+          at: e.createdAt,
+          relative: relativeTime(e.createdAt, now),
+        }));
+        return { id: descriptor.id, kind: "guestbook", data: { heading, note, entries } };
+      }
+      case "presence": {
+        const show = input.presence?.show ?? [];
+        const LIVE_CATEGORIES = ["game", "streaming", "music", "watching", "custom"];
+        // "live" only if a Discord id is configured AND at least one live category
+        // is enabled — the client just learns whether to poll, never the details.
+        const live = Boolean(input.presence?.discordId) && show.some((c) => LIVE_CATEGORIES.includes(c));
+        const steam = source.steam;
+        // Steam data reaches the client only when the owner enabled the category.
+        const includeSteam = show.includes("steam") && steam;
+        const data: PresenceModuleView = {
+          live,
+          ...(includeSteam
+            ? { steam: { ...(steam.playing ? { playing: steam.playing } : {}), recent: steam.recent } }
+            : {}),
+        };
+        return { id: descriptor.id, kind: "presence", data: { heading, note, ...data } };
+      }
       case "bio":
         return {
           id: descriptor.id,

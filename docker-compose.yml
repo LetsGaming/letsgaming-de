@@ -34,6 +34,17 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       CONTACT_FROM: ${CONTACT_FROM:-}
       CONTACT_TO: ${CONTACT_TO:-}
+      # Discord presence widget (Lanyard). The user id is public; live status is
+      # fetched in the browser. PRESENCE_SHOW curates which categories appear.
+      DISCORD_USER_ID: ${DISCORD_USER_ID:-}
+      PRESENCE_SHOW: ${PRESENCE_SHOW:-game,streaming,music,custom,steam}
+      # Wakapi (coding time) — LAN-only; the sync worker reaches it over the local
+      # network, so no ports are published and nothing is exposed to the internet.
+      WAKAPI_URL: ${WAKAPI_URL:-}
+      WAKAPI_KEY: ${WAKAPI_KEY:-}
+      # Steam (public Web API) — powers "Recently on Steam".
+      STEAM_API_KEY: ${STEAM_API_KEY:-}
+      STEAM_ID: ${STEAM_ID:-}
     volumes:
       # The store + media are the archive — this volume is what you back up.
       - store:/data

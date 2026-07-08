@@ -32,6 +32,22 @@ const raw: GitHubRaw = {
     { type: "PushEvent", repo: "a", createdAt: "2026-01-05T00:00:00Z", detail: "fix bug" },
     { type: "MemberEvent", repo: "a", createdAt: "2026-01-05T00:00:00Z" },
   ],
+  releases: [
+    { repo: "a", name: null, tagName: "v1.0.0", url: "u/1", publishedAt: "2026-01-02T00:00:00Z" },
+    { repo: "b", name: "Big", tagName: "v2.0.0", url: "u/2", publishedAt: "2026-01-09T00:00:00Z" },
+    // Draft/unpublished release (no publishedAt) must be dropped.
+    { repo: "c", name: "Draft", tagName: "v0", url: "u/3", publishedAt: null },
+  ],
+  mergedPrs: [
+    { repo: "a", title: "older", url: "p/1", mergedAt: "2026-01-01T00:00:00Z" },
+    { repo: "b", title: "newer", url: "p/2", mergedAt: "2026-01-08T00:00:00Z" },
+    // Open PR (not merged) must be dropped.
+    { repo: "c", title: "open", url: "p/3", mergedAt: null },
+  ],
+  gists: [
+    { description: "snippet", url: "g/1", files: 2, updatedAt: "2026-01-04T00:00:00Z" },
+    { description: null, url: "g/2", files: 1, updatedAt: "2026-01-06T00:00:00Z" },
+  ],
 };
 
 test("languages aggregate and exclude forks", () => {
@@ -65,4 +81,24 @@ test("all-time commits and non-fork repos are surfaced", () => {
   assert.equal(d.repos?.length, 1);
   assert.equal(d.repos?.[0]?.name, "a");
   assert.equal(d.repos?.[0]?.stars, 3);
+});
+
+test("releases: drop unpublished, sort newest-first, name falls back to tag", () => {
+  const d = normalizeGitHub(raw);
+  assert.equal(d.releases?.length, 2); // draft dropped
+  assert.equal(d.releases?.[0]?.tagName, "v2.0.0"); // newest first
+  assert.equal(d.releases?.[1]?.name, "v1.0.0"); // null name -> tagName
+});
+
+test("merged PRs: drop unmerged and sort newest-first", () => {
+  const d = normalizeGitHub(raw);
+  assert.equal(d.mergedPrs?.length, 2); // open PR dropped
+  assert.equal(d.mergedPrs?.[0]?.title, "newer");
+});
+
+test("gists: sort newest-first and default a missing description to empty", () => {
+  const d = normalizeGitHub(raw);
+  assert.equal(d.gists?.length, 2);
+  assert.equal(d.gists?.[0]?.description, ""); // null -> ""
+  assert.equal(d.gists?.[1]?.files, 2);
 });

@@ -2,6 +2,87 @@
 
 ## Unreleased
 
+### Features
+
+- **Discord presence widget (Lanyard + Steam hybrid, server-filtered).** A new **Life →
+  "Right now-ish"** widget shows live Discord status and activities plus a **"Recently on Steam"**
+  section. Crucially, **the server does the filtering**: it fetches Lanyard, applies the owner's
+  category allow-list (`game / streaming / music / watching / custom / steam` via `PRESENCE_SHOW`),
+  and exposes only the permitted result at `/api/presence` (shared 15s cache). The browser polls
+  that endpoint and **never receives the Discord id, the category list, or any disabled activity** —
+  the backend is the filtering boundary, like every other source. Disabling music or showing only
+  Steam is config, not code; Spotify is de-duped into one clean card. Steam (public Web API, synced
+  server-side) is likewise withheld unless the category is enabled.
+- **Wakapi source (coding time by language).** A new **Work → "What I actually work in"** module
+  shows tracked coding hours per language from a self-hosted, WakaTime-compatible Wakapi instance —
+  the honest counterpart to GitHub's byte counts. Wakapi is **LAN-only**: the sync worker reaches it
+  over the local network (server-side, like every source), so nothing is exposed to the internet;
+  a private `WAKAPI_URL` + read key is all it needs.
+- Both are standard **source adapters** (same contract as GitHub — fetch → normalize → store →
+  SiteView, with deterministic dev mocks), register only when configured, and their modules reach an
+  existing store via the IA reconciliation. `.env.example` and `docker-compose.yml` document the new
+  variables.
+- **Guestbook (cookieless, pre-moderated).** Visitors can leave a name + short message in a new
+  **Life → Guestbook** section; nothing is public until the owner approves it. Submissions go
+  through a honeypot + per-IP rate limit and are stored minimally — name, message, server timestamp,
+  **no IP, no identifier** — matching the site's privacy stance. A lightweight, tested auto-flag
+  heuristic (links / caps / profanity / length / repetition) scores each entry to *sort* the CMS
+  moderation queue (it never auto-rejects — a human decides). The CMS gains a **Guestbook queue tab**
+  (pending-first, most-suspicious-first) with approve / reject / delete. Approved entries are folded
+  into the SiteView by the resolver (with relative times) and render as cards above the signing form.
+  New module placement reaches the live store via the existing IA reconciliation. The
+  Datenschutzerklärung gains a Gästebuch section (please review the wording).
+- **On-site documentation at `/docs`.** The repo's own `docs/` markdown now renders on the site
+  with a sidebar nav tree (grouped: Overview + ADRs), Shiki-highlighted code, and styled tables —
+  reusing the site's design tokens. Built with an Astro content collection over the repo's `docs/`
+  folder and prerendered (one static page per doc), so it adds no runtime JS and ships baked into
+  the image; docs refresh on the next deploy like any code change. Intra-doc `.md` links are
+  rewritten to `/docs/<slug>` (with heading anchors preserved) and links that point outside `docs/`
+  (e.g. package READMEs) become GitHub blob URLs — all via one tested helper. `/docs` redirects to
+  the docs README; a footer link makes it discoverable.
+- **Language switch (English / Deutsch).** The settings modal gains a Language control that reloads
+  the page in the chosen language and remembers it (cookieless — `localStorage`, like the theme). SSR
+  picks the locale from an explicit `?lang`, then the browser's `Accept-Language`, then English, and
+  the read API localizes the whole SiteView for it — untranslated fields fall back to English
+  per-field, so partial translations are fine. `<html lang>` is set accordingly, and a tiny no-flash
+  inline script (index only) honours a returning visitor's stored choice. The CMS already edits both
+  locales (the EN/DE editor toggle), so German is now purely a content task — no schema change.
+- **GitHub extras — a "Recently shipped" section.** A new `highlights` module surfaces
+  **releases, merged pull requests, and public gists** as one friendly, newest-first feed
+  (each row a plain-language line — "Released …", "Merged … in …", "Shared a gist: …" — linking
+  out to GitHub). It sits in **Work**, between Activity and Projects. Source-owned like the rest
+  of the GitHub data: the adapter fetches it (one extended GraphQL round-trip + the existing
+  REST events), `normalize()` bounds and sorts it, and the resolver folds it into the SiteView
+  with pre-computed relative times — the frontend stays a dumb renderer. The dev mock includes
+  sample extras so it renders end-to-end without a token. Because nav/module placement lives in
+  the DB (seeded once, not CMS-editable), boot now runs an **idempotent IA reconciliation** that
+  registers and places any newly-added launch module, so the section appears on the existing
+  production store without a manual migration.
+
+### Dependencies & build
+
+- **Dependency advisory sweep — `pnpm audit` is now clean** (was 2 critical · 4 high · 8 moderate ·
+  2 low). Bumped **happy-dom 15→20** and **vitest 2→3** (clears both criticals + the transitive
+  `vite`/`esbuild` highs), **nodemailer 7→9** (contact relay — the only advisory on a request
+  path), and **node-cron 3→4** (drops its vulnerable `uuid@8.3.2` transitive; v4 has zero deps).
+  Added a pnpm override forcing patched `esbuild` (≥0.28.1) for the dev-only, Windows-only advisory
+  via astro. Removed the now-redundant `@types/node-cron` (node-cron 4 ships its own types).
+- **Runtime images are prod-pruned.** Both Dockerfiles now build the workspace and then
+  `pnpm deploy --prod` a self-contained tree (built `dist` + prod deps + the compiled sharp addon),
+  so **dev tooling — and its advisories — no longer ship in the deployed container**. The server
+  image drops from copying the whole ~304 MB workspace to a ~35 MB prod tree. Each app package
+  gained `files: ["dist"]` so the (gitignored) build output is included in the deploy. The deploy
+  root is the package root, so in-container entrypoints/commands are now package-relative
+  (`dist/index.js`, `dist/analytics/cli.js`, …) — analytics-ingest script and DEPLOYMENT docs
+  updated to match.
+
+### Fixes
+
+- **Sync runner:** import `ScheduledTask` as a named type (node-cron 4 no longer exposes it under
+  the `cron` namespace).
+- **CMS:** new hobby/link/now rows get a unique id (timestamp-suffixed) instead of a fixed default,
+  fixing a primary-key collision when adding two rows before renaming either.
+
 - **Hourly analytics + rollup retention.** Log-derived stats (page views, referrers, browsers…)
   are now bucketed by **UTC hour** like engagement, so the dashboard can show page-views-over-time.
   A nightly job **bundles hourly buckets older than `RETAIN_HOURLY_DAYS` (default 90) into daily

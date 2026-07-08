@@ -24,6 +24,15 @@ export interface RawRepo {
   description?: string | null;
   url?: string;
   isArchived?: boolean;
+  /** Latest release for this repo, if any (§ GitHub extras). */
+  releases?: { nodes: RawReleaseNode[] };
+}
+
+interface RawReleaseNode {
+  name: string | null;
+  tagName: string;
+  url: string;
+  publishedAt: string | null;
 }
 
 export interface RawContributionDay {
@@ -44,6 +53,34 @@ export interface GitHubRaw {
   days: RawContributionDay[];
   /** Recent public events for the feed (from REST — GraphQL's feed is awkward). */
   events: RawEvent[];
+  /** Latest release per repo, flattened (§ GitHub extras). */
+  releases?: RawRelease[];
+  /** Recently merged pull requests. */
+  mergedPrs?: RawMergedPr[];
+  /** Public gists. */
+  gists?: RawGist[];
+}
+
+export interface RawRelease {
+  repo: string;
+  name: string | null;
+  tagName: string;
+  url: string;
+  publishedAt: string | null;
+}
+
+export interface RawMergedPr {
+  repo: string;
+  title: string;
+  url: string;
+  mergedAt: string | null;
+}
+
+export interface RawGist {
+  description: string | null;
+  url: string;
+  files: number;
+  updatedAt: string;
 }
 
 export interface RawEvent {
@@ -74,7 +111,16 @@ query($login: String!) {
         languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
           edges { size node { name } }
         }
+        releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
+          nodes { name tagName url publishedAt }
+        }
       }
+    }
+    pullRequests(first: 8, states: MERGED, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes { title url mergedAt repository { name } }
+    }
+    gists(first: 8, privacy: PUBLIC, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes { description url updatedAt files { name } }
     }
     contributionsCollection {
       totalCommitContributions
@@ -121,6 +167,28 @@ export async function fetchGitHub(config: GitHubConfig): Promise<GitHubRaw> {
     calendarTotal: user.contributionsCollection.contributionCalendar.totalContributions,
     days,
     events: await fetchEvents(config),
+    // Latest release per repo, flattened (normalize sorts + caps).
+    releases: user.repositories.nodes.flatMap((r) =>
+      (r.releases?.nodes ?? []).map((rel) => ({
+        repo: r.name,
+        name: rel.name,
+        tagName: rel.tagName,
+        url: rel.url,
+        publishedAt: rel.publishedAt,
+      })),
+    ),
+    mergedPrs: (user.pullRequests?.nodes ?? []).map((p) => ({
+      repo: p.repository?.name ?? "",
+      title: p.title,
+      url: p.url,
+      mergedAt: p.mergedAt,
+    })),
+    gists: (user.gists?.nodes ?? []).map((g) => ({
+      description: g.description,
+      url: g.url,
+      files: g.files.length,
+      updatedAt: g.updatedAt,
+    })),
   };
 }
 
@@ -173,6 +241,12 @@ interface RawUser {
   createdAt: string;
   pinnedItems?: { nodes: { name?: string }[] };
   repositories: { totalCount: number; nodes: RawRepo[] };
+  pullRequests?: {
+    nodes: { title: string; url: string; mergedAt: string | null; repository: { name: string } | null }[];
+  };
+  gists?: {
+    nodes: { description: string | null; url: string; updatedAt: string; files: ({ name: string | null } | null)[] }[];
+  };
   contributionsCollection: {
     totalCommitContributions: number;
     contributionCalendar: {

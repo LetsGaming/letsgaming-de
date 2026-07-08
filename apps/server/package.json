@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Fastify server: read API + CMS API + GitHub OAuth + the sync worker host.",
   "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
@@ -22,14 +25,13 @@
     "@lg/db": "workspace:^",
     "@lg/sources": "workspace:^",
     "fastify": "^5.1.0",
-    "node-cron": "^3.0.3",
-    "nodemailer": "^7.0.7",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^9.0.1",
     "sharp": "^0.33"
   },
   "devDependencies": {
     "@types/node": "^22",
-    "@types/node-cron": "^3.0.11",
-    "@types/nodemailer": "^7",
+    "@types/nodemailer": "^8",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

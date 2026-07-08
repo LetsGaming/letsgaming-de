@@ -68,6 +68,9 @@ interface GitHubData {
   contributions: number[];              // per-day intensity, accumulated
   events: { type: "commit"|"pr"|"star"|"repo"; text; meta?; at }[];
   repos?: { name; stars; pushedAt }[];  // enriches curated project meta
+  releases?: { repo; name; tagName; url; publishedAt }[];  // GitHub extras
+  mergedPrs?: { repo; title; url; mergedAt }[];
+  gists?: { description; url; files; updatedAt }[];
 }
 ```
 
@@ -80,5 +83,5 @@ The **fully resolved** output of `resolveSiteView()` — localized strings (no
 `Localized` left), source data folded in, relative times and heatmap buckets
 pre-computed. `{ locale, meta, nav: NavView[], modules: Record<id, ResolvedModule>,
 syncedAt }`. Each `ResolvedModule` is discriminated by `kind`
-(`hero`/`featured`/`glance`/`activity`/`projects`/`hobbies`/`now`/`bio`/`contact`);
+(`hero`/`featured`/`glance`/`activity`/`highlights`/`coding`/`projects`/`hobbies`/`now`/`guestbook`/`presence`/`bio`/`contact`);
 the frontend maps kind → component and never sees where the data came from.

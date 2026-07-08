@@ -11,7 +11,13 @@ const app = await buildApp(store, env);
 // The sync worker lives in-process (§10: one container for API + CMS + sync).
 const runner = new SyncRunner(
   store,
-  { githubUsername: env.github.username, githubToken: env.github.token },
+  {
+    githubUsername: env.github.username,
+    githubToken: env.github.token,
+    ...(env.wakapi ? { wakapiUrl: env.wakapi.url, wakapiKey: env.wakapi.key } : {}),
+    ...(env.steam ? { steamApiKey: env.steam.apiKey, steamId: env.steam.steamId } : {}),
+    useMocks: process.env.NODE_ENV !== "production",
+  },
   (msg) => app.log.info(msg),
   env.retainHourlyDays,
 );

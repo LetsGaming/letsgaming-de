@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS now_items (
   sort  INTEGER NOT NULL DEFAULT 0
 );
 
+-- ── Visitor-submitted: guestbook (pre-moderated) ─────────────────────────────
+-- Cookieless, minimal: name + message + server timestamp only (no IP, no id).
+-- Nothing is public until `status = 'approved'` in the CMS queue. `flags`/`score`
+-- are auto-computed hints that only *sort* the queue — a human always decides.
+CREATE TABLE IF NOT EXISTS guestbook (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  created_at TEXT NOT NULL,                      -- ISO timestamp (server-assigned)
+  status     TEXT NOT NULL DEFAULT 'pending',    -- 'pending' | 'approved' | 'rejected'
+  flags      TEXT NOT NULL DEFAULT '',           -- comma-joined auto-flag reasons
+  score      INTEGER NOT NULL DEFAULT 0          -- auto-flag score (higher = suspicious)
+);
+CREATE INDEX IF NOT EXISTS idx_guestbook_status ON guestbook (status, created_at DESC);
+
 -- ── Source-owned: the archive + current snapshot ─────────────────────────────
 
 -- Append-only history. Every sync writes one row here. This is what lets the

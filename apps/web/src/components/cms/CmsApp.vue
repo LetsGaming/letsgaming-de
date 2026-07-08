@@ -3,8 +3,8 @@ import type { Hobby, Link, Localized, NowItem } from "@lg/core";
 import { computed, onMounted, reactive, ref } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../../lib/cms";
 
-type Tab = "content" | "hobbies" | "links" | "now" | "media" | "analytics";
-const TABS: Tab[] = ["content", "hobbies", "links", "now", "media", "analytics"];
+type Tab = "content" | "hobbies" | "links" | "now" | "media" | "guestbook" | "analytics";
+const TABS: Tab[] = ["content", "hobbies", "links", "now", "media", "guestbook", "analytics"];
 
 const authed = ref(false);
 const login = ref<string | null>(null);
@@ -26,6 +26,44 @@ const now = ref<(NowItem & { sort?: number })[]>([]);
 const media = ref<string[]>([]);
 const analytics = ref<any>(null);
 
+// Guestbook moderation queue.
+interface ModEntry {
+  id: number;
+  name: string;
+  message: string;
+  createdAt: string;
+  status: "pending" | "approved" | "rejected";
+  flags: string[];
+  score: number;
+}
+const guestbook = ref<{ entries: ModEntry[]; pending: number } | null>(null);
+const loadingG = ref(false);
+
+async function loadGuestbook() {
+  loadingG.value = true;
+  try {
+    guestbook.value = await cms.guestbook();
+  } catch (e) {
+    if (e instanceof AuthError) authed.value = false;
+    else flash((e as Error).message || "Couldn't load the guestbook.");
+  } finally {
+    loadingG.value = false;
+  }
+}
+function moderate(id: number, action: "approve" | "reject") {
+  void guarded(async () => {
+    await cms.moderate(id, action);
+    await loadGuestbook();
+  }, action === "approve" ? "Approved" : "Rejected");
+}
+function removeEntry(id: number) {
+  if (!confirm("Delete this entry permanently?")) return;
+  void guarded(async () => {
+    await cms.del(`guestbook/${id}`);
+    await loadGuestbook();
+  }, "Deleted");
+}
+
 function emptyL(): Localized {
   return { en: "" };
 }
@@ -34,9 +72,6 @@ function lv(obj: Localized, l: "en" | "de") {
 }
 function setLv(obj: Localized, l: "en" | "de", val: string) {
   obj[l] = val;
-}
-function slug(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `id-${Date.now()}`;
 }
 function flash(msg: string) {
   toast.value = msg;
@@ -129,12 +164,16 @@ function move(arr: any[], i: number, dir: -1 | 1, kind: string) {
 }
 
 // Adders
+// Seed a unique id per new row. A fixed default like "new-link" would collide on
+// the primary key if two rows are added before renaming (applies to hobbies/
+// links/now alike); the timestamp suffix keeps each new row distinct.
+const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
 const addHobby = () =>
-  hobbies.value.push({ id: slug("new-hobby"), title: emptyL(), blurb: emptyL(), tone: "purple", sort: hobbies.value.length });
+  hobbies.value.push({ id: newId("hobby"), title: emptyL(), blurb: emptyL(), tone: "purple", sort: hobbies.value.length });
 const addLink = () =>
-  links.value.push({ id: slug("new-link"), label: emptyL(), href: "", sort: links.value.length });
+  links.value.push({ id: newId("link"), label: emptyL(), href: "", sort: links.value.length });
 const addNow = () =>
-  now.value.push({ id: slug("new"), key: emptyL(), value: emptyL(), sort: now.value.length });
+  now.value.push({ id: newId("now"), key: emptyL(), value: emptyL(), sort: now.value.length });
 const addBio = () => bio.value.push(emptyL());
 
 /** Drop empty `de` keys so we don't persist blank translations. */
@@ -322,6 +361,7 @@ const chart = computed(() => {
 function pickTab(t: Tab) {
   tab.value = t;
   if (t === "media" && media.value.length === 0) void loadMedia();
+  if (t === "guestbook" && !guestbook.value) void loadGuestbook();
   if (t === "analytics" && !analytics.value) void loadAnalytics();
 }
 
@@ -487,6 +527,46 @@ onMounted(boot);
         </div>
       </section>
 
+      <!-- GUESTBOOK MODERATION -->
+      <section v-show="tab === 'guestbook'" class="pane">
+        <div class="gb-head">
+          <h2>
+            Guestbook
+            <span v-if="guestbook?.pending" class="pill pill-pending">{{ guestbook.pending }} pending</span>
+          </h2>
+          <button class="btn ghost" @click="loadGuestbook">Refresh</button>
+        </div>
+        <p class="muted">
+          Nothing is public until you approve it. Auto-flags only sort the queue — you decide.
+        </p>
+        <div v-if="loadingG" class="muted">Loading…</div>
+        <div v-else-if="!guestbook?.entries.length" class="muted">No entries yet.</div>
+        <div v-else class="gb-mod">
+          <div v-for="e in guestbook.entries" :key="e.id" class="gb-row">
+            <div class="gb-body">
+              <div class="gb-meta">
+                <span class="pill" :class="'pill-' + e.status">{{ e.status }}</span>
+                <b>{{ e.name }}</b>
+                <span class="muted">{{ new Date(e.createdAt).toLocaleString() }}</span>
+                <span v-if="e.flags.length" class="gb-flags" :title="`score ${e.score}`">
+                  ⚑ {{ e.flags.join(", ") }}
+                </span>
+              </div>
+              <p class="gb-text">{{ e.message }}</p>
+            </div>
+            <div class="gb-buttons">
+              <button v-if="e.status !== 'approved'" class="btn" @click="moderate(e.id, 'approve')">
+                Approve
+              </button>
+              <button v-if="e.status === 'pending'" class="btn ghost" @click="moderate(e.id, 'reject')">
+                Reject
+              </button>
+              <button class="link danger" @click="removeEntry(e.id)">delete</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ANALYTICS -->
       <section v-show="tab === 'analytics'" class="pane">
         <div v-if="!analytics" class="muted">Loading…</div>
@@ -639,4 +719,18 @@ input, textarea, select { font-family: var(--f-b); font-size: 14px; color: var(-
 .clearbtn.danger { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 40%, var(--line)); }
 .clearbtn:disabled { opacity: 0.5; cursor: default; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg-base); padding: 10px 18px; border-radius: 10px; font-size: 14px; box-shadow: var(--sh-2); }
+.gb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gb-head h2 { display: flex; align-items: center; gap: 10px; }
+.gb-mod { display: flex; flex-direction: column; gap: 10px; }
+.gb-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.gb-body { min-width: 0; flex: 1; }
+.gb-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.gb-text { margin-top: 6px; font-size: 14px; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.gb-flags { font-family: var(--f-m); font-size: 11px; color: var(--coral); }
+.gb-buttons { display: flex; align-items: center; gap: 10px; flex: none; }
+.gb-buttons .btn { padding: 6px 12px; font-size: 13px; }
+.pill { font-family: var(--f-m); font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); text-transform: capitalize; }
+.pill-pending { background: var(--purple-wash); color: var(--purple-br); border-color: transparent; }
+.pill-approved { background: color-mix(in srgb, var(--mint, #34d399) 20%, transparent); color: var(--ink-strong); }
+.pill-rejected { color: var(--muted); }
 </style>

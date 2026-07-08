@@ -79,6 +79,18 @@ export const cms = {
       body: JSON.stringify({ range }),
     }).then(handle),
 
+  guestbook: () =>
+    fetch(`${API_BASE}/api/cms/guestbook`, {
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
+  moderate: (id: number, action: "approve" | "reject") =>
+    fetch(`${API_BASE}/api/cms/guestbook/${id}/${action}`, {
+      method: "POST",
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
+
   put: (path: string, body: unknown) =>
     fetch(`${API_BASE}/api/cms/${path}`, {
       method: "PUT",

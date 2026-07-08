@@ -1,14 +1,20 @@
 ---
 import TabbedSite from "../components/TabbedSite.vue";
 import Layout from "../layouts/Layout.astro";
-import { loadSite } from "../lib/site";
+import { loadSite, pickLocale } from "../lib/site";
 
-// Runs at build time (static output). Reads the last-synced SiteView from the API,
-// falling back to the committed fixture if the API isn't reachable during build.
-const site = await loadSite("en");
+// SSR per request. Pick the locale from an explicit `?lang`, else the browser's
+// Accept-Language, else English; the read API localizes the whole SiteView for
+// it (missing translations fall back to English). Still nothing external is
+// fetched here — loadSite reads the local store via the API.
+const locale = pickLocale(
+  Astro.url.searchParams.get("lang"),
+  Astro.request.headers.get("accept-language"),
+);
+const site = await loadSite(locale);
 ---
 
-<Layout title={`${site.meta.name} — web dev & tinkerer`}>
+<Layout title={`${site.meta.name} — web dev & tinkerer`} locale={locale} localeAware={true}>
   <main>
     <TabbedSite site={site} client:load />
   </main>

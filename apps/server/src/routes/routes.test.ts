@@ -39,6 +39,89 @@ test("CMS fails closed (503) when neither token nor OAuth is configured", async 
   await app.close();
 });
 
+test("read API selects the locale from ?locale and falls back on an unknown one", async () => {
+  const app = await enabledApp();
+
+  const def = await app.inject({ method: "GET", url: "/api/site" });
+  assert.equal(def.statusCode, 200);
+  assert.equal(def.json().locale, "en"); // default
+
+  const de = await app.inject({ method: "GET", url: "/api/site?locale=de" });
+  assert.equal(de.json().locale, "de");
+
+  const bad = await app.inject({ method: "GET", url: "/api/site?locale=fr" });
+  assert.equal(bad.json().locale, "en"); // unknown locale falls back
+  await app.close();
+});
+
+test("guestbook: submit stores a pending entry (not public) and honeypot is silently dropped", async () => {
+  const app = await enabledApp();
+
+  const ok = await app.inject({
+    method: "POST",
+    url: "/api/guestbook",
+    payload: { name: "Visitor", message: "Nice site!" },
+  });
+  assert.equal(ok.statusCode, 200);
+  assert.equal(ok.json().pending, true);
+
+  // Honeypot hit: accepted but not stored.
+  await app.inject({
+    method: "POST",
+    url: "/api/guestbook",
+    payload: { name: "Bot", message: "spam", website: "http://x" },
+  });
+
+  // Not visible on the public site yet (pending).
+  const site = await app.inject({ method: "GET", url: "/api/site" });
+  assert.deepEqual(site.json().modules.guestbook.data.entries, []);
+
+  // Exactly one entry is in the moderation queue (honeypot one was dropped).
+  const queue = await app.inject({
+    method: "GET",
+    url: "/api/cms/guestbook",
+    headers: { authorization: `Bearer ${TOKEN}` },
+  });
+  assert.equal(queue.json().pending, 1);
+  assert.equal(queue.json().entries[0].name, "Visitor");
+  await app.close();
+});
+
+test("guestbook: approving in the CMS makes an entry public; moderation needs auth", async () => {
+  const app = await enabledApp();
+  await app.inject({ method: "POST", url: "/api/guestbook", payload: { name: "Sam", message: "hello" } });
+
+  // Moderation is authed.
+  const noAuth = await app.inject({ method: "GET", url: "/api/cms/guestbook" });
+  assert.equal(noAuth.statusCode, 401);
+
+  const auth = { authorization: `Bearer ${TOKEN}` };
+  const id = (
+    await app.inject({ method: "GET", url: "/api/cms/guestbook", headers: auth })
+  ).json().entries[0].id;
+
+  const bad = await app.inject({ method: "POST", url: `/api/cms/guestbook/${id}/nope`, headers: auth });
+  assert.equal(bad.statusCode, 400);
+
+  const approve = await app.inject({ method: "POST", url: `/api/cms/guestbook/${id}/approve`, headers: auth });
+  assert.equal(approve.statusCode, 200);
+
+  const site = await app.inject({ method: "GET", url: "/api/site" });
+  const entries = site.json().modules.guestbook.data.entries;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].name, "Sam");
+  assert.ok(entries[0].relative); // relative time pre-computed
+  await app.close();
+});
+
+test("presence endpoint returns an empty, offline snapshot when unconfigured", async () => {
+  const app = await enabledApp(); // no DISCORD_USER_ID set
+  const res = await app.inject({ method: "GET", url: "/api/presence" });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { status: "offline", cards: [] });
+  await app.close();
+});
+
 test("media serve blocks path traversal filenames (404)", async () => {
   const app = await enabledApp();
   for (const bad of ["..%2f..%2fetc%2fpasswd", "../../etc/passwd", "foo.png", "a/b.webp"]) {

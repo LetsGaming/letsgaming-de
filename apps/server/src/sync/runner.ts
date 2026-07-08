@@ -10,7 +10,7 @@
 import type { Source } from "@lg/core";
 import type { Store } from "@lg/db";
 import { getSources, type SourcesEnv } from "@lg/sources";
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 
 export interface SyncResult {
   sourceId: string;
@@ -22,7 +22,7 @@ export interface SyncResult {
 
 export class SyncRunner {
   private readonly registered: ReturnType<typeof getSources>;
-  private tasks: cron.ScheduledTask[] = [];
+  private tasks: ScheduledTask[] = [];
 
   constructor(
     private readonly store: Store,

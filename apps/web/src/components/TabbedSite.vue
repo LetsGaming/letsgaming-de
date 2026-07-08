@@ -84,6 +84,19 @@ function toggleTheme() {
   }
 }
 
+/** Persist the locale choice (cookieless) and reload SSR in that language. */
+function setLocale(next: "en" | "de") {
+  try {
+    localStorage.setItem("lang", next);
+  } catch {
+    /* private mode — the URL param still applies the choice for this visit */
+  }
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("lang", next);
+  window.location.assign(url.toString());
+}
+
 onMounted(() => {
   const current = document.documentElement.dataset.theme;
   theme.value = current === "light" ? "light" : "dark";
@@ -121,8 +134,10 @@ onMounted(() => {
     <SettingsModal
       :open="settingsOpen"
       :theme="theme"
+      :locale="site.locale"
       @close="settingsOpen = false"
       @toggle-theme="toggleTheme"
+      @set-locale="setLocale"
     />
 
     <section
@@ -137,6 +152,7 @@ onMounted(() => {
 
     <footer>
       made with a lot of <b>purple</b> · @{{ site.meta.handle }} ·
+      <a href="/docs" style="color: var(--purple-br)">Docs</a> ·
       <a href="/datenschutz" style="color: var(--purple-br)">Datenschutz</a>
     </footer>
   </div>

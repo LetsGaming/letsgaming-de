@@ -4,6 +4,8 @@ import { icons, langColor } from "../lib/icons";
 import { mdBold } from "../lib/site";
 import { trackClick, trackProject } from "../lib/track";
 import ContactForm from "./ContactForm.vue";
+import GuestbookForm from "./GuestbookForm.vue";
+import PresenceWidget from "./PresenceWidget.vue";
 
 const props = defineProps<{
   module: ResolvedModule;
@@ -149,6 +151,54 @@ function onLink(e: MouseEvent, href: string) {
     </div>
   </section>
 
+  <!-- HIGHLIGHTS (releases, merged PRs, gists — one friendly feed) -->
+  <section v-else-if="module.kind === 'highlights'" class="sec">
+    <div class="sec-head rise">
+      <h2>{{ module.data.heading }}</h2>
+      <span v-if="module.data.note">{{ module.data.note }}</span>
+    </div>
+    <div class="box rise">
+      <div v-if="module.data.items.length" class="feed">
+        <a
+          v-for="(h, i) in module.data.items"
+          :key="i"
+          class="ev ev-link"
+          :href="h.href"
+          target="_blank"
+          rel="noreferrer noopener"
+          @click="trackClick('highlight')"
+        >
+          <span class="ei" v-html="icons[h.type]" />
+          <div>
+            <div class="et">{{ h.text }}</div>
+            <div v-if="h.meta" class="em">{{ h.meta }}</div>
+          </div>
+          <span class="tm">{{ h.relative }}</span>
+        </a>
+      </div>
+      <div v-else class="sub">Nothing shipped in this window yet — check back soon.</div>
+    </div>
+  </section>
+
+  <!-- CODING (Wakapi) -->
+  <section v-else-if="module.kind === 'coding'" class="sec">
+    <div class="sec-head rise">
+      <h2>{{ module.data.heading }}</h2>
+      <span v-if="module.data.note">{{ module.data.note }}</span>
+    </div>
+    <div v-if="module.data.coding" class="box rise">
+      <div class="sub">{{ module.data.coding.range }} · {{ module.data.coding.totalHours }}h tracked</div>
+      <div class="lang">
+        <div v-for="l in module.data.coding.languages" :key="l.name" class="row">
+          <span class="nm">{{ l.name }}</span>
+          <div class="bar"><b :style="{ width: l.pct + '%', background: langColor(l.name) }" /></div>
+          <span class="pc">{{ l.pct }}%</span>
+        </div>
+      </div>
+    </div>
+    <p v-else class="sub rise">No coding time synced yet.</p>
+  </section>
+
   <!-- PROJECTS -->
   <section v-else-if="module.kind === 'projects'" class="sec">
     <div class="sec-head rise">
@@ -207,6 +257,33 @@ function onLink(e: MouseEvent, href: string) {
         <span class="k">{{ n.key }}</span>
         <span class="v" v-html="mdBold(n.value)" />
       </div>
+    </div>
+  </section>
+
+  <!-- GUESTBOOK -->
+  <section v-else-if="module.kind === 'guestbook'" class="sec">
+    <div class="sec-head rise">
+      <h2>{{ module.data.heading }}</h2>
+      <span v-if="module.data.note">{{ module.data.note }}</span>
+    </div>
+    <div v-if="module.data.entries.length" class="gb-list rise">
+      <figure v-for="e in module.data.entries" :key="e.id" class="gb-entry">
+        <blockquote>{{ e.message }}</blockquote>
+        <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
+      </figure>
+    </div>
+    <p v-else class="gb-empty rise">No notes yet — be the first to sign.</p>
+    <div class="rise"><GuestbookForm /></div>
+  </section>
+
+  <!-- PRESENCE (Discord + Steam) -->
+  <section v-else-if="module.kind === 'presence'" class="sec">
+    <div class="sec-head rise">
+      <h2>{{ module.data.heading }}</h2>
+      <span v-if="module.data.note">{{ module.data.note }}</span>
+    </div>
+    <div class="rise">
+      <PresenceWidget :live="module.data.live" :steam="module.data.steam" />
     </div>
   </section>
 

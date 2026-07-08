@@ -19,10 +19,14 @@ export type ModuleKind =
   | "glance"
   // Work
   | "activity"
+  | "highlights"
+  | "coding"
   | "projects"
   // Life
   | "hobbies"
   | "now"
+  | "guestbook"
+  | "presence"
   // About
   | "bio"
   | "contact";
