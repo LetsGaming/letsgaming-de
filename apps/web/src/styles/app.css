@@ -697,6 +697,31 @@ a.ev-link:hover .ei svg {
   font-weight: 600;
 }
 
+/* gallery */
+.gal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.gal-item {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.gal-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.gal-item figcaption {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 /* guestbook */
 .gb-list {
   display: grid;

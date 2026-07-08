@@ -141,6 +141,145 @@ test("cms presence: the category allow-list validates and persists", async () =>
   await app.close();
 });
 
+test("cms gallery: add validates the media path, persists with alt, and deletes", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+
+  const bad = await app.inject({
+    method: "PUT",
+    url: "/api/cms/gallery/x1",
+    headers: auth,
+    payload: { id: "x1", module: "gallery", src: "http://evil/x.webp", caption: { en: "" } },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "PUT",
+    url: "/api/cms/gallery/x1",
+    headers: auth,
+    payload: { id: "x1", module: "gallery", src: "/media/pic.webp", caption: { en: "Hi" }, alt: "A cat", sort: 0 },
+  });
+  assert.equal(ok.statusCode, 200);
+
+  const site = await app.inject({ method: "GET", url: "/api/site" });
+  const gal = site.json().modules.gallery;
+  assert.equal(gal.data.images[0].src, "/media/pic.webp");
+  assert.equal(gal.data.images[0].caption, "Hi");
+  assert.equal(gal.data.images[0].alt, "A cat");
+
+  await app.inject({ method: "DELETE", url: "/api/cms/gallery/x1", headers: auth });
+  const after = await app.inject({ method: "GET", url: "/api/site" });
+  assert.deepEqual(after.json().modules.gallery.data.images, []);
+  await app.close();
+});
+
+test("cms gallery instances: create a second gallery, images stay scoped, delete cleans up", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+
+  const created = await app.inject({
+    method: "POST",
+    url: "/api/cms/gallery-module",
+    headers: auth,
+    payload: { heading: { en: "Travel" } },
+  });
+  assert.equal(created.statusCode, 200);
+  const newId = created.json().id as string;
+  assert.match(newId, /^gallery-/);
+
+  await app.inject({
+    method: "PUT",
+    url: "/api/cms/gallery/t1",
+    headers: auth,
+    payload: { id: "t1", module: newId, src: "/media/trip.webp", caption: { en: "Trip" } },
+  });
+  const site = await app.inject({ method: "GET", url: "/api/site" });
+  assert.deepEqual(site.json().modules.gallery.data.images, []); // default gallery still empty
+
+  const protectDefault = await app.inject({ method: "DELETE", url: "/api/cms/gallery-module/gallery", headers: auth });
+  assert.equal(protectDefault.statusCode, 400);
+  const del = await app.inject({ method: "DELETE", url: `/api/cms/gallery-module/${newId}`, headers: auth });
+  assert.equal(del.statusCode, 200);
+  const content = await app.inject({ method: "GET", url: "/api/cms/content", headers: auth });
+  assert.ok(!content.json().modules.some((m: { id: string }) => m.id === newId));
+  assert.ok(!content.json().content.gallery.some((g: { id: string }) => g.id === "t1"));
+  await app.close();
+});
+
+test("cms layout: reorder, move across areas, hide, and reject empty/duplicate/unknown", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+
+  const before = (await app.inject({ method: "GET", url: "/api/cms/content", headers: auth })).json();
+  const life = before.nav.find((n: { id: string }) => n.id === "life");
+  const work = before.nav.find((n: { id: string }) => n.id === "work");
+  const moved = life.modules[0];
+
+  const ok = await app.inject({
+    method: "PUT",
+    url: "/api/cms/layout",
+    headers: auth,
+    payload: {
+      order: [
+        { area: "life", modules: life.modules.slice(1) },
+        { area: "work", modules: [...work.modules, moved] },
+      ],
+    },
+  });
+  assert.equal(ok.statusCode, 200);
+  const after = (await app.inject({ method: "GET", url: "/api/cms/content", headers: auth })).json();
+  assert.ok(after.nav.find((n: { id: string }) => n.id === "work").modules.includes(moved));
+  assert.ok(!after.nav.find((n: { id: string }) => n.id === "life").modules.includes(moved));
+
+  // Hiding = leaving a module out of every area (now allowed).
+  const life2 = after.nav.find((n: { id: string }) => n.id === "life").modules as string[];
+  const hide = await app.inject({
+    method: "PUT",
+    url: "/api/cms/layout",
+    headers: auth,
+    payload: { order: [{ area: "life", modules: life2.slice(1) }] },
+  });
+  assert.equal(hide.statusCode, 200);
+
+  // Emptying an area is refused by nav-lint (no empty leaf).
+  const empty = await app.inject({
+    method: "PUT",
+    url: "/api/cms/layout",
+    headers: auth,
+    payload: { order: [{ area: "about", modules: [] }] },
+  });
+  assert.equal(empty.statusCode, 400);
+
+  // Duplicate placement + unknown module + unknown area are refused.
+  assert.equal(
+    (await app.inject({ method: "PUT", url: "/api/cms/layout", headers: auth, payload: { order: [{ area: "life", modules: ["hobbies", "hobbies"] }] } })).statusCode,
+    400,
+  );
+  assert.equal(
+    (await app.inject({ method: "PUT", url: "/api/cms/layout", headers: auth, payload: { order: [{ area: "life", modules: ["nope"] }] } })).statusCode,
+    400,
+  );
+  assert.equal(
+    (await app.inject({ method: "PUT", url: "/api/cms/layout", headers: auth, payload: { order: [{ area: "ghost", modules: [] }] } })).statusCode,
+    400,
+  );
+  await app.close();
+});
+
+test("cms media delete: bad filenames are rejected, missing files 404", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+  const bad = await app.inject({ method: "DELETE", url: "/api/cms/media/xyz.webp", headers: auth });
+  assert.equal(bad.statusCode, 400);
+  const missing = await app.inject({
+    method: "DELETE",
+    url: "/api/cms/media/00000000-0000-0000-0000-000000000000.webp",
+    headers: auth,
+  });
+  assert.equal(missing.statusCode, 404);
+  await app.close();
+});
+
 test("presence endpoint returns an empty, offline snapshot when unconfigured", async () => {
   const app = await enabledApp(); // no DISCORD_USER_ID set
   const res = await app.inject({ method: "GET", url: "/api/presence" });

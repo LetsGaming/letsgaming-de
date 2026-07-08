@@ -19,7 +19,27 @@ export function openDatabase(path: string): DB {
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(readFileSync(resolveSchemaPath(), "utf8"));
+  migrateColumns(db);
   return db;
+}
+
+/**
+ * Additive column migrations for tables that predate a column. `ADD COLUMN` is
+ * idempotent here because a duplicate-column error is caught and ignored — so
+ * fresh databases (which already have the column from schema.sql) are unaffected.
+ */
+function migrateColumns(db: DB): void {
+  const adds = [
+    "ALTER TABLE gallery ADD COLUMN module TEXT NOT NULL DEFAULT 'gallery'",
+    "ALTER TABLE gallery ADD COLUMN alt TEXT",
+  ];
+  for (const sql of adds) {
+    try {
+      db.exec(sql);
+    } catch {
+      /* column already exists — expected on fresh/upgraded databases */
+    }
+  }
 }
 
 function resolveSchemaPath(): string {

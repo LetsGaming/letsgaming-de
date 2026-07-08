@@ -24,6 +24,36 @@ export function iaRepo(db: DB) {
     setModules(modules: ModuleDescriptor[]) {
       db.prepare("UPDATE site_ia SET modules = ? WHERE id = 1").run(JSON.stringify(modules));
     },
+    /** Register a new module descriptor (e.g. a new gallery instance). No-op if id exists. */
+    addModule(descriptor: ModuleDescriptor) {
+      const modules = JSON.parse(read().modules) as ModuleDescriptor[];
+      if (modules.some((m) => m.id === descriptor.id)) return;
+      modules.push(descriptor);
+      db.prepare("UPDATE site_ia SET modules = ? WHERE id = 1").run(JSON.stringify(modules));
+    },
+    /** Remove a module descriptor and any nav leaf reference to it. */
+    removeModule(id: string) {
+      const modules = (JSON.parse(read().modules) as ModuleDescriptor[]).filter((m) => m.id !== id);
+      const nav = JSON.parse(read().nav) as NavNode[];
+      const strip = (nodes: NavNode[]) => {
+        for (const n of nodes) {
+          if (n.modules) n.modules = n.modules.filter((m) => m !== id);
+          if (n.children) strip(n.children);
+        }
+      };
+      strip(nav);
+      db.exec("BEGIN");
+      try {
+        db.prepare("UPDATE site_ia SET modules = ?, nav = ? WHERE id = 1").run(
+          JSON.stringify(modules),
+          JSON.stringify(nav),
+        );
+        db.exec("COMMIT");
+      } catch (err) {
+        db.exec("ROLLBACK");
+        throw err;
+      }
+    },
   };
 }
 

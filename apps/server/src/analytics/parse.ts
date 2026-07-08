@@ -85,6 +85,8 @@ export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   const [, stamp, method, rawPath, statusStr, referrer, ua] = m;
   const bucket = logHour(stamp!);
   if (!bucket) return [];
+  // The CMS preview loads the site with ?preview=1 — never count those as visits.
+  if (/[?&]preview=1(?:&|$)/.test(rawPath ?? "")) return [];
   const path = (rawPath ?? "").split("?")[0] ?? "/";
   const status = Number(statusStr);
   if (!isPageView(method!, status, path)) return [];

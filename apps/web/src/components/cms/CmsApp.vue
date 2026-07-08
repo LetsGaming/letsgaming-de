@@ -1,15 +1,72 @@
 <script setup lang="ts">
-import type { Hobby, Link, Localized, NowItem } from "@lg/core";
+import type { Hobby, Link, Localized, NavNode, NowItem } from "@lg/core";
 import { computed, onMounted, reactive, ref } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../../lib/cms";
 
-type Tab = "content" | "hobbies" | "links" | "now" | "media" | "guestbook" | "analytics";
-const TABS: Tab[] = ["content", "hobbies", "links", "now", "media", "guestbook", "analytics"];
+type View =
+  | "dashboard"
+  | "site"
+  | "home"
+  | "about"
+  | "hobbies"
+  | "links"
+  | "now"
+  | "layout"
+  | "gallery"
+  | "media"
+  | "presence"
+  | "guestbook"
+  | "analytics"
+  | "preview";
+
+// Grouped left-nav, so it's obvious what each screen edits (a small WP/Typo3 shape).
+const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
+  { label: "", items: [{ id: "dashboard", label: "Dashboard" }] },
+  {
+    label: "Content",
+    items: [
+      { id: "site", label: "Site identity" },
+      { id: "home", label: "Home intro" },
+      { id: "about", label: "About / bio" },
+      { id: "hobbies", label: "Hobbies" },
+      { id: "links", label: "Links" },
+      { id: "now", label: "Right now" },
+    ],
+  },
+  {
+    label: "Structure & media",
+    items: [
+      { id: "layout", label: "Layout" },
+      { id: "gallery", label: "Gallery" },
+      { id: "media", label: "Media" },
+    ],
+  },
+  { label: "Widgets", items: [{ id: "presence", label: "Presence" }] },
+  { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
+  { label: "Insights", items: [{ id: "analytics", label: "Analytics" }] },
+  { label: "", items: [{ id: "preview", label: "Preview" }] },
+];
+const VIEW_TITLES: Record<View, string> = {
+  dashboard: "Dashboard",
+  site: "Site identity",
+  home: "Home intro",
+  about: "About / bio",
+  hobbies: "Hobbies",
+  links: "Links",
+  now: "Right now",
+  layout: "Layout — module order",
+  gallery: "Gallery",
+  media: "Media library",
+  presence: "Presence widget",
+  guestbook: "Guestbook",
+  analytics: "Analytics",
+  preview: "Live preview",
+};
 
 const authed = ref(false);
 const login = ref<string | null>(null);
 const loading = ref(true);
-const tab = ref<Tab>("content");
+const tab = ref<View>("dashboard");
 const locale = ref<"en" | "de">("en");
 const tokenInput = ref("");
 const toast = ref("");
@@ -25,6 +82,14 @@ const links = ref<(Link & { sort?: number })[]>([]);
 const now = ref<(NowItem & { sort?: number })[]>([]);
 const media = ref<string[]>([]);
 const analytics = ref<any>(null);
+
+// Layout (module order per area) + gallery images.
+interface GalleryRow { id: string; module: string; src: string; caption: Localized; alt?: string; sort?: number }
+const modules = ref<{ id: string; kind?: string; heading?: Localized }[]>([]);
+const layoutAreas = ref<{ id: string; label: string; modules: string[] }[]>([]);
+const hiddenModules = ref<string[]>([]);
+const gallery = ref<GalleryRow[]>([]);
+const activeGallery = ref<string>("gallery");
 
 // Presence widget category allow-list (CMS-owned curation).
 const PRESENCE_OPTIONS: { key: string; label: string; hint: string }[] = [
@@ -102,6 +167,9 @@ async function boot() {
     login.value = me.login;
     authed.value = true;
     await loadAll();
+    // Warm the dashboard's counts/badge (both are cheap, cached after).
+    void loadMedia();
+    void loadGuestbook();
   } catch (e) {
     authed.value = false;
   } finally {
@@ -120,6 +188,128 @@ async function loadAll() {
   links.value = data.content.links.map((l: Link, i: number) => ({ ...l, sort: i }));
   now.value = data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i }));
   presenceShow.value = data.content.presence?.show ?? [];
+  gallery.value = (data.content.gallery ?? []).map((g: GalleryRow, i: number) => ({ ...g, sort: i }));
+
+  // Layout: flatten nav leaves (areas that hold an ordered module list).
+  modules.value = data.modules ?? [];
+  const leaves: { id: string; label: string; modules: string[] }[] = [];
+  const walk = (nodes: NavNode[]) => {
+    for (const n of nodes) {
+      if (n.modules) leaves.push({ id: n.id, label: pickL(n.label), modules: [...n.modules] });
+      if (n.children) walk(n.children);
+    }
+  };
+  walk((data.nav ?? []) as NavNode[]);
+  layoutAreas.value = leaves;
+  const placed = new Set(leaves.flatMap((l) => l.modules));
+  hiddenModules.value = modules.value.map((m) => m.id).filter((id) => !placed.has(id));
+  // Default the gallery editor to the first gallery module.
+  const firstGallery = modules.value.find((m) => m.kind === "gallery");
+  if (firstGallery && !modules.value.some((m) => m.id === activeGallery.value && m.kind === "gallery")) {
+    activeGallery.value = firstGallery.id;
+  }
+}
+
+/** Pick a localized string for the current editor locale, with fallbacks. */
+function pickL(l?: Localized): string {
+  return (l && (l[locale.value] ?? l.en ?? Object.values(l)[0])) || "";
+}
+/** Friendly heading for a module id (falls back to the id). */
+function moduleHeading(id: string): string {
+  const m = modules.value.find((x) => x.id === id);
+  return (m && pickL(m.heading)) || id;
+}
+
+// ── layout: reorder, move between areas, hide/show ──────────────────────────
+function moveModule(areaIdx: number, i: number, dir: -1 | 1) {
+  const mods = layoutAreas.value[areaIdx]!.modules;
+  const j = i + dir;
+  if (j < 0 || j >= mods.length) return;
+  [mods[i], mods[j]] = [mods[j]!, mods[i]!];
+}
+/** Move a module to another area, or to "hidden" (unplaced). */
+function setModuleArea(mid: string, target: string) {
+  for (const a of layoutAreas.value) a.modules = a.modules.filter((m) => m !== mid);
+  hiddenModules.value = hiddenModules.value.filter((m) => m !== mid);
+  if (target === "hidden") hiddenModules.value.push(mid);
+  else layoutAreas.value.find((a) => a.id === target)?.modules.push(mid);
+}
+const areaOptions = computed(() => [
+  ...layoutAreas.value.map((a) => ({ id: a.id, label: a.label })),
+  { id: "hidden", label: "Hidden" },
+]);
+const saveLayout = () =>
+  guarded(
+    () => cms.put("layout", { order: layoutAreas.value.map((a) => ({ area: a.id, modules: a.modules })) }),
+    "Layout saved",
+  );
+
+// ── gallery: multiple instances, each a gallery module ──────────────────────
+const galleryModules = computed(() => modules.value.filter((m) => m.kind === "gallery"));
+const activeGalleryItems = computed(() =>
+  gallery.value.filter((g) => g.module === activeGallery.value),
+);
+function addToGallery(path: string, target = activeGallery.value) {
+  if (gallery.value.some((g) => g.src === path && g.module === target)) {
+    flash("Already in this gallery.");
+    return;
+  }
+  const item: GalleryRow = {
+    id: newId("img"),
+    module: target,
+    src: path,
+    caption: emptyL(),
+    sort: gallery.value.filter((g) => g.module === target).length,
+  };
+  gallery.value.push(item);
+  void guarded(() => cms.put(`gallery/${item.id}`, strip(item)), "Added to gallery");
+}
+const saveGalleryItem = (g: GalleryRow) => guarded(() => cms.put(`gallery/${g.id}`, strip(g)));
+function removeGalleryItem(id: string) {
+  gallery.value = gallery.value.filter((g) => g.id !== id);
+  void guarded(() => cms.del(`gallery/${id}`), "Removed");
+}
+function moveGallery(i: number, dir: -1 | 1) {
+  // Reorder within the active gallery only.
+  const items = activeGalleryItems.value;
+  const j = i + dir;
+  if (j < 0 || j >= items.length) return;
+  const a = items[i]!;
+  const b = items[j]!;
+  const ai = gallery.value.indexOf(a);
+  const bi = gallery.value.indexOf(b);
+  gallery.value[ai] = b;
+  gallery.value[bi] = a;
+  a.sort = j;
+  b.sort = i;
+  void guarded(async () => {
+    await cms.put(`gallery/${a.id}`, strip(a));
+    await cms.put(`gallery/${b.id}`, strip(b));
+  }, "Reordered");
+}
+async function createGallery() {
+  const name = prompt("Name for the new gallery (e.g. Travel):")?.trim();
+  if (!name) return;
+  await guarded(async () => {
+    const res = await cms.createGallery({ en: name });
+    await loadAll();
+    if (res?.id) activeGallery.value = res.id;
+  }, "Gallery created");
+}
+function deleteGallery(id: string) {
+  if (!confirm("Delete this gallery and all its image placements? (Media files stay.)")) return;
+  void guarded(async () => {
+    await cms.deleteGallery(id);
+    await loadAll();
+  }, "Gallery deleted");
+}
+
+// ── media: delete an upload ─────────────────────────────────────────────────
+function removeMedia(path: string) {
+  if (!confirm("Delete this image? It will disappear from anywhere it's used.")) return;
+  media.value = media.value.filter((m) => m !== path);
+  gallery.value = gallery.value.filter((g) => g.src !== path);
+  void guarded(() => cms.deleteMedia(path), "Deleted");
 }
 
 async function signIn() {
@@ -136,6 +326,7 @@ async function guarded(fn: () => Promise<void>, ok = "Saved") {
   try {
     await fn();
     flash(ok);
+    previewKey.value++; // any successful save invalidates the preview
   } catch (e) {
     if (e instanceof AuthError) {
       authed.value = false;
@@ -375,12 +566,29 @@ const chart = computed(() => {
   };
 });
 
-function pickTab(t: Tab) {
-  tab.value = t;
-  if (t === "media" && media.value.length === 0) void loadMedia();
-  if (t === "guestbook" && !guestbook.value) void loadGuestbook();
-  if (t === "analytics" && !analytics.value) void loadAnalytics();
+function pick(v: View) {
+  tab.value = v;
+  if ((v === "media" || v === "dashboard") && media.value.length === 0) void loadMedia();
+  if ((v === "guestbook" || v === "dashboard") && !guestbook.value) void loadGuestbook();
+  if (v === "analytics" && !analytics.value) void loadAnalytics();
+  if (v === "preview") previewKey.value++; // always show the freshest render
 }
+
+// Live preview: an iframe of the actual site. Saves bump the key so it reloads.
+const previewKey = ref(0);
+function viewSite() {
+  window.open("/", "_blank", "noopener");
+}
+
+// Dashboard: quick counts + jump-in links (WP-style landing).
+const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
+  { label: "Hobbies", n: hobbies.value.length, to: "hobbies" },
+  { label: "Links", n: links.value.length, to: "links" },
+  { label: "Right-now items", n: now.value.length, to: "now" },
+  { label: "Gallery images", n: gallery.value.length, to: "gallery" },
+  { label: "Media files", n: media.value.length, to: "media" },
+  { label: "Modules", n: modules.value.length, to: "layout" },
+]);
 
 onMounted(boot);
 </script>
@@ -400,15 +608,24 @@ onMounted(boot);
     </div>
 
     <!-- APP -->
-    <div v-else>
-      <header class="bar">
-        <strong>CMS</strong>
-        <nav class="tabs">
-          <button v-for="t in TABS" :key="t" :class="{ on: tab === t }" @click="pickTab(t)">
-            {{ t }}
-          </button>
+    <div v-else class="shell">
+      <aside class="side">
+        <div class="brand">CMS</div>
+        <nav class="nav">
+          <div v-for="(g, gi) in NAV_GROUPS" :key="gi" class="navgroup">
+            <div v-if="g.label" class="navlabel">{{ g.label }}</div>
+            <button
+              v-for="item in g.items"
+              :key="item.id"
+              :class="{ on: tab === item.id }"
+              @click="pick(item.id)"
+            >
+              {{ item.label }}
+              <span v-if="item.id === 'guestbook' && guestbook?.pending" class="ndot">{{ guestbook.pending }}</span>
+            </button>
+          </div>
         </nav>
-        <div class="right">
+        <div class="sidefoot">
           <select v-model="locale" title="Editing locale">
             <option value="en">EN</option>
             <option value="de">DE</option>
@@ -416,69 +633,139 @@ onMounted(boot);
           <span class="muted">{{ login }}</span>
           <button class="link" @click="signOut">sign out</button>
         </div>
-      </header>
+      </aside>
 
-      <!-- CONTENT -->
-      <section v-show="tab === 'content'" class="pane">
+      <main class="main">
+        <div class="topbar">
+          <h2>{{ VIEW_TITLES[tab] }}</h2>
+          <div class="topact">
+            <button class="link" @click="pick('preview')">Preview</button>
+            <button class="btn ghost" @click="viewSite">View site ↗</button>
+          </div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <section v-show="tab === 'dashboard'" class="pane">
+          <div class="card note">
+            Welcome back. This is your site's control room — pick a section on the left. Edits go live
+            immediately (no rebuild); use <b>Preview</b> or <b>View site</b> to see them.
+          </div>
+          <div class="statgrid">
+            <button v-for="s in dashStats" :key="s.label" class="stat" @click="pick(s.to)">
+              <span class="statn">{{ s.n }}</span>
+              <span class="statl">{{ s.label }}</span>
+            </button>
+          </div>
+          <div v-if="guestbook?.pending" class="card">
+            <h3>Needs attention</h3>
+            <p><b>{{ guestbook.pending }}</b> guestbook {{ guestbook.pending === 1 ? "entry" : "entries" }} awaiting review — <button class="link" @click="pick('guestbook')">moderate now</button>.</p>
+          </div>
+        </section>
+
+        <!-- SITE IDENTITY -->
+        <section v-show="tab === 'site'" class="pane">
+          <div class="card">
+            <h3>Identity</h3>
+            <p class="muted">Your name, handle, and the eyebrow role line. Shown across the site.</p>
+            <label>Name<input v-model="meta.name" /></label>
+            <label>Handle<input v-model="meta.handle" /></label>
+            <label>Location<input :value="lv(meta.location, locale)" @input="setLv(meta.location, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <label>Role<input :value="lv(meta.role, locale)" @input="setLv(meta.role, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <button class="btn" @click="saveMeta">Save identity</button>
+          </div>
+        </section>
+
+        <!-- HOME INTRO -->
+        <section v-show="tab === 'home'" class="pane">
+          <div class="card note">The hero on the <b>Home</b> area: the big headline, the lede beneath it, and the status line. Projects &amp; activity come from GitHub automatically.</div>
+          <div class="card">
+            <h3>Headline</h3>
+            <label>Before<input :value="lv(headline.before, locale)" @input="setLv(headline.before, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <label>Highlight<input :value="lv(headline.highlight, locale)" @input="setLv(headline.highlight, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <label>After<input :value="lv(headline.after, locale)" @input="setLv(headline.after, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <button class="btn" @click="saveHeadline">Save headline</button>
+          </div>
+          <div class="card">
+            <h3>Lede <span class="muted">(**bold** supported)</span></h3>
+            <textarea :value="lv(lede, locale)" @input="setLv(lede, locale, ($event.target as HTMLTextAreaElement).value)" rows="3" />
+            <button class="btn" @click="saveLede">Save lede</button>
+          </div>
+          <div class="card">
+            <h3>Status</h3>
+            <label>Verb<input :value="lv(status.verb, locale)" @input="setLv(status.verb, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <label>Now<input :value="lv(status.now, locale)" @input="setLv(status.now, locale, ($event.target as HTMLInputElement).value)" /></label>
+            <button class="btn" @click="saveStatus">Save status</button>
+          </div>
+        </section>
+
+        <!-- ABOUT / BIO -->
+        <section v-show="tab === 'about'" class="pane">
+          <div class="card">
+            <h3>Bio <span class="muted">(paragraphs, **bold** supported)</span></h3>
+            <div v-for="(p, i) in bio" :key="i" class="row">
+              <textarea :value="lv(p, locale)" @input="setLv(p, locale, ($event.target as HTMLTextAreaElement).value)" rows="2" />
+              <button class="link danger" @click="bio.splice(i, 1)">remove</button>
+            </div>
+            <div class="actions"><button class="link" @click="addBio">+ paragraph</button><button class="btn" @click="saveBio">Save bio</button></div>
+          </div>
+        </section>
+
+        <!-- PRESENCE -->
+        <section v-show="tab === 'presence'" class="pane">
+          <div class="card">
+            <h3>Presence widget <span class="muted">(Life → “Right now-ish”)</span></h3>
+            <p class="muted">
+              Which Discord/Steam categories the widget may reveal. The server filters to exactly
+              these before anything reaches a visitor — unchecked categories never leave the backend.
+            </p>
+            <div class="pgrid">
+              <label v-for="o in PRESENCE_OPTIONS" :key="o.key" class="ptoggle">
+                <input type="checkbox" :checked="presenceShow.includes(o.key)" @change="togglePresence(o.key)" />
+                <span><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
+              </label>
+            </div>
+            <div class="actions"><button class="btn" @click="savePresence">Save presence</button></div>
+          </div>
+        </section>
+
+      <!-- LAYOUT (module order per area) -->
+      <section v-show="tab === 'layout'" class="pane">
         <div class="card note">
-          Edits here go live immediately — no rebuild. The <b>Home</b> intro (headline, lede,
-          status) and the <b>About</b> bio all live on this tab. Projects and activity are pulled
-          from GitHub automatically, so there's no project editor. Add social/contact buttons under
-          <b>Links</b>.
+          Every area renders its modules top-to-bottom. Reorder with ↑/↓, move a module to another
+          area (or <b>Hidden</b> to take it off the site) with the dropdown, then <b>Save layout</b>.
+          An area must keep at least one module.
+        </div>
+        <div v-for="(area, ai) in layoutAreas" :key="area.id" class="card">
+          <h3>{{ area.label }} <span class="muted">/{{ area.id }}</span></h3>
+          <ol class="modlist">
+            <li v-for="(mid, i) in area.modules" :key="mid">
+              <span>{{ moduleHeading(mid) }} <span class="muted">({{ mid }})</span></span>
+              <span class="ord">
+                <button class="link" :disabled="i === 0" @click="moveModule(ai, i, -1)">↑</button>
+                <button class="link" :disabled="i === area.modules.length - 1" @click="moveModule(ai, i, 1)">↓</button>
+                <select :value="area.id" @change="setModuleArea(mid, ($event.target as HTMLSelectElement).value)">
+                  <option v-for="o in areaOptions" :key="o.id" :value="o.id">{{ o.label }}</option>
+                </select>
+              </span>
+            </li>
+            <li v-if="!area.modules.length" class="muted">— empty — move a module here before saving</li>
+          </ol>
         </div>
         <div class="card">
-          <h3>Identity</h3>
-          <label>Name<input v-model="meta.name" /></label>
-          <label>Handle<input v-model="meta.handle" /></label>
-          <label>Location<input :value="lv(meta.location, locale)" @input="setLv(meta.location, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <label>Role<input :value="lv(meta.role, locale)" @input="setLv(meta.role, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <button class="btn" @click="saveMeta">Save identity</button>
+          <h3>Hidden <span class="muted">(not shown anywhere)</span></h3>
+          <ol v-if="hiddenModules.length" class="modlist">
+            <li v-for="mid in hiddenModules" :key="mid">
+              <span>{{ moduleHeading(mid) }} <span class="muted">({{ mid }})</span></span>
+              <span class="ord">
+                <select value="hidden" @change="setModuleArea(mid, ($event.target as HTMLSelectElement).value)">
+                  <option v-for="o in areaOptions" :key="o.id" :value="o.id">{{ o.label }}</option>
+                </select>
+              </span>
+            </li>
+          </ol>
+          <p v-else class="muted">Nothing hidden.</p>
         </div>
-
-        <div class="card">
-          <h3>Headline</h3>
-          <label>Before<input :value="lv(headline.before, locale)" @input="setLv(headline.before, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <label>Highlight<input :value="lv(headline.highlight, locale)" @input="setLv(headline.highlight, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <label>After<input :value="lv(headline.after, locale)" @input="setLv(headline.after, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <button class="btn" @click="saveHeadline">Save headline</button>
-        </div>
-
-        <div class="card">
-          <h3>Lede <span class="muted">(**bold** supported)</span></h3>
-          <textarea :value="lv(lede, locale)" @input="setLv(lede, locale, ($event.target as HTMLTextAreaElement).value)" rows="3" />
-          <button class="btn" @click="saveLede">Save lede</button>
-        </div>
-
-        <div class="card">
-          <h3>Status</h3>
-          <label>Verb<input :value="lv(status.verb, locale)" @input="setLv(status.verb, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <label>Now<input :value="lv(status.now, locale)" @input="setLv(status.now, locale, ($event.target as HTMLInputElement).value)" /></label>
-          <button class="btn" @click="saveStatus">Save status</button>
-        </div>
-
-        <div class="card">
-          <h3>Bio <span class="muted">(paragraphs, **bold** supported)</span></h3>
-          <div v-for="(p, i) in bio" :key="i" class="row">
-            <textarea :value="lv(p, locale)" @input="setLv(p, locale, ($event.target as HTMLTextAreaElement).value)" rows="2" />
-            <button class="link danger" @click="bio.splice(i, 1)">remove</button>
-          </div>
-          <div class="actions"><button class="link" @click="addBio">+ paragraph</button><button class="btn" @click="saveBio">Save bio</button></div>
-        </div>
-
-        <div class="card">
-          <h3>Presence widget <span class="muted">(Life → “Right now-ish”)</span></h3>
-          <p class="muted">
-            Which Discord/Steam categories the widget may reveal. The server filters to exactly
-            these before anything reaches a visitor — unchecked categories never leave the backend.
-          </p>
-          <div class="pgrid">
-            <label v-for="o in PRESENCE_OPTIONS" :key="o.key" class="ptoggle">
-              <input type="checkbox" :checked="presenceShow.includes(o.key)" @change="togglePresence(o.key)" />
-              <span><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
-            </label>
-          </div>
-          <div class="actions"><button class="btn" @click="savePresence">Save presence</button></div>
-        </div>
+        <button class="btn" @click="saveLayout">Save layout</button>
       </section>
 
       <!-- HOBBIES -->
@@ -544,18 +831,69 @@ onMounted(boot);
         <button class="btn ghost" @click="addNow">+ Add row</button>
       </section>
 
+      <!-- GALLERY (images placed on the site) -->
+      <section v-show="tab === 'gallery'" class="pane">
+        <div class="card">
+          <div class="galhead">
+            <label>Gallery
+              <select v-model="activeGallery">
+                <option v-for="gm in galleryModules" :key="gm.id" :value="gm.id">{{ moduleHeading(gm.id) }} ({{ gm.id }})</option>
+              </select>
+            </label>
+            <span class="galact">
+              <button class="btn ghost" @click="createGallery">+ New gallery</button>
+              <button v-if="activeGallery !== 'gallery'" class="link danger" @click="deleteGallery(activeGallery)">delete this gallery</button>
+            </span>
+          </div>
+          <p class="muted">
+            Images shown on the site. Add them from the <b>Media</b> tab (“+ gallery” adds to the
+            gallery selected here). Each gallery is a module — position it via <b>Layout</b>. New
+            galleries start hidden until you place them.
+          </p>
+        </div>
+        <div v-if="!activeGalleryItems.length" class="muted">
+          This gallery is empty — upload in <b>Media</b>, then hit “+ gallery”.
+        </div>
+        <div v-for="(g, i) in activeGalleryItems" :key="g.id" class="card gitem">
+          <img :src="cms.mediaUrl(g.src)" class="gthumb" loading="lazy" />
+          <div class="gbody">
+            <label>Caption ({{ locale }})
+              <input v-model="g.caption[locale]" maxlength="120" placeholder="optional" @blur="saveGalleryItem(g)" />
+            </label>
+            <label>Alt text <span class="muted">(screen readers; defaults to caption)</span>
+              <input v-model="g.alt" maxlength="200" placeholder="describe the image" @blur="saveGalleryItem(g)" />
+            </label>
+            <div class="actions">
+              <button class="link" :disabled="i === 0" @click="moveGallery(i, -1)">↑ up</button>
+              <button class="link" :disabled="i === activeGalleryItems.length - 1" @click="moveGallery(i, 1)">↓ down</button>
+              <button class="link danger" @click="removeGalleryItem(g.id)">remove</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- MEDIA -->
       <section v-show="tab === 'media'" class="pane">
         <div class="card">
           <h3>Upload image</h3>
           <input type="file" accept="image/*" :disabled="uploading" @change="onUpload" />
-          <p class="muted">Resized to WebP and stored locally.</p>
+          <p class="muted">
+            Resized to WebP and stored locally. “+ gallery” places an image into the gallery
+            currently selected on the <b>Gallery</b> screen (<b>{{ moduleHeading(activeGallery) }}</b>).
+          </p>
         </div>
         <div class="mediagrid">
           <figure v-for="m in media" :key="m">
             <img :src="cms.mediaUrl(m)" loading="lazy" />
-            <button class="link" @click="copy(m)">copy URL</button>
+            <div class="mactions">
+              <button class="link" :disabled="activeGalleryItems.some((g) => g.src === m)" @click="addToGallery(m)">
+                {{ activeGalleryItems.some((g) => g.src === m) ? "in gallery" : "+ gallery" }}
+              </button>
+              <button class="link" @click="copy(m)">copy URL</button>
+              <button class="link danger" @click="removeMedia(m)">delete</button>
+            </div>
           </figure>
+          <p v-if="!media.length" class="muted">No uploads yet.</p>
         </div>
       </section>
 
@@ -686,13 +1024,26 @@ onMounted(boot);
         </template>
       </section>
 
+        <!-- PREVIEW -->
+        <section v-show="tab === 'preview'" class="pane preview">
+          <div class="prevbar">
+            <span class="muted">The live site — reflects everything you've saved. Reload after changes.</span>
+            <span class="prevact">
+              <button class="btn ghost" @click="previewKey++">Reload</button>
+              <button class="btn ghost" @click="viewSite">Open in new tab ↗</button>
+            </span>
+          </div>
+          <iframe :key="previewKey" class="prevframe" src="/?preview=1" title="Site preview" />
+        </section>
+      </main>
+
       <div v-if="toast" class="toast">{{ toast }}</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.cms { max-width: 900px; margin: 0 auto; padding: 24px 18px 80px; font-family: var(--f-b); color: var(--ink); }
+.cms { max-width: 1120px; margin: 0 auto; padding: 20px 18px 80px; font-family: var(--f-b); color: var(--ink); }
 .center { text-align: center; padding: 60px; }
 .muted { color: var(--muted); }
 h1, h3 { font-family: var(--f-d); color: var(--ink-strong); }
@@ -700,10 +1051,44 @@ h1, h3 { font-family: var(--f-d); color: var(--ink-strong); }
 .gate .or { margin: 6px 0; font-size: 12px; color: var(--muted); }
 .bar { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
 .bar strong { font-family: var(--f-d); font-size: 18px; color: var(--ink-strong); }
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-.tabs button { text-transform: capitalize; font-family: var(--f-m); font-size: 12px; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; }
-.tabs button.on { background: var(--purple); color: #fff; border-color: transparent; }
 .right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+
+/* WP/Typo3-ish shell: fixed left module menu + main workspace. */
+.shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); gap: 24px; align-items: start; }
+.side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
+.brand { font-family: var(--f-d); font-size: 18px; color: var(--ink-strong); padding: 2px 4px; }
+.nav { display: flex; flex-direction: column; gap: 12px; }
+.navgroup { display: flex; flex-direction: column; gap: 2px; }
+.navlabel { font-family: var(--f-m); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 4px 8px 2px; }
+.side .nav button { display: flex; align-items: center; gap: 6px; text-align: left; font-family: var(--f-m); font-size: 13px; padding: 7px 10px; border-radius: 9px; border: none; background: none; color: var(--ink); cursor: pointer; }
+.side .nav button:hover { background: var(--purple-wash); }
+.side .nav button.on { background: var(--purple); color: #fff; }
+.ndot { margin-left: auto; background: var(--coral); color: #fff; font-size: 10px; min-width: 16px; height: 16px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; }
+.side .nav button.on .ndot { background: rgba(255,255,255,0.3); }
+.sidefoot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.main { min-width: 0; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.topbar h2 { font-family: var(--f-d); font-size: 20px; color: var(--ink-strong); }
+.topact { display: flex; align-items: center; gap: 10px; }
+
+/* dashboard */
+.statgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.stat { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; cursor: pointer; }
+.stat:hover { border-color: var(--purple-br); }
+.statn { font-family: var(--f-d); font-size: 26px; color: var(--ink-strong); }
+.statl { font-size: 12px; color: var(--muted); }
+
+/* preview */
+.preview { height: calc(100vh - 160px); }
+.prevbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.prevact { display: flex; gap: 8px; }
+.prevframe { flex: 1; width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+
+@media (max-width: 720px) {
+  .shell { grid-template-columns: 1fr; }
+  .side { position: static; }
+  .side .nav { flex-direction: row; flex-wrap: wrap; }
+}
 .pane { display: flex; flex-direction: column; gap: 16px; }
 .note { background: var(--purple-wash); border-color: var(--line); font-family: var(--f-m); font-size: 13px; line-height: 1.5; color: var(--ink); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--sh-1); display: flex; flex-direction: column; gap: 10px; }
@@ -719,6 +1104,17 @@ input, textarea, select { font-family: var(--f-b); font-size: 14px; color: var(-
 .btn.primary { background: var(--purple); }
 .link { background: none; border: none; color: var(--purple-br); cursor: pointer; font-family: var(--f-m); font-size: 12px; }
 .link.danger { color: var(--coral); }
+.modlist { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.modlist li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); font-size: 14px; }
+.modlist .ord { display: flex; gap: 8px; flex: none; align-items: center; }
+.modlist .ord select { font-size: 12px; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-2); color: var(--ink); }
+.galhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.galhead label { display: flex; flex-direction: column; gap: 4px; font-family: var(--f-m); font-size: 12px; color: var(--muted); }
+.galact { display: flex; align-items: center; gap: 12px; }
+.gitem { flex-direction: row; align-items: center; gap: 14px; }
+.gthumb { width: 96px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); flex: none; }
+.gbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.mactions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
 .mediagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .mediagrid figure { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px; text-align: center; }
 .mediagrid img { width: 100%; border-radius: 8px; aspect-ratio: 4/3; object-fit: cover; }

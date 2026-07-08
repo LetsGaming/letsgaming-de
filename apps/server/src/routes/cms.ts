@@ -8,16 +8,20 @@
  */
 
 import type {
+  GalleryItem,
   Headline,
   Hobby,
   Link,
   Localized,
+  NavNode,
   NowItem,
   PresenceCategory,
   Project,
   SiteMeta,
   Status,
 } from "@lg/core";
+import { lintNav } from "@lg/core";
+import { randomUUID } from "node:crypto";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
@@ -65,6 +69,92 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     write(schemas.presence),
     async (req) => {
       store.content.setPresence({ show: req.body.show });
+      return { ok: true };
+    },
+  );
+
+  // ── gallery (images placed on the site, chosen from the media library) ──────
+  app.put<{ Body: GalleryItem & { sort?: number } }>(
+    "/api/cms/gallery/:id",
+    write(schemas.galleryItem),
+    async (req) => {
+      const { sort, ...item } = req.body;
+      store.content.upsertGalleryItem(item, sort ?? 0);
+      return { ok: true };
+    },
+  );
+  app.delete<{ Params: { id: string } }>("/api/cms/gallery/:id", guard, async (req) => {
+    store.content.deleteGalleryItem(req.params.id);
+    return { ok: true };
+  });
+
+  // Create a new gallery instance (a gallery-kind module). It starts unplaced
+  // ("hidden"); the owner positions it via the Layout screen.
+  app.post<{ Body: { heading: Localized; note?: Localized } }>(
+    "/api/cms/gallery-module",
+    write(schemas.galleryModule),
+    async (req) => {
+      const id = `gallery-${randomUUID().slice(0, 8)}`;
+      store.ia.addModule({ id, kind: "gallery", heading: req.body.heading, ...(req.body.note ? { note: req.body.note } : {}) });
+      return { ok: true, id };
+    },
+  );
+  // Delete a gallery instance: only gallery-kind modules, and never the built-in
+  // "gallery". Removes the module, its nav placement, and its images.
+  app.delete<{ Params: { id: string } }>("/api/cms/gallery-module/:id", guard, async (req, reply) => {
+    const id = req.params.id;
+    const mod = store.ia.getModules().find((m) => m.id === id);
+    if (!mod || mod.kind !== "gallery") {
+      return reply.code(400).send({ error: "Not a gallery module." });
+    }
+    if (id === "gallery") {
+      return reply.code(400).send({ error: "The default gallery can't be deleted." });
+    }
+    store.content.deleteGalleryModule(id);
+    store.ia.removeModule(id);
+    return { ok: true };
+  });
+
+  // ── layout: place modules across areas (reorder, move, hide) ───────────────
+  // Accepts the full desired placement. A module may sit in at most one area;
+  // any registered module left out of every area is "hidden". Can't invent
+  // modules, and the result must pass nav-lint (e.g. no empty area).
+  app.put<{ Body: { order: { area: string; modules: string[] }[] } }>(
+    "/api/cms/layout",
+    write(schemas.layout),
+    async (req, reply) => {
+      const nav = store.ia.getNav();
+      const registry = new Set(store.ia.getModules().map((m) => m.id));
+      const leaves = new Map<string, NavNode>();
+      const collect = (nodes: NavNode[]) => {
+        for (const n of nodes) {
+          if (n.modules) leaves.set(n.id, n);
+          if (n.children) collect(n.children);
+        }
+      };
+      collect(nav);
+
+      const seen = new Set<string>();
+      for (const entry of req.body.order) {
+        if (!leaves.has(entry.area)) {
+          return reply.code(400).send({ error: `Unknown area "${entry.area}".` });
+        }
+        for (const mid of entry.modules) {
+          if (!registry.has(mid)) return reply.code(400).send({ error: `Unknown module "${mid}".` });
+          if (seen.has(mid)) {
+            return reply.code(400).send({ error: `Module "${mid}" placed in more than one area.` });
+          }
+          seen.add(mid);
+        }
+      }
+
+      for (const entry of req.body.order) leaves.get(entry.area)!.modules = [...entry.modules];
+
+      const result = lintNav(nav);
+      if (!result.ok) {
+        return reply.code(400).send({ error: result.violations.map((v) => v.message).join("; ") });
+      }
+      store.ia.setNav(nav);
       return { ok: true };
     },
   );

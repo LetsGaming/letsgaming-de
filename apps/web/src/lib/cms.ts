@@ -110,6 +110,25 @@ export const cms = {
     fetch(`${API_BASE}/api/cms/media`, { headers: headers(false), credentials: "include" }).then(
       handle,
     ),
+  deleteMedia: (path: string) =>
+    fetch(`${API_BASE}/api/cms/media/${path.replace(/^\/media\//, "")}`, {
+      method: "DELETE",
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
+  createGallery: (heading: { en: string; de?: string }) =>
+    fetch(`${API_BASE}/api/cms/gallery-module`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({ heading }),
+    }).then(handle),
+  deleteGallery: (id: string) =>
+    fetch(`${API_BASE}/api/cms/gallery-module/${id}`, {
+      method: "DELETE",
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

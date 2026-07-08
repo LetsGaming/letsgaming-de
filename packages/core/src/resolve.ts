@@ -21,6 +21,7 @@ import type { PublicGuestbookEntry } from "./guestbook.js";
 import { defaultPresenceSettings } from "./presence.js";
 import type {
   CodingView,
+  GalleryImageView,
   GuestbookEntryView,
   HighlightView,
   LinkView,
@@ -318,6 +319,15 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             : {}),
         };
         return { id: descriptor.id, kind: "presence", data: { heading, note, ...data } };
+      }
+      case "gallery": {
+        const images: GalleryImageView[] = (content.gallery ?? [])
+          .filter((g) => g.module === descriptor.id)
+          .map((g) => {
+            const caption = L(g.caption);
+            return { id: g.id, src: g.src, caption, alt: g.alt || caption };
+          });
+        return { id: descriptor.id, kind: "gallery", data: { heading, note, images } };
       }
       case "bio":
         return {

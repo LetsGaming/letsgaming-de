@@ -119,4 +119,42 @@ export const schemas = {
     },
     additionalProperties: false,
   },
+  galleryItem: {
+    type: "object",
+    required: ["id", "module", "src", "caption"],
+    properties: {
+      id: { type: "string", minLength: 1 },
+      module: { type: "string", minLength: 1 },
+      src: { type: "string", pattern: "^/media/[A-Za-z0-9._-]+$" },
+      caption: localized,
+      alt: { type: "string", maxLength: 200 },
+      sort: { type: "integer" },
+    },
+    additionalProperties: false,
+  },
+  galleryModule: {
+    type: "object",
+    required: ["heading"],
+    properties: { heading: localized, note: localized },
+    additionalProperties: false,
+  },
+  layout: {
+    type: "object",
+    required: ["order"],
+    properties: {
+      order: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["area", "modules"],
+          properties: {
+            area: { type: "string", minLength: 1 },
+            modules: { type: "array", items: { type: "string" } },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    additionalProperties: false,
+  },
 } as const;

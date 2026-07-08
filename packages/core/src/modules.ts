@@ -27,6 +27,7 @@ export type ModuleKind =
   | "now"
   | "guestbook"
   | "presence"
+  | "gallery"
   // About
   | "bio"
   | "contact";

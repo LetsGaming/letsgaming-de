@@ -4,6 +4,35 @@
 
 ### Features
 
+- **CMS: finish the module/media gaps.** Layout now does more than reorder within an area — you can
+  **move a module to another area** or **hide it** (drop it from every area), all still validated
+  against nav-lint (an area can't be left empty). Galleries went from one to **many**: create/delete
+  named gallery instances (each is a gallery module you position via Layout; the built-in one is
+  protected), with images **scoped per gallery** and an optional **alt-text** field distinct from the
+  caption. An additive column migration backfills existing gallery rows. The on-site **CMS guide**
+  (`docs/USING-THE-CMS.md`) was rewritten to match the new sidebar admin.
+- **CMS: media is no longer a dead-end.** Uploaded images can now be **deleted**
+  (`DELETE /api/cms/media/:file`, same traversal-safe filename guard as serving) and, more
+  importantly, **placed on the site**. A new **`gallery` module** (Life → "Snapshots") renders a
+  captioned image grid; from the **Media** tab you add an image to the gallery with one click, and
+  the **Gallery** tab lets you caption, reorder, and remove entries. Gallery images are CMS-owned
+  content, resolved into the SiteView like everything else; the public site prefixes media URLs with
+  the API origin so they load correctly. Deleting an upload also removes it from the gallery.
+- Both land as the usual full slices (validated routes, store-backed, resolved server-side, dev-safe
+  defaults), and the new gallery module reaches an existing store via the IA reconciliation.
+- **CMS redesign — a small WordPress/Typo3-shaped admin.** The flat tab row is now a grouped
+  **left-hand module menu** (Content · Structure &amp; media · Widgets · Community · Insights), and the
+  old catch-all "Content" tab is split into focused screens — **Site identity**, **Home intro**,
+  **About / bio**, and **Presence** each get their own section, so it's obvious what you're editing.
+  A new **Dashboard** landing shows at-a-glance counts (hobbies, links, gallery, media, modules) with
+  jump-in links and a "needs attention" note when guestbook entries are pending. A **Live preview**
+  screen embeds the real site in a frame and reloads after every save (plus a persistent
+  "View site ↗"). Preview traffic is kept out of analytics on both paths — the client beacon stays
+  silent when framed or `?preview=1`, and the access-log parser skips those requests — so previewing
+  never inflates your own stats. Content-only change — no data-model impact.
+- _CMS rework now covers reordering, media delete + integration, a sectioned admin, a dashboard,
+  and a live preview. Further nice-to-haves (drafts, revision history) remain deliberately out of
+  scope for a single-user site._
 - **Discord presence widget (Lanyard + Steam hybrid, server-filtered, CMS-curated).** A new **Life →
   "Right now-ish"** widget shows live Discord status and activities plus a **"Recently on Steam"**
   section. **The server does the filtering**: it fetches Lanyard, applies the owner's category

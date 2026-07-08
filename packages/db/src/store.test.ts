@@ -71,6 +71,34 @@ test("guestbook: moderation queue puts pending first, most-suspicious first", ()
   store.close();
 });
 
+test("gallery: CRUD + ordering, module grouping, and it flows through getContent", () => {
+  const store = openStore(":memory:");
+  assert.deepEqual(store.content.getGallery(), []);
+  store.content.upsertGalleryItem(
+    { id: "a", module: "gallery", src: "/media/a.webp", caption: { en: "One" }, alt: "First" },
+    0,
+  );
+  store.content.upsertGalleryItem(
+    { id: "b", module: "gallery", src: "/media/b.webp", caption: { en: "Two" } },
+    1,
+  );
+  store.content.upsertGalleryItem(
+    { id: "c", module: "gallery-travel", src: "/media/c.webp", caption: { en: "Trip" } },
+    0,
+  );
+  assert.deepEqual(store.content.getGallery().map((g) => g.id).sort(), ["a", "b", "c"]);
+  assert.equal(store.content.getGallery().find((g) => g.id === "a")?.alt, "First");
+
+  // Deleting a whole gallery module drops only its images.
+  store.content.deleteGalleryModule("gallery-travel");
+  assert.deepEqual(store.content.getGallery().map((g) => g.id).sort(), ["a", "b"]);
+
+  assert.equal(store.content.getContent().gallery?.length, 2);
+  store.content.deleteGalleryItem("a");
+  assert.deepEqual(store.content.getGallery().map((g) => g.id), ["b"]);
+  store.close();
+});
+
 test("presence settings: seeded default, roundtrip, and sanitized on write", () => {
   const store = openStore(":memory:");
   // Seeded with the default allow-list.

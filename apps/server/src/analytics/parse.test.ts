@@ -25,6 +25,14 @@ test("asset requests are not counted", () => {
   assert.equal(lineToHits(ASSET).length, 0);
 });
 
+test("CMS preview requests (?preview=1) are not counted", () => {
+  const preview =
+    '203.0.113.7 - - [10/Oct/2026:13:55:38 +0000] "GET /?preview=1 HTTP/1.1" 200 900 "-" "Mozilla/5.0"';
+  assert.equal(lineToHits(preview, "letsgaming.de").length, 0);
+  // A normal visit to "/" still counts.
+  assert.ok(lineToHits(IPHONE, "letsgaming.de").some((h) => h.dimension === "path" && h.key === "/"));
+});
+
 test("local-time log stamps are converted to a UTC hour bucket", () => {
   // 00:30 at +0200 is 22:30 UTC the previous day.
   const line =

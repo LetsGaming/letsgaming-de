@@ -10,7 +10,7 @@ const site = {
   nav: [
     { id: "home", label: "Home", modules: ["hero"] },
     { id: "work", label: "Work", modules: ["highlights", "coding"] },
-    { id: "life", label: "Life", modules: ["guestbook"] },
+    { id: "life", label: "Life", modules: ["guestbook", "gallery"] },
     { id: "about", label: "About", modules: ["bio"] },
   ],
   modules: {
@@ -69,6 +69,15 @@ const site = {
         coding: { range: "last 7 days", totalHours: 28.2, languages: [{ name: "TypeScript", pct: 46, hours: 13 }] },
       },
     },
+    gallery: {
+      id: "gallery",
+      kind: "gallery",
+      data: {
+        heading: "Snapshots",
+        note: "a few pictures",
+        images: [{ id: "i1", src: "/media/pic.webp", caption: "A sunset", alt: "Sunset over hills" }],
+      },
+    },
   },
 } as unknown as SiteView;
 
@@ -115,5 +124,9 @@ describe("TabbedSite (public island) smoke", () => {
     expect(wrapper.text()).toContain("Casey");
     // The submit form is present.
     expect(wrapper.find("form.gform").exists()).toBe(true);
+    // The gallery module renders its image + caption.
+    expect(wrapper.text()).toContain("A sunset");
+    const gimg = wrapper.findAll("img").find((im) => im.attributes("src")?.includes("/media/pic.webp"));
+    expect(gimg).toBeTruthy();
   });
 });

@@ -54,9 +54,26 @@ export function isOptedOut(): boolean {
   }
 }
 
-/** May we measure this visit? False if DNT is on, the visitor opted out, or no API. */
+/**
+ * Preview context: the CMS embeds the site in an iframe with `?preview=1`. We
+ * must not record the owner's preview traffic — detect it two ways (the query
+ * marker, and simply being framed) and stay silent.
+ */
+export function isPreview(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.self !== window.top) return true; // running inside a frame
+  } catch {
+    return true; // cross-origin framing throws — treat as framed
+  }
+  return new URLSearchParams(window.location.search).has("preview");
+}
+
+/** May we measure this visit? False if DNT is on, the visitor opted out, previewing, or no API. */
 export function analyticsAllowed(): boolean {
-  return typeof window !== "undefined" && !!API_BASE && !dntActive() && !isOptedOut();
+  return (
+    typeof window !== "undefined" && !!API_BASE && !dntActive() && !isOptedOut() && !isPreview()
+  );
 }
 
 /** Flip the opt-out at runtime (from the settings panel) and persist it. */
@@ -70,7 +87,7 @@ export function setOptedOut(optout: boolean) {
   if (optout) {
     enabled = false;
     queue = [];
-  } else if (!dntActive() && API_BASE) {
+  } else if (!dntActive() && API_BASE && !isPreview()) {
     // Opting back in mid-visit: register the current section so the visit counts.
     enabled = true;
     if (current) {

@@ -80,6 +80,17 @@ CREATE TABLE IF NOT EXISTS now_items (
   sort  INTEGER NOT NULL DEFAULT 0
 );
 
+-- Images placed on the site via the CMS (chosen from the media library).
+-- `module` groups images by which gallery module they belong to (multiple galleries).
+CREATE TABLE IF NOT EXISTS gallery (
+  id      TEXT PRIMARY KEY,
+  module  TEXT NOT NULL DEFAULT 'gallery',  -- owning gallery module id
+  src     TEXT NOT NULL,        -- media path, e.g. /media/<uuid>.webp
+  caption TEXT NOT NULL,        -- JSON Localized
+  alt     TEXT,                 -- optional plain-text alt (falls back to caption)
+  sort    INTEGER NOT NULL DEFAULT 0
+);
+
 -- ── Visitor-submitted: guestbook (pre-moderated) ─────────────────────────────
 -- Cookieless, minimal: name + message + server timestamp only (no IP, no id).
 -- Nothing is public until `status = 'approved'` in the CMS queue. `flags`/`score`

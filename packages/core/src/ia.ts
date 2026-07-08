@@ -17,7 +17,7 @@ import type { NavNode } from "./nav.js";
 export const LAUNCH_NAV: NavNode[] = [
   { id: "home", label: en("Home"), modules: ["hero", "featured", "glance"] },
   { id: "work", label: en("Work"), modules: ["activity", "highlights", "coding", "projects"] },
-  { id: "life", label: en("Life"), modules: ["presence", "hobbies", "now", "guestbook"] },
+  { id: "life", label: en("Life"), modules: ["presence", "hobbies", "gallery", "now", "guestbook"] },
   { id: "about", label: en("About"), modules: ["bio", "contact"] },
 ];
 
@@ -56,6 +56,12 @@ export const LAUNCH_MODULES: ModuleDescriptor[] = [
     note: en("live from Discord"),
   },
   { id: "hobbies", kind: "hobbies", heading: en("Off the clock"), note: en("the non-code half") },
+  {
+    id: "gallery",
+    kind: "gallery",
+    heading: en("Snapshots"),
+    note: en("a few pictures"),
+  },
   { id: "now", kind: "now", heading: en("Right now"), note: en("kept fresh, not stale") },
   {
     id: "guestbook",

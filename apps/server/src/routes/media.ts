@@ -6,7 +6,7 @@
 
 import type { FastifyInstance } from "fastify";
 import { createReadStream } from "node:fs";
-import { mkdir, readdir, stat } from "node:fs/promises";
+import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -49,6 +49,24 @@ export async function registerMediaRoutes(
     const files = await readdir(dir).catch(() => []);
     return { files: files.filter((f) => extname(f) === ".webp").map((f) => `/media/${f}`) };
   });
+
+  // Delete (authed). Same filename guard as serving — no traversal possible.
+  app.delete<{ Params: { file: string } }>(
+    "/api/cms/media/:file",
+    { preHandler: requireAuth(env) },
+    async (req, reply) => {
+      const file = req.params.file;
+      if (!/^[a-f0-9-]+\.webp$/i.test(file)) {
+        return reply.code(400).send({ error: "Invalid filename." });
+      }
+      try {
+        await unlink(join(dir, file));
+      } catch {
+        return reply.code(404).send({ error: "Not found." });
+      }
+      return { ok: true };
+    },
+  );
 
   // Serve (public, read-only). Path traversal is blocked by the filename regex.
   app.get<{ Params: { file: string } }>("/media/:file", async (req, reply) => {

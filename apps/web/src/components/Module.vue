@@ -15,6 +15,11 @@ const props = defineProps<{
 
 const heatVar = (level: number) => `var(--heat-${level})`;
 
+// Media is served from the server origin; on the public site prefix relative
+// /media paths with the API base (same convention the CMS/forms use).
+const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const mediaSrc = (p: string) => (p.startsWith("/") ? API_BASE + p : p);
+
 /** Intercept internal `#anchor` links (e.g. "Get in touch") so they switch to
  *  the tab that holds the target section and scroll to it, instead of no-oping. */
 function onLink(e: MouseEvent, href: string) {
@@ -274,6 +279,21 @@ function onLink(e: MouseEvent, href: string) {
     </div>
     <p v-else class="gb-empty rise">No notes yet — be the first to sign.</p>
     <div class="rise"><GuestbookForm /></div>
+  </section>
+
+  <!-- GALLERY -->
+  <section v-else-if="module.kind === 'gallery'" class="sec">
+    <div class="sec-head rise">
+      <h2>{{ module.data.heading }}</h2>
+      <span v-if="module.data.note">{{ module.data.note }}</span>
+    </div>
+    <div v-if="module.data.images.length" class="gal rise">
+      <figure v-for="img in module.data.images" :key="img.id" class="gal-item">
+        <img :src="mediaSrc(img.src)" :alt="img.alt" loading="lazy" />
+        <figcaption v-if="img.caption">{{ img.caption }}</figcaption>
+      </figure>
+    </div>
+    <p v-else class="sub rise">No pictures yet.</p>
   </section>
 
   <!-- PRESENCE (Discord + Steam) -->

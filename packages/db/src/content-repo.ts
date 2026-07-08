@@ -10,6 +10,7 @@ import type {
   SiteMeta,
   Status,
 } from "@lg/core";
+import type { GalleryItem } from "@lg/core";
 import { defaultPresenceSettings, sanitizePresenceShow } from "@lg/core";
 import type { DB } from "./database.js";
 
@@ -105,6 +106,21 @@ export function contentRepo(db: DB) {
     return { show: sanitizePresenceShow(parse<unknown>(row.show)) };
   };
 
+  const readGallery = (): GalleryItem[] =>
+    (db.prepare("SELECT * FROM gallery ORDER BY sort, id").all() as unknown as {
+      id: string;
+      module: string;
+      src: string;
+      caption: string;
+      alt: string | null;
+    }[]).map((r) => ({
+      id: r.id,
+      module: r.module ?? "gallery",
+      src: r.src,
+      caption: parse<Localized>(r.caption),
+      ...(r.alt ? { alt: r.alt } : {}),
+    }));
+
   return {
     /** Assemble the whole CMS-owned document (used by the resolver on read). */
     getContent(): SiteContent {
@@ -123,6 +139,7 @@ export function contentRepo(db: DB) {
         links: readLinks(),
         now: readNow(),
         presence: readPresence(),
+        gallery: readGallery(),
       };
     },
 
@@ -151,6 +168,23 @@ export function contentRepo(db: DB) {
         `INSERT INTO site_presence (id, show) VALUES (1, ?)
          ON CONFLICT(id) DO UPDATE SET show = excluded.show`,
       ).run(JSON.stringify(show));
+    },
+
+    /** Gallery images (CMS-owned; chosen from the media library). */
+    getGallery: readGallery,
+    upsertGalleryItem(item: GalleryItem, sort = 0) {
+      db.prepare(
+        `INSERT INTO gallery (id, module, src, caption, alt, sort) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET module = excluded.module, src = excluded.src,
+           caption = excluded.caption, alt = excluded.alt, sort = excluded.sort`,
+      ).run(item.id, item.module, item.src, JSON.stringify(item.caption), item.alt ?? null, sort);
+    },
+    deleteGalleryItem(id: string) {
+      db.prepare("DELETE FROM gallery WHERE id = ?").run(id);
+    },
+    /** Remove every image belonging to a gallery module (used when deleting one). */
+    deleteGalleryModule(moduleId: string) {
+      db.prepare("DELETE FROM gallery WHERE module = ?").run(moduleId);
     },
 
     // ── list CRUD (CMS) ─────────────────────────────────────────────────────

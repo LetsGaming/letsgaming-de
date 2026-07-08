@@ -121,6 +121,15 @@ export interface PresenceModuleView {
   };
 }
 
+/** One resolved gallery image, ready to render (src prefixed client-side). */
+export interface GalleryImageView {
+  id: string;
+  src: string;
+  caption: string;
+  /** Alt text (owner-set, else the caption). */
+  alt: string;
+}
+
 export interface HeroView {
   eyebrow: string;
   headline: { before: string; highlight: string; after: string };
@@ -158,6 +167,7 @@ export type ResolvedModule =
   | { id: string; kind: "now"; data: SectionMeta & { items: NowView[] } }
   | { id: string; kind: "guestbook"; data: SectionMeta & { entries: GuestbookEntryView[] } }
   | { id: string; kind: "presence"; data: SectionMeta & PresenceModuleView }
+  | { id: string; kind: "gallery"; data: SectionMeta & { images: GalleryImageView[] } }
   | { id: string; kind: "bio"; data: SectionMeta & { paragraphs: string[] } }
   | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
 
@@ -195,6 +205,7 @@ export function isModuleKind(value: string): value is ModuleKind {
     "now",
     "guestbook",
     "presence",
+    "gallery",
     "bio",
     "contact",
   ].includes(value);

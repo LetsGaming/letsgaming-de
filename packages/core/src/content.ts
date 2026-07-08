@@ -99,4 +99,19 @@ export interface SiteContent {
   now: NowItem[];
   /** CMS-owned presence widget config (optional; resolver falls back to default). */
   presence?: PresenceSettings;
+  /** CMS-owned image gallery — uploaded media placed on the site. */
+  gallery?: GalleryItem[];
+}
+
+/** One image placed on the site via the CMS (chosen from the media library). */
+export interface GalleryItem {
+  id: string;
+  /** Which gallery module this image belongs to (supports multiple galleries). */
+  module: string;
+  /** Media path as stored/served, e.g. "/media/<uuid>.webp". */
+  src: string;
+  /** Optional localized caption (shown under the image). */
+  caption: Localized;
+  /** Optional alt text for screen readers; falls back to the caption. */
+  alt?: string;
 }
