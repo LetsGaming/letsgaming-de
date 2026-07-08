@@ -104,3 +104,27 @@ test("projects come from GitHub — pinned first, then most-recent", () => {
   }
   store.close();
 });
+
+test("rollupAndPrune bundles old hourly into daily and prunes", () => {
+  const store = openStore(":memory:");
+  const old = new Date(Date.now() - 100 * 86400000).toISOString().slice(0, 13);
+  const recent = new Date().toISOString().slice(0, 13);
+  store.analytics.recordHourly([
+    { bucket: old, dimension: "path", key: "/" },
+    { bucket: old, dimension: "path", key: "/" },
+    { bucket: recent, dimension: "path", key: "/work" },
+  ]);
+
+  const res = store.analytics.rollupAndPrune(90); // keep 90 days of hourly
+  assert.ok(res.pruned >= 1);
+
+  // The old bucket is gone from hourly…
+  assert.equal(store.analytics.topHourly("path", "0000", "9999").length, 1);
+  assert.equal(store.analytics.topHourly("path", "0000", "9999")[0]?.key, "/work");
+  // …and rolled into daily with its summed count.
+  const day = old.slice(0, 10);
+  const daily = store.analytics.top("path", day, day);
+  assert.equal(daily[0]?.key, "/");
+  assert.equal(daily[0]?.count, 2);
+  store.close();
+});

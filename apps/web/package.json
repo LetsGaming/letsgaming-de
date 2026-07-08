@@ -1,6 +1,6 @@
 {
   "name": "@lg/web",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Astro + Vue-islands public site. Renders the normalized SiteView from the read API; near-zero JS shell with tactile Vue islands.",
@@ -8,7 +8,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/node": "^10",
@@ -22,6 +23,10 @@
   "devDependencies": {
     "@astrojs/check": "^0.9",
     "@lg/core": "workspace:^",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "@vue/test-utils": "^2.4.6",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "happy-dom": "^15.11.7",
+    "vitest": "^2.1.8"
   }
 }

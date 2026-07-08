@@ -105,12 +105,28 @@ const saveLink = (l: any) => guarded(() => cms.put(`links/${l.id}`, strip(l)));
 const saveNow = (n: any) => guarded(() => cms.put(`now/${n.id}`, strip(n)));
 
 // Deletes
-const delItem = (arr: any, i: number, kind: string) =>
+const delItem = (arr: any[], i: number, kind: string) =>
   guarded(async () => {
-    const item = arr.value[i];
-    if (item.id) await cms.del(`${kind}/${item.id}`);
-    arr.value.splice(i, 1);
+    const item = arr[i];
+    if (item?.id) await cms.del(`${kind}/${item.id}`);
+    arr.splice(i, 1);
   }, "Deleted");
+
+/** Move an item up/down in a sortable list and persist the new order. */
+function move(arr: any[], i: number, dir: -1 | 1, kind: string) {
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  const a = arr[i];
+  const b = arr[j];
+  arr[i] = b;
+  arr[j] = a;
+  arr[i].sort = i;
+  arr[j].sort = j;
+  void guarded(async () => {
+    await cms.put(`${kind}/${arr[i].id}`, strip(arr[i]));
+    await cms.put(`${kind}/${arr[j].id}`, strip(arr[j]));
+  }, "Reordered");
+}
 
 // Adders
 const addHobby = () =>
@@ -159,8 +175,9 @@ function copy(text: string) {
 }
 
 // Analytics
-type MetricKey = "sections" | "clicks" | "visitLength";
+type MetricKey = "pageviews" | "sections" | "clicks" | "visitLength";
 const METRIC_LABELS: Record<MetricKey, string> = {
+  pageviews: "Page views",
   sections: "Section views",
   clicks: "Clicks",
   visitLength: "Visit length",
@@ -183,7 +200,7 @@ const CLEARS: [string, string][] = [
 const STACK_COLORS = ["#8b5cf6", "#6d48e5", "#a78bfa", "#22d3ee", "#f59e0b", "#f472b6", "#94a3b8"];
 
 const rangeHours = ref(72);
-const metric = ref<MetricKey>("sections");
+const metric = ref<MetricKey>("pageviews");
 const loadingA = ref(false);
 const clearing = ref(false);
 
@@ -232,7 +249,7 @@ function axisBuckets(from: string, to: string, unit: "hour" | "day"): string[] {
 const metricTotals = computed<Record<MetricKey, number>>(() => {
   const c = analytics.value?.chart;
   const sum = (a?: { count: number }[]) => (a ?? []).reduce((s, r) => s + r.count, 0);
-  return { sections: sum(c?.sections), clicks: sum(c?.clicks), visitLength: sum(c?.visitLength) };
+  return { pageviews: sum(c?.pageviews), sections: sum(c?.sections), clicks: sum(c?.clicks), visitLength: sum(c?.visitLength) };
 });
 
 /** Stacked-area geometry for the selected metric (composition over time). */
@@ -406,6 +423,8 @@ onMounted(boot);
           </div>
           <label>Blurb<input :value="lv(h.blurb, locale)" @input="setLv(h.blurb, locale, ($event.target as HTMLInputElement).value)" /></label>
           <div class="actions">
+            <button class="link" title="Move up" @click="move(hobbies, hobbies.indexOf(h), -1, 'hobbies')">↑</button>
+            <button class="link" title="Move down" @click="move(hobbies, hobbies.indexOf(h), 1, 'hobbies')">↓</button>
             <button class="link danger" @click="delItem(hobbies, hobbies.indexOf(h), 'hobbies')">delete</button>
             <button class="btn" @click="saveHobby(h)">Save</button>
           </div>
@@ -425,6 +444,8 @@ onMounted(boot);
           </div>
           <label class="check"><input type="checkbox" v-model="l.primary" /> primary</label>
           <div class="actions">
+            <button class="link" title="Move up" @click="move(links, links.indexOf(l), -1, 'links')">↑</button>
+            <button class="link" title="Move down" @click="move(links, links.indexOf(l), 1, 'links')">↓</button>
             <button class="link danger" @click="delItem(links, links.indexOf(l), 'links')">delete</button>
             <button class="btn" @click="saveLink(l)">Save</button>
           </div>
@@ -442,6 +463,8 @@ onMounted(boot);
             <label>Value<input :value="lv(n.value, locale)" @input="setLv(n.value, locale, ($event.target as HTMLInputElement).value)" /></label>
           </div>
           <div class="actions">
+            <button class="link" title="Move up" @click="move(now, now.indexOf(n), -1, 'now')">↑</button>
+            <button class="link" title="Move down" @click="move(now, now.indexOf(n), 1, 'now')">↓</button>
             <button class="link danger" @click="delItem(now, now.indexOf(n), 'now')">delete</button>
             <button class="btn" @click="saveNow(n)">Save</button>
           </div>

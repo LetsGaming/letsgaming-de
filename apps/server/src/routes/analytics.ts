@@ -31,41 +31,39 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const now = new Date();
       const fromB = isoHour(new Date(now.getTime() - (hours - 1) * HOUR));
       const toB = isoHour(now);
-      const fromDay = fromB.slice(0, 10);
-      const toDay = toB.slice(0, 10);
 
-      const day = (d: AnalyticsDimension) => store.analytics.top(d, fromDay, toDay);
-      const hour = (d: AnalyticsDimension) => store.analytics.topHourly(d, fromB, toB);
+      const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, fromB, toB);
       const series = (d: AnalyticsDimension) => store.analytics.seriesHourly(d, fromB, toB, unit);
 
       return {
         range: { from: fromB, to: toB, hours, unit },
-        // Log-derived top lists (day-bucketed, unchanged pipeline).
-        paths: day("path"),
-        referrers: day("referrer"),
-        browsers: day("browser"),
-        os: day("os"),
-        devices: day("device"),
+        // Log-derived top lists (now hour-bucketed, same pipeline).
+        paths: top("path"),
+        referrers: top("referrer"),
+        browsers: top("browser"),
+        os: top("os"),
+        devices: top("device"),
         // The graph: stacked composition over time, per metric.
         chart: {
           unit,
+          pageviews: series("path"),
           sections: series("tab"),
           clicks: series("click"),
           visitLength: series("session_dwell"),
         },
         // Engagement top lists (hour-bucketed).
         engagement: {
-          tabs: hour("tab"),
-          exits: hour("exit"),
-          transitions: hour("transition"),
-          dwell: hour("dwell"),
-          scroll: hour("scroll"),
-          sessionTabs: hour("session_tabs"),
-          sessionDwell: hour("session_dwell"),
-          clicks: hour("click"),
-          projects: hour("project"),
-          viewport: hour("viewport"),
-          theme: hour("theme"),
+          tabs: top("tab"),
+          exits: top("exit"),
+          transitions: top("transition"),
+          dwell: top("dwell"),
+          scroll: top("scroll"),
+          sessionTabs: top("session_tabs"),
+          sessionDwell: top("session_dwell"),
+          clicks: top("click"),
+          projects: top("project"),
+          viewport: top("viewport"),
+          theme: top("theme"),
         },
       };
     },

@@ -28,8 +28,21 @@ export class SyncRunner {
     private readonly store: Store,
     env: SourcesEnv,
     private readonly log: (msg: string) => void = console.log,
+    private readonly retainHourlyDays = 90,
   ) {
     this.registered = getSources(env);
+  }
+
+  /** Bundle old hourly analytics into daily rows and prune — keeps the volume flat. */
+  runMaintenance(): void {
+    try {
+      const { rolledUp, pruned } = this.store.analytics.rollupAndPrune(this.retainHourlyDays);
+      if (rolledUp || pruned) {
+        this.log(`[maint] analytics rollup: ${rolledUp} daily rows, pruned ${pruned} hourly`);
+      }
+    } catch (err) {
+      this.log(`[maint] analytics rollup FAILED: ${err instanceof Error ? err.message : err}`);
+    }
   }
 
   /** Run one source now: fetch, normalize, persist. Never throws — reports. */
@@ -71,7 +84,11 @@ export class SyncRunner {
       this.tasks.push(task);
       this.log(`[sync] ${source.id} scheduled: ${source.schedule}${mock ? " (mock)" : ""}`);
     }
+    // Nightly analytics rollup/prune (keeps the store from growing unbounded).
+    const maint = cron.schedule("0 4 * * *", () => this.runMaintenance());
+    this.tasks.push(maint);
     void this.runAll();
+    this.runMaintenance();
   }
 
   stop(): void {

@@ -45,7 +45,7 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
         }
       }
       if (batch.length) {
-        store.analytics.record(batch);
+        store.analytics.recordHourly(batch);
         hitCount += batch.length;
       }
     }

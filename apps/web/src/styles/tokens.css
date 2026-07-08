@@ -60,11 +60,11 @@
   --muted: #6b6494;
 
   --purple: #6d48e5;
-  --purple-br: #7c5cf0;
+  --purple-br: #6f52d8; /* AA on light bg (was #7c5cf0) */
   --purple-d: #4d2fb0;
   --purple-wash: rgba(109, 72, 229, 0.12);
 
-  --coral: #ef5f43;
+  --coral: #b34732; /* AA on light bg (was #ef5f43) */
   --sun: #e0951a;
   --mint: #16a179;
 

@@ -18,11 +18,19 @@ test("parses a page view into aggregate hits without touching the IP", () => {
   assert.ok(hits.some((h) => h.dimension === "browser" && h.key === "Chrome"));
   assert.ok(hits.some((h) => h.dimension === "os" && h.key === "Windows"));
   assert.ok(hits.some((h) => h.dimension === "device" && h.key === "desktop"));
-  assert.equal(hits[0]!.day, "2026-10-10");
+  assert.equal(hits[0]!.bucket, "2026-10-10T13");
 });
 
 test("asset requests are not counted", () => {
   assert.equal(lineToHits(ASSET).length, 0);
+});
+
+test("local-time log stamps are converted to a UTC hour bucket", () => {
+  // 00:30 at +0200 is 22:30 UTC the previous day.
+  const line =
+    '203.0.113.7 - - [08/Jul/2026:00:30:00 +0200] "GET / HTTP/1.1" 200 900 "-" "Mozilla/5.0"';
+  const hits = lineToHits(line, "letsgaming.de");
+  assert.equal(hits[0]!.bucket, "2026-07-07T22");
 });
 
 test("direct visit + mobile detection", () => {

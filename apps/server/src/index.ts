@@ -13,6 +13,7 @@ const runner = new SyncRunner(
   store,
   { githubUsername: env.github.username, githubToken: env.github.token },
   (msg) => app.log.info(msg),
+  env.retainHourlyDays,
 );
 runner.start();
 

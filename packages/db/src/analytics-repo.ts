@@ -151,6 +151,36 @@ export function analyticsRepo(db: DB) {
       return info.changes ?? 0;
     },
 
+    /**
+     * Storage retention: bundle hourly buckets older than `retainDays` into daily
+     * rows (24 hours → 1 day), then delete the raw hourly rows. Keeps recent data
+     * at hour resolution and long-term history at day resolution, so the volume
+     * stays bounded no matter how long the site runs. Idempotent.
+     */
+    rollupAndPrune(retainDays: number): { rolledUp: number; pruned: number } {
+      const cutoff = new Date(Date.now() - retainDays * 86_400_000).toISOString().slice(0, 13);
+      db.exec("BEGIN");
+      try {
+        const roll = db
+          .prepare(
+            `INSERT INTO analytics_daily (day, dimension, key, count)
+             SELECT substr(bucket, 1, 10) AS day, dimension, key, SUM(count)
+             FROM analytics_hourly WHERE bucket < ?
+             GROUP BY day, dimension, key
+             ON CONFLICT(day, dimension, key) DO UPDATE SET count = count + excluded.count`,
+          )
+          .run(cutoff) as { changes?: number };
+        const prune = db
+          .prepare(`DELETE FROM analytics_hourly WHERE bucket < ?`)
+          .run(cutoff) as { changes?: number };
+        db.exec("COMMIT");
+        return { rolledUp: roll.changes ?? 0, pruned: prune.changes ?? 0 };
+      } catch (err) {
+        db.exec("ROLLBACK");
+        throw err;
+      }
+    },
+
     getOffset(source: string): number {
       const row = db.prepare("SELECT offset FROM analytics_state WHERE source = ?").get(source) as
         | { offset: number }

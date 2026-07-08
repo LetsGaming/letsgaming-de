@@ -1,7 +1,7 @@
 /**
  * CMS-owned content model (PROJECT.md §6 "Content model").
  *
- * These are the shapes the owner edits in the small custom CMS: bio, tagline,
+ * These are the shapes the owner edits in the small custom CMS: bio,
  * status, links, projects, hobbies, "Right now", featured selection, nav labels.
  * Every human-authored string is `Localized` so German is a later content task,
  * not a migration. Prose fields (`lede`, `bio` paragraphs, project descriptions)

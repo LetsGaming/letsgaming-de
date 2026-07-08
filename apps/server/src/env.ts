@@ -22,6 +22,8 @@ export interface ServerEnv {
   sessionSecret: string;
   /** Directory for uploaded media (served read-only, backed up alongside the DB). */
   mediaDir: string;
+  /** Days of hourly analytics to keep before bundling into daily rows (§ retention). */
+  retainHourlyDays: number;
   /** Contact relay. When unset, the contact endpoint reports "not configured". */
   smtp?: { host: string; port: number; user?: string; pass?: string; from: string; to: string };
 }
@@ -77,6 +79,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
     },
     sessionSecret,
     mediaDir: source.MEDIA_DIR ?? "./data/media",
+    retainHourlyDays: num(source.RETAIN_HOURLY_DAYS, 90),
     ...(str(source.SMTP_HOST) && str(source.CONTACT_TO)
       ? {
           smtp: {

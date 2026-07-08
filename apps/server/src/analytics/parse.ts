@@ -4,7 +4,7 @@
  * survive, which is all the aggregates need. Nothing personal is derived.
  */
 
-import type { AnalyticsHit } from "@lg/db";
+import type { HourlyHit } from "@lg/db";
 
 export interface ParsedUA {
   browser: string;
@@ -49,13 +49,15 @@ const MONTHS: Record<string, string> = {
   Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12",
 };
 
-/** "10/Oct/2026:13:55:36 +0000" -> "2026-10-10". */
-function logDay(stamp: string): string | null {
-  const m = /^(\d{2})\/([A-Za-z]{3})\/(\d{4})/.exec(stamp);
+/** "10/Oct/2026:13:55:36 +0000" -> UTC hour bucket "2026-10-10T13". */
+function logHour(stamp: string): string | null {
+  const m = /^(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?/.exec(stamp);
   if (!m) return null;
   const mon = MONTHS[m[2]!];
   if (!mon) return null;
-  return `${m[3]}-${mon}-${m[1]}`;
+  const tz = m[7] ? `${m[7].slice(0, 3)}:${m[7].slice(3)}` : "Z"; // +0200 -> +02:00
+  const d = new Date(`${m[3]}-${mon}-${m[1]}T${m[4]}:${m[5]}:${m[6]}${tz}`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 13);
 }
 
 function isPageView(method: string, status: number, path: string): boolean {
@@ -76,26 +78,26 @@ function referrerHost(ref: string): string | null {
   }
 }
 
-/** Parse one log line into aggregate hits (or [] if it's not a page view). */
-export function lineToHits(line: string, ownHost?: string): AnalyticsHit[] {
+/** Parse one log line into aggregate hourly hits (or [] if not a page view). */
+export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   const m = LINE.exec(line);
   if (!m) return [];
   const [, stamp, method, rawPath, statusStr, referrer, ua] = m;
-  const day = logDay(stamp!);
-  if (!day) return [];
+  const bucket = logHour(stamp!);
+  if (!bucket) return [];
   const path = (rawPath ?? "").split("?")[0] ?? "/";
   const status = Number(statusStr);
   if (!isPageView(method!, status, path)) return [];
 
-  const hits: AnalyticsHit[] = [{ day, dimension: "path", key: path }];
+  const hits: HourlyHit[] = [{ bucket, dimension: "path", key: path }];
 
   const host = referrerHost(referrer ?? "");
-  if (host && host !== ownHost) hits.push({ day, dimension: "referrer", key: host });
+  if (host && host !== ownHost) hits.push({ bucket, dimension: "referrer", key: host });
 
   const { browser, os, device } = parseUserAgent(ua ?? "");
-  hits.push({ day, dimension: "browser", key: browser });
-  hits.push({ day, dimension: "os", key: os });
-  hits.push({ day, dimension: "device", key: device });
+  hits.push({ bucket, dimension: "browser", key: browser });
+  hits.push({ bucket, dimension: "os", key: os });
+  hits.push({ bucket, dimension: "device", key: device });
 
   return hits;
 }
