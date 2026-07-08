@@ -4,10 +4,12 @@
 
 ### Features
 
-- **CMS preview is now contextual.** The live-preview iframe opens the **area you're editing**
-  (editing Hobbies shows the Life section, About shows the bio, and so on) instead of the whole page
-  from the top, with an area picker to jump elsewhere. The public site now honours a `#area`/`#module`
-  URL hash on load, so these deep links work for shared links too. Still excluded from analytics.
+- **CMS preview is now contextual — and dockable.** A **Show preview** toggle in the top bar opens
+  a live preview *beside* the editor (editor left, site right), so you can see changes without
+  leaving the field you're editing; it reloads on save and follows the area you're working in
+  (Hobbies → Life, About → bio, …), with an area picker to jump elsewhere. A full-width Preview
+  screen remains for a bigger look. The public site now honours a `#area`/`#module` URL hash on
+  load, so these deep links work for shared links too. All preview traffic stays out of analytics.
 - **Traffic analytics populate on their own.** *Top paths / referrers / browsers / OS / devices* are
   parsed from the reverse-proxy access log — previously only a manual CLI ran the ingest, so those
   lists sat empty. The server now ingests a configured **`ACCESS_LOG`** in-process every 5 minutes

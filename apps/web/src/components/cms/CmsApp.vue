@@ -590,7 +590,11 @@ const AREA_FOR_VIEW: Partial<Record<View, string>> = {
 };
 const previewArea = ref<string>("home");
 const previewKey = ref(0);
+const showDock = ref(false); // side-by-side live preview while editing
 const previewSrc = computed(() => `/?preview=1#${encodeURIComponent(previewArea.value)}`);
+function areaLabel(id: string): string {
+  return layoutAreas.value.find((a) => a.id === id)?.label ?? id;
+}
 function viewSite() {
   window.open(`/#${encodeURIComponent(previewArea.value)}`, "_blank", "noopener");
 }
@@ -609,7 +613,7 @@ onMounted(boot);
 </script>
 
 <template>
-  <div class="cms">
+  <div class="cms" :class="{ wide: showDock && authed && tab !== 'preview' }">
     <div v-if="loading" class="center muted">Loading…</div>
 
     <!-- LOGIN GATE -->
@@ -654,10 +658,15 @@ onMounted(boot);
         <div class="topbar">
           <h2>{{ VIEW_TITLES[tab] }}</h2>
           <div class="topact">
-            <button class="link" @click="pick('preview')">Preview</button>
+            <button v-if="tab !== 'preview'" class="link" @click="showDock = !showDock">
+              {{ showDock ? "Hide preview" : "Show preview" }}
+            </button>
             <button class="btn ghost" @click="viewSite">View site ↗</button>
           </div>
         </div>
+
+        <div class="worksplit">
+          <div class="editor">
 
         <!-- DASHBOARD -->
         <section v-show="tab === 'dashboard'" class="pane">
@@ -1060,6 +1069,28 @@ onMounted(boot);
           </div>
           <iframe :key="previewKey + '-' + previewArea" class="prevframe" :src="previewSrc" title="Site preview" />
         </section>
+          </div><!-- /.editor -->
+
+          <!-- DOCKED LIVE PREVIEW (side-by-side while editing) -->
+          <aside v-if="showDock && tab !== 'preview'" class="dock">
+            <div class="dockbar">
+              <span class="muted">Live preview · <b>{{ areaLabel(previewArea) }}</b></span>
+              <span class="dockact">
+                <select v-model="previewArea" title="Area to preview">
+                  <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
+                </select>
+                <button class="link" title="Reload" @click="previewKey++">⟳</button>
+                <button class="link" title="Open in new tab" @click="viewSite">↗</button>
+              </span>
+            </div>
+            <iframe
+              :key="'dock-' + previewKey + '-' + previewArea"
+              class="dockframe"
+              :src="previewSrc"
+              title="Live preview"
+            />
+          </aside>
+        </div><!-- /.worksplit -->
       </main>
 
       <div v-if="toast" class="toast">{{ toast }}</div>
@@ -1110,6 +1141,21 @@ h1, h3 { font-family: var(--f-d); color: var(--ink-strong); }
 .prevpick select { font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-2); color: var(--ink); }
 .prevact { display: flex; gap: 8px; }
 .prevframe { flex: 1; width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+
+/* Side-by-side editor + live preview */
+.cms.wide { max-width: 1500px; }
+.worksplit { display: flex; gap: 20px; align-items: flex-start; }
+.editor { flex: 1; min-width: 0; }
+.dock { flex: 0 0 440px; position: sticky; top: 16px; display: flex; flex-direction: column; height: calc(100vh - 120px); }
+.dockbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.dockact { display: flex; align-items: center; gap: 8px; }
+.dockact select { font-size: 12px; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-2); color: var(--ink); }
+.dockframe { flex: 1; width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+@media (max-width: 1080px) {
+  .cms.wide { max-width: 1120px; }
+  .worksplit { flex-direction: column; }
+  .dock { flex-basis: auto; width: 100%; height: 70vh; position: static; }
+}
 
 @media (max-width: 720px) {
   .shell { grid-template-columns: 1fr; }
