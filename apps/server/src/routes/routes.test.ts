@@ -114,6 +114,33 @@ test("guestbook: approving in the CMS makes an entry public; moderation needs au
   await app.close();
 });
 
+test("cms presence: the category allow-list validates and persists", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+
+  // Unknown category → rejected by the schema.
+  const bad = await app.inject({
+    method: "PUT",
+    url: "/api/cms/presence",
+    headers: auth,
+    payload: { show: ["game", "bogus"] },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "PUT",
+    url: "/api/cms/presence",
+    headers: auth,
+    payload: { show: ["game", "steam"] },
+  });
+  assert.equal(ok.statusCode, 200);
+
+  // Read back through the CMS content endpoint.
+  const content = await app.inject({ method: "GET", url: "/api/cms/content", headers: auth });
+  assert.deepEqual(content.json().content.presence.show, ["game", "steam"]);
+  await app.close();
+});
+
 test("presence endpoint returns an empty, offline snapshot when unconfigured", async () => {
   const app = await enabledApp(); // no DISCORD_USER_ID set
   const res = await app.inject({ method: "GET", url: "/api/presence" });

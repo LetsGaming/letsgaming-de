@@ -23,7 +23,6 @@ export function registerReadRoutes(app: FastifyInstance, store: Store, env: Serv
       syncedAt: store.source.latestSyncedAt(),
       guestbook: store.guestbook.listApproved(),
       presence: {
-        show: env.presenceShow,
         ...(env.discordUserId ? { discordId: env.discordUserId } : {}),
       },
     });

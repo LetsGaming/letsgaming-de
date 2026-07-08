@@ -71,6 +71,21 @@ test("guestbook: moderation queue puts pending first, most-suspicious first", ()
   store.close();
 });
 
+test("presence settings: seeded default, roundtrip, and sanitized on write", () => {
+  const store = openStore(":memory:");
+  // Seeded with the default allow-list.
+  assert.deepEqual(
+    [...store.content.getPresence().show].sort(),
+    ["custom", "game", "music", "steam", "streaming"],
+  );
+  // Unknown categories are dropped on the way in.
+  store.content.setPresence({ show: ["game", "steam", "bogus"] as never });
+  assert.deepEqual(store.content.getPresence().show, ["game", "steam"]);
+  // getContent() carries it through.
+  assert.deepEqual(store.content.getContent().presence?.show, ["game", "steam"]);
+  store.close();
+});
+
 test("reconcileIa adds and places a newly-registered launch module (IA migration)", () => {
   const db = openDatabase(":memory:");
   seedIfEmpty(db);

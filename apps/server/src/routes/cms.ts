@@ -13,6 +13,7 @@ import type {
   Link,
   Localized,
   NowItem,
+  PresenceCategory,
   Project,
   SiteMeta,
   Status,
@@ -59,6 +60,14 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     store.content.setBio(req.body);
     return { ok: true };
   });
+  app.put<{ Body: { show: PresenceCategory[] } }>(
+    "/api/cms/presence",
+    write(schemas.presence),
+    async (req) => {
+      store.content.setPresence({ show: req.body.show });
+      return { ok: true };
+    },
+  );
 
   // ── list entities ────────────────────────────────────────────────────────
   app.put<{ Body: Project & { sort?: number } }>(

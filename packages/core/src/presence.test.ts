@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { normalizePresence, type LanyardData } from "./presence.js";
+import { defaultPresenceSettings, normalizePresence, sanitizePresenceShow, type LanyardData } from "./presence.js";
+
+test("sanitizePresenceShow keeps valid categories, de-dupes, and drops junk", () => {
+  assert.deepEqual(sanitizePresenceShow(["game", "game", "nope", "steam"]), ["game", "steam"]);
+  assert.deepEqual(sanitizePresenceShow("nope"), []);
+  assert.deepEqual(sanitizePresenceShow([1, {}, "music"]), ["music"]);
+  assert.ok(defaultPresenceSettings().show.includes("game"));
+});
 
 const data: LanyardData = {
   discord_status: "online",

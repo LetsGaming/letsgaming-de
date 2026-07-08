@@ -107,4 +107,16 @@ export const schemas = {
     },
     additionalProperties: false,
   },
+  presence: {
+    type: "object",
+    required: ["show"],
+    properties: {
+      show: {
+        type: "array",
+        items: { enum: ["game", "streaming", "music", "watching", "custom", "steam"] },
+        uniqueItems: true,
+      },
+    },
+    additionalProperties: false,
+  },
 } as const;

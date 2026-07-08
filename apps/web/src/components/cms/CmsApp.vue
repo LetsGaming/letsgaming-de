@@ -26,6 +26,22 @@ const now = ref<(NowItem & { sort?: number })[]>([]);
 const media = ref<string[]>([]);
 const analytics = ref<any>(null);
 
+// Presence widget category allow-list (CMS-owned curation).
+const PRESENCE_OPTIONS: { key: string; label: string; hint: string }[] = [
+  { key: "game", label: "Games", hint: "Discord 'Playing …'" },
+  { key: "streaming", label: "Streaming", hint: "going live" },
+  { key: "music", label: "Music", hint: "Spotify" },
+  { key: "watching", label: "Watching", hint: "e.g. YouTube" },
+  { key: "custom", label: "Custom status", hint: "your set status + emoji" },
+  { key: "steam", label: "Steam", hint: "recently-played section" },
+];
+const presenceShow = ref<string[]>([]);
+function togglePresence(key: string) {
+  const s = presenceShow.value;
+  presenceShow.value = s.includes(key) ? s.filter((k) => k !== key) : [...s, key];
+}
+const savePresence = () => guarded(() => cms.put("presence", { show: presenceShow.value }));
+
 // Guestbook moderation queue.
 interface ModEntry {
   id: number;
@@ -103,6 +119,7 @@ async function loadAll() {
   hobbies.value = data.content.hobbies.map((h: Hobby, i: number) => ({ ...h, sort: i }));
   links.value = data.content.links.map((l: Link, i: number) => ({ ...l, sort: i }));
   now.value = data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i }));
+  presenceShow.value = data.content.presence?.show ?? [];
 }
 
 async function signIn() {
@@ -447,6 +464,21 @@ onMounted(boot);
           </div>
           <div class="actions"><button class="link" @click="addBio">+ paragraph</button><button class="btn" @click="saveBio">Save bio</button></div>
         </div>
+
+        <div class="card">
+          <h3>Presence widget <span class="muted">(Life → “Right now-ish”)</span></h3>
+          <p class="muted">
+            Which Discord/Steam categories the widget may reveal. The server filters to exactly
+            these before anything reaches a visitor — unchecked categories never leave the backend.
+          </p>
+          <div class="pgrid">
+            <label v-for="o in PRESENCE_OPTIONS" :key="o.key" class="ptoggle">
+              <input type="checkbox" :checked="presenceShow.includes(o.key)" @change="togglePresence(o.key)" />
+              <span><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
+            </label>
+          </div>
+          <div class="actions"><button class="btn" @click="savePresence">Save presence</button></div>
+        </div>
       </section>
 
       <!-- HOBBIES -->
@@ -733,4 +765,7 @@ input, textarea, select { font-family: var(--f-b); font-size: 14px; color: var(-
 .pill-pending { background: var(--purple-wash); color: var(--purple-br); border-color: transparent; }
 .pill-approved { background: color-mix(in srgb, var(--mint, #34d399) 20%, transparent); color: var(--ink-strong); }
 .pill-rejected { color: var(--muted); }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 4px 0 12px; }
+.ptoggle { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); }
+.ptoggle input { width: auto; margin-top: 2px; }
 </style>

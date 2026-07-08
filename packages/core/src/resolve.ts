@@ -18,6 +18,7 @@ import type { ModuleDescriptor } from "./modules.js";
 import { collectModuleIds, type NavNode } from "./nav.js";
 import type { GitHubData, SourceData } from "./source.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
+import { defaultPresenceSettings } from "./presence.js";
 import type {
   CodingView,
   GuestbookEntryView,
@@ -41,8 +42,8 @@ export interface ResolveInput {
   syncedAt?: string;
   /** Approved guestbook entries, newest first (the store filters + orders). */
   guestbook?: PublicGuestbookEntry[];
-  /** Discord presence widget config (from env): the Lanyard id + category allow-list. */
-  presence?: { discordId?: string; show: string[] };
+  /** Discord presence: the Lanyard id (env config). Categories are CMS-owned. */
+  presence?: { discordId?: string };
   /** Injectable clock for deterministic relative times (tests). */
   now?: Date;
 }
@@ -304,13 +305,11 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         return { id: descriptor.id, kind: "guestbook", data: { heading, note, entries } };
       }
       case "presence": {
-        const show = input.presence?.show ?? [];
+        // Category allow-list is CMS-owned (content); the Discord id is env config.
+        const show = content.presence?.show ?? defaultPresenceSettings().show;
         const LIVE_CATEGORIES = ["game", "streaming", "music", "watching", "custom"];
-        // "live" only if a Discord id is configured AND at least one live category
-        // is enabled — the client just learns whether to poll, never the details.
         const live = Boolean(input.presence?.discordId) && show.some((c) => LIVE_CATEGORIES.includes(c));
         const steam = source.steam;
-        // Steam data reaches the client only when the owner enabled the category.
         const includeSteam = show.includes("steam") && steam;
         const data: PresenceModuleView = {
           live,

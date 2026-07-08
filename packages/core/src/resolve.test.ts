@@ -56,14 +56,14 @@ test("resolver folds Wakapi into coding and presence config + Steam into presenc
   ];
 
   const view = resolveSiteView({
-    content,
+    content: { ...content, presence: { show: ["game", "steam"] } },
     nav,
     modules,
     source: {
       wakapi: { range: "last 7 days", totalSeconds: 7200, languages: [{ name: "TS", pct: 100, seconds: 7200 }] },
       steam: { recent: [{ name: "CS2", appId: 730, minutes2Weeks: 120 }] },
     },
-    presence: { discordId: "123", show: ["game", "steam"] },
+    presence: { discordId: "123" },
   });
 
   const coding = view.modules["coding"];
@@ -100,21 +100,32 @@ test("presence gating: disabled Steam is withheld; no live category means not li
   };
 
   // Steam configured but NOT in the allow-list → withheld from the client.
-  const noSteam = resolveSiteView({ ...base, presence: { discordId: "1", show: ["game"] } });
+  const noSteam = resolveSiteView({
+    ...base,
+    content: { ...base.content, presence: { show: ["game"] } },
+    presence: { discordId: "1" },
+  });
   const m1 = noSteam.modules["presence"];
   if (!m1 || m1.kind !== "presence") throw new Error("expected presence");
   assert.equal(m1.data.steam, undefined);
   assert.equal(m1.data.live, true);
 
   // Only "steam" enabled (no live category) → not live, but Steam shows.
-  const steamOnly = resolveSiteView({ ...base, presence: { discordId: "1", show: ["steam"] } });
+  const steamOnly = resolveSiteView({
+    ...base,
+    content: { ...base.content, presence: { show: ["steam"] } },
+    presence: { discordId: "1" },
+  });
   const m2 = steamOnly.modules["presence"];
   if (!m2 || m2.kind !== "presence") throw new Error("expected presence");
   assert.equal(m2.data.live, false);
   assert.equal(m2.data.steam?.recent[0]?.name, "CS2");
 
   // No Discord id → never live even if categories are enabled.
-  const noId = resolveSiteView({ ...base, presence: { show: ["game"] } });
+  const noId = resolveSiteView({
+    ...base,
+    content: { ...base.content, presence: { show: ["game"] } },
+  });
   const m3 = noId.modules["presence"];
   if (!m3 || m3.kind !== "presence") throw new Error("expected presence");
   assert.equal(m3.data.live, false);

@@ -4,15 +4,16 @@
 
 ### Features
 
-- **Discord presence widget (Lanyard + Steam hybrid, server-filtered).** A new **Life →
+- **Discord presence widget (Lanyard + Steam hybrid, server-filtered, CMS-curated).** A new **Life →
   "Right now-ish"** widget shows live Discord status and activities plus a **"Recently on Steam"**
-  section. Crucially, **the server does the filtering**: it fetches Lanyard, applies the owner's
-  category allow-list (`game / streaming / music / watching / custom / steam` via `PRESENCE_SHOW`),
-  and exposes only the permitted result at `/api/presence` (shared 15s cache). The browser polls
-  that endpoint and **never receives the Discord id, the category list, or any disabled activity** —
-  the backend is the filtering boundary, like every other source. Disabling music or showing only
-  Steam is config, not code; Spotify is de-duped into one clean card. Steam (public Web API, synced
-  server-side) is likewise withheld unless the category is enabled.
+  section. **The server does the filtering**: it fetches Lanyard, applies the owner's category
+  allow-list, and exposes only the permitted result at `/api/presence` (shared cache keyed on the
+  allow-list). The browser polls that endpoint and **never receives the Discord id, the category
+  list, or any disabled activity** — the backend is the filtering boundary, like every other source.
+  Which categories show (`game / streaming / music / watching / custom / steam`) is edited in the
+  **CMS (`/admin` → Presence toggles)** and stored as CMS-owned content — no redeploy to change it;
+  toggles take effect on the next poll. Spotify is de-duped into one clean card; Steam data is
+  withheld unless its category is enabled. Only the Discord id and Steam credentials stay in env.
 - **Wakapi source (coding time by language).** A new **Work → "What I actually work in"** module
   shows tracked coding hours per language from a self-hosted, WakaTime-compatible Wakapi instance —
   the honest counterpart to GitHub's byte counts. Wakapi is **LAN-only**: the sync worker reaches it

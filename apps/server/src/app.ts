@@ -56,7 +56,7 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   registerTrackRoutes(app, store);
   registerContactRoutes(app, env);
   registerGuestbookRoutes(app, store);
-  registerPresenceRoutes(app, env);
+  registerPresenceRoutes(app, env, store);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);
   await registerMediaRoutes(app, env);

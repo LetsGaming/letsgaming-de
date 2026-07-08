@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS site_ia (
   modules TEXT NOT NULL      -- JSON ModuleDescriptor[]
 );
 
+-- CMS-owned presence config (which Discord/Steam categories the widget reveals).
+-- One row (id = 1); a JSON string[] of enabled category keys. The Discord id and
+-- Steam credentials stay in env — only the curation lives here.
+CREATE TABLE IF NOT EXISTS site_presence (
+  id   INTEGER PRIMARY KEY CHECK (id = 1),
+  show TEXT NOT NULL           -- JSON PresenceCategory[]
+);
+
 -- ── CMS-owned: list entities (CRUD) ──────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS projects (

@@ -21,6 +21,28 @@ export const PRESENCE_CATEGORIES: readonly PresenceCategory[] = [
   "steam",
 ];
 
+/** CMS-owned presence config: which categories the widget may reveal. */
+export interface PresenceSettings {
+  show: PresenceCategory[];
+}
+
+/** Sensible starting allow-list; used to seed the store and as a fallback. */
+export function defaultPresenceSettings(): PresenceSettings {
+  return { show: ["game", "streaming", "music", "custom", "steam"] };
+}
+
+/** Keep only valid, de-duplicated categories (guards CMS input + stored rows). */
+export function sanitizePresenceShow(input: unknown): PresenceCategory[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<PresenceCategory>();
+  for (const v of input) {
+    if (typeof v === "string" && (PRESENCE_CATEGORIES as readonly string[]).includes(v)) {
+      seen.add(v as PresenceCategory);
+    }
+  }
+  return [...seen];
+}
+
 export type DiscordStatus = "online" | "idle" | "dnd" | "offline";
 
 /** The subset of Lanyard's payload we read. */

@@ -1,4 +1,5 @@
 import {
+  defaultPresenceSettings,
   en,
   LAUNCH_MODULES,
   LAUNCH_NAV,
@@ -92,6 +93,9 @@ export function seedIfEmpty(db: DB): { seeded: boolean } {
   db.prepare("INSERT INTO site_ia (id, nav, modules) VALUES (1, ?, ?)").run(
     JSON.stringify(LAUNCH_NAV),
     JSON.stringify(LAUNCH_MODULES),
+  );
+  db.prepare("INSERT OR IGNORE INTO site_presence (id, show) VALUES (1, ?)").run(
+    JSON.stringify(defaultPresenceSettings().show),
   );
 
   const content = contentRepo(db);

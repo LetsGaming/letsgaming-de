@@ -4,11 +4,13 @@ import type {
   Link,
   Localized,
   NowItem,
+  PresenceSettings,
   Project,
   SiteContent,
   SiteMeta,
   Status,
 } from "@lg/core";
+import { defaultPresenceSettings, sanitizePresenceShow } from "@lg/core";
 import type { DB } from "./database.js";
 
 const parse = <T>(s: string): T => JSON.parse(s) as T;
@@ -94,6 +96,15 @@ export function contentRepo(db: DB) {
       value: parse<Localized>(r.value),
     }));
 
+  /** Presence config (single row); falls back to the default if unseeded. */
+  const readPresence = (): PresenceSettings => {
+    const row = db.prepare("SELECT show FROM site_presence WHERE id = 1").get() as
+      | { show: string }
+      | undefined;
+    if (!row) return defaultPresenceSettings();
+    return { show: sanitizePresenceShow(parse<unknown>(row.show)) };
+  };
+
   return {
     /** Assemble the whole CMS-owned document (used by the resolver on read). */
     getContent(): SiteContent {
@@ -111,6 +122,7 @@ export function contentRepo(db: DB) {
         hobbies: readHobbies(),
         links: readLinks(),
         now: readNow(),
+        presence: readPresence(),
       };
     },
 
@@ -129,6 +141,16 @@ export function contentRepo(db: DB) {
     },
     setBio(bio: Localized[]) {
       db.prepare("UPDATE site_content SET bio = ? WHERE id = 1").run(JSON.stringify(bio));
+    },
+
+    /** Presence category allow-list (CMS-owned). */
+    getPresence: readPresence,
+    setPresence(settings: PresenceSettings) {
+      const show = sanitizePresenceShow(settings.show);
+      db.prepare(
+        `INSERT INTO site_presence (id, show) VALUES (1, ?)
+         ON CONFLICT(id) DO UPDATE SET show = excluded.show`,
+      ).run(JSON.stringify(show));
     },
 
     // ── list CRUD (CMS) ─────────────────────────────────────────────────────
