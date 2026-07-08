@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { analyticsAllowed, dntActive, setOptedOut } from "../lib/track";
 
 const props = defineProps<{ open: boolean; theme: "dark" | "light" }>();
 const emit = defineEmits<{ close: []; "toggle-theme": [] }>();
+
+// Teleport must not render during SSR inside an Astro island (it corrupts
+// hydration). Only mount it after the client takes over.
+const mounted = ref(false);
+onMounted(() => {
+  mounted.value = true;
+});
 
 const dnt = ref(false);
 const analyticsOn = ref(true);
@@ -43,7 +50,7 @@ watch(
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport v-if="mounted" to="body">
     <Transition name="fade">
       <div v-if="open" class="overlay" @click.self="emit('close')">
         <div class="panel" role="dialog" aria-modal="true" aria-label="Settings">

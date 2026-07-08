@@ -17,13 +17,14 @@
  */
 
 import { type EngagementDimension, type NavNode, validateTrackEvent } from "@lg/core";
-import type { AnalyticsHit, Store } from "@lg/db";
+import type { HourlyHit, Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
 const MAX_EVENTS = 40; // a whole visit fits comfortably; caps abuse
 
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
+/** Current UTC hour bucket, "YYYY-MM-DDTHH". */
+function isoHour(d: Date): string {
+  return d.toISOString().slice(0, 13);
 }
 
 /** All node ids in the nav tree — the set of valid section ids for tracking. */
@@ -79,14 +80,14 @@ export function registerTrackRoutes(app: FastifyInstance, store: Store): void {
     if (!Array.isArray(events)) return reply.code(400).send();
 
     const sectionIds = collectNavIds(store.ia.getNav());
-    const day = isoDay(new Date());
-    const hits: AnalyticsHit[] = [];
+    const bucket = isoHour(new Date());
+    const hits: HourlyHit[] = [];
     for (const e of events.slice(0, MAX_EVENTS)) {
       if (!e || typeof e !== "object") continue;
       const valid = validateTrackEvent(e as { d: EngagementDimension; k: string }, sectionIds);
-      if (valid) hits.push({ day, dimension: valid.dimension, key: valid.key });
+      if (valid) hits.push({ bucket, dimension: valid.dimension, key: valid.key });
     }
-    if (hits.length) store.analytics.record(hits);
+    if (hits.length) store.analytics.recordHourly(hits);
 
     // Nothing to return; sendBeacon ignores the response.
     return reply.code(204).send();

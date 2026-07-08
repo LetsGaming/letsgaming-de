@@ -63,15 +63,21 @@ export const cms = {
     fetch(`${API_BASE}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
       handle,
     ),
-  analytics: (from?: string, to?: string) => {
+  analytics: (hours?: number) => {
     const q = new URLSearchParams();
-    if (from) q.set("from", from);
-    if (to) q.set("to", to);
+    if (hours) q.set("hours", String(hours));
     return fetch(`${API_BASE}/api/cms/analytics?${q}`, {
       headers: headers(false),
       credentials: "include",
     }).then(handle);
   },
+  clearAnalytics: (range: string) =>
+    fetch(`${API_BASE}/api/cms/analytics/clear`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({ range }),
+    }).then(handle),
 
   put: (path: string, body: unknown) =>
     fetch(`${API_BASE}/api/cms/${path}`, {

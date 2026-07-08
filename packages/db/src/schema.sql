@@ -104,6 +104,17 @@ CREATE TABLE IF NOT EXISTS analytics_daily (
   PRIMARY KEY (day, dimension, key)
 );
 
+-- Engagement events (cookieless beacon), bucketed by UTC hour so the dashboard
+-- can show hourly resolution and clear by fine-grained time ranges.
+CREATE TABLE IF NOT EXISTS analytics_hourly (
+  bucket    TEXT NOT NULL,       -- YYYY-MM-DDTHH (UTC)
+  dimension TEXT NOT NULL,       -- 'tab' | 'transition' | 'dwell' | 'click' | ...
+  key       TEXT NOT NULL,
+  count     INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (bucket, dimension, key)
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_hourly_dim ON analytics_hourly (dimension, bucket);
+
 -- Ingest bookkeeping so re-running the parser doesn't double-count a log file.
 CREATE TABLE IF NOT EXISTS analytics_state (
   source TEXT PRIMARY KEY,       -- the log file path

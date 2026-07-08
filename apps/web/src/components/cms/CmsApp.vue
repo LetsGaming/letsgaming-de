@@ -159,78 +159,147 @@ function copy(text: string) {
 }
 
 // Analytics
-type SeriesKey = "pageviews" | "visits" | "sections" | "clicks";
-const SERIES_LABELS: Record<SeriesKey, string> = {
-  pageviews: "Page views",
-  visits: "Visits",
+type MetricKey = "sections" | "clicks" | "visitLength";
+const METRIC_LABELS: Record<MetricKey, string> = {
   sections: "Section views",
   clicks: "Clicks",
+  visitLength: "Visit length",
 };
-const RANGES = [3, 7, 30, 90];
-const seriesKeys = Object.keys(SERIES_LABELS) as SeriesKey[];
-const range = ref(30);
-const series = ref<SeriesKey>("pageviews");
-const loadingA = ref(false);
+const metricKeys = Object.keys(METRIC_LABELS) as MetricKey[];
+// [label, hours]
+const RANGES: [string, number][] = [
+  ["24h", 24],
+  ["3d", 72],
+  ["7d", 168],
+  ["30d", 720],
+];
+const CLEARS: [string, string][] = [
+  ["last hour", "hour"],
+  ["24h", "24h"],
+  ["3d", "3d"],
+  ["7d", "7d"],
+  ["everything", "all"],
+];
+const STACK_COLORS = ["#8b5cf6", "#6d48e5", "#a78bfa", "#22d3ee", "#f59e0b", "#f472b6", "#94a3b8"];
 
-function isoDay(d: Date) {
-  return d.toISOString().slice(0, 10);
+const rangeHours = ref(72);
+const metric = ref<MetricKey>("sections");
+const loadingA = ref(false);
+const clearing = ref(false);
+
+async function loadAnalytics() {
+  loadingA.value = true;
+  await guarded(async () => {
+    analytics.value = await cms.analytics(rangeHours.value);
+  }, "");
+  loadingA.value = false;
 }
-function daysBetween(from: string, to: string): string[] {
+function setRange(h: number) {
+  rangeHours.value = h;
+  void loadAnalytics();
+}
+async function clearRange(range: string, label: string) {
+  if (!confirm(`Delete analytics for ${label}? This can't be undone.`)) return;
+  clearing.value = true;
+  await guarded(async () => {
+    await cms.clearAnalytics(range);
+    await loadAnalytics();
+  }, "");
+  clearing.value = false;
+}
+
+/** Enumerate the continuous bucket axis for the current range + unit. */
+function axisBuckets(from: string, to: string, unit: "hour" | "day"): string[] {
   const out: string[] = [];
-  const d = new Date(`${from}T00:00:00Z`);
-  const end = new Date(`${to}T00:00:00Z`);
-  while (d <= end) {
-    out.push(d.toISOString().slice(0, 10));
-    d.setUTCDate(d.getUTCDate() + 1);
+  if (unit === "hour") {
+    const d = new Date(`${from}:00:00Z`);
+    const end = new Date(`${to}:00:00Z`);
+    while (d <= end) {
+      out.push(d.toISOString().slice(0, 13));
+      d.setUTCHours(d.getUTCHours() + 1);
+    }
+  } else {
+    const d = new Date(`${from.slice(0, 10)}T00:00:00Z`);
+    const end = new Date(`${to.slice(0, 10)}T00:00:00Z`);
+    while (d <= end) {
+      out.push(d.toISOString().slice(0, 10));
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
   }
   return out;
 }
 
-async function loadAnalytics() {
-  loadingA.value = true;
-  const to = isoDay(new Date());
-  const from = isoDay(new Date(Date.now() - (range.value - 1) * 86400000));
-  await guarded(async () => {
-    analytics.value = await cms.analytics(from, to);
-  }, "");
-  loadingA.value = false;
-}
-function setRange(d: number) {
-  range.value = d;
-  void loadAnalytics();
-}
-
-const seriesTotals = computed<Record<SeriesKey, number>>(() => {
-  const t = analytics.value?.trends;
+const metricTotals = computed<Record<MetricKey, number>>(() => {
+  const c = analytics.value?.chart;
   const sum = (a?: { count: number }[]) => (a ?? []).reduce((s, r) => s + r.count, 0);
-  return {
-    pageviews: sum(t?.pageviews),
-    visits: sum(t?.visits),
-    sections: sum(t?.sections),
-    clicks: sum(t?.clicks),
-  };
+  return { sections: sum(c?.sections), clicks: sum(c?.clicks), visitLength: sum(c?.visitLength) };
 });
 
-/** Continuous daily line for the selected series (missing days filled with 0). */
+/** Stacked-area geometry for the selected metric (composition over time). */
 const chart = computed(() => {
   const a = analytics.value;
-  if (!a?.trends) return null;
-  const rows: { key: string; count: number }[] = a.trends[series.value] ?? [];
-  const byDay = new Map(rows.map((r) => [r.key, r.count]));
-  const days = daysBetween(a.range.from, a.range.to);
-  const counts = days.map((d) => byDay.get(d) ?? 0);
-  const max = Math.max(1, ...counts);
-  const W = 700;
-  const H = 150;
+  if (!a?.chart) return null;
+  const rows: { bucket: string; key: string; count: number }[] = a.chart[metric.value] ?? [];
+  const unit: "hour" | "day" = a.chart.unit;
+  const buckets = axisBuckets(a.range.from, a.range.to, unit);
+  const idx = new Map(buckets.map((b, i) => [b, i]));
+
+  // keys ordered by total desc, capped to 6 (+ "other")
+  const totals = new Map<string, number>();
+  for (const r of rows) totals.set(r.key, (totals.get(r.key) ?? 0) + r.count);
+  let keys = [...totals.entries()].sort((x, y) => y[1] - x[1]).map((e) => e[0]);
+  const overflow = keys.slice(6);
+  keys = keys.slice(0, 6);
+  const remap = (k: string) => (overflow.includes(k) ? "other" : k);
+  if (overflow.length) keys.push("other");
+
+  // matrix[keyIndex][bucketIndex]
+  const matrix = keys.map(() => new Array(buckets.length).fill(0));
+  for (const r of rows) {
+    const bi = idx.get(r.bucket);
+    if (bi == null) continue;
+    const ki = keys.indexOf(remap(r.key));
+    if (ki >= 0) matrix[ki][bi] += r.count;
+  }
+
+  const colTotals = buckets.map((_, bi) => keys.reduce((s, _k, ki) => s + matrix[ki][bi], 0));
+  const max = Math.max(1, ...colTotals);
+  const W = 720;
+  const H = 170;
   const PAD = 8;
-  const n = days.length;
+  const n = buckets.length;
   const xAt = (i: number) => (n <= 1 ? W / 2 : PAD + (i / (n - 1)) * (W - 2 * PAD));
-  const yAt = (c: number) => H - 6 - (c / max) * (H - 24);
-  const pts = counts.map((c, i) => ({ x: xAt(i), y: yAt(c), day: days[i], count: c }));
-  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const area = `M${xAt(0).toFixed(1)} ${H} ${pts.map((p) => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ")} L${xAt(n - 1).toFixed(1)} ${H} Z`;
-  const total = counts.reduce((s, c) => s + c, 0);
-  return { W, H, line, area, pts, max, total };
+  const yAt = (v: number) => H - 6 - (v / max) * (H - 26);
+
+  // Build stacked layer paths (bottom-up).
+  const cum = new Array(buckets.length).fill(0);
+  const layers = keys.map((key, ki) => {
+    const lower = cum.slice();
+    for (let bi = 0; bi < buckets.length; bi++) cum[bi] += matrix[ki][bi];
+    const top = cum.map((v, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ");
+    const bottom = lower
+      .map((v, i) => `L${xAt(buckets.length - 1 - i).toFixed(1)} ${yAt(lower[buckets.length - 1 - i]).toFixed(1)}`)
+      .join(" ");
+    return {
+      key,
+      color: STACK_COLORS[ki % STACK_COLORS.length],
+      total: matrix[ki].reduce((s: number, v: number) => s + v, 0),
+      path: `${top} ${bottom} Z`,
+    };
+  });
+
+  const total = colTotals.reduce((s, v) => s + v, 0);
+  const labelFmt = (b: string) => (unit === "hour" ? `${b.slice(5, 10)} ${b.slice(11)}h` : b.slice(5));
+  return {
+    W,
+    H,
+    layers,
+    max,
+    total,
+    unit,
+    fromLabel: labelFmt(buckets[0] ?? a.range.from),
+    toLabel: labelFmt(buckets[n - 1] ?? a.range.to),
+  };
 });
 
 function pickTab(t: Tab) {
@@ -403,35 +472,56 @@ onMounted(boot);
             <div class="charthead">
               <div class="seg">
                 <button
-                  v-for="k in seriesKeys"
+                  v-for="k in metricKeys"
                   :key="k"
-                  :class="{ on: series === k }"
-                  @click="series = k"
+                  :class="{ on: metric === k }"
+                  @click="metric = k"
                 >
-                  <span class="slabel">{{ SERIES_LABELS[k] }}</span>
-                  <span class="sval">{{ seriesTotals[k] }}</span>
+                  <span class="slabel">{{ METRIC_LABELS[k] }}</span>
+                  <span class="sval">{{ metricTotals[k] }}</span>
                 </button>
               </div>
               <div class="seg ranges">
-                <button v-for="r in RANGES" :key="r" :class="{ on: range === r }" @click="setRange(r)">
-                  {{ r }}d
+                <button
+                  v-for="[label, h] in RANGES"
+                  :key="h"
+                  :class="{ on: rangeHours === h }"
+                  @click="setRange(h)"
+                >
+                  {{ label }}
                 </button>
               </div>
             </div>
             <svg v-if="chart" class="chart" :viewBox="`0 0 ${chart.W} ${chart.H}`">
-              <path :d="chart.area" class="c-area" />
-              <path :d="chart.line" class="c-line" />
-              <circle v-for="(p, i) in chart.pts" :key="i" :cx="p.x" :cy="p.y" r="2.5" class="c-dot">
-                <title>{{ p.day }}: {{ p.count }}</title>
-              </circle>
+              <path v-for="l in chart.layers" :key="l.key" :d="l.path" :fill="l.color" fill-opacity="0.85">
+                <title>{{ l.key }}: {{ l.total }}</title>
+              </path>
             </svg>
             <p v-if="chart && chart.total === 0" class="muted empty">
-              No {{ SERIES_LABELS[series].toLowerCase() }} recorded in this range yet.
+              No {{ METRIC_LABELS[metric].toLowerCase() }} recorded in this range yet.
             </p>
+            <div v-if="chart && chart.total > 0" class="legend">
+              <span v-for="l in chart.layers" :key="l.key" class="lg">
+                <i :style="{ background: l.color }" />{{ l.key }} <b>{{ l.total }}</b>
+              </span>
+            </div>
             <div class="xaxis">
-              <span>{{ analytics.range.from }}</span>
-              <span v-if="loadingA" class="muted">updating…</span>
-              <span>{{ analytics.range.to }}</span>
+              <span>{{ chart?.fromLabel }}</span>
+              <span class="muted">{{ chart?.unit === "hour" ? "hourly" : "daily" }}{{ loadingA ? " · updating…" : "" }}</span>
+              <span>{{ chart?.toLabel }}</span>
+            </div>
+            <div class="clearbar">
+              <span class="muted">Clear:</span>
+              <button
+                v-for="[label, range] in CLEARS"
+                :key="range"
+                class="clearbtn"
+                :class="{ danger: range === 'all' }"
+                :disabled="clearing"
+                @click="clearRange(range, label)"
+              >
+                {{ label }}
+              </button>
             </div>
           </div>
           <div class="cols">
@@ -516,5 +606,14 @@ input, textarea, select { font-family: var(--f-b); font-size: 14px; color: var(-
 .c-dot { fill: var(--purple-br); }
 .empty { text-align: center; padding: 8px 0; }
 .xaxis { display: flex; justify-content: space-between; font-family: var(--f-m); font-size: 11px; color: var(--muted); margin-top: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; font-family: var(--f-m); font-size: 12px; color: var(--ink); }
+.legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend b { color: var(--muted); font-weight: 500; }
+.clearbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-family: var(--f-m); font-size: 12px; }
+.clearbtn { font-family: var(--f-m); font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+.clearbtn:hover { color: var(--ink); border-color: var(--purple-br); }
+.clearbtn.danger { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 40%, var(--line)); }
+.clearbtn:disabled { opacity: 0.5; cursor: default; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg-base); padding: 10px 18px; border-radius: 10px; font-size: 14px; box-shadow: var(--sh-2); }
 </style>
