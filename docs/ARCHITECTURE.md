@@ -1,119 +1,129 @@
-# ARCHITECTURE.md
+# Architecture
 
-How the code implements the spec in `PROJECT.md`. Read this before adding a
-source, a module, or a nav node — it explains the seams that keep the two north
-stars (maintainability, scalability) intact.
+How the code implements the ideas in [OVERVIEW](./OVERVIEW.md). Read this before
+adding a source, a module, or a nav node. The playbooks for those live in
+[guides/extending](./guides/extending.md); this doc explains the seams they rely
+on.
 
-## The one seam that buys everything
+## The one seam
 
 ```
-GitHub (+ future APIs)
-   │  fetch                 packages/sources — one adapter per source
-   ▼
-normalize → GitHubData      the ONLY shape anything downstream sees
-   │  persist
-   ▼
-SQLite store                packages/db — single source of truth, accumulates
-   │  ▲                      snapshots (the archive) + upserts "current"
-   │  └── CMS writes         apps/server/routes/cms.ts (owner-edited content)
-   │  read
-   ▼
-resolveSiteView()           packages/core — content + source data → SiteView
-   │
-   ▼
-read API  →  Astro SSR site  apps/server/routes/read.ts  →  apps/web (per request)
+GitHub / Steam / Wakapi          packages/sources - one adapter per source
+        |  fetch
+        v
+   normalize()                   the ONLY shape anything downstream sees
+        |  persist
+        v
+   SQLite store                  packages/db - single source of truth,
+        |  ^                      appends a snapshot (the archive) + upserts "current"
+        |  |__ CMS writes         apps/server/src/routes/cms.ts (+ assets.ts)
+        |  read
+        v
+ resolveSiteView()               packages/core - content + source data -> SiteView
+        |
+        v
+   read API   ->   Astro SSR      apps/server/src/routes/read.ts -> apps/web (per request)
 ```
 
 Everything visible is data-driven. The frontend renders a normalized `SiteView`
-and never knows which data came from which API. That single seam — normalized
-data only, never raw API shapes — is what makes both "add a data source cheaply"
-and "the site never goes stale" true at once.
+and never knows whether a module's data came from GitHub, Steam, Wakapi, or the
+CMS. That single rule, normalized data only and never a raw API shape, is what
+makes "add a source cheaply" and "the site never goes stale" true at the same
+time. It's recorded as [ADR-0005](./adr/0005-source-contract.md).
 
 ## Packages
 
 | Package | Role |
 |---|---|
-| `@lg/core` | Contracts + pure logic: `Localized`, the `NavNode` tree + **nav lint**, the content model, the `Source` contract, the render-ready `SiteView`, and `resolveSiteView()`. No runtime deps. |
-| `@lg/db` | SQLite store (node:sqlite, built in): schema + repositories (content, source, ia, analytics) + seed. The archive lives here. |
-| `@lg/sources` | Pluggable adapters: `githubSource` (real, GraphQL) + `githubMockSource` (dev) + the registry. |
-| `@lg/server` | Fastify: read API, CMS API + auth, media, analytics, and the in-process sync worker. |
-| `@lg/web` | Astro (SSR) shell + Vue islands: the public site and the `/admin` CMS. |
+| `@lg/core` | Contracts and pure logic, no runtime deps: `Localized` and locale helpers, the `NavNode` tree plus the nav lint, the content model, the `Source` contract and normalized source shapes, the engagement/guestbook/presence/asset types, the render-ready `SiteView`, and `resolveSiteView()`. |
+| `@lg/db` | The SQLite store on `node:sqlite`: `schema.sql` plus repositories (content, source, IA, analytics, assets, guestbook) and the idempotent seed. The snapshot archive lives here. |
+| `@lg/sources` | Pluggable adapters, each real plus a deterministic mock: `github` (GraphQL), `steam` (Web API), `wakapi` (self-hosted WakaTime), and the registry that selects them by config. |
+| `@lg/server` | Fastify: the read API, the CMS API and auth, contact, guestbook, presence, the engagement beacon, asset serving, the analytics dashboard, the in-process sync worker, and the in-process access-log ingest. |
+| `@lg/web` | Astro SSR shell plus Vue islands: the public site, the `/admin` CMS, the on-site `/docs` renderer, and `/md/<slug>` pages for Markdown assets. |
 
-## Information architecture (the anti-bloat idea)
+## From boot to a rendered page
 
-The nav is a small, fixed set of themed **areas**; features and data sources are
-**modules** placed inside an area, never new tabs. Adding content grows a section
-within a theme; it does not grow the nav.
+The server is one process (`apps/server/src/index.ts`). On start:
 
-- **Areas & modules** — `packages/core/src/{nav,modules,ia}.ts`.
-- **Recursive tree** — a node is a **leaf** (holds `modules`) or a **branch**
-  (holds ≥2 children with their own secondary nav). Scale by **depth, not
-  breadth**: any one level stays ≤5; the tree grows deeper (ceiling 3).
-- **The four promotion gates** for a module to earn its own node: distinct
-  question · weight to stand alone · homeless elsewhere · durable, not seasonal.
+1. `loadEnv()` reads and validates configuration once. If the CMS is enabled but
+   the cookie-signing secret is missing or still the dev default, it refuses to
+   start (see [SECURITY](./SECURITY.md)).
+2. `getStore(dbPath)` opens SQLite, applies the schema, seeds launch content if
+   the store is empty, and reconciles the IA (so a new module kind added in code
+   shows up without a manual migration).
+3. `buildApp()` registers every route and the security headers, cookie signing,
+   multipart, and CORS.
+4. The sync worker starts. It runs each registered source once immediately, then
+   on that source's own schedule. GitHub polls every 6 hours, Steam every 15
+   minutes, Wakapi every 30. Each run is fetch, normalize, persist (append a
+   snapshot, upsert "current"). A maintenance pass rolls old hourly analytics
+   into daily rows.
+5. If an access log is configured, an ingest runs once at boot and then every 5
+   minutes, incremental and idempotent.
 
-### The nav lint (build-time, not discipline)
+On a request to `GET /api/site`, `resolveSiteView()` reads the current content,
+source data, and nav from the store and returns fully resolved JSON: strings
+localized for the requested locale, source data folded in, relative times and
+heatmap buckets pre-computed. Astro's SSR page (`apps/web/src/pages/index.astro`)
+fetches that per request through `apps/web/src/lib/site.ts`, which keeps a
+15-second in-process cache so a burst of requests costs one API read. Because it
+reads the local store rather than any external API, "nothing is fetched on page
+load" still holds. A sync or a CMS edit is visible on the next request, no
+rebuild.
 
-`packages/core/src/nav-lint.ts`, run by `pnpm lint:nav`, **fails the build** on:
-`MAX_CHILDREN` (>5), `MAX_DEPTH` (>3), `THIN_BRANCH` (<2 children), `EMPTY_LEAF`
-(0 modules), `LEAF_AND_BRANCH` (both), `DUPLICATE_ID`, `DANGLING_MODULE` (leaf
-points at an unknown module), `ORPHAN_MODULE` (a registered module no leaf places).
+SIGINT/SIGTERM stop the worker and the ingest task, close the server, and close
+the store.
 
-## Data model & store
+## Information architecture
 
-- **CMS-owned** content (localized) lives in relational tables (`projects`,
-  `hobbies`, `links`, `now_items`) plus two singletons (`site_content`,
-  `site_ia`). Localized fields are JSON (`{"en":…,"de":…}`).
-- **Source-owned** data lives in `source_snapshots` (append-only archive) and
-  `source_current` (what the site reads). History can't be re-fetched — back it up.
-- **Analytics** lives in `analytics_daily` (counts per day/dimension/key) and
-  `analytics_state` (ingest offset). No personal data, ever.
+The nav is a small, fixed set of themed areas. Features and data sources are
+modules placed inside an area, never new tabs. A node is either a leaf (holds
+`modules`) or a branch (holds two or more children with their own secondary nav).
+The site scales by depth, not breadth: any one level stays at most five children,
+and the tree grows deeper to a ceiling of three. A build-time lint
+(`pnpm lint:nav`, from `packages/core/src/nav-lint.ts`) fails the build on a
+broken tree. The rules, the four promotion gates, and the lint codes are in
+[concepts/information-architecture](./concepts/information-architecture.md), and
+the decision behind them is [ADR-0006](./adr/0006-recursive-nav-lint.md).
+
+## Data and store
+
+Three kinds of data share one store, kept strictly separate: CMS-owned content
+(owner edits, localized), source-owned data (synced, normalized), and analytics
+aggregates (anonymous counts). Source data lives in an append-only snapshot
+archive plus a one-row-per-source "current" copy; the archive is why the store
+outgrows the public API over time, and it can't be re-fetched, so it's what you
+back up. The tables, the content model, and the resolved `SiteView` shape are in
+[concepts/data-model](./concepts/data-model.md).
 
 ## Server routes
 
-| Route | Auth | Purpose |
-|---|---|---|
-| `GET /api/site` | — | The resolved `SiteView` (what the site renders) |
-| `GET /health` | — | Status + last sync time |
-| `POST /api/contact` | — | Relay a message to email; stores nothing |
-| `GET/PUT/DELETE /api/cms/*` | session/token | CRUD over owner content (schema-validated) |
-| `POST/GET /api/cms/media` | session/token | Upload (→ WebP) / list images |
-| `GET /media/:file` | — | Serve an uploaded image (read-only) |
-| `GET /api/cms/analytics` | session/token | Aggregate dashboard data |
-| `GET /auth/github/login` · `/callback` · `POST /auth/logout` | — | OAuth session |
+Grouped by purpose. The full request and response shapes, status codes, and auth
+are in [reference/http-api](./reference/http-api.md).
 
-Auth accepts either a signed session cookie (GitHub OAuth, single allowed login)
-or a bearer `CMS_TOKEN`; it fails closed when neither is configured.
+- Public read: `GET /api/site`, `GET /health`.
+- Public write, stores nothing personal: `POST /api/contact`,
+  `POST /api/guestbook`, `POST /api/pulse` (the engagement beacon).
+- Public presence: `GET /api/presence` (the server filters Lanyard, never the
+  browser).
+- Public assets: `GET /assets/:id`, `GET /assets/:id/:variant`,
+  `GET /api/assets/md/:slug`.
+- CMS, authed: content CRUD, the asset library and galleries, layout, guestbook
+  moderation, and the analytics dashboard under `/api/cms/*`.
+- Auth: GitHub OAuth login, callback, and logout under `/auth/*`.
+
+Auth accepts either a signed session cookie (GitHub OAuth, one allowed login) or
+a bearer `CMS_TOKEN`, and fails closed when neither is configured.
 
 ## Frontend
 
-Astro SSR renders the shell and, per request, loads the `SiteView` from the read
-API (`apps/web/src/lib/site.ts`, briefly cached). Interactivity is a Vue island
-(`TabbedSite.vue`) that renders modules by kind (`Module.vue`), with tab
-switching, 3D tilt, staggered entrance, and the theme toggle — all disabled under
-`prefers-reduced-motion`. The CMS (`/admin`) is a separate client-only island.
-
-## Playbooks
-
-### Add a data source
-
-1. Write an adapter implementing `Source<Raw, Normalized>` in `packages/sources`.
-2. Add the normalized shape to `SourceData` in `packages/core/src/source.ts` and
-   fold it into `sourceRepo.getAllCurrent()` (one line).
-3. Register it in `packages/sources/src/registry.ts`.
-4. Surface it in a module. The store, read API, and frontend don't change.
-
-### Add a module (a feature/section)
-
-1. Add a `ModuleKind` in `core/src/modules.ts` and its data to the
-   `ResolvedModule` union in `view.ts`.
-2. Handle the kind in `resolveSiteView()` (`resolve.ts`).
-3. Add a branch for the kind in `apps/web/src/components/Module.vue`.
-4. Place its id in a leaf's `modules` (seed/IA or the CMS). The nav is unchanged.
-
-### Add / split a nav node
-
-Edit the tree (`LAUNCH_NAV`, or the CMS). When an area gets heavy, split it into a
-branch with sub-nodes — don't add a top-level sibling. `pnpm lint:nav` enforces
-the gates; a straining top row means two areas share a parent question and should
-merge under it.
+Astro renders the shell server-side and loads the `SiteView` per request. The
+interactive part is a Vue island (`apps/web/src/components/TabbedSite.vue`):
+tab switching, 3D tilt, staggered entrance, and the theme toggle, all disabled
+under `prefers-reduced-motion`. `Module.vue` maps each module `kind` to a
+component, so adding a module kind is a new branch there and nothing else on the
+render path. The CMS at `/admin` is a separate client-only island. The `/docs`
+pages are the repo's own Markdown, rendered at build time with the helpers in
+`apps/web/src/lib/docs.ts` (which also decide the sidebar grouping, one group per
+folder under `docs/`). Markdown assets uploaded through the CMS publish at
+`/md/<slug>` in the same shell.

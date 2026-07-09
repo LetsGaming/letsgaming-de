@@ -1,12 +1,14 @@
 # @lg/sources
 
 Pluggable data-source adapters. Each implements the `Source` contract from
-`@lg/core`; adding one is a new adapter + one line in the registry.
+`@lg/core`; adding one is a new adapter plus one line in the registry.
 
-- **`github/fetch.ts`** — GitHub GraphQL fetch layer (repos, languages, the
-  contribution calendar, all-time commits summed across years) + REST events.
-- **`github/index.ts`** — `normalizeGitHub()` (pure) + `githubSource()`.
-- **`github/mock.ts`** — deterministic stand-in for dev without a token.
-- **`registry.ts`** — `getSources(env)`: real GitHub with a token, mock without.
+| Path | Role |
+|---|---|
+| `github/` | GitHub GraphQL fetch (repos, languages, the contribution calendar, all-time commits) + REST events, `normalizeGitHub()`, and a deterministic mock. |
+| `steam/` | Steam Web API (currently playing, recently played) + mock. |
+| `wakapi/` | Self-hosted Wakapi coding time by language (LAN-only) + mock. |
+| `registry.ts` | `getSources(env)`: real adapters when configured, mocks in dev. |
 
-At launch: GitHub only. The contract exists so the next one is trivial.
+Three sources today, each behind one contract. See
+[`docs/concepts/sources-and-sync.md`](../../docs/concepts/sources-and-sync.md).

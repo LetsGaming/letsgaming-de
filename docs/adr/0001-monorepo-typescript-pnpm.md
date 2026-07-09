@@ -1,4 +1,4 @@
-# 0001 — Monorepo, TypeScript everywhere, pnpm
+# 0001: Monorepo, TypeScript everywhere, pnpm
 
 **Status:** Accepted · 2026
 
@@ -14,6 +14,6 @@ is imported by everything.
 
 ## Consequences
 - Change a contract once; every consumer sees it immediately.
-- `@lg/core` must be built before others can typecheck/test — CI and `pnpm build`
+- `@lg/core` must be built before others can typecheck or test. CI and `pnpm build`
   do this first.
 - Slightly more ceremony than a single package, repaid by clear seams.

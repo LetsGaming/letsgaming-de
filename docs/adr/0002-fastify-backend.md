@@ -1,6 +1,6 @@
-# 0002 — Fastify for the backend
+# 0002: Fastify for the backend
 
-**Status:** Accepted · 2026 · (PROJECT.md §13.1)
+**Status:** Accepted · 2026 · (OVERVIEW)
 
 ## Context
 The backend hosts the read API, the CMS API, OAuth, and the sync worker. It needs

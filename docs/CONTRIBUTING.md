@@ -1,39 +1,42 @@
 # Contributing
 
-Solo project, but future-me counts as a contributor. These are the conventions
-CI enforces, so following them keeps the build green.
+Solo project, but future-me counts as a contributor. These are the conventions CI
+enforces, so following them keeps the build green.
 
 ## Setup
 
 ```bash
-corepack enable          # provides pnpm 9
+corepack enable          # provides the pinned pnpm
 pnpm install
 pnpm --filter @lg/core build
 pnpm dev                 # API :8787, web :4321
 ```
 
-`packages/core` must be built before the others can typecheck or test — it's the
-shared package everything imports. `pnpm build` and CI do this first.
+`@lg/core` has to be built before the others can typecheck or test, because it's
+the shared package everything imports. `pnpm build` and CI do this first. The
+pnpm version comes from `package.json` (`packageManager`); corepack picks it up,
+so don't install pnpm separately.
 
 ## Layout
 
-- `packages/*` — libraries (`core`, `db`, `sources`), each with a README.
-- `apps/*` — deployables (`server`, `web`), each with a README.
-- Path style: relative imports use `.js` extensions (ESM); workspace packages are
+- `packages/*` are libraries (`core`, `db`, `sources`), each with a README.
+- `apps/*` are deployables (`server`, `web`), each with a README.
+- Imports: relative paths use `.js` extensions (ESM); workspace packages are
   imported by name (`@lg/core`).
 
 ## Conventions
 
-- **TypeScript strict**, `verbatimModuleSyntax`, `noUncheckedIndexedAccess`. Use
+- TypeScript strict, `verbatimModuleSyntax`, `noUncheckedIndexedAccess`. Use
   `import type` for type-only imports.
-- **Normalized data only** crosses the store/API/frontend seam. Never leak a raw
-  API shape past a source adapter's `normalize()`.
-- **Everything human-authored is `Localized`.** English is required; German is
+- Only normalized data crosses the store, API, and frontend seam. A raw API shape
+  never leaks past a source adapter's `normalize()`.
+- Everything human-authored is `Localized`. English is required; German is
   optional and added as content, never as a schema change.
-- **The nav is a tree with a lint.** Don't widen a level past 5 or nest past 3;
-  split into sub-nodes instead. `pnpm lint:nav` will fail otherwise.
-- **The CMS stays small.** Every proposed CMS feature is measured against "does
-  this project actually need it?" No asset library, no plugins, no page builder.
+- The nav is a tree with a lint. Don't widen a level past five or nest past three;
+  split into sub-nodes instead. `pnpm lint:nav` will fail otherwise. See
+  [concepts/information-architecture](./concepts/information-architecture.md).
+- The CMS stays small. Every proposed feature is measured against "does this
+  project actually need it?" See [concepts/the-cms](./concepts/the-cms.md).
 
 ## Before pushing
 
@@ -44,9 +47,14 @@ pnpm test          # unit + integration
 pnpm build         # full build (also runs lint:nav)
 ```
 
-CI runs the same on every push and on pull requests (Node 22 + 24). The
-**Release** workflow runs only on a version tag (`v*`): it builds and pushes the
-`server` and `web` images to GHCR (`:<version>` + `:latest`) and creates a
+## CI and releases
+
+CI runs the same checks on every push to `main` and on pull requests, across Node
+22 and 24 (the two versions that ship `node:sqlite`). It installs with
+`--frozen-lockfile`, builds (which runs the nav lint), typechecks, and tests.
+
+The Release workflow runs only on a version tag (`v*`): it builds and pushes the
+`server` and `web` images to GHCR (`:<version>` and `:latest`) and creates a
 GitHub Release. Nothing publishes on a normal push. Cut a release with:
 
 ```bash
@@ -55,16 +63,19 @@ git tag v0.1.0 && git push origin v0.1.0
 
 ## Adding things
 
-See the playbooks in [`ARCHITECTURE.md`](./ARCHITECTURE.md): adding a data
-source, a module, or a nav node. Each is a small, local change by design.
+The playbooks for adding a data source, a module, or a nav node are in
+[guides/extending](./guides/extending.md). Each is a small, local change by
+design.
 
 ## Tests
 
-- `@lg/core` — nav lint rules (`nav-lint.test.ts`).
-- `@lg/db` — store round-trips, snapshot accumulation, resolve integration.
-- `@lg/sources` — GitHub normalization.
-- `@lg/server` — access-log/UA parsing (incl. the no-IP guarantee).
+- `@lg/core`: the nav lint rules, resolve, format, guestbook scoring, presence.
+- `@lg/db`: store round-trips, snapshot accumulation, resolve integration.
+- `@lg/sources`: source normalization.
+- `@lg/server`: route behaviour and access-log/UA parsing, including the
+  assertion that the IP never reaches parsed output.
+- `@lg/web`: the docs link-rewrite and sidebar helpers, site resolution.
 
 Prefer a focused test next to the code it covers (`*.test.ts`). The GitHub live
-path needs a token and isn't covered by CI — smoke-test it manually with a real
+path needs a token and isn't covered by CI; smoke-test it by hand with a real
 `GITHUB_TOKEN`.

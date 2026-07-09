@@ -1,9 +1,10 @@
-# Homelab deploy (§10). One container for the Fastify server (API + CMS + sync
-# worker) with SQLite + uploaded media on a mounted volume; one for the Astro SSR
-# site. Put TLS on your reverse proxy (Traefik/Caddy/nginx + Let's Encrypt).
+# Homelab deploy. One container for the Fastify server (API + CMS + sync worker)
+# with SQLite + uploaded media on a mounted volume; one for the Astro SSR site.
+# Put TLS on your reverse proxy (Traefik/Caddy/nginx + Let's Encrypt).
 #
-# An analytics ingest runs as a scheduled `pnpm analytics <access.log>` on the
-# host (or a sidecar) pointed at the reverse proxy's log — see README.
+# Traffic analytics are ingested in-process every 5 minutes from the log mounted
+# via ACCESS_LOG_HOST (below); no separate cron is needed. See
+# docs/operations/analytics-ingestion.md.
 
 services:
   server:

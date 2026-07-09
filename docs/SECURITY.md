@@ -1,71 +1,80 @@
-# Security & privacy
+# Security
 
-This is a single-user personal site on a homelab. The threat model is modest, but
-the CMS writes to disk and the site processes visitor requests, so a few things
-matter.
+This is a single-user personal site on a homelab, so the threat model is modest.
+But the CMS writes to disk and the site takes requests from anyone, so a few
+things matter. The privacy side (analytics, contact, the Impressum decision) is in
+[concepts/analytics-and-privacy](./concepts/analytics-and-privacy.md).
 
-## Authentication (CMS)
+## Reporting something
 
-- Two ways in, both resolving to the single allowed identity: a **signed,
-  http-only session cookie** issued by GitHub OAuth, or a **bearer `CMS_TOKEN`**.
-- OAuth only admits `CMS_ALLOWED_LOGIN`; any other GitHub user gets `403`.
+Don't open a public issue for a vulnerability. Open a private security advisory on
+the GitHub repo, or reach out through the site's contact form. This is a personal
+project maintained by one person, so expect a best-effort, human timeline.
+
+## Authentication
+
+Two ways in, both resolving to the single allowed identity: a signed, http-only
+session cookie from GitHub OAuth, or a bearer `CMS_TOKEN`.
+
+- OAuth only admits `CMS_ALLOWED_LOGIN`. Any other GitHub user gets `403`.
 - The session cookie is signed with `SESSION_SECRET`, `httpOnly`, `sameSite=lax`,
-  and `secure` in production. **Set a long random `SESSION_SECRET` in prod** — the
-  dev default is intentionally insecure and must not ship.
-- Token comparison is length-checked then constant-time-ish to avoid trivial
+  and `secure` in production.
+- Token comparison is length-checked and then constant-time, to avoid trivial
   timing leaks.
-- **Fails closed:** if neither `CMS_TOKEN` nor OAuth is configured, every CMS write
+- It fails closed. If neither `CMS_TOKEN` nor OAuth is configured, every CMS write
   returns `503`. There is no open state.
+- It refuses to start unsafely. When the CMS is enabled but `SESSION_SECRET` is
+  empty or the shipped dev default, the server won't boot, because that secret
+  would let anyone forge a session cookie for the (public) allowed login. Set a
+  long random value in production.
 
 ## Input handling
 
 - Every CMS write body is validated against a JSON schema
-  (`apps/server/src/schemas.ts`) with `additionalProperties: false`; bad input is
+  (`apps/server/src/schemas.ts`) with `additionalProperties: false`. Bad input is
   rejected with `400` before it reaches the store.
-- All DB access uses parameterized statements (node:sqlite prepared
-  statements) — no string-built SQL.
-- Prose is stored as text; the frontend renders only a `**bold**` subset and never
-  injects raw HTML, so stored content can't inject script.
+- All DB access uses parameterized statements (`node:sqlite` prepared
+  statements). No SQL is built by string concatenation.
+- Prose is stored as text, and the frontend renders only a `**bold**` subset with
+  no raw HTML, so stored content can't inject script.
+- The contact and guestbook endpoints strip CR/LF from short fields so a name or
+  email can't inject extra email headers, and both have a honeypot field and a
+  per-IP rate limit.
 
-## Media uploads
+## Asset uploads
 
-- Authed only. Type allow-list (JPEG/PNG/WebP/GIF), 8 MB cap, re-encoded to WebP
-  via sharp (which discards the original container and most metadata).
-- Filenames are server-generated UUIDs; the public serve route validates the name
-  against `^[a-f0-9-]+\.webp$`, blocking path traversal.
+- Authed only. Type allow-list (images, SVG, GIF, PDF, Markdown), an 8 MB cap,
+  and images re-encoded through sharp, which discards the original container and
+  most metadata. SVGs are sanitized on upload before they can be inlined.
+- Identity is the content hash, and served files use generated ids, so a filename
+  can't be used for path traversal.
 
-## Transport & CORS
+## Transport, CORS, and headers
 
-- CORS allows only `WEB_ORIGIN` (comma-separated) with credentials; avoid `*` in
-  production since credentials are involved.
-- TLS terminates at the reverse proxy (Let's Encrypt). Keep the API and site on
-  origins that satisfy the cookie's `sameSite`/`secure` needs (same site, or an
-  `api.` subdomain with the site origin in `WEB_ORIGIN`).
+- CORS allows only `WEB_ORIGIN` (comma-separated) with credentials. `*` is treated
+  as public and no-credentials, so don't use it in production if you want the CMS
+  to work.
+- TLS terminates at the reverse proxy (Let's Encrypt). Because the cookie is
+  `secure` and `sameSite=lax`, keep the site and the API same-site (same domain,
+  or an `api.` subdomain with the site origin in `WEB_ORIGIN`).
+- Every response carries `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, and `Referrer-Policy: no-referrer`. These are
+  hand-rolled rather than pulling in helmet, since the API serves JSON and images
+  and the surface is small.
+- `TRUST_PROXY` is off by default so a directly-exposed server can't be fooled by
+  a spoofed `X-Forwarded-*`. Turn it on only behind a trusted proxy, so the
+  contact rate limiter sees the real client IP.
 
 ## Secrets
 
-- Secrets come from the environment, never committed (`.env` is git-ignored;
-  `.env.example` holds only placeholders).
-- In CI, the tag-driven Release workflow uses the built-in `GITHUB_TOKEN` for
-  GHCR and reads `PUBLIC_API_URL` from a repo variable — no long-lived secrets
-  required for the default flow.
+- Secrets come from the environment and are never committed. `.env` is
+  git-ignored; `.env.example` holds only placeholders. Nothing secret is logged.
+- In CI, the tag-driven Release workflow uses the built-in `GITHUB_TOKEN` for GHCR
+  and reads `PUBLIC_API_URL` from a repo variable, so the default flow needs no
+  long-lived secrets.
 
-## Privacy posture (§9)
+## Not in scope, yet
 
-Privacy by omission — if collecting data risks liability, it isn't collected.
-
-- **Analytics** parses the reverse-proxy access log into anonymous per-day counts.
-  The IP is dropped at parse time and never stored; there are no cookies, no
-  identifiers, and no per-visitor rows. A regression test asserts the IP never
-  appears in parsed output.
-- **Contact** relays to email and persists nothing — no message archive.
-- **Fonts are self-hosted** (Fontsource); no request leaves the user's browser to a
-  third party, so there's no IP leak and no consent burden.
-- A static **Datenschutzerklärung** ships at `/datenschutz`. There is deliberately
-  **no Impressum** — a documented, eyes-open risk acceptance (see PROJECT.md §9).
-
-## Not in scope (yet)
-
-No WAF, no bot management beyond the contact honeypot + rate limit, no audit log.
-For a single-user homelab behind a reverse proxy, these are acceptable omissions;
-revisit if the site ever turns commercial.
+No WAF, no bot management beyond the contact and guestbook honeypots plus rate
+limits, no audit log. For a single-user homelab behind a reverse proxy these are
+acceptable omissions. Revisit if the site ever turns commercial.

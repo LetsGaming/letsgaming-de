@@ -1,6 +1,6 @@
-# 0005 — The Source contract (normalized-only seam)
+# 0005: The Source contract (normalized-only seam)
 
-**Status:** Accepted · 2026 · (PROJECT.md §4)
+**Status:** Accepted · 2026 · (OVERVIEW)
 
 ## Context
 Adding data sources over time must be cheap and must not ripple through the store,
@@ -9,7 +9,7 @@ API, or frontend.
 ## Decision
 Every integration implements one interface: `Source<Raw, Normalized>` with
 `fetch()` and `normalize()`. Only the normalized shape crosses the store/API/
-frontend boundary — raw API shapes never leak past `normalize()`.
+frontend boundary. Raw API shapes never leak past `normalize()`.
 
 ## Consequences
 - Adding a source = one adapter + one registry line + one `SourceData` field.
