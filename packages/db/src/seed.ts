@@ -138,6 +138,24 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
     }
   }
 
+  // 1b. Keep existing descriptors' heading/note in sync with the code registry.
+  //     Headings are code-defined (not CMS-editable), so this is how a rename in
+  //     LAUNCH_MODULES reaches an already-seeded store on the next boot. (The
+  //     resolver still applies its dynamic note overrides on top at read time.)
+  const canonical = new Map(LAUNCH_MODULES.map((m) => [m.id, m]));
+  const same = (a: unknown, b: unknown): boolean =>
+    JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  let metaChanged = false;
+  for (const m of modules) {
+    const canon = canonical.get(m.id);
+    if (!canon) continue;
+    if (!same(m.heading, canon.heading) || !same(m.note, canon.note)) {
+      m.heading = canon.heading;
+      m.note = canon.note;
+      metaChanged = true;
+    }
+  }
+
   // 2. Ensure each launch leaf contains its launch module ids (launch order for
   //    known/new ids; any store-only extras are preserved at the end).
   const launchLeafOrder = new Map<string, string[]>();
@@ -170,7 +188,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   };
   reconcileLeaves(nav);
 
-  if (addedModules.length) ia.setModules(modules);
+  if (addedModules.length || metaChanged) ia.setModules(modules);
   if (placed.length) ia.setNav(nav);
   return { addedModules, placed };
 }

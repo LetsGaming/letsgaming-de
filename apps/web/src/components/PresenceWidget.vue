@@ -51,6 +51,9 @@ const activity = computed(() => {
   return { ...cat, title: c.title, sub: c.subtitle, image: c.image };
 });
 
+// Prefer the live Discord avatar; fall back to the site portrait, then initials.
+const discordAvatar = computed(() => view.value?.avatar);
+
 const initials = computed(() => {
   const h = props.handle.replace(/^@/, "");
   const caps = h.match(/[A-Z0-9]/g);
@@ -129,7 +132,8 @@ onBeforeUnmount(() => {
     <div v-if="live" class="pw-unit">
       <div class="pw-who">
         <div class="pw-avatar">
-          <AssetPicture v-if="avatar" :view="avatar" class="pw-av" />
+          <img v-if="discordAvatar" :src="discordAvatar" alt="" class="pw-av" />
+          <AssetPicture v-else-if="avatar" :view="avatar" class="pw-av" />
           <span v-else>{{ initials }}</span>
           <span class="pw-pip" :class="'pw-s-' + status" />
         </div>
@@ -161,7 +165,7 @@ onBeforeUnmount(() => {
           <div v-if="activity.sub" class="pw-asub">{{ activity.sub }}</div>
         </div>
       </div>
-      <div v-else-if="loaded && status !== 'offline'" class="pw-act pw-off">Not in an app right now</div>
+      <div v-else-if="loaded && status !== 'offline'" class="pw-act pw-off">No activity to display right now</div>
     </div>
 
     <!-- Steam: what I actually play (server-synced) -->
@@ -212,7 +216,6 @@ onBeforeUnmount(() => {
   border-radius: var(--r);
   padding: 18px;
   box-shadow: var(--sh-1);
-  max-width: 440px;
 }
 
 /* profile panel */
@@ -224,7 +227,8 @@ onBeforeUnmount(() => {
   background: linear-gradient(140deg, var(--purple-br), var(--purple-d));
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
 }
-.pw-avatar :deep(picture), .pw-av { position: absolute; inset: 0; }
+.pw-av { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.pw-avatar :deep(picture) { position: absolute; inset: 0; }
 .pw-avatar :deep(img) { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .pw-pip { position: absolute; right: -1px; bottom: -1px; width: 15px; height: 15px; border-radius: 50%; border: 3px solid var(--card-2); display: grid; place-items: center; background: var(--muted); }
 .pw-pip.pw-s-online { background: var(--mint); }

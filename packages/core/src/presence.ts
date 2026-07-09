@@ -58,6 +58,7 @@ export interface LanyardActivity {
 }
 export interface LanyardData {
   discord_status?: DiscordStatus;
+  discord_user?: { id?: string; avatar?: string | null; username?: string; global_name?: string | null };
   activities?: LanyardActivity[];
   listening_to_spotify?: boolean;
   spotify?: { song: string; artist: string; album?: string; album_art_url?: string };
@@ -75,6 +76,8 @@ export interface PresenceCard {
 
 export interface PresenceView {
   status: DiscordStatus;
+  /** Discord avatar URL for the profile header, when the account exposes one. */
+  avatar?: string;
   cards: PresenceCard[];
 }
 
@@ -85,6 +88,13 @@ const TYPE_TO_CATEGORY: Record<number, Exclude<PresenceCategory, "steam">> = {
   3: "watching",
   4: "custom",
 };
+
+/** Build the Discord CDN avatar URL from the user object (animated -> gif). */
+function discordAvatarUrl(u: LanyardData["discord_user"]): string | undefined {
+  if (!u?.id || !u.avatar) return undefined;
+  const ext = u.avatar.startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.${ext}?size=128`;
+}
 
 /** Best-effort resolve a Lanyard asset image ref to a URL (common cases only). */
 function assetUrl(a: LanyardActivity): string | undefined {
@@ -109,6 +119,7 @@ export function normalizePresence(
 ): PresenceView {
   const allow = new Set(show);
   const status: DiscordStatus = data.discord_status ?? "offline";
+  const avatar = discordAvatarUrl(data.discord_user);
   const cards: PresenceCard[] = [];
 
   // Music: prefer the structured Spotify object (one clean card).
@@ -143,5 +154,5 @@ export function normalizePresence(
     });
   }
 
-  return { status, cards };
+  return { status, ...(avatar ? { avatar } : {}), cards };
 }

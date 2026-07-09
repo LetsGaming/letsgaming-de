@@ -62,7 +62,7 @@ export const LAUNCH_MODULES: ModuleDescriptor[] = [
     heading: en("Snapshots"),
     note: en("a few pictures"),
   },
-  { id: "now", kind: "now", heading: en("Right now"), note: en("kept fresh, not stale") },
+  { id: "now", kind: "now", heading: en("Lately"), note: en("hand-written, updated now and then") },
   {
     id: "guestbook",
     kind: "guestbook",
