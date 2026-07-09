@@ -6,7 +6,7 @@
  * path under `docs/` without the extension, e.g. `API` or `adr/0005-source-contract`.
  */
 
-const GITHUB_BLOB = "https://github.com/LetsGaming/letsgaming.de/blob/main/";
+const GITHUB_BLOB = "https://github.com/LetsGaming/letsgaming-de/blob/main/";
 
 /** Title-case a filename stem for a fallback heading (e.g. "DATA-MODEL" → "Data Model"). */
 function humanize(stem: string): string {

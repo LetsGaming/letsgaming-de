@@ -43,10 +43,10 @@ describe("rewriteDocLink", () => {
   });
   it("rewrites out-of-docs .md links to a GitHub blob URL", () => {
     expect(rewriteDocLink("../README.md", "readme")).toBe(
-      "https://github.com/LetsGaming/letsgaming.de/blob/main/README.md",
+      "https://github.com/LetsGaming/letsgaming-de/blob/main/README.md",
     );
     expect(rewriteDocLink("../packages/core/README.md", "api")).toBe(
-      "https://github.com/LetsGaming/letsgaming.de/blob/main/packages/core/README.md",
+      "https://github.com/LetsGaming/letsgaming-de/blob/main/packages/core/README.md",
     );
     // From within a subfolder, one `..` lands back at the docs root.
     expect(rewriteDocLink("../CONTRIBUTING.md", "adr/readme")).toBe("/docs/contributing");

@@ -140,7 +140,7 @@ export async function fetchGitHub(config: GitHubConfig): Promise<GitHubRaw> {
     headers: {
       Authorization: `bearer ${config.token}`,
       "Content-Type": "application/json",
-      "User-Agent": "letsgaming.de-sync",
+      "User-Agent": "letsgaming-de-sync",
     },
     body: JSON.stringify({ query: QUERY, variables: { login: config.username } }),
   });
@@ -216,7 +216,7 @@ async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Pro
   const headers = {
     Authorization: `bearer ${config.token}`,
     "Content-Type": "application/json",
-    "User-Agent": "letsgaming.de-sync",
+    "User-Agent": "letsgaming-de-sync",
   };
 
   // Retry once on a transient failure, then throw rather than return a misleading
@@ -263,7 +263,7 @@ async function fetchEvents(config: GitHubConfig): Promise<RawEvent[]> {
     headers: {
       Authorization: `bearer ${config.token}`,
       Accept: "application/vnd.github+json",
-      "User-Agent": "letsgaming.de-sync",
+      "User-Agent": "letsgaming-de-sync",
     },
   });
   if (!res.ok) return [];

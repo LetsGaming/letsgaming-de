@@ -34,7 +34,7 @@ keep the last 14. Run it on a schedule on the Docker host, for example daily:
 If you just want a one-off archive without the script:
 
 ```bash
-docker run --rm -v letsgamingde_store:/data -v "$PWD":/backup alpine \
+docker run --rm -v letsgaming-de_store:/data -v "$PWD":/backup alpine \
   tar czf /backup/store-$(date +%F).tar.gz -C /data .
 ```
 

@@ -33,7 +33,8 @@ absent so the defaults and fallbacks still apply.
 | `CONTACT_FROM` | `SMTP_USER`, else `no-reply@letsgaming.de` | Envelope From. |
 | `CONTACT_TO` | unset | Where messages are relayed. Required to enable contact. |
 | `DISCORD_USER_ID` | unset | Discord user id for the Lanyard presence widget. Public, not a secret. Absent means presence is offline. |
-| `ACCESS_LOG` | unset | Path (inside the container) to a reverse-proxy access log to ingest for traffic analytics. Absent means no ingest. See below. |
+| `ACCESS_LOG` | unset | Path (inside the container) to a reverse-proxy access log to ingest for traffic analytics, under `/logs`. Absent means no ingest. See below. |
+| `ACCESS_LOG_DIR` | unset | The host directory that holds the access log. Compose mounts it read-only at `/logs`. Set alongside `ACCESS_LOG`. |
 | `ANALYTICS_OWN_HOST` | derived from `WEB_ORIGIN` | Your own host, so self-referrals are dropped from the referrer list. |
 | `WAKAPI_URL` / `WAKAPI_KEY` | unset | Self-hosted Wakapi (coding time). Both required to activate. |
 | `STEAM_API_KEY` / `STEAM_ID` | unset | Steam Web API. Both required to activate. |
@@ -67,18 +68,24 @@ different routes. In Docker: `API_URL=http://server:8787` (internal),
 - Contact: enabled when `SMTP_HOST` and `CONTACT_TO` are both set.
 - Presence: enabled when `DISCORD_USER_ID` is set and at least one presence
   category is turned on in the CMS.
-- Traffic analytics: enabled when `ACCESS_LOG` points at a readable log.
+- Traffic analytics: enabled when `ACCESS_LOG` (the in-container path) and
+  `ACCESS_LOG_DIR` (the host directory mounted at `/logs`) are both set.
 
-## ACCESS_LOG versus ACCESS_LOG_HOST
+## ACCESS_LOG and ACCESS_LOG_DIR
 
-The server reads `ACCESS_LOG`, an in-container path. In Docker you don't set that
-directly. You set `ACCESS_LOG_HOST` in `.env` to the log's path on the Docker
-host, and `docker-compose.yml` does the rest: it mounts that host path read-only
-at `/logs/access.log` and sets the container's `ACCESS_LOG` to that mount. So
-`.env` only ever mentions `ACCESS_LOG_HOST`, and you never edit the compose file.
-Leaving it unset mounts `/dev/null` and ingests nothing. The full setup, including
-pulling the log from another host, is in
-[operations/analytics-ingestion](../operations/analytics-ingestion.md).
+The server reads the log at `ACCESS_LOG`, a path inside the container. In Docker
+you set two variables in `.env`:
+
+- `ACCESS_LOG_DIR` is the host directory that holds the log. Compose mounts it
+  read-only at `/logs`.
+- `ACCESS_LOG` is the log's path inside the container, so `/logs/<your-log-name>`
+  (usually `/logs/access.log`).
+
+Compose mounts the directory, not the file, so a log that gets rotated or
+replaced (for example a script that swaps the file with `mv`) is picked up
+without restarting the container. Leaving both unset mounts an empty volume and
+ingests nothing. The full setup, including pulling the log from another host, is
+in [operations/analytics-ingestion](../operations/analytics-ingestion.md).
 
 ## Where values come from
 

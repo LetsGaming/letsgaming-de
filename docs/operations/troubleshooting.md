@@ -44,10 +44,18 @@ presence becomes available.
 ## Traffic analytics stay empty
 
 Engagement stats and traffic stats are separate; if engagement works and traffic
-doesn't, it's the log ingest. Check that `ACCESS_LOG_HOST` points at a real file,
-that the file is nginx combined format, and that the proxy isn't on a different
-host than Docker (the container can't read another box's filesystem, so you have
-to sync the log over first). See
+doesn't, it's the log ingest. First check the server can see the log:
+
+```bash
+docker compose exec server sh -c 'echo "ACCESS_LOG=[$ACCESS_LOG]"; ls -l "$ACCESS_LOG" 2>&1'
+```
+
+An empty `ACCESS_LOG` means the value isn't reaching the container (set it in
+`.env`, then `docker compose up -d` to recreate, a restart won't re-read env). A
+missing file means `ACCESS_LOG_DIR` isn't mounted or points at the wrong
+directory. Also check the log is nginx combined format, and that if the proxy runs
+on a different box you've synced its log into `ACCESS_LOG_DIR` first (the container
+can't read another host's filesystem). See
 [operations/analytics-ingestion](./analytics-ingestion.md).
 
 ## A startup warning about node:sqlite being experimental

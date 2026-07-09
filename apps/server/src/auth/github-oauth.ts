@@ -71,7 +71,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
       const userRes = await fetch("https://api.github.com/user", {
         headers: {
           Authorization: `bearer ${token.access_token}`,
-          "User-Agent": "letsgaming.de-cms",
+          "User-Agent": "letsgaming-de-cms",
         },
       });
       const user = (await userRes.json()) as { login?: string };

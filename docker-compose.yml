@@ -2,8 +2,8 @@
 # with SQLite + uploaded media on a mounted volume; one for the Astro SSR site.
 # Put TLS on your reverse proxy (Traefik/Caddy/nginx + Let's Encrypt).
 #
-# Traffic analytics are ingested in-process every 5 minutes from the log mounted
-# via ACCESS_LOG_HOST (below); no separate cron is needed. See
+# Traffic analytics are ingested in-process every 5 minutes from the log directory
+# mounted via ACCESS_LOG_DIR (below); no separate cron is needed. See
 # docs/operations/analytics-ingestion.md.
 
 services:
@@ -16,7 +16,7 @@ services:
       PORT: "8787"
       DB_PATH: /data/letsgaming.sqlite
       MEDIA_DIR: /data/media
-      # Explicit origin(s) for the CMS — do NOT use "*" (that disables credentialed
+      # Explicit origin(s) for the CMS; do NOT use "*" (that disables credentialed
       # CORS, so the CMS session cookie won't be sent). Comma-separate if needed.
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       # This service sits behind a reverse proxy, so honour X-Forwarded-* for real
@@ -38,27 +38,29 @@ services:
       # Discord presence widget (Lanyard). The user id is public; the server does
       # the fetching + filtering. Which categories show is edited in the CMS.
       DISCORD_USER_ID: ${DISCORD_USER_ID:-}
-      # Traffic analytics (Top paths/referrers/browsers/OS/devices). Set the ONE
-      # var ACCESS_LOG_HOST in .env to the host path of your reverse-proxy access
-      # log; the mount + in-container path below are derived from it, so you never
-      # edit this file. Leave it unset to disable (engagement stats still work).
-      # IP is dropped at parse time and never stored.
-      ACCESS_LOG: ${ACCESS_LOG_HOST:+/logs/access.log}
+      # Traffic analytics (Top paths/referrers/browsers/OS/devices) from the
+      # reverse-proxy access log. Set ACCESS_LOG (the log's path INSIDE the
+      # container, under /logs) and ACCESS_LOG_DIR (the HOST directory that holds
+      # it, mounted below). Leave both unset to disable; engagement stats still
+      # work. The IP is dropped at parse time and never stored.
+      ACCESS_LOG: ${ACCESS_LOG:-}
       ANALYTICS_OWN_HOST: ${ANALYTICS_OWN_HOST:-}
-      # Wakapi (coding time) — LAN-only; the sync worker reaches it over the local
+      # Wakapi (coding time), LAN-only; the sync worker reaches it over the local
       # network, so no ports are published and nothing is exposed to the internet.
       WAKAPI_URL: ${WAKAPI_URL:-}
       WAKAPI_KEY: ${WAKAPI_KEY:-}
-      # Steam (public Web API) — powers "Recently on Steam".
+      # Steam (public Web API), powers "Recently on Steam".
       STEAM_API_KEY: ${STEAM_API_KEY:-}
       STEAM_ID: ${STEAM_ID:-}
     volumes:
-      # The store + media are the archive — this volume is what you back up.
+      # The store + media are the archive; this volume is what you back up.
       - store:/data
-      # Access log for analytics, driven entirely by ACCESS_LOG_HOST in .env.
-      # Defaults to /dev/null (a valid, empty file) when unset, so the mount is
-      # always valid and the server simply ingests nothing until you set it.
-      - ${ACCESS_LOG_HOST:-/dev/null}:/logs/access.log:ro
+      # The HOST directory that holds the access log, mounted read-only at /logs.
+      # A directory (not the file) so a rotated or replaced log (e.g. a script that
+      # swaps the file with mv) is picked up with no restart. Unset ACCESS_LOG_DIR
+      # falls back to an empty volume, so the mount is always valid and analytics
+      # from the log stay off until you set it.
+      - ${ACCESS_LOG_DIR:-logs_empty}:/logs:ro
     ports:
       - "8787:8787"
 
@@ -80,3 +82,5 @@ services:
 
 volumes:
   store:
+  # Empty fallback so the /logs mount is valid when ACCESS_LOG_DIR is unset.
+  logs_empty:

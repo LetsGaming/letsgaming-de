@@ -11,7 +11,7 @@ not a company.
 - All docs: [`docs/`](./docs/README.md), reference, concepts, guides,
   operations, and the decision log.
 
-[![CI](https://github.com/LetsGaming/letsgaming.de/actions/workflows/ci.yml/badge.svg)](https://github.com/LetsGaming/letsgaming.de/actions/workflows/ci.yml)
+[![CI](https://github.com/LetsGaming/letsgaming-de/actions/workflows/ci.yml/badge.svg)](https://github.com/LetsGaming/letsgaming-de/actions/workflows/ci.yml)
 
 ## Stack
 
