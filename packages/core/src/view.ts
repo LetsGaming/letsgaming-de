@@ -118,6 +118,11 @@ export interface CodingView {
  */
 export interface PresenceModuleView {
   live: boolean;
+  /** Owner identity for the Discord-style profile header (from meta). */
+  name: string;
+  handle: string;
+  /** Optional portrait, resolved from meta.avatar (shared with the hero). */
+  avatar?: ImageAssetView | GifAssetView;
   steam?: {
     playing?: { name: string; appId: number };
     recent: { name: string; appId: number; minutes2Weeks: number; iconUrl?: string }[];

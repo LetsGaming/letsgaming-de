@@ -334,8 +334,12 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const live = Boolean(input.presence?.discordId) && show.some((c) => LIVE_CATEGORIES.includes(c));
         const steam = source.steam;
         const includeSteam = show.includes("steam") && steam;
+        const avatar = resolveAsset(content.meta.avatar, assets);
         const data: PresenceModuleView = {
           live,
+          name: content.meta.name,
+          handle: content.meta.handle,
+          ...(avatar && (avatar.kind === "image" || avatar.kind === "gif") ? { avatar } : {}),
           ...(includeSteam
             ? { steam: { ...(steam.playing ? { playing: steam.playing } : {}), recent: steam.recent } }
             : {}),
