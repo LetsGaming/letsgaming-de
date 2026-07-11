@@ -12,6 +12,7 @@ import { registerCmsRoutes } from "./routes/cms.js";
 import { registerContactRoutes } from "./routes/contact.js";
 import { registerGuestbookRoutes } from "./routes/guestbook.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerPresenceMediaRoutes } from "./routes/presence-media.js";
 import { registerPresenceRoutes } from "./routes/presence.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
@@ -72,6 +73,7 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   registerContactRoutes(app, env);
   registerGuestbookRoutes(app, store);
   registerPresenceRoutes(app, env, store);
+  registerPresenceMediaRoutes(app);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);
   await registerAssetRoutes(app, store, env);

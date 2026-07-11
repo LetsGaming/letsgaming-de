@@ -2,7 +2,7 @@
 import type { ImageAssetView, GifAssetView, PresenceView } from "@lg/core";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AssetPicture from "./AssetPicture.vue";
-import { apiUrl } from "../lib/api";
+import { apiUrl, presenceMediaUrl } from "../lib/api";
 
 // The client only ever knows whether to poll, the owner identity for the profile
 // header, and the (already-gated) Steam data. It never receives the Discord id,
@@ -61,7 +61,9 @@ const activities = computed(() => {
   return cs.map((c, i) => ({
     title: c.title!,
     sub: c.subtitle ?? "",
-    image: c.image ?? "",
+    // Proxied through our server (privacy); falls back to a labelled tile when
+    // the activity has no art (e.g. Valorant).
+    art: presenceMediaUrl({ url: c.image || undefined, game: c.title }),
     src: cats[i]?.src ?? "",
     motif: cats[i]?.motif ?? "",
     color: cats[i]?.color ?? "",
@@ -70,6 +72,7 @@ const activities = computed(() => {
 
 // Prefer the live Discord avatar; fall back to the site portrait, then initials.
 const discordAvatar = computed(() => view.value?.avatar);
+const discordAvatarSrc = computed(() => presenceMediaUrl({ url: discordAvatar.value }));
 
 const initials = computed(() => {
   const h = props.handle.replace(/^@/, "");
@@ -95,6 +98,7 @@ interface Game {
   label: string;
   pct: number;
   iconUrl?: string;
+  iconSrc?: string;
   accent: string;
   playing: boolean;
 }
@@ -110,7 +114,7 @@ const steamGames = computed<Game[]>(() => {
       hours,
       label: (hours % 1 === 0 ? hours : hours.toFixed(1)) + "h",
       pct: Math.max(2, Math.round((g.minutes2Weeks / 60 / total) * 100)),
-      ...(g.iconUrl ? { iconUrl: g.iconUrl } : {}),
+      ...(g.iconUrl ? { iconUrl: g.iconUrl, iconSrc: presenceMediaUrl({ url: g.iconUrl }) } : {}),
       accent: ACCENTS[i % ACCENTS.length]!,
       playing: playingAppId.value != null && g.appId === playingAppId.value,
     };
@@ -164,7 +168,7 @@ onBeforeUnmount(() => {
     <div v-if="live" class="pw-unit">
       <div class="pw-who">
         <div class="pw-avatar">
-          <img v-if="discordAvatar" :src="discordAvatar" alt="" class="pw-av" />
+          <img v-if="discordAvatarSrc" :src="discordAvatarSrc" alt="" class="pw-av" />
           <AssetPicture v-else-if="avatar" :view="avatar" class="pw-av" />
           <span v-else>{{ initials }}</span>
           <span class="pw-pip" :class="'pw-s-' + status" />
@@ -188,8 +192,8 @@ onBeforeUnmount(() => {
         <template v-for="activity in activities" :key="activity.title">
           <div>
             <img
-              v-if="activity.image"
-              :src="activity.image"
+              v-if="activity.art"
+              :src="activity.art"
               alt=""
               class="pw-art"
             />
@@ -246,8 +250,8 @@ onBeforeUnmount(() => {
         </span>
         <div class="pw-frow">
           <img
-            v-if="featured.iconUrl"
-            :src="featured.iconUrl"
+            v-if="featured.iconSrc"
+            :src="featured.iconSrc"
             alt=""
             class="pw-ico"
           />
@@ -278,7 +282,7 @@ onBeforeUnmount(() => {
           target="_blank"
           rel="noreferrer noopener"
         >
-          <img v-if="g.iconUrl" :src="g.iconUrl" alt="" class="pw-ico" />
+          <img v-if="g.iconSrc" :src="g.iconSrc" alt="" class="pw-ico" />
           <span
             v-else
             class="pw-ico"

@@ -46,6 +46,20 @@ finding; the per-phase notes (`REWORK-PHASE1–4.md`) carry the evidence.
 - Added **`nanostores` + `@nanostores/vue`** (web) — the shared store behind the
   homepage's two-island split; Astro's supported way to share state across islands.
 
+### Privacy
+
+- **Presence images are now proxied through our own server.** The "Right now-ish"
+  module's images (Discord avatar/activity art, Steam icons, Spotify covers) were
+  loaded directly by the browser, so the visitor's IP reached those CDNs. They're
+  now fetched **server-side** and re-served from this origin — the browser never
+  contacts Discord/Steam/Spotify, so no visitor data is transferred to them (the
+  status/activity text was already server-only). The proxy fetches only from a
+  fixed host allow-list over https, refuses redirects, and caps size (SSRF-safe).
+  Datenschutzerklärung updated to match. Where a game has no art from the API
+  (e.g. Valorant), the server returns a **generated labelled tile**, so imageless
+  activities show a tidy fallback instead of a blank box (per-game overrides can be
+  added server-side).
+
 ## 1.1.0
 
 Content & CMS expansion: a central asset library, a sectioned admin with live
