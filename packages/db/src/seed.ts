@@ -12,6 +12,7 @@ import {
   type SiteContent,
 } from "@lg/core";
 import type { DB } from "./database.js";
+import { asNumber, mapRow } from "./row-mapper.js";
 import { contentRepo } from "./content-repo.js";
 import { iaRepo } from "./ia-repo.js";
 
@@ -79,7 +80,7 @@ const NOW: NowItem[] = [
 /** Idempotent: only seeds tables that are empty. Safe to run on every boot. */
 export function seedIfEmpty(db: DB): { seeded: boolean } {
   const hasContent =
-    (db.prepare("SELECT COUNT(*) AS n FROM site_content").get() as { n: number }).n > 0;
+    (mapRow(db.prepare("SELECT COUNT(*) AS n FROM site_content"), (r) => asNumber(r.n)) ?? 0) > 0;
   if (hasContent) return { seeded: false };
 
   db.prepare("INSERT INTO site_content (id, meta, headline, lede, status, bio) VALUES (1, ?, ?, ?, ?, ?)").run(

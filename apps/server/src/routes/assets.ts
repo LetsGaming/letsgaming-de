@@ -20,6 +20,7 @@ import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type { ServerEnv } from "../env.js";
 import { requireAuth } from "../auth/guard.js";
+import { badRequest, notFound, payloadTooLarge, unsupportedMedia } from "../errors.js";
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB (covers PDFs)
 const THUMB_WIDTH = 320;
@@ -90,13 +91,13 @@ export async function registerAssetRoutes(
   // ── upload ─────────────────────────────────────────────────────────────────
   app.post("/api/cms/assets", guard, async (req, reply) => {
     const file = await req.file({ limits: { fileSize: MAX_BYTES } });
-    if (!file) return reply.code(400).send({ error: "No file uploaded." });
+    if (!file) throw badRequest("No file uploaded.");
     const ext = (file.filename.split(".").pop() ?? "").toLowerCase();
     const kind = classifyAsset(file.mimetype, ext) as AssetKind | null;
-    if (!kind) return reply.code(415).send({ error: `Unsupported type ${file.mimetype || ext}.` });
+    if (!kind) throw unsupportedMedia(`Unsupported type ${file.mimetype || ext}.`);
 
     let buf = await file.toBuffer();
-    if (file.file.truncated) return reply.code(413).send({ error: "File too large." });
+    if (file.file.truncated) throw payloadTooLarge("File too large.");
 
     // Sanitize SVGs before they ever touch disk (they're inlined on the site).
     if (kind === "svg") buf = Buffer.from(sanitizeSvg(buf.toString("utf8")), "utf8");
@@ -151,15 +152,15 @@ export async function registerAssetRoutes(
 
   // ── serve original (public) ──────────────────────────────────────────────────
   app.get<{ Params: { id: string } }>("/assets/:id", async (req, reply) => {
-    if (!ID_RE.test(req.params.id)) return reply.code(404).send({ error: "Not found." });
+    if (!ID_RE.test(req.params.id)) throw notFound("Not found.");
     const a = store.assets.getById(req.params.id);
-    if (!a || !HASH_RE.test(a.hash)) return reply.code(404).send({ error: "Not found." });
+    if (!a || !HASH_RE.test(a.hash)) throw notFound("Not found.");
     if (a.kind === "markdown" && a.slug) return reply.redirect(`/md/${a.slug}`, 302);
     const full = origPath(a.hash, a.ext);
     try {
       await stat(full);
     } catch {
-      return reply.code(404).send({ error: "Not found." });
+      throw notFound("Not found.");
     }
     reply.header("Content-Type", a.mime || MIME[a.ext] || "application/octet-stream");
     reply.header("Cache-Control", "public, max-age=31536000, immutable");
@@ -171,16 +172,16 @@ export async function registerAssetRoutes(
 
   // ── serve a responsive variant, generating + caching on first hit (public) ────
   app.get<{ Params: { id: string; variant: string } }>("/assets/:id/:variant", async (req, reply) => {
-    if (!ID_RE.test(req.params.id)) return reply.code(404).send({ error: "Not found." });
+    if (!ID_RE.test(req.params.id)) throw notFound("Not found.");
     const m = /^w(\d+)\.(webp|avif)$/.exec(req.params.variant);
-    if (!m) return reply.code(400).send({ error: "Bad variant." });
+    if (!m) throw badRequest("Bad variant.");
     const width = Number(m[1]);
     const fmt = m[2]!;
     if (!ALLOWED_WIDTHS.includes(width as (typeof ALLOWED_WIDTHS)[number]) || !ALLOWED_FORMATS.has(fmt)) {
-      return reply.code(400).send({ error: "Unsupported size/format." });
+      throw badRequest("Unsupported size/format.");
     }
     const a = store.assets.getById(req.params.id);
-    if (!a || !HASH_RE.test(a.hash)) return reply.code(404).send({ error: "Not found." });
+    if (!a || !HASH_RE.test(a.hash)) throw notFound("Not found.");
     if (a.kind !== "image" && a.kind !== "gif") {
       return reply.redirect(`/assets/${a.id}`, 302); // nothing to resize
     }
@@ -196,7 +197,7 @@ export async function registerAssetRoutes(
         await writeFile(out, buf);
         store.assets.addVariant(a.id, { format: fmt as "webp" | "avif", width, bytes: buf.byteLength });
       } catch {
-        return reply.code(404).send({ error: "Not found." });
+        throw notFound("Not found.");
       }
     }
     reply.header("Content-Type", MIME[fmt]!);
@@ -207,9 +208,9 @@ export async function registerAssetRoutes(
   // ── markdown raw (public) — the /md/<slug> page renders this in the site shell ─
   app.get<{ Params: { slug: string } }>("/api/assets/md/:slug", async (req, reply) => {
     const a = store.assets.getBySlug(req.params.slug);
-    if (!a || a.kind !== "markdown") return reply.code(404).send({ error: "Not found." });
+    if (!a || a.kind !== "markdown") throw notFound("Not found.");
     const markdown = await readFile(origPath(a.hash, a.ext), "utf8").catch(() => null);
-    if (markdown == null) return reply.code(404).send({ error: "Not found." });
+    if (markdown == null) throw notFound("Not found.");
     return { slug: a.slug, title: a.title || a.filename.replace(/\.mde?$/i, ""), markdown };
   });
 
@@ -231,7 +232,7 @@ export async function registerAssetRoutes(
 
   app.get<{ Params: { id: string } }>("/api/cms/assets/:id", guard, async (req, reply) => {
     const a = store.assets.getById(req.params.id);
-    if (!a) return reply.code(404).send({ error: "Not found." });
+    if (!a) throw notFound("Not found.");
     return { ...a, variants: store.assets.listVariants(a.id), usages: store.assets.usagesFor(a.id) };
   });
 
@@ -246,7 +247,7 @@ export async function registerAssetRoutes(
       }
       if ("folderId" in b) patch.folderId = b.folderId === null ? null : String(b.folderId);
       const updated = store.assets.update(req.params.id, patch);
-      if (!updated) return reply.code(404).send({ error: "Not found." });
+      if (!updated) throw notFound("Not found.");
       if (Array.isArray(b.tags)) store.assets.setTags(req.params.id, b.tags.map(String));
       return store.assets.getById(req.params.id);
     },
@@ -254,7 +255,7 @@ export async function registerAssetRoutes(
 
   app.delete<{ Params: { id: string } }>("/api/cms/assets/:id", guard, async (req, reply) => {
     const a = store.assets.getById(req.params.id);
-    if (!a) return reply.code(404).send({ error: "Not found." });
+    if (!a) throw notFound("Not found.");
     // Remove derived variants + the original, then the row (usages cascade).
     const files = await readdir(variantsDir).catch(() => []);
     await Promise.all(
@@ -271,7 +272,7 @@ export async function registerAssetRoutes(
     guard,
     async (req, reply) => {
       const name = (req.body?.name ?? "").trim();
-      if (!name) return reply.code(400).send({ error: "Folder name required." });
+      if (!name) throw badRequest("Folder name required.");
       const id = randomUUID();
       store.assets.createFolder({ id, name, parentId: req.body?.parentId ?? null });
       return { id, name, parentId: req.body?.parentId ?? null };

@@ -1,7 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runMigrations } from "./migrate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -10,48 +11,32 @@ const here = dirname(fileURLToPath(import.meta.url));
 export type DB = DatabaseSync;
 
 /**
- * Open the store and ensure the schema exists.
+ * Open the store, set connection pragmas, and bring the schema up to date via the
+ * versioned migration runner (see migrate.ts).
  *
  * @param path - file path, or ":memory:" for tests.
  */
 export function openDatabase(path: string): DB {
   const db = new DatabaseSync(path);
+  // Connection pragmas: WAL journalling with its safe/fast durability pairing,
+  // foreign-key enforcement, and a busy timeout so a brief writer lock retries
+  // instead of throwing SQLITE_BUSY (the sync worker and request-path writes
+  // contend on a single-writer store).
   db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = NORMAL");
   db.exec("PRAGMA foreign_keys = ON");
-  db.exec(readFileSync(resolveSchemaPath(), "utf8"));
-  migrateColumns(db);
+  db.exec("PRAGMA busy_timeout = 5000");
+  runMigrations(db, resolveMigrationsDir());
   return db;
 }
 
-/**
- * Additive column migrations for tables that predate a column. `ADD COLUMN` is
- * idempotent here because a duplicate-column error is caught and ignored — so
- * fresh databases (which already have the column from schema.sql) are unaffected.
- */
-function migrateColumns(db: DB): void {
-  const adds = [
-    "ALTER TABLE gallery ADD COLUMN module TEXT NOT NULL DEFAULT 'gallery'",
-    "ALTER TABLE gallery ADD COLUMN asset TEXT",
-  ];
-  for (const sql of adds) {
-    try {
-      db.exec(sql);
-    } catch {
-      /* column already exists — expected on fresh/upgraded databases */
-    }
-  }
-}
-
-function resolveSchemaPath(): string {
-  // In dist/ the sql ships one dir up in src/; in src/ (tsx dev/tests) it's local.
-  const candidates = [join(here, "schema.sql"), join(here, "..", "src", "schema.sql")];
-  for (const candidate of candidates) {
-    try {
-      readFileSync(candidate);
-      return candidate;
-    } catch {
-      /* try next */
-    }
+/** Locate the migrations directory in both dev (src/) and built (dist/) layouts. */
+function resolveMigrationsDir(): string {
+  // In dist/ the migrations are copied alongside the JS (dist/migrations); in src/
+  // (tsx dev/tests) they sit next to this file.
+  const candidates = [join(here, "migrations"), join(here, "..", "src", "migrations")];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, "0001_init.sql"))) return dir;
   }
   return candidates[0]!;
 }

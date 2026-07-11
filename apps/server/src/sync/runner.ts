@@ -48,15 +48,25 @@ export class SyncRunner {
   /** Run one source now: fetch, normalize, persist. Never throws — reports. */
   async runSource(source: Source, mock: boolean): Promise<SyncResult> {
     const syncedAt = new Date().toISOString();
+
+    // A failed fetch is expected (slow/down upstream): log it and keep the
+    // last-good snapshot — don't record, don't throw.
+    const fetched = await source.fetch();
+    if (!fetched.ok) {
+      this.log(`[sync] ${source.id} FAILED (${fetched.error.kind}): ${fetched.error.message}`);
+      return { sourceId: source.id, ok: false, mock, syncedAt, error: fetched.error.message };
+    }
+
     try {
-      const raw = await source.fetch();
-      const normalized = source.normalize(raw);
+      const normalized = source.normalize(fetched.value);
       this.store.source.record(source.id, syncedAt, normalized);
       this.log(`[sync] ${source.id} ok${mock ? " (mock)" : ""} @ ${syncedAt}`);
       return { sourceId: source.id, ok: true, mock, syncedAt };
     } catch (err) {
+      // normalize/persist are local — a throw here is a real bug, but still
+      // shouldn't crash the run.
       const message = err instanceof Error ? err.message : String(err);
-      this.log(`[sync] ${source.id} FAILED: ${message}`);
+      this.log(`[sync] ${source.id} FAILED (normalize/persist): ${message}`);
       return { sourceId: source.id, ok: false, mock, syncedAt, error: message };
     }
   }

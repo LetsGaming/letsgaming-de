@@ -4,6 +4,7 @@ import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { Store } from "@lg/db";
 import type { ServerEnv } from "./env.js";
+import { registerErrorHandler } from "./errors.js";
 import { registerOAuthRoutes } from "./auth/github-oauth.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAssetRoutes } from "./routes/assets.js";
@@ -18,19 +19,33 @@ import { registerTrackRoutes } from "./routes/track.js";
 /** Build the Fastify app with all routes registered. Pure — no listening. */
 export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: { level: process.env.LOG_LEVEL ?? "info" },
+    logger: {
+      level: process.env.LOG_LEVEL ?? "info",
+      // Keep secrets/PII out of logs (undercuts the privacy-by-omission stance otherwise).
+      redact: {
+        paths: ["req.headers.authorization", "req.headers.cookie", 'res.headers["set-cookie"]'],
+        remove: true,
+      },
+    },
     // Behind the homelab reverse proxy, honour X-Forwarded-* so `req.ip` is the
     // real client (the contact rate-limiter keys on it). Off by default so a
     // directly-exposed server can't be fooled by a spoofed header (BUG-01).
     trustProxy: env.trustProxy,
   });
 
+  // One place that maps thrown AppErrors / validation failures to safe responses
+  // and turns anything unexpected into a 500 without leaking internals.
+  registerErrorHandler(app);
+
   // Minimal security headers on every response. Kept hand-rolled rather than
   // pulling in helmet — the API serves JSON + images, so the surface is small.
+  // HSTS is safe to send behind the TLS-terminating proxy (browsers ignore it
+  // over plain HTTP); the site's CSP is configured in the Astro app.
   app.addHook("onSend", async (_req, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("X-Frame-Options", "DENY");
     reply.header("Referrer-Policy", "no-referrer");
+    reply.header("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   });
 
   // Cookies are signed with the session secret (used for the CMS session).

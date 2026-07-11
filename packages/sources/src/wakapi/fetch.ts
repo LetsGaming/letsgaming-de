@@ -6,6 +6,9 @@
  * Kept separate from normalize() so the mapping stays a pure, testable function.
  */
 
+import type { Result } from "@lg/core";
+import { fetchJson } from "../http.js";
+
 export interface WakapiConfig {
   /** Base URL of the Wakapi instance, e.g. http://192.168.2.20:3000 (LAN only). */
   url: string;
@@ -34,17 +37,15 @@ export interface WakapiRaw {
   };
 }
 
-/** Fetch coding-time stats from Wakapi. Throws on HTTP errors. */
-export async function fetchWakapi(config: WakapiConfig): Promise<WakapiRaw> {
-  const doFetch = config.fetchImpl ?? fetch;
+/** Fetch coding-time stats from Wakapi. Returns a typed Result (never throws). */
+export async function fetchWakapi(config: WakapiConfig): Promise<Result<WakapiRaw>> {
   const range = config.range ?? "last_7_days";
   const base = config.url.replace(/\/$/, "");
   const url = `${base}/api/compat/wakatime/v1/users/current/stats/${encodeURIComponent(range)}`;
   // WakaTime auth: Basic <base64(api_key)>.
   const auth = Buffer.from(config.key).toString("base64");
-  const res = await doFetch(url, {
-    headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+  return fetchJson<WakapiRaw>(url, {
+    init: { headers: { Authorization: `Basic ${auth}`, Accept: "application/json" } },
+    ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
   });
-  if (!res.ok) throw new Error(`Wakapi HTTP ${res.status}: ${await res.text()}`);
-  return (await res.json()) as WakapiRaw;
 }

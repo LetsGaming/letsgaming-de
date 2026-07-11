@@ -123,7 +123,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--sp-20);
   z-index: 100;
 }
 .panel {
@@ -132,7 +132,7 @@ watch(
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 20px 22px 24px;
+  padding: var(--sp-20) var(--sp-22) var(--sp-24);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
   color: var(--ink);
 }
@@ -140,7 +140,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-6);
 }
 header h2 {
   font-family: var(--f-d);
@@ -153,14 +153,14 @@ header h2 {
   color: var(--muted);
   font-size: 16px;
   cursor: pointer;
-  padding: 6px;
+  padding: var(--sp-6);
   border-radius: 8px;
 }
 .x:hover {
   color: var(--ink);
 }
 section {
-  padding: 14px 0;
+  padding: var(--sp-14) 0;
   border-top: 1px solid var(--line);
 }
 section h3 {
@@ -169,11 +169,11 @@ section h3 {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 10px;
+  margin-bottom: var(--sp-10);
 }
 .seg {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--sp-4);
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -186,7 +186,7 @@ section h3 {
   background: none;
   border: none;
   border-radius: 9px;
-  padding: 7px 16px;
+  padding: 7px var(--sp-16);
   cursor: pointer;
 }
 .seg button.on {
@@ -196,7 +196,7 @@ section h3 {
 .row {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--sp-16);
   justify-content: space-between;
 }
 .rowtitle {
@@ -223,7 +223,7 @@ section h3 {
   padding: 0;
   position: relative;
   transition: background 0.15s ease;
-  margin-top: 2px;
+  margin-top: var(--sp-2);
 }
 .switch .knob {
   position: absolute;
@@ -252,7 +252,7 @@ section h3 {
 .note {
   font-size: 12px;
   color: var(--muted);
-  margin-top: 10px;
+  margin-top: var(--sp-10);
 }
 .fade-enter-active,
 .fade-leave-active {

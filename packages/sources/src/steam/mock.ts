@@ -4,6 +4,7 @@
  * offline. Deterministic — no RNG.
  */
 
+import { ok } from "@lg/core";
 import type { Source, SteamData } from "@lg/core";
 
 const DEMO: SteamData = {
@@ -19,7 +20,7 @@ export function steamMockSource(): Source<SteamData, SteamData> {
     id: "steam",
     targetArea: "life",
     schedule: "*/15 * * * *",
-    fetch: async () => DEMO,
+    fetch: async () => ok(DEMO),
     normalize: (raw) => raw,
   };
 }

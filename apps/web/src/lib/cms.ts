@@ -7,7 +7,7 @@
  * Runs only in the CMS, never on the public site.
  */
 
-const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
+import { apiBase } from "./api";
 const TOKEN_KEY = "cms_token";
 
 let token: string | null = null;
@@ -53,26 +53,26 @@ export class AuthError extends Error {
 }
 
 export const cms = {
-  base: API_BASE,
+  base: apiBase,
 
   me: () =>
-    fetch(`${API_BASE}/api/cms/me`, { headers: headers(false), credentials: "include" }).then(
+    fetch(`${apiBase}/api/cms/me`, { headers: headers(false), credentials: "include" }).then(
       handle,
     ),
   content: () =>
-    fetch(`${API_BASE}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
+    fetch(`${apiBase}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
       handle,
     ),
   analytics: (hours?: number) => {
     const q = new URLSearchParams();
     if (hours) q.set("hours", String(hours));
-    return fetch(`${API_BASE}/api/cms/analytics?${q}`, {
+    return fetch(`${apiBase}/api/cms/analytics?${q}`, {
       headers: headers(false),
       credentials: "include",
     }).then(handle);
   },
   clearAnalytics: (range: string) =>
-    fetch(`${API_BASE}/api/cms/analytics/clear`, {
+    fetch(`${apiBase}/api/cms/analytics/clear`, {
       method: "POST",
       headers: headers(),
       credentials: "include",
@@ -80,19 +80,19 @@ export const cms = {
     }).then(handle),
 
   guestbook: () =>
-    fetch(`${API_BASE}/api/cms/guestbook`, {
+    fetch(`${apiBase}/api/cms/guestbook`, {
       headers: headers(false),
       credentials: "include",
     }).then(handle),
   moderate: (id: number, action: "approve" | "reject") =>
-    fetch(`${API_BASE}/api/cms/guestbook/${id}/${action}`, {
+    fetch(`${apiBase}/api/cms/guestbook/${id}/${action}`, {
       method: "POST",
       headers: headers(false),
       credentials: "include",
     }).then(handle),
 
   put: (path: string, body: unknown) =>
-    fetch(`${API_BASE}/api/cms/${path}`, {
+    fetch(`${apiBase}/api/cms/${path}`, {
       method: "PUT",
       headers: headers(),
       credentials: "include",
@@ -100,21 +100,21 @@ export const cms = {
     }).then(handle),
 
   del: (path: string) =>
-    fetch(`${API_BASE}/api/cms/${path}`, {
+    fetch(`${apiBase}/api/cms/${path}`, {
       method: "DELETE",
       headers: headers(false),
       credentials: "include",
     }).then(handle),
 
   createGallery: (heading: { en: string; de?: string }) =>
-    fetch(`${API_BASE}/api/cms/gallery-module`, {
+    fetch(`${apiBase}/api/cms/gallery-module`, {
       method: "POST",
       headers: headers(),
       credentials: "include",
       body: JSON.stringify({ heading }),
     }).then(handle),
   deleteGallery: (id: string) =>
-    fetch(`${API_BASE}/api/cms/gallery-module/${id}`, {
+    fetch(`${apiBase}/api/cms/gallery-module/${id}`, {
       method: "DELETE",
       headers: headers(false),
       credentials: "include",
@@ -122,20 +122,20 @@ export const cms = {
 
   // ── asset library ──────────────────────────────────────────────────────────
   assetUrl: (id: string, variant?: string) =>
-    `${API_BASE}/assets/${id}${variant ? `/${variant}` : ""}`,
+    `${apiBase}/assets/${id}${variant ? `/${variant}` : ""}`,
   listAssets: (params: { folder?: string; tag?: string; kind?: string; q?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
-    return fetch(`${API_BASE}/api/cms/assets${qs ? `?${qs}` : ""}`, {
+    return fetch(`${apiBase}/api/cms/assets${qs ? `?${qs}` : ""}`, {
       headers: headers(false),
       credentials: "include",
     }).then(handle);
   },
   getAsset: (id: string) =>
-    fetch(`${API_BASE}/api/cms/assets/${id}`, { headers: headers(false), credentials: "include" }).then(handle),
+    fetch(`${apiBase}/api/cms/assets/${id}`, { headers: headers(false), credentials: "include" }).then(handle),
   uploadAsset: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return fetch(`${API_BASE}/api/cms/assets`, {
+    return fetch(`${apiBase}/api/cms/assets`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: "include",
@@ -143,30 +143,30 @@ export const cms = {
     }).then(handle);
   },
   updateAsset: (id: string, patch: Record<string, unknown>) =>
-    fetch(`${API_BASE}/api/cms/assets/${id}`, {
+    fetch(`${apiBase}/api/cms/assets/${id}`, {
       method: "PATCH",
       headers: headers(),
       credentials: "include",
       body: JSON.stringify(patch),
     }).then(handle),
   deleteAsset: (id: string) =>
-    fetch(`${API_BASE}/api/cms/assets/${id}`, {
+    fetch(`${apiBase}/api/cms/assets/${id}`, {
       method: "DELETE",
       headers: headers(false),
       credentials: "include",
     }).then(handle),
   createAssetFolder: (name: string, parentId: string | null = null) =>
-    fetch(`${API_BASE}/api/cms/assets/folders`, {
+    fetch(`${apiBase}/api/cms/assets/folders`, {
       method: "POST",
       headers: headers(),
       credentials: "include",
       body: JSON.stringify({ name, parentId }),
     }).then(handle),
   deleteAssetFolder: (id: string) =>
-    fetch(`${API_BASE}/api/cms/assets/folders/${id}`, {
+    fetch(`${apiBase}/api/cms/assets/folders/${id}`, {
       method: "DELETE",
       headers: headers(false),
       credentials: "include",
     }).then(handle),
-  loginUrl: () => `${API_BASE}/auth/github/login`,
+  loginUrl: () => `${apiBase}/auth/github/login`,
 };

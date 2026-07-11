@@ -19,8 +19,8 @@ import {
   sessionTabsBucket,
   viewportBucket,
 } from "@lg/core";
+import { apiBase } from "./api";
 
-const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 let enabled = false;
 let queue: TrackEvent[] = [];
@@ -72,7 +72,7 @@ export function isPreview(): boolean {
 /** May we measure this visit? False if DNT is on, the visitor opted out, previewing, or no API. */
 export function analyticsAllowed(): boolean {
   return (
-    typeof window !== "undefined" && !!API_BASE && !dntActive() && !isOptedOut() && !isPreview()
+    typeof window !== "undefined" && !!apiBase && !dntActive() && !isOptedOut() && !isPreview()
   );
 }
 
@@ -87,7 +87,7 @@ export function setOptedOut(optout: boolean) {
   if (optout) {
     enabled = false;
     queue = [];
-  } else if (!dntActive() && API_BASE && !isPreview()) {
+  } else if (!dntActive() && apiBase && !isPreview()) {
     // Opting back in mid-visit: register the current section so the visit counts.
     enabled = true;
     if (current) {
@@ -109,7 +109,7 @@ function flush() {
   queue = [];
   // text/plain keeps this a CORS-"simple" request (no preflight for beacons).
   const blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
-  const url = `${API_BASE}/api/pulse`;
+  const url = `${apiBase}/api/pulse`;
   if (navigator.sendBeacon?.(url, blob)) return;
   // Fallback for the rare browser without sendBeacon.
   void fetch(url, { method: "POST", body, keepalive: true }).catch(() => {});
@@ -172,7 +172,7 @@ function end() {
 
 /** Start tracking a visit. Safe to call once, client-side only. */
 export function initTracking(initialSection: string, theme?: "dark" | "light") {
-  if (typeof window === "undefined" || !API_BASE) return;
+  if (typeof window === "undefined" || !apiBase) return;
   // Listeners are always attached so the settings toggle can start/stop measuring
   // live; whether anything is actually sent is gated on `enabled` below.
   enterSection(initialSection);

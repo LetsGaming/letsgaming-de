@@ -4,9 +4,11 @@
  * A honeypot field and a coarse in-memory rate limit keep casual spam down.
  */
 
+import { FIELD_LIMITS } from "@lg/core";
 import type { FastifyInstance } from "fastify";
 import nodemailer from "nodemailer";
 import type { ServerEnv } from "../env.js";
+import { tooManyRequests, unavailable } from "../errors.js";
 
 interface ContactBody {
   name: string;
@@ -20,9 +22,9 @@ const bodySchema = {
   type: "object",
   required: ["name", "email", "message"],
   properties: {
-    name: { type: "string", minLength: 1, maxLength: 120 },
-    email: { type: "string", format: "email", maxLength: 200 },
-    message: { type: "string", minLength: 1, maxLength: 5000 },
+    name: { type: "string", minLength: 1, maxLength: FIELD_LIMITS.contactName },
+    email: { type: "string", format: "email", maxLength: FIELD_LIMITS.contactEmail },
+    message: { type: "string", minLength: 1, maxLength: FIELD_LIMITS.contactMessage },
     website: { type: "string" },
   },
   additionalProperties: false,
@@ -70,13 +72,13 @@ export function registerContactRoutes(app: FastifyInstance, env: ServerEnv): voi
     "/api/contact",
     { schema: { body: bodySchema } },
     async (req, reply) => {
-      if (!env.smtp) return reply.code(503).send({ error: "Contact is not configured." });
+      if (!env.smtp) throw unavailable("Contact is not configured.");
 
       // Silently accept honeypot hits so bots don't learn.
       if (req.body.website) return { ok: true };
 
       if (!limiter.allow(req.ip)) {
-        return reply.code(429).send({ error: "Too many messages — try again later." });
+        throw tooManyRequests("Too many messages — try again later.");
       }
 
       const transport = nodemailer.createTransport({

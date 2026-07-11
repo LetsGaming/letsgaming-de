@@ -8,17 +8,22 @@
  * If neither a token nor OAuth is configured, the CMS API fails closed.
  */
 
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ServerEnv } from "../env.js";
+import { unauthorized, unavailable } from "../errors.js";
 
 export const SESSION_COOKIE = "lg_session";
 
-/** Timing-safe-ish string compare (length then value). */
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+/**
+ * Constant-time secret compare. Both sides are hashed to a fixed-length digest
+ * first, so the compare never short-circuits on length (no length/prefix leak),
+ * and `timingSafeEqual` requires equal-length buffers (guaranteed by hashing).
+ */
+function secretEquals(a: string, b: string): boolean {
+  const ah = createHash("sha256").update(a, "utf8").digest();
+  const bh = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(ah, bh);
 }
 
 /** The login the current request is authenticated as, or null. */
@@ -33,20 +38,18 @@ export function sessionLogin(req: FastifyRequest, env: ServerEnv): string | null
   if (env.cmsToken) {
     const header = req.headers.authorization ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    if (token && safeEqual(token, env.cmsToken)) return env.oauth.allowedLogin;
+    if (token && secretEquals(token, env.cmsToken)) return env.oauth.allowedLogin;
   }
   return null;
 }
 
 export function requireAuth(env: ServerEnv) {
-  return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  return async (req: FastifyRequest, _reply: FastifyReply): Promise<void> => {
     if (!env.cmsToken && !env.oauth.clientId) {
-      await reply.code(503).send({ error: "CMS is not configured." });
-      return;
+      throw unavailable("CMS is not configured.");
     }
     if (!sessionLogin(req, env)) {
-      await reply.code(401).send({ error: "Unauthorized." });
-      return;
+      throw unauthorized();
     }
   };
 }

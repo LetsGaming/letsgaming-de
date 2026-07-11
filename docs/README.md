@@ -44,7 +44,7 @@ the file that owns it rather than pasting a snapshot that goes stale on the next
 commit. The files worth knowing as sources of truth:
 
 - `apps/server/src/env.ts` and `.env.example` for configuration.
-- `packages/db/src/schema.sql` for the store schema.
+- `packages/db/src/migrations/` for the store schema (baseline `0001_init.sql`).
 - `apps/server/src/schemas.ts` for CMS request validation.
 - `packages/core/src/` for the contracts (nav, source, content, view).
 

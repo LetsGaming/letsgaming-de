@@ -4,6 +4,9 @@
  * the two). One GraphQL round-trip gets everything the launch dashboard needs.
  */
 
+import { err, ok, sourceError, type Result } from "@lg/core";
+import { fetchJson } from "../http.js";
+
 export interface GitHubConfig {
   username: string;
   /** Personal access token. Required for the contribution calendar. */
@@ -11,6 +14,12 @@ export interface GitHubConfig {
   /** Override for tests. */
   endpoint?: string;
 }
+
+const graphqlHeaders = (config: GitHubConfig) => ({
+  Authorization: `bearer ${config.token}`,
+  "Content-Type": "application/json",
+  "User-Agent": "letsgaming-de-sync",
+});
 
 // ── Raw GraphQL shapes (only the fields we ask for) ──────────────────────────
 
@@ -132,38 +141,43 @@ query($login: String!) {
   }
 }`;
 
-/** Fetch everything from GitHub. Throws on HTTP or GraphQL errors. */
-export async function fetchGitHub(config: GitHubConfig): Promise<GitHubRaw> {
+/** Fetch everything from GitHub. Returns a typed Result (never throws). */
+export async function fetchGitHub(config: GitHubConfig): Promise<Result<GitHubRaw>> {
   const endpoint = config.endpoint ?? "https://api.github.com/graphql";
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `bearer ${config.token}`,
-      "Content-Type": "application/json",
-      "User-Agent": "letsgaming-de-sync",
+  const res = await fetchJson<{ data?: { user: RawUser | null }; errors?: { message: string }[] }>(
+    endpoint,
+    {
+      init: {
+        method: "POST",
+        headers: graphqlHeaders(config),
+        body: JSON.stringify({ query: QUERY, variables: { login: config.username } }),
+      },
     },
-    body: JSON.stringify({ query: QUERY, variables: { login: config.username } }),
-  });
-  if (!res.ok) throw new Error(`GitHub GraphQL HTTP ${res.status}: ${await res.text()}`);
-  const json = (await res.json()) as {
-    data?: { user: RawUser | null };
-    errors?: { message: string }[];
-  };
-  if (json.errors?.length) throw new Error(`GitHub GraphQL: ${json.errors[0]!.message}`);
+  );
+  if (!res.ok) return err(res.error);
+  const json = res.value;
+  if (json.errors?.length) {
+    return err(sourceError("upstream", `GitHub GraphQL: ${json.errors[0]!.message}`));
+  }
   const user = json.data?.user;
-  if (!user) throw new Error(`GitHub user "${config.username}" not found.`);
+  if (!user) return err(sourceError("upstream", `GitHub user "${config.username}" not found.`));
+
+  // A failed all-time query keeps the last-good snapshot rather than zeroing the
+  // headline number (BUG-03), so it fails the whole fetch.
+  const allTime = await fetchAllTimeCommits(config, user.createdAt);
+  if (!allTime.ok) return err(allTime.error);
 
   const days = user.contributionsCollection.contributionCalendar.weeks.flatMap(
     (w) => w.contributionDays,
   );
 
-  return {
+  return ok({
     login: config.username,
     repositoriesTotal: user.repositories.totalCount,
     repos: user.repositories.nodes,
     pinned: (user.pinnedItems?.nodes ?? []).map((n) => n.name).filter((n): n is string => !!n),
     yearCommits: user.contributionsCollection.totalCommitContributions,
-    allTimeCommits: await fetchAllTimeCommits(config, user.createdAt),
+    allTimeCommits: allTime.value,
     calendarTotal: user.contributionsCollection.contributionCalendar.totalContributions,
     days,
     events: await fetchEvents(config),
@@ -189,7 +203,7 @@ export async function fetchGitHub(config: GitHubConfig): Promise<GitHubRaw> {
       files: g.files.length,
       updatedAt: g.updatedAt,
     })),
-  };
+  });
 }
 
 /**
@@ -197,7 +211,7 @@ export async function fetchGitHub(config: GitHubConfig): Promise<GitHubRaw> {
  * GitHub exposes no lifetime total, so we query one `contributionsCollection`
  * window per year (aliased into a single request) and add them up.
  */
-async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Promise<number> {
+async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Promise<Result<number>> {
   const endpoint = config.endpoint ?? "https://api.github.com/graphql";
   const startYear = new Date(createdAt).getUTCFullYear();
   const nowYear = new Date().getUTCFullYear();
@@ -213,28 +227,22 @@ async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Pro
   const query = `query($login: String!) { user(login: $login) { ${fields} } }`;
 
   const body = JSON.stringify({ query, variables: { login: config.username } });
-  const headers = {
-    Authorization: `bearer ${config.token}`,
-    "Content-Type": "application/json",
-    "User-Agent": "letsgaming-de-sync",
-  };
-
-  // Retry once on a transient failure, then throw rather than return a misleading
-  // 0 — a failed sync keeps the last-good snapshot instead of zeroing the headline
-  // "commits all-time" number (BUG-03).
-  let res = await fetch(endpoint, { method: "POST", headers, body });
-  if (!res.ok) res = await fetch(endpoint, { method: "POST", headers, body });
-  if (!res.ok) {
-    throw new Error(`GitHub all-time commits HTTP ${res.status}: ${await res.text()}`);
-  }
-  const json = (await res.json()) as {
+  // No blind retry: a failure returns a typed error, the sync keeps its last-good
+  // snapshot, and the next scheduled run tries again.
+  const res = await fetchJson<{
     data?: { user: Record<string, { totalCommitContributions: number }> | null };
     errors?: { message: string }[];
-  };
-  if (json.errors?.length) throw new Error(`GitHub all-time commits: ${json.errors[0]!.message}`);
+  }>(endpoint, { init: { method: "POST", headers: graphqlHeaders(config), body } });
+  if (!res.ok) return err(res.error);
+  const json = res.value;
+  if (json.errors?.length) {
+    return err(sourceError("upstream", `GitHub all-time commits: ${json.errors[0]!.message}`));
+  }
   const user = json.data?.user;
-  if (!user) throw new Error(`GitHub all-time commits: user "${config.username}" not found.`);
-  return years.reduce((sum, y) => sum + (user[`y${y}`]?.totalCommitContributions ?? 0), 0);
+  if (!user) {
+    return err(sourceError("upstream", `GitHub all-time commits: user "${config.username}" not found.`));
+  }
+  return ok(years.reduce((sum, y) => sum + (user[`y${y}`]?.totalCommitContributions ?? 0), 0));
 }
 
 interface RawUser {
@@ -259,15 +267,17 @@ interface RawUser {
 /** Recent public events via REST, mapped to a compact raw shape. */
 async function fetchEvents(config: GitHubConfig): Promise<RawEvent[]> {
   const url = `https://api.github.com/users/${encodeURIComponent(config.username)}/events/public?per_page=20`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `bearer ${config.token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "letsgaming-de-sync",
+  const res = await fetchJson<GitHubRestEvent[]>(url, {
+    init: {
+      headers: {
+        Authorization: `bearer ${config.token}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "letsgaming-de-sync",
+      },
     },
   });
-  if (!res.ok) return [];
-  const raw = (await res.json()) as GitHubRestEvent[];
+  if (!res.ok) return []; // events are non-critical: a failure just means none shown
+  const raw = res.value;
   return raw.map((e) => ({
     type: e.type,
     repo: e.repo?.name?.split("/").pop() ?? e.repo?.name ?? "",

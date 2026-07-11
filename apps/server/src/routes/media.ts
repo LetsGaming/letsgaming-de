@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type { ServerEnv } from "../env.js";
 import { requireAuth } from "../auth/guard.js";
+import { badRequest, notFound, payloadTooLarge, unsupportedMedia } from "../errors.js";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB in
 const MAX_WIDTH = 1400; // downscale anything larger
@@ -27,12 +28,12 @@ export async function registerMediaRoutes(
   // Upload (authed): multipart 'file'. Returns { url, filename }.
   app.post("/api/cms/media", { preHandler: requireAuth(env) }, async (req, reply) => {
     const file = await req.file({ limits: { fileSize: MAX_BYTES } });
-    if (!file) return reply.code(400).send({ error: "No file uploaded." });
+    if (!file) throw badRequest("No file uploaded.");
     if (!ACCEPTED.has(file.mimetype)) {
-      return reply.code(415).send({ error: `Unsupported type ${file.mimetype}.` });
+      throw unsupportedMedia(`Unsupported type ${file.mimetype}.`);
     }
     const buf = await file.toBuffer();
-    if (file.file.truncated) return reply.code(413).send({ error: "File too large." });
+    if (file.file.truncated) throw payloadTooLarge("File too large.");
 
     const name = `${randomUUID()}.webp`;
     await sharp(buf)
@@ -57,12 +58,12 @@ export async function registerMediaRoutes(
     async (req, reply) => {
       const file = req.params.file;
       if (!/^[a-f0-9-]+\.webp$/i.test(file)) {
-        return reply.code(400).send({ error: "Invalid filename." });
+        throw badRequest("Invalid filename.");
       }
       try {
         await unlink(join(dir, file));
       } catch {
-        return reply.code(404).send({ error: "Not found." });
+        throw notFound("Not found.");
       }
       return { ok: true };
     },
@@ -71,12 +72,12 @@ export async function registerMediaRoutes(
   // Serve (public, read-only). Path traversal is blocked by the filename regex.
   app.get<{ Params: { file: string } }>("/media/:file", async (req, reply) => {
     const file = req.params.file;
-    if (!/^[a-f0-9-]+\.webp$/i.test(file)) return reply.code(404).send({ error: "Not found." });
+    if (!/^[a-f0-9-]+\.webp$/i.test(file)) throw notFound("Not found.");
     const full = join(dir, file);
     try {
       await stat(full);
     } catch {
-      return reply.code(404).send({ error: "Not found." });
+      throw notFound("Not found.");
     }
     reply.header("Content-Type", "image/webp");
     reply.header("Cache-Control", "public, max-age=31536000, immutable");

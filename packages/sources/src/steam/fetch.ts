@@ -5,6 +5,9 @@
  * the live half. Kept separate from normalize() so the mapping stays testable.
  */
 
+import { err, ok, type Result } from "@lg/core";
+import { fetchJson } from "../http.js";
+
 export interface SteamConfig {
   /** Steam Web API key (secret). */
   apiKey: string;
@@ -34,20 +37,22 @@ export interface SteamRaw {
 const HOST = "https://api.steampowered.com";
 
 /** Fetch the profile summary (current game) and recently-played list. */
-export async function fetchSteam(config: SteamConfig): Promise<SteamRaw> {
-  const doFetch = config.fetchImpl ?? fetch;
+export async function fetchSteam(config: SteamConfig): Promise<Result<SteamRaw>> {
   const key = encodeURIComponent(config.apiKey);
   const id = encodeURIComponent(config.steamId);
+  const opts = config.fetchImpl ? { fetchImpl: config.fetchImpl } : {};
 
-  const [summaryRes, recentRes] = await Promise.all([
-    doFetch(`${HOST}/ISteamUser/GetPlayerSummaries/v0002/?key=${key}&steamids=${id}`),
-    doFetch(`${HOST}/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${key}&steamid=${id}&count=6`),
+  const [summary, recent] = await Promise.all([
+    fetchJson<RawSteamSummary>(
+      `${HOST}/ISteamUser/GetPlayerSummaries/v0002/?key=${key}&steamids=${id}`,
+      opts,
+    ),
+    fetchJson<RawSteamRecent>(
+      `${HOST}/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${key}&steamid=${id}&count=6`,
+      opts,
+    ),
   ]);
-  if (!summaryRes.ok) throw new Error(`Steam summary HTTP ${summaryRes.status}`);
-  if (!recentRes.ok) throw new Error(`Steam recent HTTP ${recentRes.status}`);
-
-  return {
-    summary: (await summaryRes.json()) as RawSteamSummary,
-    recent: (await recentRes.json()) as RawSteamRecent,
-  };
+  if (!summary.ok) return err(summary.error);
+  if (!recent.ok) return err(recent.error);
+  return ok({ summary: summary.value, recent: recent.value });
 }

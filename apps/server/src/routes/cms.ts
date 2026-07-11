@@ -27,11 +27,40 @@ import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 import { requireAuth, sessionLogin } from "../auth/guard.js";
 import { schemas } from "../schemas.js";
+import { badRequest, notFound } from "../errors.js";
 
 export function registerCmsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   const preHandler = requireAuth(env);
   const guard = { preHandler };
   const write = (body: unknown) => ({ preHandler, schema: { body } });
+
+  /**
+   * Register the uniform CRUD pair shared by every sortable list entity:
+   *   PUT  <path>  — validate + upsert (with an optional `sort`)
+   *   DELETE <path> — remove by id
+   * `after` runs an optional side effect on both (e.g. recomputing gallery usages).
+   * Collapses what were five copy-pasted PUT+DELETE handlers.
+   */
+  const registerCrud = <T extends { id: string }>(opts: {
+    path: string;
+    schema: unknown;
+    upsert: (entity: T, sort: number) => void;
+    remove: (id: string) => void;
+    after?: () => void;
+  }) => {
+    app.put<{ Body: T & { sort?: number } }>(opts.path, write(opts.schema), async (req) => {
+      // Fastify wraps a generic Body in a mapped type; re-assert the shape once here.
+      const body = req.body as T & { sort?: number };
+      opts.upsert(body, body.sort ?? 0);
+      opts.after?.();
+      return { ok: true };
+    });
+    app.delete<{ Params: { id: string } }>(opts.path, guard, async (req) => {
+      opts.remove(req.params.id);
+      opts.after?.();
+      return { ok: true };
+    });
+  };
 
   // Whoami — the CMS UI uses this to confirm the session.
   app.get("/api/cms/me", guard, async (req) => ({ login: sessionLogin(req, env) }));
@@ -86,20 +115,12 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     }
   };
 
-  app.put<{ Body: GalleryItem & { sort?: number } }>(
-    "/api/cms/gallery/:id",
-    write(schemas.galleryItem),
-    async (req) => {
-      const { sort, ...item } = req.body;
-      store.content.upsertGalleryItem(item, sort ?? 0);
-      syncGalleryUsages();
-      return { ok: true };
-    },
-  );
-  app.delete<{ Params: { id: string } }>("/api/cms/gallery/:id", guard, async (req) => {
-    store.content.deleteGalleryItem(req.params.id);
-    syncGalleryUsages();
-    return { ok: true };
+  registerCrud<GalleryItem>({
+    path: "/api/cms/gallery/:id",
+    schema: schemas.galleryItem,
+    upsert: store.content.upsertGalleryItem,
+    remove: store.content.deleteGalleryItem,
+    after: syncGalleryUsages,
   });
 
   // Create a new gallery instance (a gallery-kind module). It starts unplaced
@@ -119,10 +140,10 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     const id = req.params.id;
     const mod = store.ia.getModules().find((m) => m.id === id);
     if (!mod || mod.kind !== "gallery") {
-      return reply.code(400).send({ error: "Not a gallery module." });
+      throw badRequest("Not a gallery module.");
     }
     if (id === "gallery") {
-      return reply.code(400).send({ error: "The default gallery can't be deleted." });
+      throw badRequest("The default gallery can't be deleted.");
     }
     store.content.deleteGalleryModule(id);
     store.ia.removeModule(id);
@@ -152,12 +173,12 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       const seen = new Set<string>();
       for (const entry of req.body.order) {
         if (!leaves.has(entry.area)) {
-          return reply.code(400).send({ error: `Unknown area "${entry.area}".` });
+          throw badRequest(`Unknown area "${entry.area}".`);
         }
         for (const mid of entry.modules) {
-          if (!registry.has(mid)) return reply.code(400).send({ error: `Unknown module "${mid}".` });
+          if (!registry.has(mid)) throw badRequest(`Unknown module "${mid}".`);
           if (seen.has(mid)) {
-            return reply.code(400).send({ error: `Module "${mid}" placed in more than one area.` });
+            throw badRequest(`Module "${mid}" placed in more than one area.`);
           }
           seen.add(mid);
         }
@@ -167,68 +188,37 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
 
       const result = lintNav(nav);
       if (!result.ok) {
-        return reply.code(400).send({ error: result.violations.map((v) => v.message).join("; ") });
+        throw badRequest(result.violations.map((v) => v.message).join("; "));
       }
       store.ia.setNav(nav);
       return { ok: true };
     },
   );
 
-  // ── list entities ────────────────────────────────────────────────────────
-  app.put<{ Body: Project & { sort?: number } }>(
-    "/api/cms/projects/:id",
-    write(schemas.project),
-    async (req) => {
-      const { sort, ...project } = req.body;
-      store.content.upsertProject(project, sort ?? 0);
-      return { ok: true };
-    },
-  );
-  app.delete<{ Params: { id: string } }>("/api/cms/projects/:id", guard, async (req) => {
-    store.content.deleteProject(req.params.id);
-    return { ok: true };
+  // ── list entities (uniform CRUD: upsert with sort, delete by id) ───────────
+  registerCrud<Project>({
+    path: "/api/cms/projects/:id",
+    schema: schemas.project,
+    upsert: store.content.upsertProject,
+    remove: store.content.deleteProject,
   });
-
-  app.put<{ Body: Hobby & { sort?: number } }>(
-    "/api/cms/hobbies/:id",
-    write(schemas.hobby),
-    async (req) => {
-      const { sort, ...hobby } = req.body;
-      store.content.upsertHobby(hobby, sort ?? 0);
-      return { ok: true };
-    },
-  );
-  app.delete<{ Params: { id: string } }>("/api/cms/hobbies/:id", guard, async (req) => {
-    store.content.deleteHobby(req.params.id);
-    return { ok: true };
+  registerCrud<Hobby>({
+    path: "/api/cms/hobbies/:id",
+    schema: schemas.hobby,
+    upsert: store.content.upsertHobby,
+    remove: store.content.deleteHobby,
   });
-
-  app.put<{ Body: Link & { sort?: number } }>(
-    "/api/cms/links/:id",
-    write(schemas.link),
-    async (req) => {
-      const { sort, ...link } = req.body;
-      store.content.upsertLink(link, sort ?? 0);
-      return { ok: true };
-    },
-  );
-  app.delete<{ Params: { id: string } }>("/api/cms/links/:id", guard, async (req) => {
-    store.content.deleteLink(req.params.id);
-    return { ok: true };
+  registerCrud<Link>({
+    path: "/api/cms/links/:id",
+    schema: schemas.link,
+    upsert: store.content.upsertLink,
+    remove: store.content.deleteLink,
   });
-
-  app.put<{ Body: NowItem & { sort?: number } }>(
-    "/api/cms/now/:id",
-    write(schemas.now),
-    async (req) => {
-      const { sort, ...item } = req.body;
-      store.content.upsertNow(item, sort ?? 0);
-      return { ok: true };
-    },
-  );
-  app.delete<{ Params: { id: string } }>("/api/cms/now/:id", guard, async (req) => {
-    store.content.deleteNow(req.params.id);
-    return { ok: true };
+  registerCrud<NowItem>({
+    path: "/api/cms/now/:id",
+    schema: schemas.now,
+    upsert: store.content.upsertNow,
+    remove: store.content.deleteNow,
   });
 
   // ── guestbook moderation ───────────────────────────────────────────────────
@@ -251,10 +241,10 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
             ? "rejected"
             : null;
       if (!Number.isInteger(id) || !status) {
-        return reply.code(400).send({ error: "Invalid id or action." });
+        throw badRequest("Invalid id or action.");
       }
       if (!store.guestbook.setStatus(id, status)) {
-        return reply.code(404).send({ error: "Entry not found." });
+        throw notFound("Entry not found.");
       }
       return { ok: true };
     },
@@ -263,7 +253,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   app.delete<{ Params: { id: string } }>("/api/cms/guestbook/:id", guard, async (req, reply) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || !store.guestbook.remove(id)) {
-      return reply.code(404).send({ error: "Entry not found." });
+      throw notFound("Entry not found.");
     }
     return { ok: true };
   });

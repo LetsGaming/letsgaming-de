@@ -2,157 +2,115 @@
 
 ## Unreleased
 
+### Internal — audit-driven rework (phases 1–4)
+
+A four-phase, behaviour-preserving pass over the audit findings that tightens the
+load-bearing seams without changing what the site does. Each change is tied to a
+finding; the per-phase notes (`REWORK-PHASE1–4.md`) carry the evidence.
+
+- **Phase 1 — data / security / types.** A **versioned, forward-only migration
+  runner** (`schema_migrations`, per-migration transactions, sha256 checksum
+  verification) replaces the `schema.sql` re-exec and a swallow-all `ALTER … ADD
+  COLUMN` in `try/catch`; added `busy_timeout` / `synchronous=NORMAL`. The DB read
+  boundary is now **type-safe** — one audited cast in `mapRows`/`mapRow`, every repo
+  narrows columns by hand, **zero casts remain in `@lg/db`**. Constant-time
+  `secretEquals` (`crypto.timingSafeEqual`); a typed `AppError` + one error handler
+  replace **all 38 `reply.code(n).send({ error })` sites** (no internals/stack on
+  5xx). DRY helpers (`deleteById`, `setScalar`, `SINGLETON_ID`, a `GuestbookStatus`
+  const + guard).
+- **Phase 2 — frontend seams.** The `PUBLIC_API_URL` origin (copy-pasted in six
+  files) is now one `lib/api.ts`. A `useSubmit` composable + shared `BaseForm` shell
+  cut ~85% of the contact/guestbook duplication. `Module.vue` **352 → 47 lines**: an
+  exhaustive `Record<kind, Component>` variant map, one typed component per module
+  kind. `registerCrud` collapses five PUT+DELETE route pairs; shared `FIELD_LIMITS`
+  end client/server drift. Homepage island `client:load` → `client:idle`.
+- **Phase 3 — source resilience.** A typed `Result<T, SourceError>` + one shared
+  `fetchJson` give every source a **hard timeout** (`AbortSignal.timeout`), typed
+  failures, and **no blind retry**. `Source.fetch()` returns a `Result` (was
+  throwing); the sync runner **keeps the last-good snapshot** on failure.
+- **Phase 4 — tokens, CMS decomposition, homepage islands.** Spacing/radius/
+  on-accent and the chart palette are now **design tokens**; `STACK_COLORS` and 138
+  raw spacing values were tokenized **byte-for-byte**. `CmsApp.vue` (~770 lines) split
+  into **14 per-tab panels** via typed `provide`/`inject`, its scoped styles moved to
+  a specificity-preserving `.cms`-namespaced global sheet. The whole-site
+  `TabbedSite` island split into **`SiteChrome` + `SitePanels`** over a shared
+  nanostores store, with the brand/footer as static HTML so only interactive parts
+  hydrate. (Residual: a short in-browser QA pass on homepage animations/deep-links.)
+- **Tests moved into a `tests/` folder per package** (`apps/*/tests`,
+  `packages/*/tests`), mirroring each `src/` tree; discovery globs and the web
+  `tsconfig`/`vitest` includes updated. Server build no longer emits `*.test.ts` into
+  `dist/`.
+
+### Dependencies
+
+- Added **`nanostores` + `@nanostores/vue`** (web) — the shared store behind the
+  homepage's two-island split; Astro's supported way to share state across islands.
+
+## 1.1.0
+
+Content & CMS expansion: a central asset library, a sectioned admin with live
+preview, new sources and sections, a guestbook, on-site docs, and bilingual content
+— all still self-updating with no rebuild.
+
 ### Features
 
-- **Asset library, continued: SVG icons, a hero image, and drag-and-drop.** Link icons can now be
-  **uploaded SVGs** (pick one in the Links editor) instead of only the built-in set — they're inlined
-  and inherit `currentColor` for theming, just like the built-ins. The home hero gained an optional
-  **portrait/avatar** (Site identity → *Choose image*), resolved and rendered as a responsive
-  `<picture>`. The library now accepts **drag-and-drop** uploads, and the asset **picker can be
-  scoped to a type** (SVG for icons, image for the avatar). The **bio** can now contain **inline
-  images** too (About → *+ image*), so library assets are usable everywhere content lives.
-
-- **Asset library — a central, reusable media manager** (replaces the old flat "Media" tab and
-  gallery-owns-its-files model). Upload images, SVGs, GIFs, PDFs and Markdown once and reference
-  them anywhere; identity is the content hash, so the same file is **never stored twice**. Images
-  keep a clean original and get **responsive WebP/AVIF variants generated lazily on first request**
-  (cached to disk), so uploads stay fast and pages stay light. Organize with **folders + tags +
-  search**, edit **alt/title/caption/description**, and see **where each asset is used** — deleting
-  warns you first. SVGs are **sanitized on upload** (they're inlined for `currentColor` theming);
-  Markdown assets publish at **`/md/<slug>`** in the site shell (with a link back so it's not a dead
-  end); PDFs get a download link. The gallery now **picks from the library** (with usage tracked),
-  and the site renders images as proper `<picture>` elements. The old `/media` routes + Media screen
-  were removed. New surface area: `assets` / `asset_variants` / `asset_folders` / `asset_tags` /
-  `asset_usages` tables, an `asset:<id>` reference format resolved server-side, and `/assets/<id>`
-  serving. A **Show preview** toggle in the top bar opens
-  a live preview *beside* the editor (editor left, site right), so you can see changes without
-  leaving the field you're editing; it reloads on save and follows the area you're working in
-  (Hobbies → Life, About → bio, …), with an area picker to jump elsewhere. A full-width Preview
-  screen remains for a bigger look. The public site now honours a `#area`/`#module` URL hash on
-  load, so these deep links work for shared links too. All preview traffic stays out of analytics.
-- **Traffic analytics populate on their own.** *Top paths / referrers / browsers / OS / devices* are
-  parsed from the reverse-proxy access log — previously only a manual CLI ran the ingest, so those
-  lists sat empty. The server now ingests a configured **`ACCESS_LOG`** in-process every 5 minutes
-  (incremental + idempotent; IP never stored). Point it at the mounted proxy log and the stats fill
-  in; without it, the cookieless engagement stats still work, and the CMS shows a hint. The CLI
-  (`pnpm analytics`) still works for host-side cron if preferred. Layout now does more than reorder within an area — you can
-  **move a module to another area** or **hide it** (drop it from every area), all still validated
-  against nav-lint (an area can't be left empty). Galleries went from one to **many**: create/delete
-  named gallery instances (each is a gallery module you position via Layout; the built-in one is
-  protected), with images **scoped per gallery** and an optional **alt-text** field distinct from the
-  caption. An additive column migration backfills existing gallery rows. The on-site **CMS guide**
-  (`docs/USING-THE-CMS.md`) was rewritten to match the new sidebar admin.
-- **CMS: media is no longer a dead-end.** Uploaded images can now be **deleted**
-  (`DELETE /api/cms/media/:file`, same traversal-safe filename guard as serving) and, more
-  importantly, **placed on the site**. A new **`gallery` module** (Life → "Snapshots") renders a
-  captioned image grid; from the **Media** tab you add an image to the gallery with one click, and
-  the **Gallery** tab lets you caption, reorder, and remove entries. Gallery images are CMS-owned
-  content, resolved into the SiteView like everything else; the public site prefixes media URLs with
-  the API origin so they load correctly. Deleting an upload also removes it from the gallery.
-- Both land as the usual full slices (validated routes, store-backed, resolved server-side, dev-safe
-  defaults), and the new gallery module reaches an existing store via the IA reconciliation.
-- **CMS redesign — a small WordPress/Typo3-shaped admin.** The flat tab row is now a grouped
-  **left-hand module menu** (Content · Structure &amp; media · Widgets · Community · Insights), and the
-  old catch-all "Content" tab is split into focused screens — **Site identity**, **Home intro**,
-  **About / bio**, and **Presence** each get their own section, so it's obvious what you're editing.
-  A new **Dashboard** landing shows at-a-glance counts (hobbies, links, gallery, media, modules) with
-  jump-in links and a "needs attention" note when guestbook entries are pending. A **Live preview**
-  screen embeds the real site in a frame and reloads after every save (plus a persistent
-  "View site ↗"). Preview traffic is kept out of analytics on both paths — the client beacon stays
-  silent when framed or `?preview=1`, and the access-log parser skips those requests — so previewing
-  never inflates your own stats. Content-only change — no data-model impact.
-- _CMS rework now covers reordering, media delete + integration, a sectioned admin, a dashboard,
-  and a live preview. Further nice-to-haves (drafts, revision history) remain deliberately out of
-  scope for a single-user site._
-- **Discord presence widget (Lanyard + Steam hybrid, server-filtered, CMS-curated).** A new **Life →
-  "Right now-ish"** widget shows live Discord status and activities plus a **"Recently on Steam"**
-  section. **The server does the filtering**: it fetches Lanyard, applies the owner's category
-  allow-list, and exposes only the permitted result at `/api/presence` (shared cache keyed on the
-  allow-list). The browser polls that endpoint and **never receives the Discord id, the category
-  list, or any disabled activity** — the backend is the filtering boundary, like every other source.
-  Which categories show (`game / streaming / music / watching / custom / steam`) is edited in the
-  **CMS (`/admin` → Presence toggles)** and stored as CMS-owned content — no redeploy to change it;
-  toggles take effect on the next poll. Spotify is de-duped into one clean card; Steam data is
-  withheld unless its category is enabled. Only the Discord id and Steam credentials stay in env.
-- **Wakapi source (coding time by language).** A new **Work → "What I actually work in"** module
-  shows tracked coding hours per language from a self-hosted, WakaTime-compatible Wakapi instance —
-  the honest counterpart to GitHub's byte counts. Wakapi is **LAN-only**: the sync worker reaches it
-  over the local network (server-side, like every source), so nothing is exposed to the internet;
-  a private `WAKAPI_URL` + read key is all it needs.
-- Both are standard **source adapters** (same contract as GitHub — fetch → normalize → store →
-  SiteView, with deterministic dev mocks), register only when configured, and their modules reach an
-  existing store via the IA reconciliation. `.env.example` and `docker-compose.yml` document the new
-  variables.
-- **Guestbook (cookieless, pre-moderated).** Visitors can leave a name + short message in a new
-  **Life → Guestbook** section; nothing is public until the owner approves it. Submissions go
-  through a honeypot + per-IP rate limit and are stored minimally — name, message, server timestamp,
-  **no IP, no identifier** — matching the site's privacy stance. A lightweight, tested auto-flag
-  heuristic (links / caps / profanity / length / repetition) scores each entry to *sort* the CMS
-  moderation queue (it never auto-rejects — a human decides). The CMS gains a **Guestbook queue tab**
-  (pending-first, most-suspicious-first) with approve / reject / delete. Approved entries are folded
-  into the SiteView by the resolver (with relative times) and render as cards above the signing form.
-  New module placement reaches the live store via the existing IA reconciliation. The
-  Datenschutzerklärung gains a Gästebuch section (please review the wording).
-- **On-site documentation at `/docs`.** The repo's own `docs/` markdown now renders on the site
-  with a sidebar nav tree (grouped: Overview + ADRs), Shiki-highlighted code, and styled tables —
-  reusing the site's design tokens. Built with an Astro content collection over the repo's `docs/`
-  folder and prerendered (one static page per doc), so it adds no runtime JS and ships baked into
-  the image; docs refresh on the next deploy like any code change. Intra-doc `.md` links are
-  rewritten to `/docs/<slug>` (with heading anchors preserved) and links that point outside `docs/`
-  (e.g. package READMEs) become GitHub blob URLs — all via one tested helper. `/docs` redirects to
-  the docs README; a footer link makes it discoverable.
-- **Language switch (English / Deutsch).** The settings modal gains a Language control that reloads
-  the page in the chosen language and remembers it (cookieless — `localStorage`, like the theme). SSR
-  picks the locale from an explicit `?lang`, then the browser's `Accept-Language`, then English, and
-  the read API localizes the whole SiteView for it — untranslated fields fall back to English
-  per-field, so partial translations are fine. `<html lang>` is set accordingly, and a tiny no-flash
-  inline script (index only) honours a returning visitor's stored choice. The CMS already edits both
-  locales (the EN/DE editor toggle), so German is now purely a content task — no schema change.
-- **GitHub extras — a "Recently shipped" section.** A new `highlights` module surfaces
-  **releases, merged pull requests, and public gists** as one friendly, newest-first feed
-  (each row a plain-language line — "Released …", "Merged … in …", "Shared a gist: …" — linking
-  out to GitHub). It sits in **Work**, between Activity and Projects. Source-owned like the rest
-  of the GitHub data: the adapter fetches it (one extended GraphQL round-trip + the existing
-  REST events), `normalize()` bounds and sorts it, and the resolver folds it into the SiteView
-  with pre-computed relative times — the frontend stays a dumb renderer. The dev mock includes
-  sample extras so it renders end-to-end without a token. Because nav/module placement lives in
-  the DB (seeded once, not CMS-editable), boot now runs an **idempotent IA reconciliation** that
-  registers and places any newly-added launch module, so the section appears on the existing
-  production store without a manual migration.
+- **Central asset library** (replaces the flat "Media" model). Upload images, SVGs,
+  GIFs, PDFs and Markdown once — deduped by content hash, with responsive WebP/AVIF
+  variants generated lazily and cached — then reference them anywhere. Folders, tags,
+  search, alt/caption metadata, and "where used" (delete warns first). SVGs are
+  sanitized and inlined for `currentColor`; Markdown publishes at `/md/<slug>`, PDFs
+  get a download link. Link icons, the hero portrait, and inline bio images all draw
+  from it, and galleries pick from it (usage tracked). Drag-and-drop upload and a
+  type-scoped picker (`asset:<id>` references resolved server-side, `/assets/<id>`
+  serving).
+- **Multiple named galleries** — create/delete gallery instances (positioned via
+  Layout, the built-in one protected), images scoped per gallery with an alt-text
+  field distinct from the caption.
+- **Sectioned CMS admin** (WordPress/Typo3-shaped). A grouped left-hand module menu
+  replaces the flat tab row; the catch-all Content tab splits into Site identity /
+  Home intro / About / Presence. A **Dashboard** shows at-a-glance counts + a "needs
+  attention" note, and a **live preview beside the editor** reloads on save and
+  follows the area you're editing. Layout can move a module to another area or hide
+  it (nav-lint keeps an area non-empty). Preview traffic stays out of analytics.
+- **Discord presence widget** (Lanyard + Steam hybrid). The server applies the
+  owner's category allow-list and exposes only the permitted result at
+  `/api/presence` — the browser never receives the Discord id, the category list, or
+  any disabled activity. Categories are toggled in the CMS (no redeploy).
+- **Wakapi source** (coding time by language, LAN-only) and **GitHub "Recently
+  shipped"** (releases / merged PRs / gists as one newest-first feed) — both standard
+  source adapters (fetch → normalize → store → SiteView) with deterministic dev
+  mocks, placed via idempotent IA reconciliation.
+- **Guestbook** (cookieless, pre-moderated). Honeypot + per-IP rate limit, stored
+  minimally (name, message, server timestamp — no IP), with a tested auto-flag
+  heuristic that only *sorts* the CMS moderation queue. Approved entries render above
+  the signing form.
+- **On-site documentation at `/docs`** — the repo's markdown, prerendered with a
+  sidebar nav tree, Shiki-highlighted code, and the site's design tokens; adds no
+  runtime JS. Intra-doc links rewritten to `/docs/<slug>`.
+- **Language switch (English / Deutsch).** Cookieless; SSR picks the locale from
+  `?lang` → `Accept-Language` → English, the read API localizes the whole SiteView,
+  and untranslated fields fall back to English per-field.
+- **Self-populating traffic analytics.** Top paths / referrers / browsers / OS /
+  devices are ingested from a configured `ACCESS_LOG` in-process every 5 minutes
+  (incremental, idempotent, IP never stored) and bucketed by UTC hour; a nightly job
+  rolls buckets older than `RETAIN_HOURLY_DAYS` (default 90) into daily rows and
+  prunes the raw hourly. Dashboard gains a **Page views** metric.
 
 ### Dependencies & build
 
-- **Dependency advisory sweep — `pnpm audit` is now clean** (was 2 critical · 4 high · 8 moderate ·
-  2 low). Bumped **happy-dom 15→20** and **vitest 2→3** (clears both criticals + the transitive
-  `vite`/`esbuild` highs), **nodemailer 7→9** (contact relay — the only advisory on a request
-  path), and **node-cron 3→4** (drops its vulnerable `uuid@8.3.2` transitive; v4 has zero deps).
-  Added a pnpm override forcing patched `esbuild` (≥0.28.1) for the dev-only, Windows-only advisory
-  via astro. Removed the now-redundant `@types/node-cron` (node-cron 4 ships its own types).
-- **Runtime images are prod-pruned.** Both Dockerfiles now build the workspace and then
-  `pnpm deploy --prod` a self-contained tree (built `dist` + prod deps + the compiled sharp addon),
-  so **dev tooling — and its advisories — no longer ship in the deployed container**. The server
-  image drops from copying the whole ~304 MB workspace to a ~35 MB prod tree. Each app package
-  gained `files: ["dist"]` so the (gitignored) build output is included in the deploy. The deploy
-  root is the package root, so in-container entrypoints/commands are now package-relative
-  (`dist/index.js`, `dist/analytics/cli.js`, …) — analytics-ingest script and DEPLOYMENT docs
-  updated to match.
+- **`pnpm audit` is now clean** (was 2 critical · 4 high · 8 moderate · 2 low):
+  happy-dom 15→20, vitest 2→3, nodemailer 7→9, node-cron 3→4, plus a pnpm override
+  forcing patched esbuild (≥0.28.1).
+- **Prod-pruned runtime images** via `pnpm deploy --prod` — dev tooling (and its
+  advisories) no longer ship; the server image drops from ~304 MB to a ~35 MB prod
+  tree.
 
 ### Fixes
 
-- **Sync runner:** import `ScheduledTask` as a named type (node-cron 4 no longer exposes it under
-  the `cron` namespace).
-- **CMS:** new hobby/link/now rows get a unique id (timestamp-suffixed) instead of a fixed default,
-  fixing a primary-key collision when adding two rows before renaming either.
-
-- **Hourly analytics + rollup retention.** Log-derived stats (page views, referrers, browsers…)
-  are now bucketed by **UTC hour** like engagement, so the dashboard can show page-views-over-time.
-  A nightly job **bundles hourly buckets older than `RETAIN_HOURLY_DAYS` (default 90) into daily
-  rows and prunes the raw hourly** — recent data stays hour-resolution, older data becomes
-  day-resolution, and the volume stays bounded no matter how long the site runs.
-- Dashboard chart gains a **Page views** metric (stacked by path).
-- Note: on first deploy, page-view data logged *before* this change stays day-bucketed in the
-  archive and won't appear in the ≤30-day hourly view; new data flows in immediately and the view
-  fills within its window.
+- **Sync runner:** import `ScheduledTask` as a named type (node-cron 4 no longer
+  exposes it under the `cron` namespace).
+- **CMS:** new hobby/link/now rows get a unique (timestamp-suffixed) id, fixing a
+  primary-key collision when adding two rows before renaming either.
 
 ## 1.0.0
 

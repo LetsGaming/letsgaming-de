@@ -12,6 +12,7 @@ import type { AnalyticsDimension, Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 import { requireAuth } from "../auth/guard.js";
+import { badRequest } from "../errors.js";
 
 const HOUR = 3600_000;
 function isoHour(d: Date): string {
@@ -100,7 +101,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
             store.analytics.clearDaily("0000", "9999");
           break;
         default:
-          return reply.code(400).send({ error: "Unknown range." });
+          throw badRequest("Unknown range.");
       }
       return { ok: true, removed };
     },

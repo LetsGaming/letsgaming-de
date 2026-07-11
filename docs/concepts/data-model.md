@@ -6,7 +6,7 @@ aggregates. Everything human-authored is `Localized`, a `{ "en": "...", "de"?:
 "..." }` JSON object, so German is a content task later rather than a schema
 change.
 
-The schema is `packages/db/src/schema.sql`, and that file is the source of truth.
+The schema is defined by versioned migrations in `packages/db/src/migrations/` (baseline: `0001_init.sql`); that directory is the source of truth.
 The tables below are grouped by which kind of data they hold; for exact columns,
 read the schema.
 

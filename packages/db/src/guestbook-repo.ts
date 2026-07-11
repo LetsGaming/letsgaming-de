@@ -1,24 +1,23 @@
-import type { GuestbookEntry, GuestbookStatus, PublicGuestbookEntry } from "@lg/core";
+import type { GuestbookEntry, PublicGuestbookEntry } from "@lg/core";
+import { GuestbookStatus, toGuestbookStatus } from "@lg/core";
 import type { DB } from "./database.js";
-
-interface Row {
-  id: number;
-  name: string;
-  message: string;
-  created_at: string;
-  status: string;
-  flags: string;
-  score: number;
-}
+import { asNumber, asText, mapRow, mapRows, type Row } from "./row-mapper.js";
 
 const toEntry = (r: Row): GuestbookEntry => ({
-  id: r.id,
-  name: r.name,
-  message: r.message,
-  createdAt: r.created_at,
-  status: r.status as GuestbookStatus,
-  flags: r.flags ? r.flags.split(",") : [],
-  score: r.score,
+  id: asNumber(r.id),
+  name: asText(r.name),
+  message: asText(r.message),
+  createdAt: asText(r.created_at),
+  status: toGuestbookStatus(r.status),
+  flags: r.flags ? asText(r.flags).split(",") : [],
+  score: asNumber(r.score),
+});
+
+const toPublicEntry = (r: Row): PublicGuestbookEntry => ({
+  id: asNumber(r.id),
+  name: asText(r.name),
+  message: asText(r.message),
+  createdAt: asText(r.created_at),
 });
 
 /**
@@ -33,21 +32,23 @@ export function guestbookRepo(db: DB) {
       const res = db
         .prepare(
           `INSERT INTO guestbook (name, message, created_at, status, flags, score)
-           VALUES (?, ?, ?, 'pending', ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?)`,
         )
-        .run(entry.name, entry.message, entry.createdAt, entry.flags.join(","), entry.score);
+        .run(entry.name, entry.message, entry.createdAt, GuestbookStatus.Pending, entry.flags.join(","), entry.score);
       return Number(res.lastInsertRowid);
     },
 
     /** Approved entries the public site may render, newest first. */
     listApproved(limit = 100): PublicGuestbookEntry[] {
-      const rows = db
-        .prepare(
+      return mapRows(
+        db.prepare(
           `SELECT id, name, message, created_at FROM guestbook
-           WHERE status = 'approved' ORDER BY created_at DESC LIMIT ?`,
-        )
-        .all(limit) as Pick<Row, "id" | "name" | "message" | "created_at">[];
-      return rows.map((r) => ({ id: r.id, name: r.name, message: r.message, createdAt: r.created_at }));
+           WHERE status = ? ORDER BY created_at DESC LIMIT ?`,
+        ),
+        toPublicEntry,
+        GuestbookStatus.Approved,
+        limit,
+      );
     },
 
     /**
@@ -55,24 +56,30 @@ export function guestbookRepo(db: DB) {
      * obvious spam is quick to clear), then the rest, newest within each group.
      */
     listForModeration(limit = 200): GuestbookEntry[] {
-      const rows = db
-        .prepare(
+      return mapRows(
+        db.prepare(
           `SELECT * FROM guestbook
-           ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END,
-                    CASE status WHEN 'pending' THEN score ELSE 0 END DESC,
+           ORDER BY CASE status WHEN ? THEN 0 ELSE 1 END,
+                    CASE status WHEN ? THEN score ELSE 0 END DESC,
                     created_at DESC
            LIMIT ?`,
-        )
-        .all(limit) as unknown as Row[];
-      return rows.map(toEntry);
+        ),
+        toEntry,
+        GuestbookStatus.Pending,
+        GuestbookStatus.Pending,
+        limit,
+      );
     },
 
     /** Count entries awaiting a decision (for a CMS badge). */
     countPending(): number {
-      const row = db
-        .prepare("SELECT COUNT(*) AS n FROM guestbook WHERE status = 'pending'")
-        .get() as { n: number };
-      return row.n;
+      return (
+        mapRow(
+          db.prepare("SELECT COUNT(*) AS n FROM guestbook WHERE status = ?"),
+          (r) => asNumber(r.n),
+          GuestbookStatus.Pending,
+        ) ?? 0
+      );
     },
 
     /** Set an entry's status (approve/reject). Returns whether a row changed. */

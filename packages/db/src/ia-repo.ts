@@ -1,40 +1,53 @@
 import type { ModuleDescriptor, NavNode } from "@lg/core";
 import type { DB } from "./database.js";
+import { asText, json, mapRow, SINGLETON_ID } from "./row-mapper.js";
 
 /** Repository for the information architecture (nav tree + module registry). */
 export function iaRepo(db: DB) {
-  const read = () => {
-    const row = db.prepare("SELECT nav, modules FROM site_ia WHERE id = 1").get() as
-      | { nav: string; modules: string }
-      | undefined;
+  const read = (): { nav: string; modules: string } => {
+    const row = mapRow(
+      db.prepare("SELECT nav, modules FROM site_ia WHERE id = ?"),
+      (r) => ({ nav: asText(r.nav), modules: asText(r.modules) }),
+      SINGLETON_ID,
+    );
     if (!row) throw new Error("site_ia is empty — run the seed first.");
     return row;
   };
 
+  const writeIa = (nav: string, modules: string) =>
+    db.prepare("UPDATE site_ia SET nav = ?, modules = ? WHERE id = ?").run(nav, modules, SINGLETON_ID);
+
   return {
     getNav(): NavNode[] {
-      return JSON.parse(read().nav) as NavNode[];
+      return json<NavNode[]>(read().nav);
     },
     getModules(): ModuleDescriptor[] {
-      return JSON.parse(read().modules) as ModuleDescriptor[];
+      return json<ModuleDescriptor[]>(read().modules);
     },
     setNav(nav: NavNode[]) {
-      db.prepare("UPDATE site_ia SET nav = ? WHERE id = 1").run(JSON.stringify(nav));
+      db.prepare("UPDATE site_ia SET nav = ? WHERE id = ?").run(JSON.stringify(nav), SINGLETON_ID);
     },
     setModules(modules: ModuleDescriptor[]) {
-      db.prepare("UPDATE site_ia SET modules = ? WHERE id = 1").run(JSON.stringify(modules));
+      db.prepare("UPDATE site_ia SET modules = ? WHERE id = ?").run(
+        JSON.stringify(modules),
+        SINGLETON_ID,
+      );
     },
     /** Register a new module descriptor (e.g. a new gallery instance). No-op if id exists. */
     addModule(descriptor: ModuleDescriptor) {
-      const modules = JSON.parse(read().modules) as ModuleDescriptor[];
+      const modules = json<ModuleDescriptor[]>(read().modules);
       if (modules.some((m) => m.id === descriptor.id)) return;
       modules.push(descriptor);
-      db.prepare("UPDATE site_ia SET modules = ? WHERE id = 1").run(JSON.stringify(modules));
+      db.prepare("UPDATE site_ia SET modules = ? WHERE id = ?").run(
+        JSON.stringify(modules),
+        SINGLETON_ID,
+      );
     },
     /** Remove a module descriptor and any nav leaf reference to it. */
     removeModule(id: string) {
-      const modules = (JSON.parse(read().modules) as ModuleDescriptor[]).filter((m) => m.id !== id);
-      const nav = JSON.parse(read().nav) as NavNode[];
+      const current = read();
+      const modules = json<ModuleDescriptor[]>(current.modules).filter((m) => m.id !== id);
+      const nav = json<NavNode[]>(current.nav);
       const strip = (nodes: NavNode[]) => {
         for (const n of nodes) {
           if (n.modules) n.modules = n.modules.filter((m) => m !== id);
@@ -44,10 +57,7 @@ export function iaRepo(db: DB) {
       strip(nav);
       db.exec("BEGIN");
       try {
-        db.prepare("UPDATE site_ia SET modules = ?, nav = ? WHERE id = 1").run(
-          JSON.stringify(modules),
-          JSON.stringify(nav),
-        );
+        writeIa(JSON.stringify(nav), JSON.stringify(modules));
         db.exec("COMMIT");
       } catch (err) {
         db.exec("ROLLBACK");

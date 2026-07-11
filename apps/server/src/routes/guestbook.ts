@@ -6,9 +6,10 @@
  * timestamp (no IP, no identifier). The auto-flag score only *sorts* the queue.
  */
 
-import { scoreEntry } from "@lg/core";
+import { scoreEntry, FIELD_LIMITS } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
+import { badRequest, tooManyRequests } from "../errors.js";
 
 interface GuestbookBody {
   name: string;
@@ -21,8 +22,8 @@ const bodySchema = {
   type: "object",
   required: ["name", "message"],
   properties: {
-    name: { type: "string", minLength: 1, maxLength: 60 },
-    message: { type: "string", minLength: 1, maxLength: 1000 },
+    name: { type: "string", minLength: 1, maxLength: FIELD_LIMITS.guestbookName },
+    message: { type: "string", minLength: 1, maxLength: FIELD_LIMITS.guestbookMessage },
     website: { type: "string" },
   },
   additionalProperties: false,
@@ -67,12 +68,12 @@ export function registerGuestbookRoutes(app: FastifyInstance, store: Store): voi
       if (req.body.website) return { ok: true, pending: true };
 
       if (!limiter.allow(req.ip)) {
-        return reply.code(429).send({ error: "Too many messages — try again later." });
+        throw tooManyRequests("Too many messages — try again later.");
       }
 
       const name = clean(req.body.name);
       const message = req.body.message.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-      if (!name || !message) return reply.code(400).send({ error: "Name and message are required." });
+      if (!name || !message) throw badRequest("Name and message are required.");
 
       const { score, flags } = scoreEntry(name, message);
       store.guestbook.add({ name, message, createdAt: new Date().toISOString(), flags, score });

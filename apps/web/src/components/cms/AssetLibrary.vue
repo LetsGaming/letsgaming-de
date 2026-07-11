@@ -234,25 +234,25 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 </template>
 
 <style scoped>
-.lib { display: flex; flex-direction: column; gap: 12px; position: relative; }
+.lib { display: flex; flex-direction: column; gap: var(--sp-12); position: relative; }
 .lib.dragging { outline: 2px dashed var(--purple); outline-offset: 6px; border-radius: 12px; }
 .droplay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: var(--purple-wash); border-radius: 12px; font-family: var(--f-m); color: var(--ink-strong); pointer-events: none; }
-.libtools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.libtools { display: flex; gap: var(--sp-10); align-items: center; flex-wrap: wrap; }
 .libtools .search { flex: 1; min-width: 160px; }
 .up { cursor: pointer; }
 .up input { position: absolute; width: 0; height: 0; }
-.libbody { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: 16px; align-items: start; }
-.libnav { display: flex; flex-direction: column; gap: 16px; }
-.navsec { display: flex; flex-direction: column; gap: 4px; }
+.libbody { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: var(--sp-16); align-items: start; }
+.libnav { display: flex; flex-direction: column; gap: var(--sp-16); }
+.navsec { display: flex; flex-direction: column; gap: var(--sp-4); }
 .navhead { display: flex; justify-content: space-between; align-items: center; font-family: var(--f-m); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-.libnav button { text-align: left; font-size: 13px; padding: 5px 8px; border-radius: 8px; border: none; background: none; color: var(--ink); cursor: pointer; }
+.libnav button { text-align: left; font-size: 13px; padding: 5px var(--sp-8); border-radius: 8px; border: none; background: none; color: var(--ink); cursor: pointer; }
 .libnav button.on { background: var(--purple); color: #fff; }
 .frow { display: flex; align-items: center; }
 .frow button:first-child { flex: 1; }
-.tagcloud { display: flex; flex-wrap: wrap; gap: 4px; }
+.tagcloud { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
 .tag { font-size: 11px !important; padding: 3px 7px !important; border: 1px solid var(--line) !important; border-radius: 999px !important; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-.tile { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); cursor: pointer; text-align: left; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--sp-10); }
+.tile { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-8); border: 1px solid var(--line); border-radius: 12px; background: var(--card); cursor: pointer; text-align: left; }
 .tile:hover { border-color: var(--purple-br); }
 .thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--card-2); border-radius: 8px; overflow: hidden; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -260,16 +260,16 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .glyph.big { font-size: 20px; }
 .tname { font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tmeta { font-size: 11px; color: var(--muted); }
-.libedit { width: 300px; display: flex; flex-direction: column; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; position: sticky; top: 16px; }
+.libedit { width: 300px; display: flex; flex-direction: column; gap: var(--sp-8); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: var(--sp-14); position: sticky; top: 16px; }
 .editbar { display: flex; justify-content: space-between; align-items: center; }
 .epreview { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--card-2); border-radius: 10px; overflow: hidden; }
 .epreview img { width: 100%; height: 100%; object-fit: contain; }
 .libedit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--f-m); font-size: 11px; color: var(--muted); }
 .libedit input, .libedit textarea, .libedit select { font-family: var(--f-b); font-size: 13px; color: var(--ink); }
 .usage { font-size: 12px; }
-.usage ul { margin: 4px 0 0; padding-left: 18px; }
+.usage ul { margin: var(--sp-4) 0 0; padding-left: var(--sp-18); }
 .small { font-size: 11px; }
-.editact { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
-.libtoast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 13px; }
+.editact { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-4); }
+.libtoast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg); padding: var(--sp-8) var(--sp-16); border-radius: 999px; font-size: 13px; }
 @media (max-width: 900px) { .libbody { grid-template-columns: 1fr; } .libedit { width: auto; position: static; } }
 </style>

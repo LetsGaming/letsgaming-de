@@ -1,352 +1,47 @@
 <script setup lang="ts">
+import type { Component } from "vue";
 import type { ResolvedModule } from "@lg/core";
-import { icons, langColor } from "../lib/icons";
-import { mdBold } from "../lib/site";
-import { trackClick, trackProject } from "../lib/track";
-import ContactForm from "./ContactForm.vue";
-import GuestbookForm from "./GuestbookForm.vue";
-import PresenceWidget from "./PresenceWidget.vue";
-import AssetPicture from "./AssetPicture.vue";
+import HeroSection from "./sections/HeroSection.vue";
+import FeaturedSection from "./sections/FeaturedSection.vue";
+import GlanceSection from "./sections/GlanceSection.vue";
+import ActivitySection from "./sections/ActivitySection.vue";
+import HighlightsSection from "./sections/HighlightsSection.vue";
+import CodingSection from "./sections/CodingSection.vue";
+import ProjectsSection from "./sections/ProjectsSection.vue";
+import HobbiesSection from "./sections/HobbiesSection.vue";
+import NowSection from "./sections/NowSection.vue";
+import GuestbookSection from "./sections/GuestbookSection.vue";
+import GallerySection from "./sections/GallerySection.vue";
+import PresenceSection from "./sections/PresenceSection.vue";
+import BioSection from "./sections/BioSection.vue";
+import ContactSection from "./sections/ContactSection.vue";
 
-const props = defineProps<{
+defineProps<{
   module: ResolvedModule;
   go: (id: string) => void;
   goAnchor?: (target: string) => void;
 }>();
 
-const heatVar = (level: number) => `var(--heat-${level})`;
-
-/** Intercept internal `#anchor` links (e.g. "Get in touch") so they switch to
- *  the tab that holds the target section and scroll to it, instead of no-oping. */
-function onLink(e: MouseEvent, href: string) {
-  if (href.startsWith("#")) {
-    e.preventDefault();
-    props.goAnchor?.(href.slice(1));
-    trackClick("contact-cta");
-  } else {
-    trackClick("social");
-  }
-}
+// One component per module kind. Typing the map as Record<kind, …> makes it
+// exhaustive: adding a module kind without a section here is a compile error.
+const sections: Record<ResolvedModule["kind"], Component> = {
+  hero: HeroSection,
+  featured: FeaturedSection,
+  glance: GlanceSection,
+  activity: ActivitySection,
+  highlights: HighlightsSection,
+  coding: CodingSection,
+  projects: ProjectsSection,
+  hobbies: HobbiesSection,
+  now: NowSection,
+  guestbook: GuestbookSection,
+  gallery: GallerySection,
+  presence: PresenceSection,
+  bio: BioSection,
+  contact: ContactSection,
+};
 </script>
 
 <template>
-  <!-- HERO -->
-  <template v-if="module.kind === 'hero'">
-    <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar rise" />
-    <span class="eyebrow rise">{{ module.data.eyebrow }}</span>
-    <h1 class="rise">
-      {{ module.data.headline.before
-      }}<span class="pop">{{ module.data.headline.highlight }}</span
-      >{{ module.data.headline.after }}
-    </h1>
-    <p class="lede rise" v-html="mdBold(module.data.lede)" />
-    <div class="status rise">
-      <span class="dot" /> {{ module.data.status.verb }} <b>{{ module.data.status.now }}</b>
-    </div>
-    <div class="links rise">
-      <a
-        v-for="l in module.data.links"
-        :key="l.id"
-        class="btn"
-        :class="l.primary ? 'btn-primary' : 'btn-ghost'"
-        :href="l.href"
-        @click="onLink($event, l.href)"
-      >
-        <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span
-          v-else-if="l.icon"
-          v-html="icons[l.icon]"
-        />{{ l.label }}
-      </a>
-    </div>
-  </template>
-
-  <!-- FEATURED -->
-  <section v-else-if="module.kind === 'featured'" class="sec rise">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <button class="more" @click="() => { trackClick('more'); go('work'); }">see all my work →</button>
-    </div>
-    <div class="grid">
-      <a
-        v-if="module.data.project"
-        class="card feature"
-        :href="module.data.project.href"
-        @click="() => { trackClick('featured'); trackProject(module.data.project.name); }"
-      >
-        <div class="ptitle">
-          {{ module.data.project.name }}<span class="arrow" v-html="icons.arrow" />
-        </div>
-        <span class="tag">{{ module.data.project.tag }}</span>
-        <p class="desc">{{ module.data.project.description }}</p>
-        <div class="meta">
-          <span v-for="(m, i) in module.data.project.meta" :key="i">{{ m }}</span>
-        </div>
-      </a>
-    </div>
-  </section>
-
-  <!-- GLANCE -->
-  <section v-else-if="module.kind === 'glance'" class="sec rise">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <button class="more" @click="() => { trackClick('more'); go('work'); }">full activity →</button>
-    </div>
-    <div class="stats">
-      <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
-        <div class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></div>
-        <div class="l">{{ s.label }}</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ACTIVITY -->
-  <section v-else-if="module.kind === 'activity'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="stats rise">
-      <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
-        <div class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></div>
-        <div class="l">{{ s.label }}</div>
-      </div>
-    </div>
-    <div class="dash">
-      <div class="box rise">
-        <h3>Contributions</h3>
-        <div class="sub">last 26 weeks · {{ module.data.contributions.total }} in the window</div>
-        <div class="heat">
-          <i
-            v-for="(lvl, i) in module.data.contributions.levels"
-            :key="i"
-            :style="{ background: heatVar(lvl) }"
-          />
-        </div>
-        <div class="heat-legend">
-          less
-          <i v-for="n in [0, 1, 2, 3, 4]" :key="n" :style="{ background: heatVar(n) }" />
-          more
-        </div>
-      </div>
-      <div class="box rise">
-        <h3>Languages</h3>
-        <div class="sub">across all public repos</div>
-        <div class="lang">
-          <div v-for="l in module.data.languages" :key="l.name" class="row">
-            <span class="nm">{{ l.name }}</span>
-            <div class="bar"><b :style="{ width: l.pct + '%', background: langColor(l.name) }" /></div>
-            <span class="pc">{{ l.pct }}%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="box rise" style="margin-top: 18px">
-      <h3>Recent events</h3>
-      <div class="sub">newest first</div>
-      <div class="feed">
-        <div v-for="(e, i) in module.data.events" :key="i" class="ev">
-          <span class="ei" v-html="icons[e.type]" />
-          <div>
-            <div class="et">{{ e.text }}</div>
-            <div v-if="e.meta" class="em">{{ e.meta }}</div>
-          </div>
-          <span class="tm">{{ e.relative }}</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- HIGHLIGHTS (releases, merged PRs, gists — one friendly feed) -->
-  <section v-else-if="module.kind === 'highlights'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="box rise">
-      <div v-if="module.data.items.length" class="feed">
-        <a
-          v-for="(h, i) in module.data.items"
-          :key="i"
-          class="ev ev-link"
-          :href="h.href"
-          target="_blank"
-          rel="noreferrer noopener"
-          @click="trackClick('highlight')"
-        >
-          <span class="ei" v-html="icons[h.type]" />
-          <div>
-            <div class="et">{{ h.text }}</div>
-            <div v-if="h.meta" class="em">{{ h.meta }}</div>
-          </div>
-          <span class="tm">{{ h.relative }}</span>
-        </a>
-      </div>
-      <div v-else class="sub">Nothing shipped in this window yet — check back soon.</div>
-    </div>
-  </section>
-
-  <!-- CODING (Wakapi) -->
-  <section v-else-if="module.kind === 'coding'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div v-if="module.data.coding" class="box rise">
-      <div class="sub">{{ module.data.coding.range }} · {{ module.data.coding.totalHours }}h tracked</div>
-      <div class="lang">
-        <div v-for="l in module.data.coding.languages" :key="l.name" class="row">
-          <span class="nm">{{ l.name }}</span>
-          <div class="bar"><b :style="{ width: l.pct + '%', background: langColor(l.name) }" /></div>
-          <span class="pc">{{ l.pct }}%</span>
-        </div>
-      </div>
-    </div>
-    <p v-else class="sub rise">No coding time synced yet.</p>
-  </section>
-
-  <!-- PROJECTS -->
-  <section v-else-if="module.kind === 'projects'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <a
-        v-if="module.data.githubUrl"
-        class="more"
-        :href="module.data.githubUrl"
-        target="_blank"
-        rel="noreferrer noopener"
-        @click="trackClick('github-profile')"
-      >all repos on GitHub →</a>
-    </div>
-    <div class="grid">
-      <a
-        v-for="p in module.data.projects"
-        :key="p.id"
-        class="card"
-        :class="{ feature: p.featured }"
-        :href="p.href"
-        @click="() => { trackClick('project'); trackProject(p.name); }"
-      >
-        <div class="ptitle">{{ p.name }}<span class="arrow" v-html="icons.arrow" /></div>
-        <span class="tag">{{ p.tag }}</span>
-        <p class="desc">{{ p.description }}</p>
-        <div class="meta"><span v-for="(m, i) in p.meta" :key="i">{{ m }}</span></div>
-      </a>
-    </div>
-  </section>
-
-  <!-- HOBBIES -->
-  <section v-else-if="module.kind === 'hobbies'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="hobbies">
-      <div v-for="h in module.data.hobbies" :key="h.id" class="tile" :class="'t-' + h.tone">
-        <div>
-          <div class="ic" v-html="h.icon ? icons[h.icon] : ''" />
-          <h3>{{ h.title }}</h3>
-          <p>{{ h.blurb }}</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- NOW -->
-  <section v-else-if="module.kind === 'now'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="box rise">
-      <div v-for="n in module.data.items" :key="n.id" class="nowrow">
-        <span class="k">{{ n.key }}</span>
-        <span class="v" v-html="mdBold(n.value)" />
-      </div>
-    </div>
-  </section>
-
-  <!-- GUESTBOOK -->
-  <section v-else-if="module.kind === 'guestbook'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div v-if="module.data.entries.length" class="gb-list rise">
-      <figure v-for="e in module.data.entries" :key="e.id" class="gb-entry">
-        <blockquote>{{ e.message }}</blockquote>
-        <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
-      </figure>
-    </div>
-    <p v-else class="gb-empty rise">No notes yet — be the first to sign.</p>
-    <div class="rise"><GuestbookForm /></div>
-  </section>
-
-  <!-- GALLERY -->
-  <section v-else-if="module.kind === 'gallery'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div v-if="module.data.images.length" class="gal rise">
-      <figure v-for="img in module.data.images" :key="img.id" class="gal-item">
-        <AssetPicture :view="img.image" />
-        <figcaption v-if="img.caption">{{ img.caption }}</figcaption>
-      </figure>
-    </div>
-    <p v-else class="sub rise">No pictures yet.</p>
-  </section>
-
-  <!-- PRESENCE (Discord + Steam) -->
-  <section v-else-if="module.kind === 'presence'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="rise">
-      <PresenceWidget
-        :live="module.data.live"
-        :name="module.data.name"
-        :handle="module.data.handle"
-        :avatar="module.data.avatar"
-        :steam="module.data.steam"
-      />
-    </div>
-  </section>
-
-  <!-- BIO -->
-  <section v-else-if="module.kind === 'bio'" class="sec">
-    <div class="sec-head rise">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="prose rise">
-      <template v-for="(b, i) in module.data.blocks" :key="i">
-        <p v-if="b.kind === 'text'" v-html="mdBold(b.text)" />
-        <figure v-else class="bio-img"><AssetPicture :view="b.image" /></figure>
-      </template>
-    </div>
-  </section>
-
-  <!-- CONTACT -->
-  <section v-else-if="module.kind === 'contact'" id="contact" class="sec">
-    <div class="sec-head rise"><h2>{{ module.data.heading }}</h2></div>
-    <div
-      v-if="module.data.links.filter((l) => !l.href.startsWith('#')).length"
-      class="links rise"
-    >
-      <a
-        v-for="l in module.data.links.filter((l) => !l.href.startsWith('#'))"
-        :key="l.id"
-        class="btn"
-        :class="l.primary ? 'btn-primary' : 'btn-ghost'"
-        :href="l.href"
-        target="_blank"
-        rel="noreferrer noopener"
-        @click="trackClick('social')"
-      >
-        <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span v-else-if="l.icon" v-html="icons[l.icon]" />{{ l.label }}
-      </a>
-    </div>
-    <div class="rise" style="margin-top: 20px"><ContactForm /></div>
-  </section>
+  <component :is="sections[module.kind]" :module="module" :go="go" :go-anchor="goAnchor" />
 </template>

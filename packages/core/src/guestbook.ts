@@ -8,7 +8,24 @@
  * *sort* the moderation queue (it never auto-rejects — a human always decides).
  */
 
-export type GuestbookStatus = "pending" | "approved" | "rejected";
+/**
+ * Moderation status as a const object + derived type, so the values have one
+ * named home instead of being written as loose string literals across the repo,
+ * the CMS route, and the schema.
+ */
+export const GuestbookStatus = {
+  Pending: "pending",
+  Approved: "approved",
+  Rejected: "rejected",
+} as const;
+export type GuestbookStatus = (typeof GuestbookStatus)[keyof typeof GuestbookStatus];
+
+/** Narrow an untrusted value to a GuestbookStatus (defaults to Pending). */
+export function toGuestbookStatus(value: unknown): GuestbookStatus {
+  return value === GuestbookStatus.Approved || value === GuestbookStatus.Rejected
+    ? value
+    : GuestbookStatus.Pending;
+}
 
 /** A full entry as the CMS sees it (includes moderation metadata). */
 export interface GuestbookEntry {

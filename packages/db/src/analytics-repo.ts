@@ -1,4 +1,5 @@
 import type { DB } from "./database.js";
+import { asNumber, asText, mapRow, mapRows, type Row } from "./row-mapper.js";
 
 export type AnalyticsDimension =
   // log-derived
@@ -45,6 +46,13 @@ export interface SeriesRow {
   count: number;
 }
 
+const toAnalyticsRow = (r: Row): AnalyticsRow => ({ key: asText(r.key), count: asNumber(r.count) });
+const toSeriesRow = (r: Row): SeriesRow => ({
+  bucket: asText(r.bucket),
+  key: asText(r.key),
+  count: asNumber(r.count),
+});
+
 /** Repository for anonymous aggregate analytics. Never stores anything personal. */
 export function analyticsRepo(db: DB) {
   const bump = db.prepare(
@@ -83,35 +91,49 @@ export function analyticsRepo(db: DB) {
 
     /** Top keys for a log dimension over an inclusive day range. */
     top(dimension: AnalyticsDimension, from: string, to: string, limit = 20): AnalyticsRow[] {
-      return db
-        .prepare(
+      return mapRows(
+        db.prepare(
           `SELECT key, SUM(count) AS count FROM analytics_daily
            WHERE dimension = ? AND day BETWEEN ? AND ?
            GROUP BY key ORDER BY count DESC LIMIT ?`,
-        )
-        .all(dimension, from, to, limit) as unknown as AnalyticsRow[];
+        ),
+        toAnalyticsRow,
+        dimension,
+        from,
+        to,
+        limit,
+      );
     },
 
     /** Total counts per day for a log dimension (coarse trend line). */
     trend(dimension: AnalyticsDimension, from: string, to: string): AnalyticsRow[] {
-      return db
-        .prepare(
+      return mapRows(
+        db.prepare(
           `SELECT day AS key, SUM(count) AS count FROM analytics_daily
            WHERE dimension = ? AND day BETWEEN ? AND ?
            GROUP BY day ORDER BY day ASC`,
-        )
-        .all(dimension, from, to) as unknown as AnalyticsRow[];
+        ),
+        toAnalyticsRow,
+        dimension,
+        from,
+        to,
+      );
     },
 
     /** Top keys for an engagement dimension over an inclusive hour-bucket range. */
     topHourly(dimension: AnalyticsDimension, fromB: string, toB: string, limit = 20): AnalyticsRow[] {
-      return db
-        .prepare(
+      return mapRows(
+        db.prepare(
           `SELECT key, SUM(count) AS count FROM analytics_hourly
            WHERE dimension = ? AND bucket BETWEEN ? AND ?
            GROUP BY key ORDER BY count DESC LIMIT ?`,
-        )
-        .all(dimension, fromB, toB, limit) as unknown as AnalyticsRow[];
+        ),
+        toAnalyticsRow,
+        dimension,
+        fromB,
+        toB,
+        limit,
+      );
     },
 
     /**
@@ -126,29 +148,31 @@ export function analyticsRepo(db: DB) {
       unit: "hour" | "day",
     ): SeriesRow[] {
       const bucketExpr = unit === "day" ? "substr(bucket, 1, 10)" : "bucket";
-      return db
-        .prepare(
+      return mapRows(
+        db.prepare(
           `SELECT ${bucketExpr} AS bucket, key, SUM(count) AS count FROM analytics_hourly
            WHERE dimension = ? AND bucket BETWEEN ? AND ?
            GROUP BY ${bucketExpr}, key ORDER BY bucket ASC`,
-        )
-        .all(dimension, fromB, toB) as unknown as SeriesRow[];
+        ),
+        toSeriesRow,
+        dimension,
+        fromB,
+        toB,
+      );
     },
 
     /** Delete engagement rows in an inclusive hour-bucket range. Returns rows removed. */
     clearHourly(fromB: string, toB: string): number {
-      const info = db
-        .prepare(`DELETE FROM analytics_hourly WHERE bucket BETWEEN ? AND ?`)
-        .run(fromB, toB) as { changes?: number };
-      return info.changes ?? 0;
+      return Number(
+        db.prepare(`DELETE FROM analytics_hourly WHERE bucket BETWEEN ? AND ?`).run(fromB, toB).changes,
+      );
     },
 
     /** Delete log rows in an inclusive day range. Returns rows removed. */
     clearDaily(fromD: string, toD: string): number {
-      const info = db
-        .prepare(`DELETE FROM analytics_daily WHERE day BETWEEN ? AND ?`)
-        .run(fromD, toD) as { changes?: number };
-      return info.changes ?? 0;
+      return Number(
+        db.prepare(`DELETE FROM analytics_daily WHERE day BETWEEN ? AND ?`).run(fromD, toD).changes,
+      );
     },
 
     /**
@@ -161,20 +185,22 @@ export function analyticsRepo(db: DB) {
       const cutoff = new Date(Date.now() - retainDays * 86_400_000).toISOString().slice(0, 13);
       db.exec("BEGIN");
       try {
-        const roll = db
-          .prepare(
-            `INSERT INTO analytics_daily (day, dimension, key, count)
-             SELECT substr(bucket, 1, 10) AS day, dimension, key, SUM(count)
-             FROM analytics_hourly WHERE bucket < ?
-             GROUP BY day, dimension, key
-             ON CONFLICT(day, dimension, key) DO UPDATE SET count = count + excluded.count`,
-          )
-          .run(cutoff) as { changes?: number };
-        const prune = db
-          .prepare(`DELETE FROM analytics_hourly WHERE bucket < ?`)
-          .run(cutoff) as { changes?: number };
+        const rolledUp = Number(
+          db
+            .prepare(
+              `INSERT INTO analytics_daily (day, dimension, key, count)
+               SELECT substr(bucket, 1, 10) AS day, dimension, key, SUM(count)
+               FROM analytics_hourly WHERE bucket < ?
+               GROUP BY day, dimension, key
+               ON CONFLICT(day, dimension, key) DO UPDATE SET count = count + excluded.count`,
+            )
+            .run(cutoff).changes,
+        );
+        const pruned = Number(
+          db.prepare(`DELETE FROM analytics_hourly WHERE bucket < ?`).run(cutoff).changes,
+        );
         db.exec("COMMIT");
-        return { rolledUp: roll.changes ?? 0, pruned: prune.changes ?? 0 };
+        return { rolledUp, pruned };
       } catch (err) {
         db.exec("ROLLBACK");
         throw err;
@@ -182,10 +208,13 @@ export function analyticsRepo(db: DB) {
     },
 
     getOffset(source: string): number {
-      const row = db.prepare("SELECT offset FROM analytics_state WHERE source = ?").get(source) as
-        | { offset: number }
-        | undefined;
-      return row?.offset ?? 0;
+      return (
+        mapRow(
+          db.prepare("SELECT offset FROM analytics_state WHERE source = ?"),
+          (r) => asNumber(r.offset),
+          source,
+        ) ?? 0
+      );
     },
     setOffset(source: string, offset: number) {
       db.prepare(

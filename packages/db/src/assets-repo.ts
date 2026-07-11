@@ -1,5 +1,13 @@
 import type { Asset, AssetFolder, AssetKind, AssetVariant } from "@lg/core";
 import type { DB } from "./database.js";
+import {
+  asNullableText,
+  asNumber,
+  asText,
+  mapRow,
+  mapRows,
+  type Row,
+} from "./row-mapper.js";
 
 /** A filter for listing the library. All facets combine (AND). */
 export interface AssetQuery {
@@ -7,25 +15,6 @@ export interface AssetQuery {
   tag?: string;
   kind?: AssetKind;
   q?: string; // matches filename/title/alt/caption
-}
-
-interface AssetRow {
-  id: string;
-  hash: string;
-  kind: AssetKind;
-  ext: string;
-  mime: string;
-  bytes: number;
-  width: number | null;
-  height: number | null;
-  slug: string | null;
-  filename: string;
-  alt: string | null;
-  title: string | null;
-  caption: string | null;
-  description: string | null;
-  folder_id: string | null;
-  created_at: string;
 }
 
 /** Fields a caller may create an asset with (id/hash/kind are intrinsic). */
@@ -39,45 +28,43 @@ export type NewAsset = Omit<Asset, "tags" | "createdAt"> & { tags?: string[]; cr
  */
 export function assetsRepo(db: DB) {
   const tagsFor = (id: string): string[] =>
-    (db.prepare("SELECT tag FROM asset_tags WHERE asset_id = ? ORDER BY tag").all(id) as {
-      tag: string;
-    }[]).map((r) => r.tag);
+    mapRows(
+      db.prepare("SELECT tag FROM asset_tags WHERE asset_id = ? ORDER BY tag"),
+      (r) => asText(r.tag),
+      id,
+    );
 
-  const hydrate = (r: AssetRow): Asset => {
+  /** Build an Asset from a raw row, attaching its tags. The one place columns
+   *  become a domain Asset — optional fields are only set when present. */
+  const toAsset = (r: Row): Asset => {
     const a: Asset = {
-      id: r.id,
-      hash: r.hash,
-      kind: r.kind,
-      ext: r.ext,
-      mime: r.mime,
-      bytes: r.bytes,
-      filename: r.filename,
-      folderId: r.folder_id,
-      tags: tagsFor(r.id),
-      createdAt: r.created_at,
+      id: asText(r.id),
+      hash: asText(r.hash),
+      kind: asText(r.kind) as AssetKind,
+      ext: asText(r.ext),
+      mime: asText(r.mime),
+      bytes: asNumber(r.bytes),
+      filename: asText(r.filename),
+      folderId: asNullableText(r.folder_id),
+      tags: tagsFor(asText(r.id)),
+      createdAt: asText(r.created_at),
     };
-    if (r.width != null) a.width = r.width;
-    if (r.height != null) a.height = r.height;
-    if (r.slug) a.slug = r.slug;
-    if (r.alt) a.alt = r.alt;
-    if (r.title) a.title = r.title;
-    if (r.caption) a.caption = r.caption;
-    if (r.description) a.description = r.description;
+    if (r.width != null) a.width = asNumber(r.width);
+    if (r.height != null) a.height = asNumber(r.height);
+    if (r.slug) a.slug = asText(r.slug);
+    if (r.alt) a.alt = asText(r.alt);
+    if (r.title) a.title = asText(r.title);
+    if (r.caption) a.caption = asText(r.caption);
+    if (r.description) a.description = asText(r.description);
     return a;
   };
 
-  const getById = (id: string): Asset | null => {
-    const r = db.prepare("SELECT * FROM assets WHERE id = ?").get(id) as AssetRow | undefined;
-    return r ? hydrate(r) : null;
-  };
-  const getByHash = (hash: string): Asset | null => {
-    const r = db.prepare("SELECT * FROM assets WHERE hash = ?").get(hash) as AssetRow | undefined;
-    return r ? hydrate(r) : null;
-  };
-  const getBySlug = (slug: string): Asset | null => {
-    const r = db.prepare("SELECT * FROM assets WHERE slug = ?").get(slug) as AssetRow | undefined;
-    return r ? hydrate(r) : null;
-  };
+  const getById = (id: string): Asset | null =>
+    mapRow(db.prepare("SELECT * FROM assets WHERE id = ?"), toAsset, id) ?? null;
+  const getByHash = (hash: string): Asset | null =>
+    mapRow(db.prepare("SELECT * FROM assets WHERE hash = ?"), toAsset, hash) ?? null;
+  const getBySlug = (slug: string): Asset | null =>
+    mapRow(db.prepare("SELECT * FROM assets WHERE slug = ?"), toAsset, slug) ?? null;
 
   const setTags = (id: string, tags: string[]) => {
     db.exec("BEGIN");
@@ -162,14 +149,11 @@ export function assetsRepo(db: DB) {
 
     setTags,
     allTags: (): string[] =>
-      (db.prepare("SELECT DISTINCT tag FROM asset_tags ORDER BY tag").all() as { tag: string }[]).map(
-        (r) => r.tag,
-      ),
+      mapRows(db.prepare("SELECT DISTINCT tag FROM asset_tags ORDER BY tag"), (r) => asText(r.tag)),
 
     /** Delete an asset (variants/tags/usages cascade). Returns whether a row went. */
     remove(id: string): boolean {
-      const info = db.prepare("DELETE FROM assets WHERE id = ?").run(id) as { changes?: number };
-      return (info.changes ?? 0) > 0;
+      return Number(db.prepare("DELETE FROM assets WHERE id = ?").run(id).changes) > 0;
     },
 
     /** List assets, newest first, filtered by folder/tag/kind/search. */
@@ -192,16 +176,16 @@ export function assetsRepo(db: DB) {
         "SELECT a.* FROM assets a" +
         (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
         " ORDER BY a.created_at DESC, a.id DESC";
-      return (db.prepare(sql).all(...args) as unknown as AssetRow[]).map(hydrate);
+      return mapRows(db.prepare(sql), toAsset, ...args);
     },
 
     // ── folders ──────────────────────────────────────────────────────────────
     listFolders: (): AssetFolder[] =>
-      (db.prepare("SELECT id, name, parent_id FROM asset_folders ORDER BY name").all() as {
-        id: string;
-        name: string;
-        parent_id: string | null;
-      }[]).map((r) => ({ id: r.id, name: r.name, parentId: r.parent_id })),
+      mapRows(db.prepare("SELECT id, name, parent_id FROM asset_folders ORDER BY name"), (r) => ({
+        id: asText(r.id),
+        name: asText(r.name),
+        parentId: asNullableText(r.parent_id),
+      })),
     createFolder(folder: AssetFolder) {
       db.prepare("INSERT INTO asset_folders (id, name, parent_id) VALUES (?, ?, ?)").run(
         folder.id,
@@ -210,13 +194,15 @@ export function assetsRepo(db: DB) {
       );
     },
     updateFolder(id: string, patch: { name?: string; parentId?: string | null }) {
-      const cur = db.prepare("SELECT id, name, parent_id FROM asset_folders WHERE id = ?").get(id) as
-        | { id: string; name: string; parent_id: string | null }
-        | undefined;
+      const cur = mapRow(
+        db.prepare("SELECT id, name, parent_id FROM asset_folders WHERE id = ?"),
+        (r) => ({ name: asText(r.name), parentId: asNullableText(r.parent_id) }),
+        id,
+      );
       if (!cur) return;
       db.prepare("UPDATE asset_folders SET name = ?, parent_id = ? WHERE id = ?").run(
         patch.name ?? cur.name,
-        patch.parentId === undefined ? cur.parent_id : patch.parentId,
+        patch.parentId === undefined ? cur.parentId : patch.parentId,
         id,
       );
     },
@@ -227,9 +213,17 @@ export function assetsRepo(db: DB) {
 
     // ── image variants (cached derivatives) ────────────────────────────────────
     listVariants: (assetId: string): AssetVariant[] =>
-      (db.prepare("SELECT format, width, bytes FROM asset_variants WHERE asset_id = ? ORDER BY width").all(
+      mapRows(
+        db.prepare(
+          "SELECT format, width, bytes FROM asset_variants WHERE asset_id = ? ORDER BY width",
+        ),
+        (r) => ({
+          format: asText(r.format) as AssetVariant["format"],
+          width: asNumber(r.width),
+          bytes: asNumber(r.bytes),
+        }),
         assetId,
-      ) as unknown as AssetVariant[]),
+      ),
     hasVariant: (assetId: string, format: string, width: number): boolean =>
       !!db
         .prepare("SELECT 1 FROM asset_variants WHERE asset_id = ? AND format = ? AND width = ?")
@@ -261,16 +255,22 @@ export function assetsRepo(db: DB) {
       db.prepare("DELETE FROM asset_usages WHERE context = ?").run(context);
     },
     usagesFor: (assetId: string): { context: string; label?: string }[] =>
-      (db.prepare("SELECT context, label FROM asset_usages WHERE asset_id = ? ORDER BY context").all(
+      mapRows(
+        db.prepare(
+          "SELECT context, label FROM asset_usages WHERE asset_id = ? ORDER BY context",
+        ),
+        (r) => {
+          const label = asNullableText(r.label);
+          return { context: asText(r.context), ...(label ? { label } : {}) };
+        },
         assetId,
-      ) as { context: string; label: string | null }[]).map((r) => ({
-        context: r.context,
-        ...(r.label ? { label: r.label } : {}),
-      })),
+      ),
     usageCount: (assetId: string): number =>
-      (db.prepare("SELECT COUNT(*) AS n FROM asset_usages WHERE asset_id = ?").get(assetId) as {
-        n: number;
-      }).n,
+      mapRow(
+        db.prepare("SELECT COUNT(*) AS n FROM asset_usages WHERE asset_id = ?"),
+        (r) => asNumber(r.n),
+        assetId,
+      ) ?? 0,
   };
 }
 

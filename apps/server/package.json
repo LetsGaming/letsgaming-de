@@ -15,7 +15,7 @@
     "sync": "tsx src/sync/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "analytics": "tsx src/analytics/cli.ts",
-    "test": "node --test --import tsx \"src/**/*.test.ts\""
+    "test": "node --test --import tsx \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@fastify/cookie": "^11",

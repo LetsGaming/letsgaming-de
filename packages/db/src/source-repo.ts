@@ -1,11 +1,6 @@
 import type { GitHubData, SourceData, SteamData, WakapiData } from "@lg/core";
 import type { DB } from "./database.js";
-
-interface CurrentRow {
-  source_id: string;
-  synced_at: string;
-  data: string;
-}
+import { asNullableText, asText, json, mapRow, mapRows, type Row } from "./row-mapper.js";
 
 /**
  * Repository for source-owned data. Every sync does two writes: append an
@@ -17,7 +12,7 @@ export function sourceRepo(db: DB) {
   return {
     /** Append + upsert in one transaction — a sync is atomic. */
     record(sourceId: string, syncedAt: string, data: unknown) {
-      const json = JSON.stringify(data);
+      const payload = JSON.stringify(data);
       const appendStmt = db.prepare(
         "INSERT INTO source_snapshots (source_id, synced_at, data) VALUES (?, ?, ?)",
       );
@@ -27,8 +22,8 @@ export function sourceRepo(db: DB) {
       );
       db.exec("BEGIN");
       try {
-        appendStmt.run(sourceId, syncedAt, json);
-        upsertStmt.run(sourceId, syncedAt, json);
+        appendStmt.run(sourceId, syncedAt, payload);
+        upsertStmt.run(sourceId, syncedAt, payload);
         db.exec("COMMIT");
       } catch (err) {
         db.exec("ROLLBACK");
@@ -38,20 +33,24 @@ export function sourceRepo(db: DB) {
 
     /** Current normalized data for one source, or undefined if never synced. */
     getCurrent<T>(sourceId: string): T | undefined {
-      const row = db
-        .prepare("SELECT data FROM source_current WHERE source_id = ?")
-        .get(sourceId) as { data: string } | undefined;
-      return row ? (JSON.parse(row.data) as T) : undefined;
+      return mapRow(
+        db.prepare("SELECT data FROM source_current WHERE source_id = ?"),
+        (r) => json<T>(r.data),
+        sourceId,
+      );
     },
 
     /** All current source data, assembled into the typed SourceData registry. */
     getAllCurrent(): SourceData {
-      const rows = db.prepare("SELECT * FROM source_current").all() as unknown as CurrentRow[];
+      const rows = mapRows(db.prepare("SELECT source_id, data FROM source_current"), (r) => ({
+        sourceId: asText(r.source_id),
+        data: asText(r.data),
+      }));
       const out: SourceData = {};
       for (const row of rows) {
-        if (row.source_id === "github") out.github = JSON.parse(row.data) as GitHubData;
-        else if (row.source_id === "wakapi") out.wakapi = JSON.parse(row.data) as WakapiData;
-        else if (row.source_id === "steam") out.steam = JSON.parse(row.data) as SteamData;
+        if (row.sourceId === "github") out.github = json<GitHubData>(row.data);
+        else if (row.sourceId === "wakapi") out.wakapi = json<WakapiData>(row.data);
+        else if (row.sourceId === "steam") out.steam = json<SteamData>(row.data);
         // future sources get folded in here — one line each.
       }
       return out;
@@ -59,20 +58,24 @@ export function sourceRepo(db: DB) {
 
     /** Newest sync time across all sources (for the "last updated" surface). */
     latestSyncedAt(): string | undefined {
-      const row = db
-        .prepare("SELECT MAX(synced_at) AS latest FROM source_current")
-        .get() as { latest: string | null } | undefined;
-      return row?.latest ?? undefined;
+      return (
+        mapRow(
+          db.prepare("SELECT MAX(synced_at) AS latest FROM source_current"),
+          (r) => asNullableText(r.latest),
+        ) ?? undefined
+      );
     },
 
     /** History for a source, newest first — the raw material for long-range trends. */
     history<T>(sourceId: string, limit = 100): { syncedAt: string; data: T }[] {
-      const rows = db
-        .prepare(
+      return mapRows(
+        db.prepare(
           "SELECT synced_at, data FROM source_snapshots WHERE source_id = ? ORDER BY synced_at DESC LIMIT ?",
-        )
-        .all(sourceId, limit) as { synced_at: string; data: string }[];
-      return rows.map((r) => ({ syncedAt: r.synced_at, data: JSON.parse(r.data) as T }));
+        ),
+        (r: Row) => ({ syncedAt: asText(r.synced_at), data: json<T>(r.data) }),
+        sourceId,
+        limit,
+      );
     },
   };
 }

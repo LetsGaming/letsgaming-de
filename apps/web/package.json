@@ -20,8 +20,10 @@
     "@fontsource/fredoka": "^5",
     "@fontsource/inter": "^5",
     "@fontsource/space-mono": "^5",
+    "@nanostores/vue": "^1.1.0",
     "astro": "^6.1.6",
     "marked": "^18.0.5",
+    "nanostores": "^1.4.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

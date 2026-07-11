@@ -2,6 +2,7 @@
 import type { ImageAssetView, GifAssetView, PresenceView } from "@lg/core";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AssetPicture from "./AssetPicture.vue";
+import { apiUrl } from "../lib/api";
 
 // The client only ever knows whether to poll, the owner identity for the profile
 // header, and the (already-gated) Steam data. It never receives the Discord id,
@@ -22,7 +23,6 @@ const props = defineProps<{
   };
 }>();
 
-const API_BASE = (import.meta.env.PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const POLL_MS = 25_000;
 
 const view = ref<PresenceView | null>(null);
@@ -135,7 +135,7 @@ const storeUrl = (appId: number) =>
 // ── polling ─────────────────────────────────────────────────────────────────
 async function refresh() {
   try {
-    const res = await fetch(`${API_BASE}/api/presence`, {
+    const res = await fetch(apiUrl("/api/presence"), {
       headers: { Accept: "application/json" },
     });
     if (res.ok) view.value = (await res.json()) as PresenceView;
@@ -186,33 +186,35 @@ onBeforeUnmount(() => {
       <!-- current activity: themed motion, no fake progress bar -->
       <div v-if="activities.length" class="pw-act">
         <template v-for="activity in activities" :key="activity.title">
-          <img
-            v-if="activity.image"
-            :src="activity.image"
-            alt=""
-            class="pw-art"
-          />
-          <span v-else class="pw-art pw-art-ph" />
-          <div class="pw-abody">
-            <span class="pw-src" :style="{ color: activity.color }">
-              {{ activity.src }}
-              <span class="pw-anim" :class="'pw-' + activity.motif">
-                <template v-if="activity.motif === 'music'"
-                  ><i /><i /><i /><i /><i
-                /></template>
-                <template v-else-if="activity.motif === 'game'"
-                  ><i /><i /><i /><i
-                /></template>
-                <template v-else-if="activity.motif === 'watch'"
-                  ><i
-                /></template>
-                <template v-else-if="activity.motif === 'stream'"
-                  ><b /><i /><i
-                /></template>
+          <div>
+            <img
+              v-if="activity.image"
+              :src="activity.image"
+              alt=""
+              class="pw-art"
+            />
+            <span v-else class="pw-art pw-art-ph" />
+            <div class="pw-abody">
+              <span class="pw-src" :style="{ color: activity.color }">
+                {{ activity.src }}
+                <span class="pw-anim" :class="'pw-' + activity.motif">
+                  <template v-if="activity.motif === 'music'"
+                    ><i /><i /><i /><i /><i
+                  /></template>
+                  <template v-else-if="activity.motif === 'game'"
+                    ><i /><i /><i /><i
+                  /></template>
+                  <template v-else-if="activity.motif === 'watch'"
+                    ><i
+                  /></template>
+                  <template v-else-if="activity.motif === 'stream'"
+                    ><b /><i /><i
+                  /></template>
+                </span>
               </span>
-            </span>
-            <div class="pw-atitle">{{ activity.title }}</div>
-            <div v-if="activity.sub" class="pw-asub">{{ activity.sub }}</div>
+              <div class="pw-atitle">{{ activity.title }}</div>
+              <div v-if="activity.sub" class="pw-asub">{{ activity.sub }}</div>
+            </div>
           </div>
         </template>
       </div>
@@ -308,7 +310,7 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, var(--card-2), var(--card) 46%);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  padding: 18px;
+  padding: var(--sp-18);
   box-shadow: var(--sh-1);
 }
 
@@ -321,7 +323,7 @@ onBeforeUnmount(() => {
 }
 .pw-who {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-12);
   align-items: center;
   padding: 13px;
 }
@@ -420,15 +422,15 @@ onBeforeUnmount(() => {
   font-size: 11px;
   font-weight: 400;
   color: var(--muted);
-  margin-left: 4px;
+  margin-left: var(--sp-4);
 }
 .pw-stat {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-6);
   font-size: 11px;
   color: var(--muted);
-  margin-top: 2px;
+  margin-top: var(--sp-2);
 }
 .pw-lbl {
   font-weight: 600;
@@ -588,7 +590,7 @@ onBeforeUnmount(() => {
 .pw-watch i {
   position: absolute;
   top: 50%;
-  margin-top: -2px;
+  margin-top: -var(--sp-2);
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -686,10 +688,10 @@ onBeforeUnmount(() => {
 
 /* steam */
 .pw-steam {
-  margin-top: 16px;
+  margin-top: var(--sp-16);
 }
 .pw-steam-h {
-  margin: 2px 2px 3px;
+  margin: var(--sp-2) var(--sp-2) 3px;
 }
 .pw-t {
   font-family: var(--f-m);
@@ -701,7 +703,7 @@ onBeforeUnmount(() => {
 .pw-steam-cap {
   font-size: 10.5px;
   color: var(--muted);
-  margin: 0 2px 12px;
+  margin: 0 var(--sp-2) var(--sp-12);
 }
 .pw-ico {
   flex: none;
@@ -721,7 +723,7 @@ onBeforeUnmount(() => {
 .pw-feat {
   display: block;
   position: relative;
-  padding: 14px;
+  padding: var(--sp-14);
   border-radius: var(--r-sm);
   margin-bottom: 11px;
   border: 1px solid var(--line);
@@ -752,7 +754,7 @@ onBeforeUnmount(() => {
 }
 .pw-frow {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-12);
   align-items: center;
 }
 .pw-fname {
@@ -778,7 +780,7 @@ onBeforeUnmount(() => {
   height: 6px;
   border-radius: 6px;
   background: color-mix(in srgb, #000 26%, transparent);
-  margin-top: 12px;
+  margin-top: var(--sp-12);
   overflow: hidden;
 }
 .pw-feat .pw-fill {
@@ -792,14 +794,14 @@ onBeforeUnmount(() => {
 .pw-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--sp-10);
 }
 .pw-tile {
   display: flex;
-  gap: 10px;
+  gap: var(--sp-10);
   align-items: center;
   min-width: 0;
-  padding: 10px;
+  padding: var(--sp-10);
   border-radius: 14px;
   background: var(--card-2);
   border: 1px solid var(--line);
@@ -837,14 +839,14 @@ onBeforeUnmount(() => {
   height: 6px;
   border-radius: 50%;
   background: var(--mint);
-  margin-left: 6px;
+  margin-left: var(--sp-6);
   animation: pw-breathe 1.8s ease-in-out infinite;
 }
 .pw-row {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 6px;
+  margin-top: var(--sp-6);
 }
 .pw-lane {
   height: 4px;

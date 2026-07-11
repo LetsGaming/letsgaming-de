@@ -14,12 +14,12 @@
   },
   "files": [
     "dist",
-    "src/schema.sql"
+    "src/migrations"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node -e \"require('fs').copyFileSync('src/schema.sql','dist/schema.sql')\"",
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').cpSync('src/migrations','dist/migrations',{recursive:true})\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --import tsx ./src/*.test.ts"
+    "test": "node --test --import tsx ./tests/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22",

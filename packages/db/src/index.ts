@@ -8,6 +8,8 @@ import { sourceRepo, type SourceRepo } from "./source-repo.js";
 import { seedIfEmpty, reconcileIa } from "./seed.js";
 
 export * from "./database.js";
+export * from "./migrate.js";
+export * from "./row-mapper.js";
 export * from "./content-repo.js";
 export * from "./source-repo.js";
 export * from "./ia-repo.js";

@@ -1,3 +1,5 @@
+import type { Result } from "./result.js";
+
 /**
  * The Source contract (PROJECT.md §4 "The Source contract — the key abstraction").
  *
@@ -21,8 +23,12 @@ export interface Source<Raw = unknown, Normalized = unknown> {
   targetArea?: string;
   /** How often the sync runner polls it — a cron-ish interval string. */
   schedule: string;
-  /** Hit the external API. Kept separate from normalize so it's mockable. */
-  fetch(): Promise<Raw>;
+  /**
+   * Hit the external API. Returns a typed Result rather than throwing — an
+   * unavailable/slow upstream is expected, and the sync worker degrades (keeps
+   * the last-good snapshot) on a failure instead of crashing the run.
+   */
+  fetch(): Promise<Result<Raw>>;
   /** Map the raw response to the common shape stored in the DB. */
   normalize(raw: Raw): Normalized;
 }
