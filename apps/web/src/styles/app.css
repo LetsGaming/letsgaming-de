@@ -17,7 +17,9 @@ body {
   overflow-x: hidden;
   background: var(--bg-base) var(--bg-glow) fixed;
   -webkit-font-smoothing: antialiased;
-  transition: background 0.3s ease, color 0.3s ease;
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
 }
 a {
   color: inherit;
@@ -83,7 +85,9 @@ a {
   cursor: pointer;
   padding: var(--sp-8) var(--sp-16);
   border-radius: 11px;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 }
 .tab:hover {
   color: var(--ink);
@@ -104,7 +108,9 @@ a {
   display: grid;
   place-items: center;
   box-shadow: var(--sh-1);
-  transition: color 0.2s ease, transform 0.12s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.12s ease;
 }
 .theme-toggle:hover {
   color: var(--ink);
@@ -238,8 +244,13 @@ h1 .pop::after {
   width: 17px;
   height: 17px;
 }
-.btn .lico { display: inline-flex; }
-.btn .lico svg { width: 17px; height: 17px; }
+.btn .lico {
+  display: inline-flex;
+}
+.btn .lico svg {
+  width: 17px;
+  height: 17px;
+}
 .avatar img {
   width: 104px;
   height: 104px;
@@ -251,20 +262,28 @@ h1 .pop::after {
 .btn-primary {
   background: var(--purple);
   color: #fff;
-  box-shadow: 0 5px 0 var(--purple-d), 0 12px 26px rgba(124, 92, 255, 0.5);
+  box-shadow:
+    0 5px 0 var(--purple-d),
+    0 12px 26px rgba(124, 92, 255, 0.5);
 }
 .btn-primary:active {
   transform: translateY(4px);
-  box-shadow: 0 1px 0 var(--purple-d), 0 4px 12px rgba(124, 92, 255, 0.4);
+  box-shadow:
+    0 1px 0 var(--purple-d),
+    0 4px 12px rgba(124, 92, 255, 0.4);
 }
 .btn-ghost {
   background: var(--ghost-bg);
   color: var(--ink);
-  box-shadow: 0 5px 0 var(--ghost-shadow), 0 10px 20px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 5px 0 var(--ghost-shadow),
+    0 10px 20px rgba(0, 0, 0, 0.2);
 }
 .btn-ghost:active {
   transform: translateY(4px);
-  box-shadow: 0 1px 0 var(--ghost-shadow), 0 3px 10px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 1px 0 var(--ghost-shadow),
+    0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
 /* sections */
@@ -315,7 +334,9 @@ h1 .pop::after {
   border-radius: var(--r);
   padding: var(--sp-24);
   box-shadow: var(--sh-1);
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
   text-decoration: none;
   color: inherit;
   display: block;
@@ -393,7 +414,9 @@ h1 .pop::after {
   background: var(--purple-wash);
   display: grid;
   place-items: center;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 .card.feature .arrow {
   background: rgba(255, 255, 255, 0.2);
