@@ -48,10 +48,41 @@ const {
                 </button>
               </div>
             </div>
-            <svg v-if="chart" class="chart" :viewBox="`0 0 ${chart.W} ${chart.H}`">
+            <svg
+              v-if="chart"
+              class="chart"
+              :viewBox="`0 0 ${chart.W} ${chart.H}`"
+              role="img"
+              :aria-label="`${METRIC_LABELS[metric]} over time, ${chart.unit === 'hour' ? 'hourly' : 'daily'}`"
+            >
+              <!-- count gridlines -->
+              <line
+                v-for="t in chart.yTicks"
+                :key="'g' + t.v"
+                class="c-grid"
+                :x1="chart.x0"
+                :x2="chart.x1"
+                :y1="t.y"
+                :y2="t.y"
+              />
+              <!-- stacked area layers -->
               <path v-for="l in chart.layers" :key="l.key" :d="l.path" :fill="l.color" fill-opacity="0.85">
                 <title>{{ l.key }}: {{ l.total }}</title>
               </path>
+              <!-- axis lines -->
+              <line class="c-axis" :x1="chart.x0" :y1="chart.y0" :x2="chart.x0" :y2="chart.y1" />
+              <line class="c-axis" :x1="chart.x0" :y1="chart.y1" :x2="chart.x1" :y2="chart.y1" />
+              <!-- y scale: counts -->
+              <text v-for="t in chart.yTicks" :key="'y' + t.v" class="c-ylabel" :x="chart.x0 - 6" :y="t.y">{{ t.label }}</text>
+              <!-- x scale: time -->
+              <text
+                v-for="(t, i) in chart.xTicks"
+                :key="'x' + i"
+                class="c-xlabel"
+                :x="t.x"
+                :y="chart.y1 + 15"
+                :text-anchor="t.anchor"
+              >{{ t.label }}</text>
             </svg>
             <p v-if="chart && chart.total === 0" class="muted empty">
               No {{ METRIC_LABELS[metric].toLowerCase() }} recorded in this range yet.
@@ -61,10 +92,9 @@ const {
                 <i :style="{ background: l.color }" />{{ l.key }} <b>{{ l.total }}</b>
               </span>
             </div>
-            <div class="xaxis">
-              <span>{{ chart?.fromLabel }}</span>
-              <span class="muted">{{ chart?.unit === "hour" ? "hourly" : "daily" }}{{ loadingA ? " · updating…" : "" }}</span>
-              <span>{{ chart?.toLabel }}</span>
+            <div v-if="chart" class="axistip">
+              <span><b>{{ METRIC_LABELS[metric] }}</b> per {{ chart.unit === "hour" ? "hour" : "day" }} (vertical) · time in UTC (horizontal)</span>
+              <span v-if="loadingA" class="muted">updating…</span>
             </div>
             <div class="clearbar">
               <span class="muted">Clear:</span>

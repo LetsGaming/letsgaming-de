@@ -118,7 +118,7 @@ watch(
 .overlay {
   position: fixed;
   inset: 0;
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-base) 70%, transparent);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -174,7 +174,7 @@ section h3 {
 .seg {
   display: inline-flex;
   gap: var(--sp-4);
-  background: var(--bg);
+  background: var(--bg-base);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 3px;
@@ -218,7 +218,7 @@ section h3 {
   height: 27px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--bg-base);
   cursor: pointer;
   padding: 0;
   position: relative;

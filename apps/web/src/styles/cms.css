@@ -604,13 +604,43 @@
   text-align: center;
   padding: var(--sp-8) 0;
 }
-.cms .xaxis {
+.cms .c-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cms .c-axis {
+  stroke: var(--muted);
+  stroke-width: 1;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.cms .c-ylabel {
+  fill: var(--muted);
+  font-family: var(--f-m);
+  font-size: 11px;
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+.cms .c-xlabel {
+  fill: var(--muted);
+  font-family: var(--f-m);
+  font-size: 11px;
+  dominant-baseline: hanging;
+}
+.cms .axistip {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
   justify-content: space-between;
   font-family: var(--f-m);
   font-size: 11px;
   color: var(--muted);
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-6);
+}
+.cms .axistip b {
+  color: var(--ink);
+  font-weight: 500;
 }
 .cms .legend {
   display: flex;
@@ -793,13 +823,14 @@
   z-index: 50;
 }
 .cms .pickbox {
-  background: var(--bg);
+  background: var(--bg-base);
   border: 1px solid var(--line);
   border-radius: var(--r-l);
   padding: var(--sp-18);
   width: min(1000px, 96vw);
   max-height: 88vh;
   overflow: auto;
+  box-shadow: var(--sh-2);
 }
 .cms .pickhead {
   display: flex;

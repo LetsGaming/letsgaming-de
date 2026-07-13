@@ -23,8 +23,22 @@ const active = entry.id;
 
 <Layout title={`${title} — letsgaming.de docs`}>
   <div class="doc-wrap">
-    <aside class="doc-nav" aria-label="Documentation">
-      <a class="doc-home" href="/">← letsgaming.de</a>
+    <!-- Mobile-only bar: opens the docs nav as a drawer so the section list
+         doesn't push the article down the page. Desktop shows the sidebar. -->
+    <header class="doc-topbar">
+      <span class="doc-tt">Documentation</span>
+      <button class="burger" type="button" aria-label="Open docs menu" data-doc-open>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </header>
+    <div class="doc-scrim" data-doc-scrim></div>
+    <aside class="doc-nav" id="doc-nav" aria-label="Documentation">
+      <div class="doc-navhead">
+        <a class="doc-home" href="/">← letsgaming.de</a>
+        <button class="burger doc-close" type="button" aria-label="Close docs menu" data-doc-close>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
       {
         tree.map((group) => (
           <div class="doc-group">
@@ -46,4 +60,35 @@ const active = entry.id;
       <Content />
     </article>
   </div>
+
+  <script is:inline>
+    (function () {
+      var nav = document.getElementById("doc-nav");
+      var scrim = document.querySelector("[data-doc-scrim]");
+      if (!nav || !scrim) return;
+      function open() {
+        nav.classList.add("open");
+        scrim.classList.add("show");
+        document.body.classList.add("nav-locked");
+      }
+      function close() {
+        nav.classList.remove("open");
+        scrim.classList.remove("show");
+        document.body.classList.remove("nav-locked");
+      }
+      document.querySelectorAll("[data-doc-open]").forEach(function (b) {
+        b.addEventListener("click", open);
+      });
+      document.querySelectorAll("[data-doc-close]").forEach(function (b) {
+        b.addEventListener("click", close);
+      });
+      scrim.addEventListener("click", close);
+      nav.addEventListener("click", function (e) {
+        if (e.target && e.target.tagName === "A") close();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") close();
+      });
+    })();
+  </script>
 </Layout>

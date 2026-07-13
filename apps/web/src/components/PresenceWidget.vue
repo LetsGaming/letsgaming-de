@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
       <!-- current activity: themed motion, no fake progress bar -->
       <div v-if="activities.length" class="pw-act">
         <template v-for="activity in activities" :key="activity.title">
-          <div>
+          <div class="pw-actitem">
             <img
               v-if="activity.art"
               :src="activity.art"
@@ -458,10 +458,19 @@ onBeforeUnmount(() => {
 /* activity */
 .pw-act {
   display: flex;
+  flex-direction: column;
   gap: 11px;
-  align-items: center;
   padding: 11px 13px;
   border-top: 1px solid var(--line);
+}
+/* One activity = an icon-left / text-right row, matching the profile row and the
+   Steam tiles above. (The art used to stack above the text because this wrapper
+   had no layout of its own.) */
+.pw-actitem {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  min-width: 0;
 }
 .pw-art {
   width: 40px;

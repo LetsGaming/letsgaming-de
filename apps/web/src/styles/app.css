@@ -30,14 +30,7 @@ a {
   padding: clamp(var(--sp-22), 5vw, 44px) clamp(var(--sp-18), 5vw, 40px) 80px;
 }
 
-/* header / tabs */
-.top {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-14);
-  margin-bottom: 34px;
-  flex-wrap: wrap;
-}
+/* brand (used in the sidebar head and the mobile top bar) */
 .brand {
   font-family: var(--f-d);
   font-weight: 700;
@@ -58,69 +51,203 @@ a {
   font-size: 15px;
   box-shadow: 0 4px 14px rgba(124, 92, 255, 0.5);
 }
-.chrome {
+
+/* App shell: a persistent side menu + the content column (desktop-first). The
+   nav lives on the side rather than the top so switching sections doesn't push
+   the content down. On mobile the sidebar becomes an off-canvas drawer. */
+.shell {
+  --side-w: 236px;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  gap: clamp(var(--sp-24), 4vw, 52px);
+  align-items: start;
+  padding: clamp(var(--sp-22), 5vw, 44px) clamp(var(--sp-18), 5vw, 40px) 80px;
+}
+.content {
+  min-width: 0;
+}
+
+.sidebar {
+  position: sticky;
+  top: clamp(var(--sp-22), 5vw, 44px);
   display: flex;
-  gap: var(--sp-8);
-  margin-left: auto;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+.sidehead {
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
 }
-.tabs {
+.side-nav {
   display: flex;
-  gap: var(--sp-6);
+  flex-direction: column;
+  gap: var(--sp-4);
   background: var(--card);
-  padding: var(--sp-6);
-  border-radius: 16px;
   border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-8);
   box-shadow: var(--sh-1);
-  flex-wrap: wrap;
 }
-.tab {
+.side-tab {
   font-family: var(--f-d);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 15px;
+  text-align: left;
   color: var(--muted);
   background: none;
   border: none;
   cursor: pointer;
-  padding: var(--sp-8) var(--sp-16);
-  border-radius: 11px;
+  padding: var(--sp-10) var(--sp-14);
+  border-radius: var(--r-s);
   transition:
     color 0.2s ease,
     background 0.2s ease;
 }
-.tab:hover {
+.side-tab:hover {
   color: var(--ink);
+  background: var(--purple-wash);
 }
-.tab.active {
+.side-tab.active {
   color: #fff;
   background: var(--purple);
   box-shadow: 0 4px 14px rgba(124, 92, 255, 0.45);
 }
-.theme-toggle {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+.side-foot {
+  display: flex;
+}
+.side-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-family: var(--f-m);
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: var(--sp-8) var(--sp-12);
+  cursor: pointer;
+  box-shadow: var(--sh-1);
+  transition: color 0.2s ease;
+}
+.side-settings:hover {
+  color: var(--ink);
+}
+.side-settings .ico {
+  display: inline-flex;
+}
+.side-settings svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Mobile bar + drawer affordances — hidden on desktop, shown under the nav
+   breakpoint by the media block below. */
+.topbar-m {
+  display: none;
+}
+.burger {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: var(--r-s);
   border: 1px solid var(--line);
   background: var(--card);
-  color: var(--muted);
+  color: var(--ink);
   cursor: pointer;
   display: grid;
   place-items: center;
   box-shadow: var(--sh-1);
-  transition:
-    color 0.2s ease,
-    transform 0.12s ease;
 }
-.theme-toggle:hover {
-  color: var(--ink);
+.burger svg {
+  width: 20px;
+  height: 20px;
 }
-.theme-toggle:active {
-  transform: translateY(2px);
+.close-m {
+  display: none;
 }
-.theme-toggle svg {
-  width: 18px;
-  height: 18px;
+.scrim {
+  display: none;
+}
+body.nav-locked {
+  overflow: hidden;
+}
+
+/* Below the nav breakpoint the sidebar slides in as a drawer over a scrim, and a
+   sticky top bar carries the brand + hamburger. */
+@media (max-width: 860px) {
+  .shell {
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  .content {
+    padding: 0 clamp(var(--sp-16), 5vw, var(--sp-24)) 72px;
+  }
+  .topbar-m {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-12);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: var(--sp-12) clamp(var(--sp-16), 5vw, var(--sp-24));
+    margin-bottom: var(--sp-16);
+    background: color-mix(in srgb, var(--bg-base) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    top: 0;
+    z-index: 60;
+    width: min(280px, 82vw);
+    gap: var(--sp-20);
+    padding: var(--sp-18);
+    overflow-y: auto;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    box-shadow: var(--sh-2);
+    transform: translateX(-102%);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
+  }
+  .sidebar.open {
+    transform: none;
+  }
+  .close-m {
+    display: grid;
+  }
+  .side-nav {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    gap: var(--sp-6);
+  }
+  .side-tab {
+    font-size: 16px;
+    padding: var(--sp-12) var(--sp-14);
+  }
+  .side-foot {
+    margin-top: auto;
+  }
+  .side-settings {
+    width: 100%;
+    justify-content: center;
+  }
+  .scrim.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(0, 0, 0, 0.5);
+  }
 }
 
 /* panels */
@@ -835,6 +962,25 @@ a.ev-link:hover .ei svg {
   top: 24px;
   font-size: 14px;
 }
+/* Docs nav drawer affordances — the bar + close + scrim only appear on mobile
+   (media block near the end); on desktop the nav is just the sticky sidebar. */
+.doc-topbar {
+  display: none;
+}
+.doc-navhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.doc-navhead .doc-home {
+  margin-bottom: 0;
+}
+.doc-close {
+  display: none;
+}
+.doc-scrim {
+  display: none;
+}
 .doc-home {
   display: inline-block;
   font-family: var(--f-m);
@@ -983,8 +1129,54 @@ a.ev-link:hover .ei svg {
     grid-template-columns: 1fr;
     gap: var(--sp-20);
   }
+  .doc-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-12);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: var(--sp-12) 0;
+    margin-bottom: var(--sp-8);
+    background: color-mix(in srgb, var(--bg-base) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .doc-tt {
+    font-family: var(--f-d);
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
   .doc-nav {
-    position: static;
+    position: fixed;
+    inset: 0 auto 0 0;
+    top: 0;
+    z-index: 60;
+    width: min(280px, 82vw);
+    padding: var(--sp-18);
+    overflow-y: auto;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    box-shadow: var(--sh-2);
+    transform: translateX(-102%);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
+  }
+  .doc-nav.open {
+    transform: none;
+  }
+  .doc-close {
+    display: grid;
+  }
+  .doc-navhead {
+    margin-bottom: var(--sp-16);
+  }
+  .doc-scrim.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -1015,18 +1207,27 @@ footer b {
 }
 
 @media (max-width: 680px) {
-  .chrome {
-    margin-left: 0;
-    width: 100%;
-    justify-content: center;
-  }
-  .grid,
   .dash {
     grid-template-columns: 1fr;
   }
   .hobbies,
   .stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+/* Projects/featured grid stays two-up on phones (a pinned card spans the full
+   width via `grid-column: 1 / -1`, so the grid keeps the pinned-vs-rest
+   hierarchy instead of flattening to a single column). Tighten the cards so two
+   fit comfortably at phone widths. */
+@media (max-width: 560px) {
+  .grid {
+    gap: var(--sp-12);
+  }
+  .card {
+    padding: var(--sp-16);
+  }
+  .card.feature {
+    padding: var(--sp-20);
   }
 }
 

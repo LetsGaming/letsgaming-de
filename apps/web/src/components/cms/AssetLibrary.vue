@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { cms } from "../../lib/cms";
 
 interface Asset {
@@ -18,6 +18,20 @@ interface Detail extends Asset {
 // `only` locks the type filter (e.g. "svg" for an icon picker, "image" for a photo).
 const props = defineProps<{ pick?: boolean; only?: string }>();
 const emit = defineEmits<{ (e: "select", asset: Asset): void }>();
+
+// When the picker is locked to a type, hint the OS file dialog with a matching
+// `accept`. On mobile a bare file input tends to offer only the camera/files apps;
+// an image accept makes the photo gallery a first-class option (the whole point of
+// picking an avatar/hero from your phone). Left unset for the general library so any
+// file type can still be uploaded.
+const ACCEPT: Record<string, string> = {
+  image: "image/*",
+  svg: ".svg,image/svg+xml",
+  gif: "image/gif",
+  pdf: ".pdf,application/pdf",
+  markdown: ".md,.markdown,text/markdown",
+};
+const acceptAttr = computed(() => (props.only ? ACCEPT[props.only] : undefined));
 
 const assets = ref<Asset[]>([]);
 const folders = ref<Folder[]>([]);
@@ -151,7 +165,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
     <div class="libtools">
       <label class="up btn">
         {{ uploading ? "Uploading…" : "Upload" }}
-        <input type="file" multiple :disabled="uploading" hidden @change="onUpload" />
+        <input type="file" multiple :accept="acceptAttr" :disabled="uploading" hidden @change="onUpload" />
       </label>
       <input v-model="q" class="search" placeholder="Search filename, title, alt…" @keyup.enter="load" />
       <select v-if="!only" v-model="activeKind" @change="load">
@@ -270,6 +284,6 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .usage ul { margin: var(--sp-4) 0 0; padding-left: var(--sp-18); }
 .small { font-size: 11px; }
 .editact { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-4); }
-.libtoast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg); padding: var(--sp-8) var(--sp-16); border-radius: 999px; font-size: 13px; }
+.libtoast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink-strong); color: var(--bg-base); padding: var(--sp-8) var(--sp-16); border-radius: 999px; font-size: 13px; }
 @media (max-width: 900px) { .libbody { grid-template-columns: 1fr; } .libedit { width: auto; position: static; } }
 </style>

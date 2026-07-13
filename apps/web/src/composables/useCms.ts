@@ -511,6 +511,33 @@ function axisBuckets(from: string, to: string, unit: "hour" | "day"): string[] {
   return out;
 }
 
+/** Round up to a "nice" number (1/2/5 × 10ⁿ) for an axis top. */
+function niceCeil(v: number): number {
+	if (v <= 1) return 1;
+	const exp = Math.floor(Math.log10(v));
+	const base = 10 ** exp;
+	const f = v / base;
+	const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+	return nf * base;
+}
+/** A "nice" step dividing `range` into roughly `count` intervals. */
+function niceStep(range: number, count: number): number {
+	const raw = range / Math.max(1, count);
+	const exp = Math.floor(Math.log10(raw));
+	const base = 10 ** exp;
+	const f = raw / base;
+	const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+	return nf * base;
+}
+/** Integer y-axis ticks 0..top for count data (min step 1, ~4 divisions). */
+function yAxisTicks(max: number): { top: number; ticks: number[] } {
+	const step = Math.max(1, Math.round(niceStep(niceCeil(max), 4)));
+	const top = Math.max(step, Math.ceil(max / step) * step);
+	const ticks: number[] = [];
+	for (let v = 0; v <= top + 1e-9; v += step) ticks.push(v);
+	return { top, ticks };
+}
+
 const metricTotals = computed<Record<MetricKey, number>>(() => {
   const c = analytics.value?.chart;
   const sum = (a?: { count: number }[]) => (a ?? []).reduce((s, r) => s + r.count, 0);
@@ -546,12 +573,21 @@ const chart = computed(() => {
 
   const colTotals = buckets.map((_, bi) => keys.reduce((s, _k, ki) => s + matrix[ki][bi], 0));
   const max = Math.max(1, ...colTotals);
+
+  // Plot box with margins so the axes have room for labels: the left gutter holds
+  // the y (count) scale, the bottom gutter the x (time) ticks. yAt scales to a
+  // rounded axis top rather than the raw max, so the gridline labels read cleanly.
   const W = 720;
-  const H = 170;
-  const PAD = 8;
+  const H = 210;
+  const M = { l: 38, r: 12, t: 12, b: 34 };
+  const x0 = M.l;
+  const x1 = W - M.r;
+  const y0 = M.t;
+  const y1 = H - M.b;
   const n = buckets.length;
-  const xAt = (i: number) => (n <= 1 ? W / 2 : PAD + (i / (n - 1)) * (W - 2 * PAD));
-  const yAt = (v: number) => H - 6 - (v / max) * (H - 26);
+  const { top: yTop, ticks: yTickVals } = yAxisTicks(max);
+  const xAt = (i: number) => (n <= 1 ? (x0 + x1) / 2 : x0 + (i / (n - 1)) * (x1 - x0));
+  const yAt = (v: number) => y1 - (v / yTop) * (y1 - y0);
 
   // Build stacked layer paths (bottom-up).
   const cum = new Array(buckets.length).fill(0);
@@ -572,13 +608,36 @@ const chart = computed(() => {
 
   const total = colTotals.reduce((s, v) => s + v, 0);
   const labelFmt = (b: string) => (unit === "hour" ? `${b.slice(5, 10)} ${b.slice(11)}h` : b.slice(5));
+
+  // Y ticks: value + pixel row + label (for gridlines and the count scale).
+  const yTicks = yTickVals.map((v) => ({ v, y: +yAt(v).toFixed(1), label: String(v) }));
+  // X ticks: a readable subset (~6) across the buckets, first & last always shown.
+  // Edge ticks anchor start/end so their labels stay inside the viewBox.
+  const targetX = Math.min(n, 6);
+  const stepX = Math.max(1, Math.round((n - 1) / Math.max(1, targetX - 1)));
+  const xTicks: { x: number; label: string; anchor: "start" | "middle" | "end" }[] = [];
+  for (let i = 0; i < n; i += stepX)
+    xTicks.push({ x: +xAt(i).toFixed(1), label: labelFmt(buckets[i]!), anchor: "middle" });
+  if (n > 1 && (n - 1) % stepX !== 0)
+    xTicks.push({ x: +xAt(n - 1).toFixed(1), label: labelFmt(buckets[n - 1]!), anchor: "middle" });
+  if (xTicks.length) {
+    xTicks[0]!.anchor = "start";
+    xTicks[xTicks.length - 1]!.anchor = "end";
+  }
+
   return {
     W,
     H,
+    x0,
+    x1,
+    y0,
+    y1,
     layers,
     max,
     total,
     unit,
+    yTicks,
+    xTicks,
     fromLabel: labelFmt(buckets[0] ?? a.range.from),
     toLabel: labelFmt(buckets[n - 1] ?? a.range.to),
   };
