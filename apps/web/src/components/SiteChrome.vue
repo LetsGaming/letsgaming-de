@@ -13,20 +13,20 @@ import {
 } from "../stores/site";
 import SettingsModal from "./SettingsModal.vue";
 
-const props = defineProps<{ nav: NavView[]; locale: "en" | "de"; name: string }>();
+const props = defineProps<{ nav: NavView[]; locale: "en" | "de" }>();
 
 const activeTab = useStore($activeTab);
 const theme = useStore($theme);
 const settingsOpen = ref(false);
-// Drawer is chrome-only UI state: closed on desktop (the sidebar is a static
-// column there), toggled on mobile. Not business logic, so it lives here.
+// Drawer state only matters on small screens (CSS turns the tab cluster into an
+// off-canvas drawer there); on desktop the bar is unchanged and this stays false.
 const drawerOpen = ref(false);
 
 // During SSR the shared atom is still "", so fall back to the first area for the
 // active-tab highlight; after hydration initSite() has seeded it to the same id.
 const current = computed(() => activeTab.value || props.nav[0]?.id);
 
-/** Toggle body scroll-lock so the page behind the mobile drawer can't scroll. */
+/** Lock body scroll behind the open mobile drawer. */
 function lockScroll(on: boolean) {
 	if (typeof document === "undefined") return;
 	document.body.classList.toggle("nav-locked", on);
@@ -62,29 +62,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- Mobile-only bar: brand + hamburger. Hidden ≥ the nav breakpoint (CSS). -->
-  <header class="topbar-m">
-    <div class="brand"><span class="mark">D</span><span>{{ name }}</span></div>
-    <button class="burger" aria-label="Open menu" @click="openDrawer" v-html="icons.menu" />
-  </header>
+  <!-- Hamburger: only shown ≤680px (CSS); opens the nav drawer. -->
+  <button class="nav-burger" aria-label="Open menu" @click="openDrawer" v-html="icons.menu" />
 
-  <!-- Backdrop for the mobile drawer -->
+  <!-- Drawer scrim: small screens only. -->
   <div class="scrim" :class="{ show: drawerOpen }" @click="closeDrawer" />
 
-  <!-- Side menu: a static column on desktop, an off-canvas drawer on mobile.
-       Always in the DOM (only CSS transforms it off-screen) so the nav buttons
-       stay queryable and the two islands stay in sync via the store. -->
-  <aside class="sidebar" :class="{ open: drawerOpen }">
-    <div class="sidehead">
-      <div class="brand"><span class="mark">D</span><span>{{ name }}</span></div>
-      <button class="burger close-m" aria-label="Close menu" @click="closeDrawer" v-html="icons.close" />
-    </div>
-
-    <nav class="side-nav" aria-label="Sections">
+  <!-- Desktop: the original inline tab bar + settings gear, unchanged. Small
+       screens: this same cluster becomes an off-canvas drawer (CSS only). -->
+  <div class="chrome" :class="{ open: drawerOpen }">
+    <button class="nav-close" aria-label="Close menu" @click="closeDrawer" v-html="icons.close" />
+    <nav class="tabs" aria-label="Sections">
       <button
         v-for="area in nav"
         :key="area.id"
-        class="side-tab"
+        class="tab"
         :class="{ active: area.id === current }"
         :aria-current="area.id === current ? 'page' : undefined"
         @click="onNav(area.id)"
@@ -92,13 +84,12 @@ onBeforeUnmount(() => {
         {{ area.label }}
       </button>
     </nav>
-
-    <div class="side-foot">
-      <button class="side-settings" @click="settingsOpen = true">
-        <span class="ico" v-html="icons.settings" /><span>Settings</span>
-      </button>
-    </div>
-
+    <button
+      class="theme-toggle"
+      aria-label="Settings"
+      @click="settingsOpen = true"
+      v-html="icons.settings"
+    />
     <SettingsModal
       :open="settingsOpen"
       :theme="theme"
@@ -107,5 +98,5 @@ onBeforeUnmount(() => {
       @toggle-theme="toggleTheme"
       @set-locale="setLocale"
     />
-  </aside>
+  </div>
 </template>

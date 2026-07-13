@@ -16,17 +16,19 @@ const site = await loadSite(locale);
 ---
 
 <Layout title={`${site.meta.name} — web dev & tinkerer`} locale={locale} localeAware={true}>
-  <main class="shell">
-    <!--
-      Two islands, not one: the footer here is static HTML, and the panel markup
-      below is server-rendered and only hydrates its interactive bits. `client:idle`
-      defers hydration past first paint (better LCP/TTI); the shared nanostores atoms
-      keep the side nav and panels in sync. SiteChrome owns the sidebar/drawer chrome
-      (brand, nav, settings); on desktop it's the left column, on mobile a drawer.
-    -->
-    <SiteChrome nav={site.nav} locale={site.locale} name={site.meta.name} client:idle />
+  <main>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand"><span class="mark">D</span><span>{site.meta.name}</span></div>
+        <!--
+          Two islands, not one: the brand and footer here are static HTML, and the
+          panel markup below is server-rendered and only hydrates its interactive
+          bits. `client:idle` defers hydration past first paint (better LCP/TTI);
+          the shared nanostores atoms keep the tab bar and panels in sync.
+        -->
+        <SiteChrome nav={site.nav} locale={site.locale} client:idle />
+      </div>
 
-    <div class="content">
       <SitePanels site={site} client:idle />
 
       <footer>

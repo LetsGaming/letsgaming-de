@@ -30,7 +30,14 @@ a {
   padding: clamp(var(--sp-22), 5vw, 44px) clamp(var(--sp-18), 5vw, 40px) 80px;
 }
 
-/* brand (used in the sidebar head and the mobile top bar) */
+/* header / tabs */
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-14);
+  margin-bottom: 34px;
+  flex-wrap: wrap;
+}
 .brand {
   font-family: var(--f-d);
   font-weight: 700;
@@ -51,123 +58,107 @@ a {
   font-size: 15px;
   box-shadow: 0 4px 14px rgba(124, 92, 255, 0.5);
 }
-
-/* App shell: a persistent side menu + the content column (desktop-first). The
-   nav lives on the side rather than the top so switching sections doesn't push
-   the content down. On mobile the sidebar becomes an off-canvas drawer. */
-.shell {
-  --side-w: 236px;
-  max-width: 1240px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: var(--side-w) minmax(0, 1fr);
-  gap: clamp(var(--sp-24), 4vw, 52px);
-  align-items: start;
-  padding: clamp(var(--sp-22), 5vw, 44px) clamp(var(--sp-18), 5vw, 40px) 80px;
-}
-.content {
-  min-width: 0;
-}
-
-.sidebar {
-  position: sticky;
-  top: clamp(var(--sp-22), 5vw, 44px);
+.chrome {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-16);
-}
-.sidehead {
-  display: flex;
+  gap: var(--sp-8);
+  margin-left: auto;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
 }
-.side-nav {
+.tabs {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-6);
   background: var(--card);
+  padding: var(--sp-6);
+  border-radius: 16px;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  padding: var(--sp-8);
   box-shadow: var(--sh-1);
+  flex-wrap: wrap;
 }
-.side-tab {
+.tab {
   font-family: var(--f-d);
   font-weight: 500;
-  font-size: 15px;
-  text-align: left;
+  font-size: 14px;
   color: var(--muted);
   background: none;
   border: none;
   cursor: pointer;
-  padding: var(--sp-10) var(--sp-14);
-  border-radius: var(--r-s);
+  padding: var(--sp-8) var(--sp-16);
+  border-radius: 11px;
   transition:
     color 0.2s ease,
     background 0.2s ease;
 }
-.side-tab:hover {
+.tab:hover {
   color: var(--ink);
-  background: var(--purple-wash);
 }
-.side-tab.active {
+.tab.active {
   color: #fff;
   background: var(--purple);
   box-shadow: 0 4px 14px rgba(124, 92, 255, 0.45);
 }
-.side-foot {
-  display: flex;
-}
-.side-settings {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-8);
-  font-family: var(--f-m);
-  font-size: 13px;
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
   color: var(--muted);
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-s);
-  padding: var(--sp-8) var(--sp-12);
-  cursor: pointer;
-  box-shadow: var(--sh-1);
-  transition: color 0.2s ease;
-}
-.side-settings:hover {
-  color: var(--ink);
-}
-.side-settings .ico {
-  display: inline-flex;
-}
-.side-settings svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Mobile bar + drawer affordances — hidden on desktop, shown under the nav
-   breakpoint by the media block below. */
-.topbar-m {
-  display: none;
-}
-.burger {
-  width: 42px;
-  height: 42px;
-  flex: none;
-  border-radius: var(--r-s);
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
   cursor: pointer;
   display: grid;
   place-items: center;
   box-shadow: var(--sh-1);
+  transition:
+    color 0.2s ease,
+    transform 0.12s ease;
 }
-.burger svg {
+.theme-toggle:hover {
+  color: var(--ink);
+}
+.theme-toggle:active {
+  transform: translateY(2px);
+}
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Mobile nav drawer affordances — hidden on desktop, where the tab bar stays
+   exactly as it was. The media block below (≤680px, the site's existing
+   small-screen breakpoint) turns the same tab cluster into an off-canvas drawer
+   opened by the hamburger, so the nav stops stacking on top of the content. */
+.nav-burger,
+.nav-close {
+  display: none;
+}
+.nav-burger {
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  flex: none;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  place-items: center;
+  box-shadow: var(--sh-1);
+}
+.nav-burger svg,
+.nav-close svg {
   width: 20px;
   height: 20px;
 }
-.close-m {
-  display: none;
+.nav-close {
+  align-self: flex-end;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--ink);
+  cursor: pointer;
+  place-items: center;
 }
 .scrim {
   display: none;
@@ -176,39 +167,20 @@ body.nav-locked {
   overflow: hidden;
 }
 
-/* Below the nav breakpoint the sidebar slides in as a drawer over a scrim, and a
-   sticky top bar carries the brand + hamburger. */
-@media (max-width: 860px) {
-  .shell {
-    display: block;
-    max-width: none;
-    margin: 0;
-    padding: 0;
+@media (max-width: 680px) {
+  .nav-burger {
+    display: grid;
   }
-  .content {
-    padding: 0 clamp(var(--sp-16), 5vw, var(--sp-24)) 72px;
-  }
-  .topbar-m {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-12);
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    padding: var(--sp-12) clamp(var(--sp-16), 5vw, var(--sp-24));
-    margin-bottom: var(--sp-16);
-    background: color-mix(in srgb, var(--bg-base) 86%, transparent);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--line);
-  }
-  .sidebar {
+  /* The tab cluster slides in from the left as a drawer over a scrim. */
+  .chrome {
     position: fixed;
     inset: 0 auto 0 0;
-    top: 0;
     z-index: 60;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-14);
     width: min(280px, 82vw);
-    gap: var(--sp-20);
+    margin-left: 0;
     padding: var(--sp-18);
     overflow-y: auto;
     background: var(--card);
@@ -217,29 +189,28 @@ body.nav-locked {
     transform: translateX(-102%);
     transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
   }
-  .sidebar.open {
+  .chrome.open {
     transform: none;
   }
-  .close-m {
+  .nav-close {
     display: grid;
   }
-  .side-nav {
+  .tabs {
+    flex-direction: column;
     background: none;
     border: none;
     box-shadow: none;
     padding: 0;
     gap: var(--sp-6);
   }
-  .side-tab {
+  .tab {
+    text-align: left;
     font-size: 16px;
     padding: var(--sp-12) var(--sp-14);
   }
-  .side-foot {
+  .theme-toggle {
     margin-top: auto;
-  }
-  .side-settings {
-    width: 100%;
-    justify-content: center;
+    align-self: flex-start;
   }
   .scrim.show {
     display: block;

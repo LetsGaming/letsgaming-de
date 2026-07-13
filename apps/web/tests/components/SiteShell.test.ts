@@ -128,7 +128,7 @@ const site = {
 const Shell = {
 	components: { SiteChrome, SitePanels },
 	props: ["site"],
-	template: `<div><SiteChrome :nav="site.nav" :locale="site.locale" :name="site.meta.name" /><SitePanels :site="site" /></div>`,
+	template: `<div><SiteChrome :nav="site.nav" :locale="site.locale" /><SitePanels :site="site" /></div>`,
 };
 
 beforeEach(() => {
