@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. All state and handlers come from the shared CMS context.
@@ -18,6 +19,23 @@ const {
 	setRange,
 	tab,
 } = useCmsContext();
+
+// Click a series (its area or legend entry) to pin a detail readout for it.
+const selectedKey = ref<string | null>(null);
+const selected = computed(
+	() => chart.value?.layers.find((l) => l.key === selectedKey.value) ?? null,
+);
+const selectedShare = computed(() => {
+	const t = chart.value?.total ?? 0;
+	return selected.value && t ? Math.round((selected.value.total / t) * 100) : 0;
+});
+function toggleKey(k: string) {
+	selectedKey.value = selectedKey.value === k ? null : k;
+}
+// Drop the selection when the metric or range changes (the series may disappear).
+watch([metric, rangeHours], () => {
+	selectedKey.value = null;
+});
 </script>
 
 <template>
@@ -65,8 +83,16 @@ const {
                 :y1="t.y"
                 :y2="t.y"
               />
-              <!-- stacked area layers -->
-              <path v-for="l in chart.layers" :key="l.key" :d="l.path" :fill="l.color" fill-opacity="0.85">
+              <!-- stacked area layers (clickable → detail) -->
+              <path
+                v-for="l in chart.layers"
+                :key="l.key"
+                class="c-layer"
+                :d="l.path"
+                :fill="l.color"
+                :fill-opacity="selectedKey && selectedKey !== l.key ? 0.22 : 0.85"
+                @click="toggleKey(l.key)"
+              >
                 <title>{{ l.key }}: {{ l.total }}</title>
               </path>
               <!-- axis lines -->
@@ -88,12 +114,28 @@ const {
               No {{ METRIC_LABELS[metric].toLowerCase() }} recorded in this range yet.
             </p>
             <div v-if="chart && chart.total > 0" class="legend">
-              <span v-for="l in chart.layers" :key="l.key" class="lg">
+              <button
+                v-for="l in chart.layers"
+                :key="l.key"
+                type="button"
+                class="lg"
+                :class="{ on: selectedKey === l.key }"
+                @click="toggleKey(l.key)"
+              >
                 <i :style="{ background: l.color }" />{{ l.key }} <b>{{ l.total }}</b>
-              </span>
+              </button>
             </div>
+            <div v-if="selected" class="seriesdetail">
+              <span class="sd-name"><i :style="{ background: selected.color }" />{{ selected.key }}</span>
+              <span>{{ selected.total }} {{ METRIC_LABELS[metric].toLowerCase() }}</span>
+              <span v-if="chart && chart.total">{{ selectedShare }}% of total</span>
+              <span v-if="selected.peak.value">busiest {{ selected.peak.label }} · {{ selected.peak.value }}</span>
+              <button type="button" class="link sd-clear" @click="selectedKey = null">clear</button>
+            </div>
+            <p v-else-if="chart && chart.total > 0" class="muted lg-hint">Tap a series for details.</p>
             <div v-if="chart" class="axistip">
-              <span><b>{{ METRIC_LABELS[metric] }}</b> per {{ chart.unit === "hour" ? "hour" : "day" }} (vertical) · time in UTC (horizontal)</span>
+              <span><b>{{ METRIC_LABELS[metric] }}</b> per {{ chart.unit === "hour" ? "hour" : "day" }} (vertical) ·
+                {{ chart.unit === "hour" ? `times in ${chart.tz}` : "by date" }} (horizontal)</span>
               <span v-if="loadingA" class="muted">updating…</span>
             </div>
             <div class="clearbar">

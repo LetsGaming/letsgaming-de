@@ -123,104 +123,6 @@ a {
   height: 18px;
 }
 
-/* Mobile nav drawer affordances — hidden on desktop, where the tab bar stays
-   exactly as it was. The media block below (≤680px, the site's existing
-   small-screen breakpoint) turns the same tab cluster into an off-canvas drawer
-   opened by the hamburger, so the nav stops stacking on top of the content. */
-.nav-burger,
-.nav-close {
-  display: none;
-}
-.nav-burger {
-  width: 40px;
-  height: 40px;
-  margin-left: auto;
-  flex: none;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  cursor: pointer;
-  place-items: center;
-  box-shadow: var(--sh-1);
-}
-.nav-burger svg,
-.nav-close svg {
-  width: 20px;
-  height: 20px;
-}
-.nav-close {
-  align-self: flex-end;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--card-2);
-  color: var(--ink);
-  cursor: pointer;
-  place-items: center;
-}
-.scrim {
-  display: none;
-}
-body.nav-locked {
-  overflow: hidden;
-}
-
-@media (max-width: 680px) {
-  .nav-burger {
-    display: grid;
-  }
-  /* The tab cluster slides in from the left as a drawer over a scrim. */
-  .chrome {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 60;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--sp-14);
-    width: min(280px, 82vw);
-    margin-left: 0;
-    padding: var(--sp-18);
-    overflow-y: auto;
-    background: var(--card);
-    border-right: 1px solid var(--line);
-    box-shadow: var(--sh-2);
-    transform: translateX(-102%);
-    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
-  }
-  .chrome.open {
-    transform: none;
-  }
-  .nav-close {
-    display: grid;
-  }
-  .tabs {
-    flex-direction: column;
-    background: none;
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    gap: var(--sp-6);
-  }
-  .tab {
-    text-align: left;
-    font-size: 16px;
-    padding: var(--sp-12) var(--sp-14);
-  }
-  .theme-toggle {
-    margin-top: auto;
-    align-self: flex-start;
-  }
-  .scrim.show {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 55;
-    background: rgba(0, 0, 0, 0.5);
-  }
-}
-
 /* panels */
 .panel[hidden] {
   display: none;
@@ -933,8 +835,8 @@ a.ev-link:hover .ei svg {
   top: 24px;
   font-size: 14px;
 }
-/* Docs nav drawer affordances — the bar + close + scrim only appear on mobile
-   (media block near the end); on desktop the nav is just the sticky sidebar. */
+/* Docs nav drawer affordances — the bar, close button and scrim only appear on
+   mobile (media block below); on desktop the nav is just the sticky sidebar. */
 .doc-topbar {
   display: none;
 }
@@ -946,11 +848,30 @@ a.ev-link:hover .ei svg {
 .doc-navhead .doc-home {
   margin-bottom: 0;
 }
+.doc-burger {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--sh-1);
+}
+.doc-burger svg {
+  width: 20px;
+  height: 20px;
+}
 .doc-close {
   display: none;
 }
 .doc-scrim {
   display: none;
+}
+body.nav-locked {
+  overflow: hidden;
 }
 .doc-home {
   display: inline-block;
@@ -1136,11 +1057,11 @@ a.ev-link:hover .ei svg {
   .doc-nav.open {
     transform: none;
   }
-  .doc-close {
-    display: grid;
-  }
   .doc-navhead {
     margin-bottom: var(--sp-16);
+  }
+  .doc-close {
+    display: grid;
   }
   .doc-scrim.show {
     display: block;
@@ -1178,6 +1099,11 @@ footer b {
 }
 
 @media (max-width: 680px) {
+  .chrome {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
   .dash {
     grid-template-columns: 1fr;
   }
@@ -1187,9 +1113,8 @@ footer b {
   }
 }
 /* Projects/featured grid stays two-up on phones (a pinned card spans the full
-   width via `grid-column: 1 / -1`, so the grid keeps the pinned-vs-rest
-   hierarchy instead of flattening to a single column). Tighten the cards so two
-   fit comfortably at phone widths. */
+   width via `grid-column: 1 / -1`, keeping the pinned-vs-rest hierarchy instead
+   of flattening to one column). Tighten the cards so two fit at phone widths. */
 @media (max-width: 560px) {
   .grid {
     gap: var(--sp-12);
