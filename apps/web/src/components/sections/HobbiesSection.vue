@@ -17,7 +17,7 @@ defineProps<{
     </div>
     <div class="hobbies">
       <p v-if="!module.data.hobbies.length" class="sub">Nothing here yet.</p>
-      <div v-for="h in module.data.hobbies" :key="h.id" class="tile">
+      <div v-for="h in module.data.hobbies" :key="h.id" class="tile" :class="'t-' + h.tone">
         <div>
           <div class="ic" v-html="h.icon ? icons[h.icon] : ''" />
           <h3>{{ h.title }}</h3>

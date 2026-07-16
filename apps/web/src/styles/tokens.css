@@ -14,15 +14,15 @@
 
 :root {
   /* ── Ink ─────────────────────────────────────────────────────────────── */
-  --ink: #eceaef;
+  --ink: #ece9f7;
   --ink-strong: #fff;
-  --muted: #8b8794;
+  --muted: #948cb6;
 
   /* ── The accent. Sampled off the LED strip on the shelf, photographed on
      /life with the hex in the caption — that's why it's this purple and not
      the violet-500 the prototype shipped. White passes AA on --live in both
      themes, so --on-live is fixed. */
-  --live: #8a2be2;
+  --live: #8b5cf6;
 
   /* Error. Not decoration and not "now": a form that can't say what went wrong
      is broken, and red-for-error is a convention old enough to count as
@@ -30,7 +30,7 @@
      being a state rather than a style. */
   --danger: #ff6b5e;
   --danger-ink: #ff8f85;
-  --live-ink: #c77dff;
+  --live-ink: #a78bfa;
   --on-live: #fff;
 
   /* One consumer: the live dot. Grep before adding a second. */
@@ -40,13 +40,13 @@
      has nothing darker to fall onto, which is why the old --sh-* faked lift
      with a purple bloom. Step the surface, strengthen the line, no shadow.
      Hover = +1 level, so these double as interaction states. */
-  --surf-0: #131215;
-  --surf-1: #1a191d;
-  --surf-2: #211f26;
-  --surf-3: #272430;
+  --surf-0: #0e0c18;
+  --surf-1: #1a1730;
+  --surf-2: #231e3e;
+  --surf-3: #2d2650;
 
   --line-1: rgba(255, 255, 255, 0.07);
-  --line-2: rgba(255, 255, 255, 0.12);
+  --line-2: rgba(167, 139, 250, 0.22);
 
   /* Dark gets its depth from --surf-*; light gets it from these. Same tokens,
      so a component never branches on theme. */
@@ -63,7 +63,14 @@
   --heat-4: #837e93;
   --heat-today: var(--live-ink);
 
-  --track: #221f28;
+  --track: #221d3c;
+
+  /* Hobby tile tones — CMS-authored, one per hobby. Not a palette filling slots:
+     the owner picks these, which is authorship, not invention. */
+  --tile-purple: linear-gradient(160deg, #251d47, #1c1633);
+  --tile-mint: linear-gradient(160deg, #16342f, #171a33);
+  --tile-coral: linear-gradient(160deg, #341f2a, #1e1830);
+  --tile-sun: linear-gradient(160deg, #37301c, #1e1a31);
 
   /* ── Categorical palette for the CMS analytics chart. Admin surface, real
      categorical data, no better source to import from — the one place a

@@ -1145,3 +1145,20 @@ footer b {
   padding: var(--sp-8) var(--sp-12);
   margin-bottom: var(--sp-20);
 }
+
+
+/* Hobby tones. Authored per hobby in the CMS, not assigned by a palette — which
+   is the distinction the "imported, never invented" rule was always about. These
+   are the tiles' resting state; a photo replaces the gradient when there is one. */
+.tile.t-purple {
+  background: var(--tile-purple);
+}
+.tile.t-mint {
+  background: var(--tile-mint);
+}
+.tile.t-coral {
+  background: var(--tile-coral);
+}
+.tile.t-sun {
+  background: var(--tile-sun);
+}
