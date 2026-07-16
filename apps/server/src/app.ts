@@ -63,7 +63,12 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   }
   await app.register(cors, {
     origin: allowAll ? true : env.webOrigin.split(",").map((o) => o.trim()),
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    // Must list every method the routes register. PATCH was missing since the CMS
+    // was written: it's how asset metadata (alt/caption/title/slug) is edited, and
+    // it fails at *preflight* — so the browser blocks it before the server sees a
+    // request, and nothing appears in the server log to explain it. It stayed
+    // hidden because an empty asset library never PATCHes anything.
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: !allowAll,
   });
 

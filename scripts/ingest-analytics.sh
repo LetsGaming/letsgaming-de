@@ -8,8 +8,19 @@
 # The server ingests /logs itself every 5 minutes (ADR 0013), so this script's only
 # job is to put a readable file there. It does not parse anything.
 #
-# Prereqs: SSH key from this host to the proxy host, and the log in nginx
-# "combined" format (NPMplus host advanced tab: `access_log <path> combined;`).
+# Prereqs:
+#   1. SSH key from this host to the proxy host.
+#   2. NPMplus mounts /opt/npmplus (host) at /data (container), so the log has TWO
+#      names and they are not interchangeable:
+#        - nginx writes to the CONTAINER path. In the host's advanced tab:
+#              access_log /data/nginx/logs/letsgaming_combined.log combined;
+#        - PROXY_LOG below is the HOST path, because scp reads the host's
+#          filesystem over SSH:
+#              /opt/npmplus/nginx/logs/letsgaming_combined.log
+#      Using either path on the wrong side fails as "no such file" while the file
+#      plainly exists — the same shape of bug as ACCESS_LOG_DIR vs ACCESS_LOG below.
+#   3. mkdir -p /opt/npmplus/nginx/logs on the proxy host FIRST. nginx creates log
+#      files, never their directories, and `nginx -t` refuses to start without it.
 #
 # Env overrides: PROXY_HOST, PROXY_LOG, LOCAL_DIR, LOCAL_LOG, ENV_FILE, OWN_HOST.
 set -euo pipefail
