@@ -90,20 +90,20 @@ if (env.accessLog) {
         try {
           const st = statSync(file);
           const mode = (st.mode & 0o777).toString(8).padStart(4, "0");
-          const where =
-            st.gid === 0
-              ? // Joining group 0 would hand the container root's group rights and
-                // undo `USER node`. A file that is root:root 0600 has no group to
-                // borrow — it has to be given one on the host first.
-                `give it a readable group on the host (chgrp <group> ${file} && chmod 640), ` +
-                `then add that gid via compose group_add`
-              : `add the container to its group (compose: group_add: ["${st.gid}"])`;
+          // Lead with the writer, not with chmod. This file is replaced on a
+          // schedule (scripts/ingest-analytics.sh scps it in), so a one-off chmod
+          // works exactly until the next copy and then silently stops — which
+          // reads as "it worked once and broke itself", the least debuggable
+          // shape a problem can have. Whoever creates the file owns its mode.
+          const owner = st.uid === 0 && st.gid === 0 ? "root:root" : `${st.uid}:${st.gid}`;
           app.log.warn(
-            `[analytics] can't read ${file}: mode ${mode}, owner ${st.uid}:${st.gid}; ` +
-              `this process is ${process.getuid?.() ?? "?"}:${process.getgid?.() ?? "?"}. ` +
-              `To fix, ${where}. Whatever writes the log must keep that mode — ` +
-              `logrotate's "create" directive, or the writer's umask — or the next ` +
-              `rotation silently reverts it.`,
+            `[analytics] can't read ${file}: mode ${mode}, owner ${owner}; this process is ` +
+              `${process.getuid?.() ?? "?"}:${process.getgid?.() ?? "?"} (the container runs as ` +
+              `\`node\`, not root). Fix this where the file is *written*, not with a one-off ` +
+              `chmod — anything that recreates it (scripts/ingest-analytics.sh, logrotate, a ` +
+              `sync job) resets the mode and breaks ingest again with nothing having changed. ` +
+              `If ingest-analytics.sh copies this log, make sure it is the version that ` +
+              `chmods 0644 before moving the file into place.`,
           );
           return;
         } catch {
