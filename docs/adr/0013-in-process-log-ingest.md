@@ -52,3 +52,39 @@ default to JSON, in which case every line fails.
 So: lines read and none parsed now warns once, with the first unreadable line
 quoted. Missing file still degrades quietly. The split is between "nothing to do"
 and "something is wrong and I can prove it".
+
+### Follow-up — the copier owns the mode
+
+`ingest-analytics.sh` scps the log from the proxy host. scp writes as the invoking
+user with that user's umask, so under cron the result is `root:root 0600` — and the
+server container runs as `node`, which cannot read it. The file is right there and
+unreadable, every run.
+
+The fix belongs in the script, not on the host: the script *creates the file on
+every run*, so a one-off `chmod` is undone by the next copy. Nothing else owns
+this file's lifecycle, so nothing else can own its mode. It now `chmod 0644`s the
+copy before moving it into place (0644 is safe: single-tenant host, mounted
+read-only, IP dropped at parse).
+
+Two things fell out of looking at it:
+
+- **The script had its own path defaults** (`/opt/letsgaming/logs`) which disagreed
+  with `.env`'s `ACCESS_LOG_DIR`. Run unmodified, it copied to a directory that
+  isn't mounted, and ingest saw nothing while both halves looked healthy. It reads
+  `.env` now — one directory, one source of truth.
+- **Its `docker compose exec … cli.js` call was vestigial.** This ADR made ingest
+  in-process; the CLI re-did the same work behind the same offset, and ran as
+  `node` too, so it hit the identical permission error. The script's only job is to
+  put a readable file in the mounted directory. It doesn't parse anything now.
+
+### Follow-up — the two-path footgun
+
+`ACCESS_LOG_DIR` is the host directory; `ACCESS_LOG` is the path *inside* the
+container, under the `/logs` mount. Both look like paths, both are set in the same
+`.env` block, and setting them consistently is the intuitive move and the wrong
+one. `ENOENT` is then technically accurate and useless: the file exists, just not
+where the container was told to look.
+
+Boot now checks for the same basename under `/logs` and, if it's there, prints the
+exact line to change rather than the errno. Documentation didn't prevent this —
+the docs already said it — so the code says it at the moment it matters.

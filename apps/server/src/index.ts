@@ -4,6 +4,11 @@ import { getStore } from "./store.js";
 import { SyncRunner } from "./sync/runner.js";
 import { ingestLog } from "./analytics/ingest.js";
 import cron from "node-cron";
+import { existsSync, statSync } from "node:fs";
+import { basename } from "node:path";
+
+/** Where docker-compose mounts ACCESS_LOG_DIR inside the container. */
+const LOG_MOUNT = "/logs";
 
 const env = loadEnv();
 const store = getStore(env.dbPath);
@@ -59,7 +64,53 @@ if (env.accessLog) {
         );
       }
     } catch (err) {
-      app.log.warn(`[analytics] ingest skipped: ${(err as Error).message}`);
+      const message = (err as Error).message;
+      // ACCESS_LOG_DIR is the HOST directory; ACCESS_LOG is the path INSIDE the
+      // container, under the /logs mount. Both look like paths, and setting them
+      // consistently — the intuitive move — is wrong. "ENOENT" is technically
+      // true and useless: the file exists, just not where we were told to look.
+      // If the same basename is sitting under /logs, say the actual fix.
+      if (message.includes("ENOENT") && !file.startsWith(`${LOG_MOUNT}/`)) {
+        const guess = `${LOG_MOUNT}/${basename(file)}`;
+        if (existsSync(guess)) {
+          app.log.warn(
+            `[analytics] ACCESS_LOG is "${file}", which doesn't exist in the container — ` +
+              `that looks like the HOST path. The log is mounted at ${LOG_MOUNT}. ` +
+              `Set ACCESS_LOG=${guess} (ACCESS_LOG_DIR stays the host directory).`,
+          );
+          return;
+        }
+      }
+      // EACCES: the file is there and we can't read it. The container runs as
+      // `node` (see Dockerfile) and a proxy access log is typically root:adm 0640,
+      // so this is the default outcome, not an edge case. "permission denied" is
+      // true and unactionable — report who we are and what the file wants, so the
+      // fix is arithmetic rather than a guess.
+      if (message.includes("EACCES")) {
+        try {
+          const st = statSync(file);
+          const mode = (st.mode & 0o777).toString(8).padStart(4, "0");
+          const where =
+            st.gid === 0
+              ? // Joining group 0 would hand the container root's group rights and
+                // undo `USER node`. A file that is root:root 0600 has no group to
+                // borrow — it has to be given one on the host first.
+                `give it a readable group on the host (chgrp <group> ${file} && chmod 640), ` +
+                `then add that gid via compose group_add`
+              : `add the container to its group (compose: group_add: ["${st.gid}"])`;
+          app.log.warn(
+            `[analytics] can't read ${file}: mode ${mode}, owner ${st.uid}:${st.gid}; ` +
+              `this process is ${process.getuid?.() ?? "?"}:${process.getgid?.() ?? "?"}. ` +
+              `To fix, ${where}. Whatever writes the log must keep that mode — ` +
+              `logrotate's "create" directive, or the writer's umask — or the next ` +
+              `rotation silently reverts it.`,
+          );
+          return;
+        } catch {
+          /* fall through to the generic warning */
+        }
+      }
+      app.log.warn(`[analytics] ingest skipped: ${message}`);
     }
   };
   runIngest(); // once at boot
