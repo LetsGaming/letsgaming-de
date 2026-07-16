@@ -22,6 +22,21 @@ interface PostAsset {
   slug: string;
   filename: string;
   title?: string;
+  alt?: string;
+}
+
+/**
+ * `/api/cms/assets` returns `{ assets, folders, tags }`, not a bare array.
+ *
+ * The client's `handle` resolves to `any`, so `await cms.listAssets() as Asset[]`
+ * typechecked, built, and shipped — the cast asserted a shape nobody verified and
+ * silenced the one thing that could have caught it. Naming the envelope means the
+ * next call site can't make the same claim.
+ */
+interface AssetListResponse {
+  assets: PostAsset[];
+  folders: { id: string; name: string }[];
+  tags: string[];
 }
 
 const posts = ref<PostAsset[]>([]);
@@ -36,8 +51,8 @@ const parsed = computed(() => parsePost(source.value, current.value?.slug ?? "un
 const dirty = ref(false);
 
 async function loadList() {
-  const all = (await cms.listAssets({ kind: "markdown" })) as PostAsset[];
-  posts.value = all.filter((a) => a.slug?.startsWith(POST_PREFIX));
+  const { assets } = (await cms.listAssets({ kind: "markdown" })) as AssetListResponse;
+  posts.value = assets.filter((a) => a.slug?.startsWith(POST_PREFIX));
 }
 
 async function open(post: PostAsset) {
@@ -106,8 +121,11 @@ function insert(text: string) {
 /** Image picker: straight into the existing DAM. No uploads here — the library
  *  is the library, and a second upload path would mean two sets of rules. */
 async function pickImage() {
-  const all = (await cms.listAssets({ kind: "image" })) as { id: string; filename: string; alt?: string }[];
-  if (!all.length) return flash("No images in the library yet.");
+  const { assets: all } = (await cms.listAssets({ kind: "image" })) as AssetListResponse;
+  if (!all.length) {
+    flash("No images in the library yet.");
+    return;
+  }
   const choice = window.prompt(
     `Image to insert:\n${all.map((a, i) => `${i + 1}. ${a.filename}`).join("\n")}`,
     "1",
@@ -120,7 +138,7 @@ async function pickImage() {
  *  point at an area that doesn't exist — and can't go stale against a copy
  *  fetched separately. */
 function pickLink() {
-  const areas = (layoutAreas.value ?? []) as { id: string }[];
+  const areas = layoutAreas.value ?? [];
   if (!areas.length) {
     flash("No areas loaded.");
     return;
