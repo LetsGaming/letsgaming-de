@@ -13,24 +13,20 @@
 import type { Localized } from "./i18n.js";
 
 export type ModuleKind =
-  // Home
   | "hero"
   | "featured"
   | "glance"
-  // Work
   | "activity"
-  | "highlights"
   | "coding"
   | "projects"
-  // Life
   | "hobbies"
   | "now"
   | "guestbook"
   | "presence"
   | "gallery"
-  // About
   | "bio"
-  | "contact";
+  | "contact"
+  | "posts";
 
 export interface ModuleDescriptor {
   id: string;

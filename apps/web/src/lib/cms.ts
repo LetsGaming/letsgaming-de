@@ -142,6 +142,21 @@ export const cms = {
       body: fd,
     }).then(handle);
   },
+  /** Read a markdown asset's source for editing. Public route: the editor needs
+   *  the raw file, and drafts are already gated there by the preview token. */
+  getMarkdown: (slug: string) =>
+    fetch(`${apiBase}/api/assets/md/${encodeURIComponent(slug)}`, {
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle),
+  /** Rewrite a markdown asset's contents. Stable id, new bytes — see the route. */
+  putMarkdown: (id: string, markdown: string) =>
+    fetch(`${apiBase}/api/cms/assets/${id}/content`, {
+      method: "PUT",
+      headers: headers(true),
+      credentials: "include",
+      body: JSON.stringify({ markdown }),
+    }).then(handle),
   updateAsset: (id: string, patch: Record<string, unknown>) =>
     fetch(`${apiBase}/api/cms/assets/${id}`, {
       method: "PATCH",

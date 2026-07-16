@@ -34,3 +34,21 @@ names, so setting it can't be silently ignored.
   working without a container restart.
 - The IP is dropped at parse time and never stored.
 - Earlier docs that described analytics as a manual cron are superseded.
+
+## Amendment — "degrade quietly" was too broad
+
+The original said missing or unreadable files degrade quietly rather than
+crashing. Right for *missing*. Wrong for *present and unreadable*, and the ADR
+never separated the two — so a log full of lines the parser can't read produced
+byte-identical output to no log at all: silence.
+
+The caller made it worse: `if (r.hits) log.info(...)`. Zero hits logged nothing.
+An unparseable log and an unconfigured one were indistinguishable from outside,
+which is exactly the failure mode where you most need to be told something.
+
+The parser expects nginx/Apache **combined** format. Caddy and Traefik both
+default to JSON, in which case every line fails.
+
+So: lines read and none parsed now warns once, with the first unreadable line
+quoted. Missing file still degrades quietly. The split is between "nothing to do"
+and "something is wrong and I can prove it".

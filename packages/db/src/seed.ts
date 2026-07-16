@@ -129,6 +129,54 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
     return { addedModules: [], placed: [] }; // not seeded yet — seedIfEmpty handles it
   }
 
+  // 0. Structural drift the additive passes below can't express.
+  //
+  //    Everything after this point reconciles *by node id* and only ever adds:
+  //    it can't rename a node, delete a retired module, or create a node the
+  //    store has never heard of. Those are exactly what an area rename is, so
+  //    without this an IA change would live in the code and never reach a store
+  //    that was already seeded — the site would keep serving the old tree.
+  //
+  //    Each entry is one-shot and idempotent: it only fires while the old shape
+  //    is still present.
+  const renamedNodes: Record<string, string> = { work: "code" };
+  const retiredModules = new Set(["highlights"]);
+  let structuralChange = false;
+
+  const renameNodes = (nodes: NavNode[]): void => {
+    for (const n of nodes) {
+      const to = renamedNodes[n.id];
+      if (to && !nodes.some((o) => o.id === to)) {
+        n.id = to;
+        structuralChange = true;
+      }
+      if (n.modules) {
+        const kept = n.modules.filter((id) => !retiredModules.has(id));
+        if (kept.length !== n.modules.length) {
+          n.modules = kept;
+          structuralChange = true;
+        }
+      }
+      if (n.children) renameNodes(n.children);
+    }
+  };
+  renameNodes(nav);
+
+  // Nodes the launch tree has and the store doesn't. Appended, keeping any
+  // store-only areas the CMS added.
+  for (const launchNode of LAUNCH_NAV) {
+    if (!nav.some((n) => n.id === launchNode.id)) {
+      nav.push(structuredClone(launchNode));
+      structuralChange = true;
+    }
+  }
+
+  if (retiredModules.size) {
+    const before = modules.length;
+    modules = modules.filter((m) => !retiredModules.has(m.id));
+    if (modules.length !== before) structuralChange = true;
+  }
+
   // 1. Append missing launch-module descriptors.
   const known = new Set(modules.map((m) => m.id));
   const addedModules: string[] = [];
@@ -189,7 +237,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   };
   reconcileLeaves(nav);
 
-  if (addedModules.length || metaChanged) ia.setModules(modules);
-  if (placed.length) ia.setNav(nav);
+  if (structuralChange || addedModules.length || metaChanged) ia.setModules(modules);
+  if (structuralChange || placed.length) ia.setNav(nav);
   return { addedModules, placed };
 }

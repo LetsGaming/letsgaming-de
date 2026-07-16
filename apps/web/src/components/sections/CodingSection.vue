@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { langColor } from "../../lib/icons";
+import Freshness from "../Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "coding" }>;
@@ -11,11 +12,11 @@ defineProps<{
 
 <template>
   <section class="sec">
-    <div class="sec-head rise">
+    <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
+      <Freshness :freshness="module.data.freshness" />
     </div>
-    <div v-if="module.data.coding" class="box rise">
+    <div v-if="module.data.coding" class="box">
       <div class="sub">{{ module.data.coding.range }} · {{ module.data.coding.totalHours }}h tracked</div>
       <div class="lang">
         <div v-for="l in module.data.coding.languages" :key="l.name" class="row">
@@ -25,6 +26,6 @@ defineProps<{
         </div>
       </div>
     </div>
-    <p v-else class="sub rise">No coding time synced yet.</p>
+    <p v-else class="sub">No coding time synced yet.</p>
   </section>
 </template>

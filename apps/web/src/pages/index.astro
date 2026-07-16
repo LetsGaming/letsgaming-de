@@ -1,41 +1,6 @@
 ---
-import SiteChrome from "../components/SiteChrome.vue";
-import SitePanels from "../components/SitePanels.vue";
-import Layout from "../layouts/Layout.astro";
-import { loadSite, pickLocale } from "../lib/site";
-
-// SSR per request. Pick the locale from an explicit `?lang`, else the browser's
-// Accept-Language, else English; the read API localizes the whole SiteView for
-// it (missing translations fall back to English). Still nothing external is
-// fetched here — loadSite reads the local store via the API.
-const locale = pickLocale(
-  Astro.url.searchParams.get("lang"),
-  Astro.request.headers.get("accept-language"),
-);
-const site = await loadSite(locale);
+// The first area is the site root. `/home` doesn't also exist — one canonical URL.
+import AreaPage from "../components/AreaPage.astro";
 ---
 
-<Layout title={`${site.meta.name} — web dev & tinkerer`} locale={locale} localeAware={true}>
-  <main>
-    <div class="wrap">
-      <div class="top">
-        <div class="brand"><span class="mark">D</span><span>{site.meta.name}</span></div>
-        <!--
-          Two islands, not one: the brand and footer here are static HTML, and the
-          panel markup below is server-rendered and only hydrates its interactive
-          bits. `client:idle` defers hydration past first paint (better LCP/TTI);
-          the shared nanostores atoms keep the tab bar and panels in sync.
-        -->
-        <SiteChrome nav={site.nav} locale={site.locale} client:idle />
-      </div>
-
-      <SitePanels site={site} client:idle />
-
-      <footer>
-        made with a lot of <b>purple</b> · @{site.meta.handle} ·
-        <a href="/docs" style="color: var(--purple-br)">Docs</a> ·
-        <a href="/datenschutz" style="color: var(--purple-br)">Datenschutz</a>
-      </footer>
-    </div>
-  </main>
-</Layout>
+<AreaPage />

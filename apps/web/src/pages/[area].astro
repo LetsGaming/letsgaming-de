@@ -1,0 +1,24 @@
+---
+// Every area except the first. Static routes (`/docs`, `/datenschutz`) are more
+// specific and win, so this only catches area segments and unknown paths.
+//
+// A hidden area 404s here without a guard of its own: the resolver strips drafts
+// from `site.nav`, so `areaById` can't find one, `area` is undefined, and the
+// page renders nothing but a 404. That's what makes `hidden` a fact rather than
+// a flag — the router enforces it.
+import AreaPage from "../components/AreaPage.astro";
+import { areaById } from "../lib/area";
+import { loadSite, pickLocale } from "../lib/site";
+
+const locale = pickLocale(
+  Astro.url.searchParams.get("lang"),
+  Astro.request.headers.get("accept-language"),
+);
+const site = await loadSite(locale);
+const { area } = Astro.params;
+
+if (area === site.nav[0]?.id) return Astro.redirect(`/`, 308);
+if (!areaById(site.nav, area)) Astro.response.status = 404;
+---
+
+<AreaPage area={area} />

@@ -24,13 +24,41 @@ export interface Source<Raw = unknown, Normalized = unknown> {
   /** How often the sync runner polls it — a cron-ish interval string. */
   schedule: string;
   /**
+   * How long this source's data stays *true*, in milliseconds. Distinct from
+   * `schedule`: that's how often we ask, this is how long the answer holds.
+   * Discord presence is worthless after a minute; a fortnight of Steam playtime
+   * is fine an hour old.
+   *
+   * Past it the module renders `stale` — the data plus its age — rather than
+   * pretending to be current. The site's entire claim is that it updates itself,
+   * so rendering old data as fresh is the worst bug available to it.
+   *
+   * A `ttl` shorter than `schedule` means the source is stale by design; that's
+   * a config error, not a strictness setting.
+   */
+  ttl: number;
+  /**
    * Hit the external API. Returns a typed Result rather than throwing — an
    * unavailable/slow upstream is expected, and the sync worker degrades (keeps
    * the last-good snapshot) on a failure instead of crashing the run.
    */
   fetch(): Promise<Result<Raw>>;
-  /** Map the raw response to the common shape stored in the DB. */
+  /** Map the raw response to the common shape stored in the DB. Pure. */
   normalize(raw: Raw): Normalized;
+  /**
+   * Optional async pass over the normalized shape, before it's persisted.
+   *
+   * `normalize` is pure and synchronous, and that's worth keeping — it's what
+   * makes the whole pipeline testable without a network. But some enrichment
+   * genuinely needs I/O (sampling a colour out of an image the normalized shape
+   * points at), and doing it in `fetch` doesn't work because the thing to fetch
+   * is only known once normalize has built it.
+   *
+   * So: name the async step instead of making the pure one lie. Failures inside
+   * must degrade to the un-enriched shape, never throw — enrichment is a bonus,
+   * not a dependency.
+   */
+  enrich?(normalized: Normalized): Promise<Normalized>;
 }
 
 /**
@@ -152,7 +180,19 @@ export interface SteamData {
   /** Currently in-game, if the public profile exposes it. */
   playing?: { name: string; appId: number };
   /** Recently played (last 2 weeks), most-played first. */
-  recent: { name: string; appId: number; minutes2Weeks: number; iconUrl?: string }[];
+  recent: {
+    name: string;
+    appId: number;
+    minutes2Weeks: number;
+    iconUrl?: string;
+    /**
+     * Dominant colour of the game's own icon, sampled at sync. Colour is
+     * imported, never invented: the bar for a game is the colour of that game,
+     * not a slot from a house palette. Absent if the icon didn't load — the bar
+     * falls back to neutral rather than to a guess.
+     */
+    accent?: string;
+  }[];
 }
 
 export type SourceId = keyof SourceData;

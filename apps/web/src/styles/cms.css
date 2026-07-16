@@ -171,45 +171,6 @@
   align-items: center;
   gap: var(--sp-10);
 }
-/* Mobile nav-drawer affordances — hidden on desktop, where the sidebar is
-   unchanged. The ≤720px block below turns the sidebar into an off-canvas drawer
-   opened by the hamburger in the topbar. */
-.cms .cms-burger,
-.cms .cms-close {
-  display: none;
-  width: 38px;
-  height: 38px;
-  flex: none;
-  place-items: center;
-  border-radius: 9px;
-  border: 1px solid var(--line);
-  background: var(--card-2);
-  color: var(--ink);
-  cursor: pointer;
-}
-.cms .cms-burger svg,
-.cms .cms-close svg {
-  width: 20px;
-  height: 20px;
-}
-.cms .sidehead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-8);
-}
-.cms .topbar-main {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-  min-width: 0;
-}
-.cms .navscrim {
-  display: none;
-}
-body.nav-locked {
-  overflow: hidden;
-}
 
 /* dashboard */
 .cms .statgrid {
@@ -347,38 +308,12 @@ body.nav-locked {
   .cms .shell {
     grid-template-columns: 1fr;
   }
-  .cms .topbar {
-    flex-wrap: wrap;
-  }
-  .cms .cms-burger {
-    display: grid;
-  }
   .cms .side {
-    position: fixed;
-    inset: 0 auto 0 0;
-    top: 0;
-    z-index: 60;
-    width: min(280px, 84vw);
-    padding: var(--sp-18);
-    overflow-y: auto;
-    background: var(--card);
-    border-right: 1px solid var(--line);
-    box-shadow: var(--sh-2);
-    transform: translateX(-102%);
-    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
+    position: static;
   }
-  .cms .side.open {
-    transform: none;
-  }
-  .cms .cms-close {
-    display: grid;
-  }
-  .cms .navscrim.show {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 55;
-    background: rgba(0, 0, 0, 0.5);
+  .cms .side .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 .cms .pane {
@@ -680,21 +615,17 @@ body.nav-locked {
   opacity: 0.5;
   vector-effect: non-scaling-stroke;
 }
-.cms .c-layer {
-  cursor: pointer;
-  transition: fill-opacity 0.15s ease;
-}
 .cms .c-ylabel {
   fill: var(--muted);
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: 11px;
   text-anchor: end;
   dominant-baseline: middle;
 }
 .cms .c-xlabel {
   fill: var(--muted);
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: 11px;
   dominant-baseline: hanging;
 }
 .cms .axistip {
@@ -724,53 +655,6 @@ body.nav-locked {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-6);
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--r-pill);
-  padding: var(--sp-2) var(--sp-8);
-  cursor: pointer;
-}
-.cms .legend .lg:hover {
-  background: var(--purple-wash);
-}
-.cms .legend .lg.on {
-  border-color: var(--purple);
-  background: var(--purple-wash);
-}
-.cms .lg-hint {
-  font-size: 11px;
-  margin-top: var(--sp-6);
-}
-.cms .seriesdetail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-8) var(--sp-16);
-  margin-top: var(--sp-10);
-  padding: var(--sp-10) var(--sp-12);
-  background: var(--card-2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-m);
-  font-family: var(--f-m);
-  font-size: 12px;
-  color: var(--muted);
-}
-.cms .seriesdetail .sd-name {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-6);
-  font-weight: 600;
-  color: var(--ink-strong);
-}
-.cms .seriesdetail .sd-name i {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-.cms .seriesdetail .sd-clear {
-  margin-left: auto;
 }
 .cms .legend i {
   width: 10px;
@@ -1004,4 +888,88 @@ body.nav-locked {
   object-fit: cover;
   border-radius: var(--r-xs);
   border: 1px solid var(--line);
+}
+
+
+/* Blog editor. Two columns: the posts, and the post. The source is the source —
+   no WYSIWYG, because the frontmatter is part of the document and hiding it
+   behind form fields is how the file and the form start disagreeing. */
+.posts-ed {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--sp-16);
+  min-height: 420px;
+}
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  border-right: 1px solid var(--line);
+  padding-right: var(--sp-12);
+}
+.posts-item {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: var(--sp-8);
+  border: 1px solid transparent;
+  border-radius: var(--r-s);
+  background: none;
+  cursor: pointer;
+}
+.posts-item:hover,
+.posts-item.on {
+  background: var(--card-2);
+  border-color: var(--line);
+}
+.posts-item .pi-t {
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+.posts-item .pi-s {
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--muted);
+}
+.posts-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+.posts-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+.posts-meta {
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.posts-src {
+  flex: 1;
+  min-height: 380px;
+  font-family: var(--f-m);
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+  resize: vertical;
+  padding: var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--bg-base);
+  color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .posts-ed {
+    grid-template-columns: 1fr;
+  }
+  .posts-list {
+    border-right: 0;
+    padding-right: 0;
+  }
 }

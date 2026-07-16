@@ -99,14 +99,32 @@ export function parseAssetRef(ref: string | null | undefined): string | null {
 }
 
 /** A slug safe for /md/<slug> — lowercase, hyphenated, ascii. */
+/**
+ * Slug for a markdown asset's public URL.
+ *
+ * Path-aware: `/` separates segments and survives, so a slug can namespace a
+ * markdown asset under a subpath — `blog/my-post` renders at `/md/blog/my-post`.
+ * Each segment is slugified independently; empty segments collapse, so `//` and
+ * a trailing `/` can't produce an empty path component.
+ *
+ * The slug *is* the path rather than being assembled from the asset's folder at
+ * read time: one field, one uniqueness constraint, and `getBySlug` stays an exact
+ * match. The CMS can still default the prefix from the folder — that's a UI
+ * convenience, not a storage decision.
+ */
 export function slugify(input: string): string {
   return input
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80) || "untitled";
+    .split("/")
+    .map((segment) =>
+      segment
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+    )
+    .filter(Boolean)
+    .join("/") || "untitled";
 }
 
 // ── resolution (ref → client-ready view) ─────────────────────────────────────
@@ -130,6 +148,8 @@ export interface ResolvableAsset {
   /** Widths (ascending) that exist or may be generated on demand, for srcset. */
   variantWidths?: number[];
   /** Sanitized inline markup, for svg assets only. */
+  /** Raw contents for markdown assets; the resolver parses frontmatter from it. */
+  markdown?: string;
   svg?: string;
 }
 

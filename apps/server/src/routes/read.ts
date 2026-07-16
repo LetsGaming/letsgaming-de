@@ -8,6 +8,7 @@ import { isLocale, resolveSiteView, type Locale } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
+import { SOURCE_TTL } from "@lg/sources";
 import { buildAssetLookup } from "../assets-lookup.js";
 
 export function registerReadRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
@@ -22,6 +23,10 @@ export function registerReadRoutes(app: FastifyInstance, store: Store, env: Serv
       modules: store.ia.getModules(),
       locale,
       syncedAt: store.source.latestSyncedAt(),
+      freshness: {
+        syncedAt: store.source.syncedAtBySource(),
+        ttl: SOURCE_TTL,
+      },
       guestbook: store.guestbook.listApproved(),
       presence: {
         ...(env.discordUserId ? { discordId: env.discordUserId } : {}),

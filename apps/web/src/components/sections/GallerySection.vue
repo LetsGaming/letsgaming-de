@@ -11,16 +11,16 @@ defineProps<{
 
 <template>
   <section class="sec">
-    <div class="sec-head rise">
+    <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <span v-if="module.data.note">{{ module.data.note }}</span>
     </div>
-    <div v-if="module.data.images.length" class="gal rise">
+    <div v-if="module.data.images.length" class="gal">
       <figure v-for="img in module.data.images" :key="img.id" class="gal-item">
         <AssetPicture :view="img.image" />
         <figcaption v-if="img.caption">{{ img.caption }}</figcaption>
       </figure>
     </div>
-    <p v-else class="sub rise">No pictures yet.</p>
+    <p v-else class="sub">No pictures yet.</p>
   </section>
 </template>

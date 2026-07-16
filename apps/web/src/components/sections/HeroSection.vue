@@ -24,18 +24,17 @@ function onLink(e: MouseEvent, href: string) {
 </script>
 
 <template>
-  <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar rise" />
-  <span class="eyebrow rise">{{ module.data.eyebrow }}</span>
-  <h1 class="rise">
+  <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" />
+  <h1>
     {{ module.data.headline.before
     }}<span class="pop">{{ module.data.headline.highlight }}</span
     >{{ module.data.headline.after }}
   </h1>
-  <p class="lede rise" v-html="mdBold(module.data.lede)" />
-  <div class="status rise">
+  <p class="lede" v-html="mdBold(module.data.lede)" />
+  <div class="status">
     <span class="dot" /> {{ module.data.status.verb }} <b>{{ module.data.status.now }}</b>
   </div>
-  <div class="links rise">
+  <div class="links">
     <a
       v-for="l in module.data.links"
       :key="l.id"

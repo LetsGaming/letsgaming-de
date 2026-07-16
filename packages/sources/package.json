@@ -21,7 +21,8 @@
     "test": "node --test --import tsx ./tests/*.test.ts"
   },
   "dependencies": {
-    "@lg/core": "workspace:^"
+    "@lg/core": "workspace:^",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/node": "^22",

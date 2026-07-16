@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
+import Freshness from "../Freshness.vue";
 import { trackClick, trackProject } from "../../lib/track";
 
 defineProps<{
@@ -12,8 +13,9 @@ defineProps<{
 
 <template>
   <section class="sec">
-    <div class="sec-head rise">
+    <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
+      <Freshness :freshness="module.data.freshness" />
       <a
         v-if="module.data.githubUrl"
         class="more"
@@ -24,6 +26,7 @@ defineProps<{
       >all repos on GitHub →</a>
     </div>
     <div class="grid">
+      <p v-if="!module.data.projects.length" class="sub">No repos synced yet.</p>
       <a
         v-for="p in module.data.projects"
         :key="p.id"

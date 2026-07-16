@@ -231,7 +231,7 @@ test("cms layout: reorder, move across areas, hide, and reject empty/duplicate/u
 
   const before = (await app.inject({ method: "GET", url: "/api/cms/content", headers: auth })).json();
   const life = before.nav.find((n: { id: string }) => n.id === "life");
-  const work = before.nav.find((n: { id: string }) => n.id === "work");
+  const work = before.nav.find((n: { id: string }) => n.id === "code");
   const moved = life.modules[0];
 
   const ok = await app.inject({
@@ -241,13 +241,13 @@ test("cms layout: reorder, move across areas, hide, and reject empty/duplicate/u
     payload: {
       order: [
         { area: "life", modules: life.modules.slice(1) },
-        { area: "work", modules: [...work.modules, moved] },
+        { area: "code", modules: [...work.modules, moved] },
       ],
     },
   });
   assert.equal(ok.statusCode, 200);
   const after = (await app.inject({ method: "GET", url: "/api/cms/content", headers: auth })).json();
-  assert.ok(after.nav.find((n: { id: string }) => n.id === "work").modules.includes(moved));
+  assert.ok(after.nav.find((n: { id: string }) => n.id === "code").modules.includes(moved));
   assert.ok(!after.nav.find((n: { id: string }) => n.id === "life").modules.includes(moved));
 
   // Hiding = leaving a module out of every area (now allowed).

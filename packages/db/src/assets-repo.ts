@@ -193,6 +193,24 @@ export function assetsRepo(db: DB) {
         folder.parentId,
       );
     },
+    /**
+     * Repoint a markdown asset at new bytes.
+     *
+     * Separate from `update` on purpose: that one is metadata, and `hash` is
+     * deliberately not in its type because for media the hash *is* the identity —
+     * letting a route patch it would break dedupe and orphan variants. A markdown
+     * document is the exception: the id is the identity and the bytes change on
+     * every save. Naming that here keeps the exception visible instead of widening
+     * the general path to allow it everywhere.
+     */
+    setContent(id: string, hash: string, bytes: number): void {
+      db.prepare("UPDATE assets SET hash = ?, bytes = ? WHERE id = ? AND kind = 'markdown'").run(
+        hash,
+        bytes,
+        id,
+      );
+    },
+
     updateFolder(id: string, patch: { name?: string; parentId?: string | null }) {
       const cur = mapRow(
         db.prepare("SELECT id, name, parent_id FROM asset_folders WHERE id = ?"),

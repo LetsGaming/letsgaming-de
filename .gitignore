@@ -4,6 +4,7 @@ dist/
 node_modules/
 dist/
 .astro/
+.skills/
 # runtime data + uploads live at the repo root only — anchored so it does NOT
 # match source dirs like apps/web/src/data (which holds the committed fixture).
 /data/

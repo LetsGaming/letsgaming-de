@@ -66,6 +66,20 @@ export function sourceRepo(db: DB) {
       );
     },
 
+    /** Last successful sync per source. `latestSyncedAt` collapses these to a
+     *  single max, which is fine for a "last updated" line and useless for
+     *  staleness — GitHub being 7h old says nothing about Discord. */
+    syncedAtBySource(): Record<string, string> {
+      const out: Record<string, string> = {};
+      for (const row of db.prepare("SELECT source_id, synced_at FROM source_current").all() as {
+        source_id: string;
+        synced_at: string;
+      }[]) {
+        out[row.source_id] = row.synced_at;
+      }
+      return out;
+    },
+
     /** History for a source, newest first — the raw material for long-range trends. */
     history<T>(sourceId: string, limit = 100): { syncedAt: string; data: T }[] {
       return mapRows(

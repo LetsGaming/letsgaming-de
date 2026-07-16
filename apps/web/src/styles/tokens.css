@@ -1,67 +1,116 @@
-/* Design tokens — the prototype's "bold but soft" system, now themeable.
+/* Design tokens. See docs/concepts/design-system.md for the rules these encode.
+
    Dark is the default (:root); light overrides live under [data-theme="light"].
-   Everything the two themes disagree on is a token, so components never hardcode
-   a color that would break in the other theme. */
+   The CMS adds [data-density="compact"], which remaps radius and type size and
+   nothing else — one vocabulary, two ranges (site comfortable, CMS compact).
+
+   Three rules are enforceable from this file:
+     - purple means now. --live has one semantic job. If you reach for it to mark
+       a selected tab or an active toggle, use --ink vs --muted instead.
+     - colour is imported, never invented. Purple is the only colour here.
+       Language colours live in lib/icons.ts (linguist's real values); Steam art
+       colours are sampled at sync time. Neither belongs in this file.
+     - --glow-live has exactly one consumer. Two = the rule is broken. */
 
 :root {
-  --ink: #ece9f7;
+  /* ── Ink ─────────────────────────────────────────────────────────────── */
+  --ink: #eceaef;
   --ink-strong: #fff;
-  --muted: #948cb6;
+  --muted: #8b8794;
 
-  --purple: #8b5cf6;
-  --purple-br: #a78bfa;
-  --purple-d: #5b34d6;
-  --purple-wash: rgba(139, 92, 246, 0.16);
+  /* ── The accent. Sampled off the LED strip on the shelf, photographed on
+     /life with the hex in the caption — that's why it's this purple and not
+     the violet-500 the prototype shipped. White passes AA on --live in both
+     themes, so --on-live is fixed. */
+  --live: #8a2be2;
 
-  --coral: #ff7a5e;
-  --sun: #ffc64b;
-  --mint: #38d6a6;
+  /* Error. Not decoration and not "now": a form that can't say what went wrong
+     is broken, and red-for-error is a convention old enough to count as
+     imported. The only non-purple hue the palette owns, and it earns it by
+     being a state rather than a style. */
+  --danger: #ff6b5e;
+  --danger-ink: #ff8f85;
+  --live-ink: #c77dff;
+  --on-live: #fff;
 
-  --card: #1a1730;
-  --card-2: #211d3a;
-  --line: rgba(255, 255, 255, 0.07);
+  /* One consumer: the live dot. Grep before adding a second. */
+  --glow-live: 0 0 9px 1px rgba(199, 125, 255, 0.75);
 
-  --bg-base: #0e0c18;
-  --bg-glow: radial-gradient(
-    120% 100% at 84% -22%,
-    #201743 0%,
-    #140f26 50%,
-    #0d0b16 100%
-  );
+  /* ── Surfaces. On dark, elevation is lightness — a drop shadow at --surf-0
+     has nothing darker to fall onto, which is why the old --sh-* faked lift
+     with a purple bloom. Step the surface, strengthen the line, no shadow.
+     Hover = +1 level, so these double as interaction states. */
+  --surf-0: #131215;
+  --surf-1: #1a191d;
+  --surf-2: #211f26;
+  --surf-3: #272430;
 
-  /* heatmap shades, least -> most */
-  --heat-0: #241f3d;
-  --heat-1: #463a7d;
-  --heat-2: #6d54c9;
-  --heat-3: #916ff2;
-  --heat-4: #b39bff;
+  --line-1: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
 
-  --lang-track: #221d3c;
+  /* Dark gets its depth from --surf-*; light gets it from these. Same tokens,
+     so a component never branches on theme. */
+  --sh-card: none;
+  --sh-anchor: none;
 
-  --ghost-bg: var(--card-2);
-  --ghost-shadow: #100d20;
+  /* ── Contribution heat. Neutral: the heatmap is the accumulated tier and is
+     meant to be quiet. Only today is purple, which also makes "did he commit
+     today" readable at a glance — an all-violet grid can't do that. */
+  --heat-0: #1c1b20;
+  --heat-1: #2e2c35;
+  --heat-2: #454250;
+  --heat-3: #605c6e;
+  --heat-4: #837e93;
+  --heat-today: var(--live-ink);
 
-  /* hobby tile backgrounds per tone */
-  --tile-purple: linear-gradient(160deg, #251d47, #1c1633);
-  --tile-coral: linear-gradient(160deg, #341f2a, #1e1830);
-  --tile-mint: linear-gradient(160deg, #183029, #191d36);
-  --tile-sun: linear-gradient(160deg, #332816, #201a31);
+  --track: #221f28;
 
-  --r: 26px;
-  --r-sm: 18px;
-  /* Tighter radii for dense admin/chrome UI (the CMS), plus the pill.
-     The public site uses --r / --r-sm; these give the CMS a named set instead
-     of the raw 8–16px values it grew. Steps match the values already in use. */
-  --r-l: 16px;
-  --r-m: 12px;
-  --r-s: 10px;
-  --r-xs: 8px;
+  /* ── Categorical palette for the CMS analytics chart. Admin surface, real
+     categorical data, no better source to import from — the one place a
+     palette is still allowed to invent. Theme-independent. */
+  --stack-1: #8a2be2;
+  --stack-2: #6d48e5;
+  --stack-3: #a78bfa;
+  --stack-4: #22d3ee;
+  --stack-5: #f59e0b;
+  --stack-6: #f472b6;
+  --stack-7: #94a3b8;
+
+  /* ── Radius. Scales with the object; 26px on a 90px box was most of the box. */
+  --r-anchor: 18px;
+  --r-card: 14px;
+  --r-control: 10px;
+  --r-chip: 8px;
   --r-pill: 999px;
 
-  /* Spacing scale (2px grid). Values equal the pixels already used across the
-     app, so referencing a step is exactly the same size — a token, not a shift.
-     Theme-independent (spacing doesn't change between light/dark), so defined
-     once here. */
+  /* ── Type. Fredoka reaches the wordmark, the H1, section headings and card
+     titles — and stops. It has no body-text design in it: the counters close
+     up past ~16px down. Inter disappears, which is its job. Space Mono marks
+     machine-sourced values and nothing else, so a mono number reads as "synced"
+     without needing a label. */
+  --f-d: "Fredoka", system-ui, sans-serif;
+  --f-b: "Inter", system-ui, sans-serif;
+  --f-m: "Space Mono", ui-monospace, monospace;
+
+  --fs-display: clamp(32px, 6.5vw, 56px);
+  --fs-h2: clamp(19px, 3.2vw, 25px);
+  --fs-h3: 16px;
+  --fs-lede: clamp(15px, 2vw, 18px);
+  --fs-body: 15px;
+  --fs-meta: 12px;
+  --fs-micro: 11px;
+
+  /* ── Motion. Communicates state change, directs attention, or expresses
+     character — or it doesn't ship. --dur-fast is hover (this is interactive),
+     --dur-press is the touch, --dur-pulse is the only thing that loops.
+     prefers-reduced-motion turns all of it off; that's a floor, not an option. */
+  --dur-fast: 120ms;
+  --dur-press: 100ms;
+  --dur-pulse: 2.4s;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.25, 1);
+
+  /* ── Spacing (2px grid). Unchanged from the prototype: the values were already
+     the ones in use, and spacing doesn't differ between themes. */
   --sp-2: 2px;
   --sp-4: 4px;
   --sp-6: 6px;
@@ -75,29 +124,6 @@
   --sp-22: 22px;
   --sp-24: 24px;
 
-  /* Text/icon colour on a saturated fill (purple/coral). White reads correctly
-     on those in both themes, so this stays fixed rather than tracking --ink. */
-  --on-accent: #fff;
-  --on-accent-soft: rgba(255, 255, 255, 0.3);
-
-  /* Categorical palette for stacked charts (analytics). Theme-independent for
-     now: these are the exact values the chart shipped with, lifted out of a
-     hard-coded JS array so the palette lives with the rest of the theme. */
-  --stack-1: #8b5cf6;
-  --stack-2: #6d48e5;
-  --stack-3: #a78bfa;
-  --stack-4: #22d3ee;
-  --stack-5: #f59e0b;
-  --stack-6: #f472b6;
-  --stack-7: #94a3b8;
-
-  --sh-1: 0 2px 10px rgba(0, 0, 0, 0.4), 0 14px 34px rgba(50, 25, 120, 0.22);
-  --sh-2: 0 10px 26px rgba(0, 0, 0, 0.5), 0 26px 64px rgba(120, 75, 250, 0.3);
-
-  --f-d: "Fredoka", system-ui, sans-serif;
-  --f-b: "Inter", system-ui, sans-serif;
-  --f-m: "Space Mono", ui-monospace, monospace;
-
   color-scheme: dark;
 }
 
@@ -106,55 +132,90 @@
   --ink-strong: #17122b;
   --muted: #6b6494;
 
-  --purple: #6d48e5;
-  --purple-br: #6f52d8; /* AA on light bg (was #7c5cf0) */
-  --purple-d: #4d2fb0;
-  --purple-wash: rgba(109, 72, 229, 0.12);
+  --live: #7a24c9; /* white passes AA on this */
+  --live-ink: #6a1eb0; /* AA as text on --surf-0 */
 
-  --coral: #b34732; /* AA on light bg (was #ef5f43) */
-  --sun: #e0951a;
-  --mint: #16a179;
+  --glow-live: 0 0 9px 1px rgba(122, 36, 201, 0.45);
 
-  --card: #ffffff;
-  --card-2: #f3f0fb;
-  --line: rgba(24, 12, 60, 0.09);
+  /* Light inverts the elevation model: a light page has room to cast a shadow,
+     so lift is a shadow again and the surfaces stay close together. */
+  --surf-0: #f2f0f7;
+  --surf-1: #faf9fd;
+  --surf-2: #ffffff;
+  --surf-3: #ffffff;
 
-  --bg-base: #eee9fb;
-  --bg-glow: radial-gradient(
-    120% 100% at 84% -22%,
-    #ece7fb 0%,
-    #f3effc 52%,
-    #f6f4fd 100%
-  );
+  --line-1: rgba(24, 12, 60, 0.09);
+  --line-2: rgba(24, 12, 60, 0.15);
 
-  --heat-0: #e7e2f6;
-  --heat-1: #c4b6ef;
-  --heat-2: #9d87e7;
-  --heat-3: #7c5cf0;
-  --heat-4: #5836d4;
+  --sh-card: 0 1px 2px rgba(30, 20, 60, 0.06), 0 6px 16px rgba(30, 20, 60, 0.07);
+  --sh-anchor: 0 2px 6px rgba(30, 20, 60, 0.08), 0 16px 40px rgba(30, 20, 60, 0.1);
 
-  --lang-track: #e9e4f7;
+  --heat-0: #e9e7f0;
+  --heat-1: #cfccd9;
+  --heat-2: #aeaabb;
+  --heat-3: #8b8699;
+  --heat-4: #665f77;
 
-  --ghost-bg: #f3f0fb;
-  --ghost-shadow: #ddd5f2;
-
-  --tile-purple: linear-gradient(160deg, #efeafc, #e7defb);
-  --tile-coral: linear-gradient(160deg, #fdeee9, #f6e9fb);
-  --tile-mint: linear-gradient(160deg, #e4f7f0, #eae9fb);
-  --tile-sun: linear-gradient(160deg, #fbf1de, #f0ecfb);
-
-  --sh-1: 0 2px 8px rgba(80, 50, 160, 0.08), 0 12px 30px rgba(90, 55, 200, 0.1);
-  --sh-2:
-    0 8px 22px rgba(80, 50, 160, 0.14), 0 24px 56px rgba(100, 60, 220, 0.16);
+  --track: #e9e4f7;
 
   color-scheme: light;
 }
 
-/* Respect the OS preference on first paint when no manual choice is stored.
-   The no-flash script in the layout sets data-theme before CSS applies; this
-   media query is the fallback if JS is disabled. */
+/* The CMS root. Fourteen panels, an asset library and a chart on a desktop —
+   dense on purpose. Everything else (colour, elevation, motion, the accent rule)
+   is shared, so the two surfaces can't drift apart. */
+[data-density="compact"] {
+  --r-anchor: 14px;
+  --r-card: 10px;
+  --r-control: 8px;
+  --r-chip: 6px;
+
+  --fs-h2: 17px;
+  --fs-h3: 14px;
+  --fs-body: 13px;
+  --fs-meta: 11px;
+  --fs-micro: 11px;
+
+  --sp-24: 16px;
+  --sp-22: 14px;
+  --sp-20: 12px;
+  --sp-18: 12px;
+}
+
+/* Respect the OS preference on first paint when no manual choice is stored. The
+   no-flash script in the layout sets data-theme before CSS applies; this is the
+   fallback if JS is off. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
   }
+}
+
+/* ── COMPAT — temporary. cms.css (891 lines) still speaks the prototype's token
+   names. Scoping the aliases to the CMS root means the public site physically
+   cannot reach them, so "purple means now" stays greppable in app.css while the
+   admin surface waits its turn. Delete this block with the CMS pass; nothing
+   outside cms.css may use these. */
+[data-density="compact"] {
+  --purple: var(--live);
+  --purple-br: var(--live-ink);
+  --purple-d: #5b34d6;
+  --purple-wash: rgba(138, 43, 226, 0.16);
+  --card: var(--surf-1);
+  --card-2: var(--surf-2);
+  --line: var(--line-1);
+  --bg-base: var(--surf-0);
+  --r-l: var(--r-anchor);
+  --r-m: var(--r-card);
+  --r-s: var(--r-control);
+  --r-xs: var(--r-chip);
+  --on-accent: var(--on-live);
+  --on-accent-soft: rgba(255, 255, 255, 0.3);
+  --ghost-bg: var(--surf-2);
+  --ghost-shadow: #100d20;
+  --sh-1: var(--sh-card);
+  --sh-2: var(--sh-anchor);
+  --mint: #38d6a6;
+  --coral: #ff7a5e;
+  --sun: #ffc64b;
 }

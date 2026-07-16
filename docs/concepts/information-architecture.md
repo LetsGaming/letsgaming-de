@@ -16,18 +16,24 @@ The launch tree is one level, four areas:
 | Area | Answers |
 |---|---|
 | Home | who is this, quickly? |
-| Work | what do you build? |
+| Code | what do you build? |
 | Life | who are you outside that? |
 | About | the longer story, and how to reach you |
+| Blog | what have you written? *(hidden)* |
 
-Within Work, activity sits above projects.
+Within Code, activity sits above projects.
 
-Modules are defined in `packages/core/src/modules.ts` as a `ModuleKind` union.
-The current kinds: `hero`, `featured`, `glance` (Home); `activity`, `highlights`,
-`coding`, `projects` (Work); `hobbies`, `now`, `guestbook`, `presence`, `gallery`
-(Life); `bio`, `contact` (About). A module descriptor carries no area of its own,
-because placement is the nav tree's job (a leaf's `modules: string[]`). The same
-module could be placed anywhere the IA decides.
+Modules are defined in `packages/core/src/modules.ts` as a `ModuleKind` union:
+`hero`, `glance`, `featured`, `activity`, `coding`, `projects`, `presence`,
+`hobbies`, `gallery`, `now`, `guestbook`, `bio`, `contact`, `posts`.
+
+Listed flat, deliberately. They used to be grouped by area in comments — which
+encoded exactly the coupling the next sentence forbids. A module descriptor
+carries no area of its own, because placement is the nav tree's job (a leaf's
+`modules: string[]`). The same module could be placed anywhere the IA decides.
+
+`highlights` is gone: a release is an event, and "Recently shipped" was a second
+feed sorted by the same key as `activity`, so the two merged into one stream.
 
 ## The promotion gate
 
@@ -94,3 +100,29 @@ is [ADR-0006](../adr/0006-recursive-nav-lint.md).
 
 To add or split a node in practice, see
 [guides/extending](../guides/extending.md).
+
+## Drafts: the `hidden` flag
+
+A node can be `hidden` — it exists in the tree but isn't published. CMS-owned.
+
+Two rules, and the asymmetry is the point:
+
+- **Hidden nodes count for breadth and depth.** A node that would break the tree
+  the moment you publish it is rot you want at build time, not at toggle time.
+- **Hidden nodes are exempt from the thin-leaf rule.** A draft is empty until it
+  isn't. That's the entire reason the flag exists.
+
+`hidden` means *not rendered and not routable*, not "rendered but unlinked". The
+resolver strips drafts from the nav it returns, so the router simply can't find
+one — the guarantee falls out of the architecture instead of relying on a check
+somebody remembers to write.
+
+### The hole this opens, and how it's closed
+
+`lint:nav` runs at build time; the visibility toggle runs at runtime. Once
+visibility is CMS state, publishing an empty node would break the IA without CI
+ever seeing it — the lint stops being a guarantee and becomes a suggestion.
+
+So the CMS calls `canPublish(nav, id)` before flipping the flag and refuses with
+the reason. Same rules, one implementation, both surfaces. Two implementations
+would drift.

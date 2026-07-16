@@ -118,7 +118,7 @@ watch(
 .overlay {
   position: fixed;
   inset: 0;
-  background: color-mix(in srgb, var(--bg-base) 70%, transparent);
+  background: color-mix(in srgb, var(--surf-0) 70%, transparent);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -129,8 +129,8 @@ watch(
 .panel {
   width: 100%;
   max-width: 440px;
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
   border-radius: 18px;
   padding: var(--sp-20) var(--sp-22) var(--sp-24);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
@@ -161,7 +161,7 @@ header h2 {
 }
 section {
   padding: var(--sp-14) 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
 }
 section h3 {
   font-family: var(--f-m);
@@ -174,8 +174,8 @@ section h3 {
 .seg {
   display: inline-flex;
   gap: var(--sp-4);
-  background: var(--bg-base);
-  border: 1px solid var(--line);
+  background: var(--surf-0);
+  border: 1px solid var(--line-1);
   border-radius: 12px;
   padding: 3px;
 }
@@ -190,8 +190,8 @@ section h3 {
   cursor: pointer;
 }
 .seg button.on {
-  background: var(--purple-wash);
-  color: var(--purple-br);
+  background: var(--surf-2);
+  color: var(--ink-strong);
 }
 .row {
   display: flex;
@@ -210,15 +210,15 @@ section h3 {
   line-height: 1.45;
 }
 .rowdesc a {
-  color: var(--purple-br);
+  color: var(--ink-strong);
 }
 .switch {
   flex: none;
   width: 46px;
   height: 27px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--bg-base);
+  border: 1px solid var(--line-1);
+  background: var(--surf-0);
   cursor: pointer;
   padding: 0;
   position: relative;
@@ -238,8 +238,8 @@ section h3 {
     background 0.15s ease;
 }
 .switch.on {
-  background: var(--purple);
-  border-color: var(--purple);
+  background: var(--surf-3);
+  border-color: var(--line-2);
 }
 .switch.on .knob {
   transform: translateX(19px);

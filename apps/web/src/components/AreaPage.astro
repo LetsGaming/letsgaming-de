@@ -1,0 +1,54 @@
+---
+// One area per document. Previously every area was SSR'd into every page and the
+// inactive ones hidden with `[hidden]`, which meant the whole site shipped in the
+// HTML of each page, no URL ever changed, and a draft area would have shipped its
+// markup to anyone reading source. Routes fix all three.
+import SiteChrome from "./SiteChrome.vue";
+import SitePanels from "./SitePanels.vue";
+import Layout from "../layouts/Layout.astro";
+import { areaById, areaHref, areaMeta } from "../lib/area";
+import { loadSite, pickLocale } from "../lib/site";
+
+interface Props {
+  area?: string | undefined;
+}
+const { area: areaId } = Astro.props;
+
+const locale = pickLocale(
+  Astro.url.searchParams.get("lang"),
+  Astro.request.headers.get("accept-language"),
+);
+const site = await loadSite(locale);
+const area = areaById(site.nav, areaId);
+---
+
+{
+  area && (
+    <Layout
+      title={areaMeta(area, site.meta.name, site.meta.role).title}
+      description={areaMeta(area, site.meta.name, site.meta.role).description}
+      locale={locale}
+      localeAware={true}
+    >
+      <main>
+        <div class="wrap">
+          <div class="top">
+            <a class="brand" href={areaHref(site.nav, site.nav[0]?.id ?? "home")}>
+              <span class="mark">D</span>
+              <span>{site.meta.name}</span>
+            </a>
+            <SiteChrome nav={site.nav} locale={site.locale} current={area.id} client:idle />
+          </div>
+
+          <SitePanels site={site} area={area.id} client:idle />
+
+          <footer>
+            <span class="m">last synced {site.syncedAt ?? "—"}</span> · @{site.meta.handle} ·
+            <a href="/docs">Docs</a> ·
+            <a href="/datenschutz">Datenschutz</a>
+          </footer>
+        </div>
+      </main>
+    </Layout>
+  )
+}

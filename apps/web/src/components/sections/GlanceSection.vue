@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { trackClick } from "../../lib/track";
+import Freshness from "../Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "glance" }>;
@@ -10,16 +11,20 @@ defineProps<{
 </script>
 
 <template>
-  <section class="sec rise">
+  <section class="sec">
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
-      <button class="more" @click="() => { trackClick('more'); go('work'); }">full activity →</button>
+      <Freshness :freshness="module.data.freshness" />
     </div>
-    <div class="stats">
-      <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
-        <div class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></div>
-        <div class="l">{{ s.label }}</div>
-      </div>
-    </div>
+    <p v-if="module.data.latest" class="glance-latest">
+      {{ module.data.latest.text }}
+      <span class="m">{{ module.data.latest.relative }} ago</span>
+    </p>
+    <p class="glance-stats m">
+      <span v-for="(s, i) in module.data.stats" :key="i">
+        {{ s.value }}<small v-if="s.unit">{{ s.unit }}</small> {{ s.label }}
+      </span>
+      <button class="more" @click="() => { trackClick('more'); go('code'); }">full activity →</button>
+    </p>
   </section>
 </template>

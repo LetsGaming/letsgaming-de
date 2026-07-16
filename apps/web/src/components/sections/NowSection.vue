@@ -11,11 +11,12 @@ defineProps<{
 
 <template>
   <section class="sec">
-    <div class="sec-head rise">
+    <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <span v-if="module.data.note">{{ module.data.note }}</span>
     </div>
-    <div class="box rise">
+    <div class="box">
+      <p v-if="!module.data.items.length" class="sub">Nothing written here lately.</p>
       <div v-for="n in module.data.items" :key="n.id" class="nowrow">
         <span class="k">{{ n.key }}</span>
         <span class="v" v-html="mdBold(n.value)" />

@@ -71,10 +71,24 @@ does not grow the nav.
 
 | Area | Answers | Holds today |
 |---|---|---|
-| Home | who is this, quickly? | hero, featured project, at-a-glance stats |
-| Work | what do you build? | activity (GitHub), highlights, coding time (Wakapi), projects |
-| Life | who are you outside that? | hobbies, "right now", presence, guestbook, galleries |
+| Home | who is this? | hero, the pulse, featured project |
+| Code | what do you build? | activity (GitHub), coding time (Wakapi), projects |
+| Life | who are you outside that? | presence, hobbies, galleries, "lately", guestbook |
 | About | the longer story, and how to reach you | bio, contact |
+| Blog *(hidden)* | what have you written? | posts |
+
+`Work` is `Code` because there was no work on it — every repo there is a hobby
+repo. Coding is one of the hobbies; this is its area.
+
+**The nav is at its breadth cap.** `MAX_CHILDREN` is 5 and there are 5, so every
+future area splits an existing node rather than adding a sibling. That's what
+depth is for, and `pnpm lint:nav` will say so — including at the root, which went
+unchecked for a long time because the top row is a forest rather than any node's
+children.
+
+Areas are routes (`/`, `/code`, `/life`, `/about`), not hash tabs. A hidden node
+is genuinely unreachable: the resolver strips drafts, so the router can't find
+one — enforcement falls out of the architecture rather than needing a guard.
 
 A new nav node has to earn its place against four gates (distinct question,
 enough weight to stand alone, homeless in every existing sibling, durable rather
@@ -84,15 +98,50 @@ quietly. The full model, gates, and lint rules are in
 
 ## Design
 
-The look is locked from the prototype: chunky rounded cards with real depth,
-springy interactions, purple-forward without drowning in it. Motion is 3D
-tilt-on-hover, pressable buttons, staggered entrance, a pulsing status dot.
-`prefers-reduced-motion` turns all of it off; that's a baseline, not an option.
-Type is Fredoka for display, Inter for body, Space Mono for data, all
-self-hosted. Both dark and light themes run off CSS custom-property tokens
-(`apps/web/src/styles/tokens.css`) with `prefers-color-scheme` plus a persisted
-manual toggle. The accessibility floor is mobile-responsive layout, visible
-keyboard focus, reduced motion respected, and sufficient contrast in both themes.
+Three rules. Everything else follows from them, and each one is greppable — a
+rule you can't check is a preference.
+
+**Purple means now.** `--live` marks live or just-happened data, the one primary
+action per view, and the focus ring (an accessibility floor needs the most
+visible colour available). Nothing else: not the active nav item, not a selected
+setting, not a hover, not a chart series. Selected states use ink vs muted, never
+hue. It previously did nine jobs at once, which is the same as doing none.
+
+**Colour is imported, never invented.** Purple is the only colour the palette
+owns. Language colours come from GitHub linguist; a Steam game's bar is sampled
+from that game's own icon at sync. The consequence is the point: the page gets
+more colourful the more real data it holds, which a house palette can't fake.
+
+**A card is one subject.** Not a section, not prose, not a stream. Prose lives on
+`--surf-0` with no frame.
+
+Elevation on dark is surface lightness, not shadow — a drop shadow at `#131215`
+has nothing darker to fall onto, which is why the prototype's shadows carried
+purple glow. `--surf-0..3` plus `--line-1..2`; light mode inverts and shadows
+return. Hover is +1 surface on interactive elements only; press is
+`translateY(2px)`. There is no tilt: it advertised interactivity on `<div>`s that
+did nothing. Glow exists on the live dot and the freshness dot, and nowhere else.
+
+Type is Fredoka for display, Inter for body, Space Mono for data, all self-hosted.
+Fredoka reaches exactly four roles — wordmark, H1, section headings, card titles.
+It has no body design in it.
+
+**Staleness is a first-class state.** A synced module renders `fresh`, `stale`,
+`empty`, `failed`, or `never`, and must never render as if fresh when it isn't.
+The site's whole claim is that it updates itself, so old data wearing the current
+state is the worst bug available to it. Each `Source` owns its own `ttl`.
+
+Both themes run off CSS custom-property tokens (`apps/web/src/styles/tokens.css`)
+with `prefers-color-scheme` plus a persisted manual toggle. `pnpm lint:tokens`
+fails the build on any `var(--x)` that resolves to nothing — CSS never errors, so
+a renamed token otherwise just renders wrong while every other check stays green.
+
+The accessibility floor is mobile-responsive layout, visible keyboard focus,
+reduced motion respected, and sufficient contrast in both themes. That's a
+baseline, not an option.
+
+The full model — states, tokens, and what each rule refuses — is in
+[concepts/design-system](./concepts/design-system.md).
 
 ## Privacy
 
@@ -115,8 +164,10 @@ mind but not built, is in
 
 ## What ships today
 
-All four areas are live, wired to GitHub, Steam, and Wakapi plus CMS content,
-in both dark and light themes with the tactile look. Content is a mix of real
+All four public areas are live, wired to GitHub, Steam, and Wakapi plus CMS
+content, in both dark and light themes. Blog exists as a hidden node — its posts
+are markdown assets namespaced under `blog/` in the library, rendered at
+`/md/blog/<post>`, with drafts reachable only via a derived preview link. Content is a mix of real
 (the bio direction, real projects, actual GitHub and Steam data) and CMS-editable
 copy. The CMS covers everything on the site that isn't pulled from an API:
 identity, the home intro, bio, hobbies, links, "right now", the asset library and

@@ -11,11 +11,11 @@ defineProps<{
 
 <template>
   <section class="sec">
-    <div class="sec-head rise">
+    <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <span v-if="module.data.note">{{ module.data.note }}</span>
     </div>
-    <div class="rise">
+    <div>
       <PresenceWidget
         :live="module.data.live"
         :name="module.data.name"

@@ -1,4 +1,6 @@
 ---
+// Runtime-rendered Markdown asset. The slug is the full path under /md, so a
+// post namespaced as `blog/my-post` resolves here without a second route.
 // Runtime-rendered Markdown asset. Fetches the raw markdown from the API and
 // renders it in the site shell with a clear way back to the homepage, so a
 // visitor who lands here can keep browsing (no dead end).
@@ -7,18 +9,29 @@ import Layout from "../../layouts/Layout.astro";
 
 const { slug } = Astro.params;
 const base = import.meta.env.API_URL ?? process.env.API_URL;
+// Forwarded, not validated here: the API owns the decision, so the page can't
+// accidentally become a second, laxer gate on the same secret.
+const preview = Astro.url.searchParams.get("preview");
 
 let title = "Not found";
 let html = "";
 let found = false;
+let draft = false;
 
 if (base && slug) {
   try {
-    const res = await fetch(`${base}/api/assets/md/${encodeURIComponent(slug)}`);
+    const url = new URL(`${base}/api/assets/md/${encodeURIComponent(slug)}`);
+    if (preview) url.searchParams.set("preview", preview);
+    const res = await fetch(url);
     if (res.ok) {
-      const doc = (await res.json()) as { title: string; markdown: string };
+      const doc = (await res.json()) as { title: string; markdown: string; draft?: boolean };
       title = doc.title;
-      html = await marked.parse(doc.markdown, { async: true });
+      // The body still carries its frontmatter fence; strip it rather than
+      // letting marked render it as a table or a rule.
+      html = await marked.parse(doc.markdown.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, ""), {
+        async: true,
+      });
+      draft = doc.draft === true;
       found = true;
     }
   } catch {
@@ -30,13 +43,14 @@ if (!found) Astro.response.status = 404;
 
 <Layout title={`${title} — letsgaming.de`}>
   <div class="md-wrap">
-    <a class="md-home" href="/">← letsgaming.de</a>
+    <a class="md-home" href="/blog">← Blog</a>
+    {draft && <p class="md-draft">Draft — not published. You are seeing it via a preview link.</p>}
     {found ? (
       <article class="md-body" set:html={html} />
     ) : (
       <article class="md-body">
         <h1>Not found</h1>
-        <p>That page doesn’t exist (or isn’t published). Head back to the homepage to keep exploring.</p>
+        <p>That page doesn’t exist, or isn’t published yet.</p>
       </article>
     )}
   </div>
@@ -51,9 +65,9 @@ if (!found) Astro.response.status = 404;
   .md-body :global(h1) { font-size: 30px; }
   .md-body :global(h2) { font-size: 23px; }
   .md-body :global(p), .md-body :global(ul), .md-body :global(ol) { margin: 0 0 1em; }
-  .md-body :global(a) { color: var(--purple); }
+  .md-body :global(a) { color: var(--ink); }
   .md-body :global(img) { max-width: 100%; height: auto; border-radius: 12px; }
-  .md-body :global(pre) { background: var(--card-2); padding: 14px; border-radius: 12px; overflow: auto; }
+  .md-body :global(pre) { background: var(--surf-2); padding: 14px; border-radius: 12px; overflow: auto; }
   .md-body :global(code) { font-family: var(--f-m); font-size: 0.9em; }
-  .md-body :global(blockquote) { border-left: 3px solid var(--line); margin: 0 0 1em; padding-left: 16px; color: var(--muted); }
+  .md-body :global(blockquote) { border-left: 3px solid var(--line-1); margin: 0 0 1em; padding-left: 16px; color: var(--muted); }
 </style>

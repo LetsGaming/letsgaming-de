@@ -30,3 +30,25 @@ enriches it when configured.
 - The guestbook is a moderation queue, not a live comment system.
 - Both are single-user and add no plugin or platform surface, so the small-CMS
   rule still holds.
+
+## Amendment — presence stays whole, and unreachable is not offline
+
+**One subject, two sources.** Presence was nearly split into a Discord module and
+a gaming module. It shouldn't be: the card is *one* subject — gaming — fed by two
+sources, and it already ladders internally (live activity, then the fortnight of
+Steam). Splitting it would have made two cards that each answer half a question.
+Recorded so nobody re-splits it.
+
+**Unreachable is not offline.** `status` falls back to `"offline"` when no
+snapshot has loaded, and the Lanyard fetch swallowed its errors — so a network
+failure rendered "Offline", a specific factual claim about a person, generated
+from not knowing.
+
+This module is Life's anchor and the site's floor ("a visitor notices the thing
+is alive"), and it depends on a third party. Its failure state has to say
+something true rather than something confident. It now distinguishes: last
+snapshot when there is one (old-and-labelled beats blank), "Can't reach Discord ·
+status unknown" when there isn't.
+
+Note `live` in the resolved view only ever meant *Discord is configured* — never
+that it answered. The client half reports its own state.

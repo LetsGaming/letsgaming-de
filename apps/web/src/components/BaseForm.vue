@@ -32,12 +32,12 @@ defineEmits<{ submit: [] }>();
    rules use :slotted() to reach the parent-rendered label/input/textarea. */
 .form { display: flex; flex-direction: column; gap: var(--sp-12); max-width: 560px; }
 :slotted(label) { display: flex; flex-direction: column; gap: 5px; font-family: var(--f-m); font-size: 12px; color: var(--muted); }
-:slotted(input), :slotted(textarea) { font-family: var(--f-b); font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; width: 100%; }
-:slotted(input:focus), :slotted(textarea:focus) { outline: none; border-color: var(--purple-br); }
+:slotted(input), :slotted(textarea) { font-family: var(--f-b); font-size: 15px; color: var(--ink); background: var(--surf-1); border: 1px solid var(--line-1); border-radius: 11px; padding: 11px 13px; width: 100%; }
+:slotted(input:focus), :slotted(textarea:focus) { outline: none; border-color: var(--ink); }
 :slotted(textarea) { resize: vertical; }
 :slotted(.hp) { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-14); flex-wrap: wrap; }
-.err { color: var(--coral); font-size: 13px; margin-right: auto; }
-.ok { background: var(--purple-wash); color: var(--ink-strong); border: 1px solid var(--line); border-radius: 12px; padding: var(--sp-16) var(--sp-18); font-family: var(--f-m); }
+.err { color: var(--danger-ink); font-size: 13px; margin-right: auto; }
+.ok { background: var(--surf-2); color: var(--ink-strong); border: 1px solid var(--line-1); border-radius: 12px; padding: var(--sp-16) var(--sp-18); font-family: var(--f-m); }
 button:disabled { opacity: 0.6; cursor: default; }
 </style>

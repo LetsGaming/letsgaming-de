@@ -12,7 +12,8 @@
 
 import type { FastifyInstance } from "fastify";
 import type { Store } from "@lg/db";
-import { classifyAsset, slugify, type Asset, type AssetKind } from "@lg/core";
+import { classifyAsset, parsePost, slugify, type Asset, type AssetKind } from "@lg/core";
+import { isValidPreviewToken } from "../preview.js";
 import { createReadStream } from "node:fs";
 import { mkdir, readFile, writeFile, stat, unlink, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -206,13 +207,40 @@ export async function registerAssetRoutes(
   });
 
   // ── markdown raw (public) — the /md/<slug> page renders this in the site shell ─
-  app.get<{ Params: { slug: string } }>("/api/assets/md/:slug", async (req, reply) => {
-    const a = store.assets.getBySlug(req.params.slug);
-    if (!a || a.kind !== "markdown") throw notFound("Not found.");
-    const markdown = await readFile(origPath(a.hash, a.ext), "utf8").catch(() => null);
-    if (markdown == null) throw notFound("Not found.");
-    return { slug: a.slug, title: a.title || a.filename.replace(/\.mde?$/i, ""), markdown };
-  });
+  app.get<{ Params: { slug: string }; Querystring: { preview?: string } }>(
+    "/api/assets/md/:slug",
+    async (req, reply) => {
+      const a = store.assets.getBySlug(req.params.slug);
+      if (!a || a.kind !== "markdown") throw notFound("Not found.");
+      const markdown = await readFile(origPath(a.hash, a.ext), "utf8").catch(() => null);
+      if (markdown == null) throw notFound("Not found.");
+
+      // Drafts 404 unless the caller has the derived preview token. Leaving them
+      // out of the index isn't access control: /md/<slug> is guessable, and an
+      // unpublished post is only unpublished if asking for it directly fails.
+      // Same 404 as a missing post, so the response can't confirm a draft exists.
+      const { frontmatter } = parsePost(markdown, a.slug ?? req.params.slug);
+      if (frontmatter.draft) {
+        const ok = isValidPreviewToken(
+          a.slug ?? req.params.slug,
+          env.previewSecret,
+          req.query.preview,
+        );
+        if (!ok) throw notFound("Not found.");
+        // A preview is a bearer link to unfinished work; keep it out of caches
+        // and out of search.
+        void reply.header("cache-control", "private, no-store");
+        void reply.header("x-robots-tag", "noindex, nofollow");
+      }
+
+      return {
+        slug: a.slug,
+        title: frontmatter.title || a.title || a.filename.replace(/\.mde?$/i, ""),
+        markdown,
+        draft: frontmatter.draft,
+      };
+    },
+  );
 
   // ── management API (authed) ────────────────────────────────────────────────
   app.get<{ Querystring: { folder?: string; tag?: string; kind?: string; q?: string } }>(
@@ -235,6 +263,49 @@ export async function registerAssetRoutes(
     if (!a) throw notFound("Not found.");
     return { ...a, variants: store.assets.listVariants(a.id), usages: store.assets.usagesFor(a.id) };
   });
+
+  /**
+   * Rewrite a markdown asset's contents.
+   *
+   * The library is content-addressed — hash the bytes, dedupe, never store the
+   * same file twice. That's exactly right for media: an image is uploaded once
+   * and referenced, and two identical uploads are one asset.
+   *
+   * A post isn't media. It's a document with a stable identity that changes every
+   * time you save, and dedupe is meaningless for it — two posts with byte-identical
+   * text would be a coincidence, not a saving. So markdown gets an endpoint where
+   * the **id** is the identity and the hash is only where the bytes live: rewrite
+   * the file, recompute the hash, keep the row. Slugs, usages and links survive an
+   * edit, which they wouldn't if editing meant re-uploading.
+   *
+   * Markdown only. Extending this to images would quietly break the dedupe and
+   * variant model that makes the library work.
+   */
+  app.put<{ Params: { id: string }; Body: { markdown?: string } }>(
+    "/api/cms/assets/:id/content",
+    guard,
+    async (req, reply) => {
+      const a = store.assets.getById(req.params.id);
+      if (!a) throw notFound("Not found.");
+      if (a.kind !== "markdown") throw badRequest("Only markdown assets have editable content.");
+      const markdown = req.body?.markdown;
+      if (typeof markdown !== "string") throw badRequest("Expected a markdown string.");
+      const buf = Buffer.from(markdown, "utf8");
+      if (buf.byteLength > MAX_BYTES) throw payloadTooLarge("Too large.");
+
+      const hash = createHash("sha256").update(buf).digest("hex");
+      if (hash !== a.hash) {
+        await writeFile(origPath(hash, a.ext), buf);
+        store.assets.setContent(a.id, hash, buf.byteLength);
+        // The old blob is now unreferenced. Left on disk deliberately: deleting it
+        // would need a refcount (another asset may share the hash via dedupe), and
+        // orphaned bytes are cheaper than a wrong delete. Sweeping them is a
+        // maintenance job, not a request handler.
+      }
+      void reply.code(200);
+      return { ...store.assets.getById(a.id)!, markdown };
+    },
+  );
 
   app.patch<{ Params: { id: string }; Body: Record<string, unknown> }>(
     "/api/cms/assets/:id",

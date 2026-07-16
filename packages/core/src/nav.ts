@@ -26,6 +26,16 @@ export interface NavNode {
   children?: NavNode[];
   /** Leaf: module ids rendered in order. Mutually exclusive with `children`. */
   modules?: string[];
+  /**
+   * Draft: the node exists in the tree but isn't published. CMS-owned.
+   * A hidden node still counts for depth and breadth — a node that would break
+   * the tree the moment you publish it is rot you want at build time, not at
+   * toggle time — but it's exempt from the thin-leaf rule, because a draft is
+   * empty until it isn't. `canPublish()` in nav-lint re-checks that exemption
+   * before the CMS is allowed to flip it. Hidden means *not rendered and not
+   * routable*, not "rendered but unlinked".
+   */
+  hidden?: boolean;
 }
 
 export function isBranch(node: NavNode): node is NavNode & { children: NavNode[] } {
@@ -75,4 +85,14 @@ export function navDepth(nodes: NavNode[]): number {
     if (depth > max) max = depth;
   });
   return max;
+}
+
+/** The tree as the public site may see it: drafts removed, at every depth.
+ *  `hidden` is only a guarantee if something enforces it — a flag nothing reads
+ *  is a comment. Resolving against this means a hidden node is neither rendered
+ *  nor routable, rather than rendered-but-unlinked. */
+export function visibleNav(nodes: NavNode[]): NavNode[] {
+  return nodes
+    .filter((node) => !node.hidden)
+    .map((node) => (node.children ? { ...node, children: visibleNav(node.children) } : node));
 }

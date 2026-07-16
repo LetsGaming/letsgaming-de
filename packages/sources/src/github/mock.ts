@@ -127,6 +127,7 @@ export function githubMockSource(): Source<GitHubData, GitHubData> {
     id: "github",
     targetArea: "work",
     schedule: "0 */6 * * *",
+  ttl: 8 * 60 * 60 * 1000,
     fetch: async () => ok(DEMO),
     normalize: (raw) => raw,
   };

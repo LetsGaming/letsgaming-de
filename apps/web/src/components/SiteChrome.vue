@@ -3,48 +3,39 @@ import type { NavView } from "@lg/core";
 import { useStore } from "@nanostores/vue";
 import { computed, onMounted, ref } from "vue";
 import { icons } from "../lib/icons";
-import {
-	$activeTab,
-	$theme,
-	initSite,
-	setLocale,
-	setTab,
-	toggleTheme,
-} from "../stores/site";
+import { $theme, initSite, setLocale, toggleTheme } from "../stores/site";
+import { areaHref } from "../lib/area";
 import SettingsModal from "./SettingsModal.vue";
 
-const props = defineProps<{ nav: NavView[]; locale: "en" | "de" }>();
+const props = defineProps<{ nav: NavView[]; locale: "en" | "de"; current: string }>();
 
-const activeTab = useStore($activeTab);
 const theme = useStore($theme);
 const settingsOpen = ref(false);
-
-// During SSR the shared atom is still "", so fall back to the first area for the
-// active-tab highlight; after hydration initSite() has seeded it to the same id.
-const current = computed(() => activeTab.value || props.nav[0]?.id);
-
-function onNav(id: string) {
-	setTab(id);
-	if (typeof window !== "undefined")
-		window.scrollTo({ top: 0, behavior: "smooth" });
-}
+// The server already knows which area this is — it's the URL. No atom, no SSR
+// fallback, no hydration gap where the highlight is wrong.
+const current = computed(() => props.current);
+const href = (id: string) => areaHref(props.nav, id);
 
 onMounted(() => initSite(props.nav));
 </script>
 
 <template>
+
+  <!-- Four labels fit at 380px; they always did. What didn't fit was the pill,
+       the display face and the nested padding — all of which the rules removed. -->
   <div class="chrome">
     <nav class="tabs" aria-label="Sections">
-      <button
+      <a
         v-for="area in nav"
         :key="area.id"
         class="tab"
         :class="{ active: area.id === current }"
         :aria-current="area.id === current ? 'page' : undefined"
-        @click="onNav(area.id)"
+        :href="href(area.id)"
+       
       >
         {{ area.label }}
-      </button>
+      </a>
     </nav>
     <button
       class="theme-toggle"

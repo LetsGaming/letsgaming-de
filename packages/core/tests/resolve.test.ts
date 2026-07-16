@@ -139,7 +139,7 @@ test("safeHref passes through http(s), mailto, and site-relative URLs", () => {
   assert.equal(safeHref("/work"), "/work");
 });
 
-test("highlights merges releases/PRs/gists newest-first with relative times", () => {
+test("activity merges commits and releases/PRs/gists into one newest-first stream", () => {
   const content: SiteContent = {
     meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
     headline: { before: en("a "), highlight: en("b"), after: en(" c") },
@@ -151,15 +151,15 @@ test("highlights merges releases/PRs/gists newest-first with relative times", ()
     hobbies: [],
     now: [],
   };
-  const nav: NavNode[] = [{ id: "work", label: en("Work"), modules: ["highlights"] }];
-  const modules: ModuleDescriptor[] = [
-    { id: "highlights", kind: "highlights", heading: en("Recently shipped") },
-  ];
+  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["activity"] }];
+  const modules: ModuleDescriptor[] = [{ id: "activity", kind: "activity", heading: en("Recent") }];
   const github: GitHubData = {
     stats: { repos: 1, commitsYear: 1, commitsAllTime: 1, longestStreakDays: 1 },
     languages: [],
     contributions: [],
-    events: [],
+    events: [
+      { type: "commit", text: "Pushed to c", meta: "m", at: "2026-01-07T00:00:00Z" },
+    ],
     releases: [
       { repo: "a", name: "R", tagName: "v1", url: "https://x/r", publishedAt: "2026-01-05T00:00:00Z" },
     ],
@@ -175,18 +175,20 @@ test("highlights merges releases/PRs/gists newest-first with relative times", ()
     now: new Date("2026-01-10T00:00:00Z"),
   });
 
-  const mod = view.modules["highlights"];
-  if (!mod || mod.kind !== "highlights") throw new Error("expected a highlights module");
-  const items = mod.data.items;
-  assert.equal(items.length, 3);
-  // Newest-first across the three types: PR (01-09) > release (01-05) > gist (01-01).
+  const mod = view.modules["activity"];
+  if (!mod || mod.kind !== "activity") throw new Error("expected an activity module");
+  const items = mod.data.events;
+  // A release is an event: "Recently shipped" was a second feed sorted by the
+  // same key, so both lists land in one stream.
+  assert.equal(items.length, 4);
+  // Newest-first across every type: PR (01-09) > commit (01-07) > release (01-05) > gist (01-01).
   assert.deepEqual(
     items.map((i) => i.type),
-    ["pr", "release", "gist"],
+    ["pr", "commit", "release", "gist"],
   );
   assert.match(items[0]!.text, /Merged/);
-  assert.equal(items[1]?.meta, "v1"); // release tag
-  assert.equal(items[2]?.meta, "2 files"); // gist file count
+  assert.equal(items[2]?.meta, "v1"); // release tag
+  assert.equal(items[3]?.meta, "2 files"); // gist file count
   assert.ok(items[0]!.relative.length > 0); // relative time pre-computed
   assert.equal(mod.data.sources[0], "GitHub");
 });
@@ -239,4 +241,55 @@ test("resolver expands asset refs: hero avatar + SVG link icon", () => {
   assert.equal(gh?.iconSvg, undefined);
   assert.equal(co?.icon, undefined);
   assert.equal(co?.iconSvg, "<svg><path/></svg>");
+});
+
+test("freshness: data past its source's TTL renders stale, not fresh", () => {
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p1")],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "home", label: en("Home"), modules: ["glance"] }];
+  const modules: ModuleDescriptor[] = [{ id: "glance", kind: "glance", heading: en("At a glance") }];
+  const github: GitHubData = {
+    stats: { repos: 1, commitsYear: 1, commitsAllTime: 1, longestStreakDays: 1 },
+    languages: [],
+    contributions: [],
+    events: [],
+  };
+  const now = new Date("2026-01-10T12:00:00Z");
+  const build = (syncedAt: string) =>
+    resolveSiteView({
+      content,
+      source: { github },
+      nav,
+      modules,
+      now,
+      freshness: { syncedAt: { github: syncedAt }, ttl: { github: 60 * 60 * 1000 } },
+    });
+
+  const fresh = build("2026-01-10T11:30:00Z"); // 30m old, TTL 1h
+  const g1 = fresh.modules["glance"];
+  if (!g1 || g1.kind !== "glance") throw new Error("expected glance");
+  assert.equal(g1.data.freshness?.state, "fresh");
+
+  const stale = build("2026-01-10T09:00:00Z"); // 3h old, TTL 1h
+  const g2 = stale.modules["glance"];
+  if (!g2 || g2.kind !== "glance") throw new Error("expected glance");
+  // The site's claim is that it updates itself, so old data must say so rather
+  // than wear the fresh state.
+  assert.equal(g2.data.freshness?.state, "stale");
+  assert.ok(g2.data.freshness?.relative);
+
+  // No sync has ever landed: a real state, not an error.
+  const never = resolveSiteView({ content, source: {}, nav, modules, now });
+  const g3 = never.modules["glance"];
+  if (!g3 || g3.kind !== "glance") throw new Error("expected glance");
+  assert.equal(g3.data.freshness?.state, "never");
 });

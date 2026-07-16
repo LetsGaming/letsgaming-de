@@ -19,6 +19,7 @@ const props = defineProps<{
       appId: number;
       minutes2Weeks: number;
       iconUrl?: string;
+      accent?: string;
     }[];
   };
 }>();
@@ -27,6 +28,16 @@ const POLL_MS = 25_000;
 
 const view = ref<PresenceView | null>(null);
 const loaded = ref(false);
+/**
+ * Unreachable is not offline.
+ *
+ * `status` falls back to "offline" when `view` is null, so a failed fetch used to
+ * render "Offline" — a specific claim about a person, made from a network error.
+ * This module is Life's anchor and the site's floor ("a visitor notices the thing
+ * is alive"), and it depends on a third party, so its failure state has to say
+ * something true rather than something confident.
+ */
+const unreachable = ref(false);
 let poll: ReturnType<typeof setInterval> | null = null;
 
 // ── Discord half ────────────────────────────────────────────────────────────
@@ -48,10 +59,10 @@ const activityCards = computed(() =>
 
 // Per-category source label + themed motion + accent (currentColor for the motif).
 const CAT: Record<string, { src: string; motif: string; color: string }> = {
-  music: { src: "Listening to Spotify", motif: "music", color: "var(--mint)" },
-  game: { src: "Playing", motif: "game", color: "var(--purple-br)" },
-  watching: { src: "Watching", motif: "watch", color: "var(--coral)" },
-  streaming: { src: "Streaming", motif: "stream", color: "var(--purple-br)" },
+  music: { src: "Listening to Spotify", motif: "music", color: "var(--ink)" },
+  game: { src: "Playing", motif: "game", color: "var(--ink)" },
+  watching: { src: "Watching", motif: "watch", color: "var(--ink)" },
+  streaming: { src: "Streaming", motif: "stream", color: "var(--ink)" },
 };
 
 const activities = computed(() => {
@@ -82,12 +93,6 @@ const initials = computed(() => {
 });
 
 // ── Steam half ──────────────────────────────────────────────────────────────
-const ACCENTS = [
-  "var(--purple)",
-  "var(--coral)",
-  "var(--mint)",
-  "var(--purple-br)",
-];
 const hasSteam = computed(() => !!props.steam?.recent.length);
 const playingAppId = computed(() => props.steam?.playing?.appId ?? null);
 
@@ -106,7 +111,7 @@ const steamGames = computed<Game[]>(() => {
   const recent = props.steam?.recent ?? [];
   const hoursOf = (m: number) => Math.round((m / 60) * 10) / 10;
   const total = recent.reduce((s, g) => s + g.minutes2Weeks / 60, 0) || 1;
-  return recent.map((g, i) => {
+  return recent.map((g) => {
     const hours = hoursOf(g.minutes2Weeks);
     return {
       name: g.name,
@@ -115,7 +120,9 @@ const steamGames = computed<Game[]>(() => {
       label: (hours % 1 === 0 ? hours : hours.toFixed(1)) + "h",
       pct: Math.max(2, Math.round((g.minutes2Weeks / 60 / total) * 100)),
       ...(g.iconUrl ? { iconUrl: g.iconUrl, iconSrc: presenceMediaUrl({ url: g.iconUrl }) } : {}),
-      accent: ACCENTS[i % ACCENTS.length]!,
+      // Sampled from the game's own icon at sync — imported, not assigned.
+      // Neutral when the icon didn't load: a fallback, never a guess.
+      accent: g.accent ?? "var(--surf-3)",
       playing: playingAppId.value != null && g.appId === playingAppId.value,
     };
   });
@@ -132,7 +139,7 @@ const totalHours = computed(
     ) / 10,
 );
 const iconGrad = (accent: string) =>
-  `linear-gradient(135deg, ${accent}, var(--purple-d))`;
+  `linear-gradient(135deg, ${accent}, var(--surf-3))`;
 const storeUrl = (appId: number) =>
   `https://store.steampowered.com/app/${appId}`;
 
@@ -142,9 +149,16 @@ async function refresh() {
     const res = await fetch(apiUrl("/api/presence"), {
       headers: { Accept: "application/json" },
     });
-    if (res.ok) view.value = (await res.json()) as PresenceView;
+    if (res.ok) {
+      view.value = (await res.json()) as PresenceView;
+      unreachable.value = false;
+    } else {
+      unreachable.value = view.value === null;
+    }
   } catch {
-    /* keep the last snapshot on a hiccup */
+    // Keep the last snapshot on a hiccup — old-and-labelled beats blank. But if
+    // there's never been one, say so instead of inventing a status.
+    unreachable.value = view.value === null;
   } finally {
     loaded.value = true;
   }
@@ -178,8 +192,10 @@ onBeforeUnmount(() => {
             {{ name }}<span class="pw-handle">{{ handle }}</span>
           </div>
           <div class="pw-stat">
-            <span class="pw-lbl">{{ statusLabel[status] }}</span>
+            <span v-if="unreachable" class="pw-lbl">Can't reach Discord</span>
+            <span v-else class="pw-lbl">{{ statusLabel[status] }}</span>
             <span v-if="!loaded" class="pw-muted">· loading…</span>
+            <span v-else-if="unreachable" class="pw-muted">· status unknown</span>
           </div>
           <div v-if="customStatus" class="pw-cstat">
             <span class="pw-q">“</span>{{ customStatus }}
@@ -188,7 +204,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- current activity: themed motion, no fake progress bar -->
-      <div v-if="activities.length" class="pw-act">
+      <div v-if="activities?.length" class="pw-act">
         <template v-for="activity in activities" :key="activity.title">
           <div class="pw-actitem">
             <img
@@ -311,18 +327,18 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .pw {
-  background: linear-gradient(180deg, var(--card-2), var(--card) 46%);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surf-2), var(--surf-1) 46%);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
   padding: var(--sp-18);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-card);
 }
 
 /* profile panel */
 .pw-unit {
-  border-radius: var(--r-sm);
-  background: var(--card-2);
-  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surf-2);
+  border: 1px solid var(--line-1);
   overflow: hidden;
 }
 .pw-who {
@@ -343,7 +359,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
   font-size: 16px;
   color: #fff;
-  background: linear-gradient(140deg, var(--purple-br), var(--purple-d));
+  background: linear-gradient(140deg, var(--ink), var(--surf-3));
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
 }
 .pw-av {
@@ -373,40 +389,40 @@ onBeforeUnmount(() => {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 3px solid var(--card-2);
+  border: 3px solid var(--surf-2);
   display: grid;
   place-items: center;
   background: var(--muted);
 }
 .pw-pip.pw-s-online {
-  background: var(--mint);
+  background: var(--ink);
 }
 .pw-pip.pw-s-online::after {
   content: "";
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid var(--mint);
+  border: 2px solid var(--ink);
   opacity: 0.5;
   animation: pw-ping 2.6s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
 }
 .pw-pip.pw-s-idle {
-  background: var(--sun);
+  background: var(--ink);
   animation: pw-breathe 2.6s ease-in-out infinite;
 }
 .pw-pip.pw-s-dnd {
-  background: var(--coral);
+  background: var(--ink);
 }
 .pw-pip.pw-s-dnd::before {
   content: "";
   width: 56%;
   height: 2.5px;
   border-radius: 2px;
-  background: var(--card-2);
+  background: var(--surf-2);
 }
 .pw-pip.pw-s-offline {
   background: transparent;
-  border-color: var(--card-2);
+  border-color: var(--surf-2);
   box-shadow: inset 0 0 0 2px var(--muted);
 }
 
@@ -451,7 +467,7 @@ onBeforeUnmount(() => {
 }
 .pw-q {
   font-family: var(--f-d);
-  color: color-mix(in srgb, var(--purple-br) 65%, var(--muted));
+  color: color-mix(in srgb, var(--ink) 65%, var(--muted));
   margin-right: 1px;
 }
 
@@ -461,7 +477,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 11px;
   padding: 11px 13px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
 }
 /* One activity = an icon-left / text-right row, matching the profile row and the
    Steam tiles above. (The art used to stack above the text because this wrapper
@@ -481,7 +497,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 5px 12px -6px rgba(0, 0, 0, 0.55);
 }
 .pw-art-ph {
-  background: linear-gradient(135deg, var(--purple), var(--purple-d));
+  background: linear-gradient(135deg, var(--ink), var(--surf-3));
 }
 .pw-abody {
   min-width: 0;
@@ -737,12 +753,12 @@ onBeforeUnmount(() => {
   display: block;
   position: relative;
   padding: var(--sp-14);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-card);
   margin-bottom: 11px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-1);
   text-decoration: none;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--purple-wash), var(--card));
+  background: linear-gradient(135deg, var(--surf-2), var(--surf-1));
   transition: transform 0.16s ease;
 }
 .pw-feat:hover {
@@ -756,7 +772,7 @@ onBeforeUnmount(() => {
   font-size: 9.5px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--purple-br);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -799,8 +815,8 @@ onBeforeUnmount(() => {
 .pw-feat .pw-fill {
   background: linear-gradient(
     90deg,
-    var(--purple-br),
-    color-mix(in srgb, var(--purple-br) 45%, #fff)
+    var(--ink),
+    color-mix(in srgb, var(--ink) 45%, #fff)
   );
 }
 
@@ -816,8 +832,8 @@ onBeforeUnmount(() => {
   min-width: 0;
   padding: var(--sp-10);
   border-radius: 14px;
-  background: var(--card-2);
-  border: 1px solid var(--line);
+  background: var(--surf-2);
+  border: 1px solid var(--line-1);
   text-decoration: none;
   transition:
     transform 0.16s ease,
@@ -851,7 +867,7 @@ onBeforeUnmount(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--mint);
+  background: var(--ink);
   margin-left: var(--sp-6);
   animation: pw-breathe 1.8s ease-in-out infinite;
 }
@@ -865,14 +881,14 @@ onBeforeUnmount(() => {
   height: 4px;
   flex: 1;
   border-radius: 4px;
-  background: var(--lang-track);
+  background: var(--track);
   overflow: hidden;
 }
 .pw-fill {
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--purple), var(--purple-br));
+  background: linear-gradient(90deg, var(--ink), var(--ink));
 }
 .pw-hrs {
   font-family: var(--f-m);

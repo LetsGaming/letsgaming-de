@@ -34,19 +34,72 @@ export const icons: Record<string, string> = {
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
 };
 
-/** Language name -> bar color. Presentation lives in the frontend, not the API. */
-export const langColors: Record<string, string> = {
-  TypeScript: "#a78bfa",
-  JavaScript: "#ffc64b",
-  Python: "#38d6a6",
-  CSS: "#ff7a5e",
-  HTML: "#ff7a5e",
-  Shell: "#7c8cff",
-  Vue: "#42b883",
+/** GitHub linguist's real colours. These used to be repainted into the house
+ *  palette — TypeScript as violet-400, Python as mint, CSS as coral — which threw
+ *  away free, true, recognisable colour. Vue, Go and Rust were already real; now
+ *  they all are. Linguist is the source of truth, not this file's taste.
+ *  Presentation still lives in the frontend, not the API. */
+const LINGUIST: Record<string, string> = {
+  TypeScript: "#3178c6",
+  JavaScript: "#f1e05a",
+  Python: "#3572a5",
+  CSS: "#663399",
+  HTML: "#e34c26",
+  Shell: "#89e051",
+  Vue: "#41b883",
   Go: "#00add8",
-  Rust: "#ffab70",
+  Rust: "#dea584",
+  Markdown: "#083fa1",
+  JSON: "#292929",
+  YAML: "#cb171e",
+  PowerShell: "#012456",
+  Dockerfile: "#384d54",
+  Astro: "#ff5a03",
 };
 
+/** Linguist has no dark-background contract: JSON is #292929 and PowerShell is
+ *  #012456, both invisible on --surf-0. Lift lightness, hold hue, so a colour
+ *  stays recognisably itself. Desaturated input (JSON) lifts to grey, which is
+ *  correct — JSON has no colour identity and inventing one would be a lie. */
+const MIN_LIGHTNESS = 0.42;
+
+function toHsl(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h =
+    max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+
+function toHex(h: number, s: number, l: number): string {
+  const ch = (n: number) => {
+    const k = (n + h * 12) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const v = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(v * 255)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${ch(0)}${ch(8)}${ch(4)}`;
+}
+
+/** Raise a colour to the readability floor without moving its hue. */
+export function lift(hex: string, minLightness = MIN_LIGHTNESS): string {
+  const [h, s, l] = toHsl(hex);
+  return l >= minLightness ? hex : toHex(h, s, minLightness);
+}
+
+/** A language's colour, lifted to read on the page. Unknown languages get a
+ *  neutral rather than an invented hue: colour is imported, never invented. */
 export function langColor(name: string): string {
-  return langColors[name] ?? "#7c8cff";
+  const real = LINGUIST[name];
+  return real ? lift(real) : "#7d7d7d";
 }

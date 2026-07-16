@@ -61,13 +61,17 @@ export interface LanguageView {
 }
 
 export interface EventView {
-  type: "commit" | "pr" | "star" | "repo";
+  /** A release is an event. So is a merged PR, and a gist. These were a second
+   *  lookalike feed ("Recently shipped") sorted by the same key as this one. */
+  type: "commit" | "pr" | "star" | "repo" | "release" | "gist";
   text: string;
   meta?: string;
   /** ISO timestamp (kept for tooltips / machine use). */
   at: string;
   /** Pre-computed short relative time, e.g. "2d", "1w". */
   relative: string;
+  /** Where the event points, when it has a destination (releases, PRs, gists). */
+  href?: string;
 }
 
 /** Contribution heatmap, bucketed server-side to levels 0..4 (5 shades). */
@@ -78,7 +82,20 @@ export interface HeatView {
   total: number;
 }
 
-/** One entry in the Highlights feed — a release, a merged PR, or a gist. */
+/** One blog post, newest first. Posts are markdown assets in the library; the
+ *  renderer already exists at /md/[slug]. */
+export interface PostView {
+  slug: string;
+  title: string;
+  /** ISO timestamp. */
+  at: string;
+  relative: string;
+  excerpt?: string;
+  /** Display only — rendered as chips, not links. */
+  tags: string[];
+}
+
+/** Internal: a release/PR/gist on the way into the merged event stream. */
 export interface HighlightView {
   type: "release" | "pr" | "gist";
   /** Ready-to-read sentence, e.g. "Released plantcare-tracker v1.2.0". */
@@ -90,6 +107,26 @@ export interface HighlightView {
   at: string;
   /** Pre-computed short relative time, e.g. "3d". */
   relative: string;
+}
+
+/**
+ * What a synced module knows about its own age.
+ *
+ * `stale` is the state that matters here. The brief's failure mode is "it goes
+ * stale", so a module that can't tell fresh from old can't fail safely: it just
+ * lies quietly. `never` is the true empty (no successful sync yet); `failed`
+ * still carries the last-known data, because old-and-labelled beats blank.
+ */
+export type FreshnessState = "fresh" | "stale" | "empty" | "failed" | "never";
+
+export interface FreshnessView {
+  state: FreshnessState;
+  /** ISO timestamp of the last successful sync, when there's been one. */
+  syncedAt?: string;
+  /** Pre-computed short relative age, e.g. "8m", "2d". */
+  relative?: string;
+  /** Which source this describes, e.g. "github". */
+  source: string;
 }
 
 /** One approved guestbook entry, as shown publicly. */
@@ -151,9 +188,7 @@ export interface HeroView {
   avatar?: ImageAssetView | GifAssetView;
 }
 
-export interface ActivityView {
-  heading: string;
-  note?: string;
+export interface ActivityView extends SectionMeta {
   stats: StatView[];
   contributions: HeatView;
   languages: LanguageView[];
@@ -163,6 +198,9 @@ export interface ActivityView {
 }
 
 export interface SectionMeta {
+  /** Present on modules fed by a Source. Absent on CMS-authored ones — local
+   *  content can't be stale. */
+  freshness?: FreshnessView;
   heading: string;
   note?: string;
 }
@@ -171,9 +209,13 @@ export interface SectionMeta {
 export type ResolvedModule =
   | { id: string; kind: "hero"; data: HeroView }
   | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null } }
-  | { id: string; kind: "glance"; data: SectionMeta & { stats: StatView[] } }
+  | {
+      id: string;
+      kind: "glance";
+      data: SectionMeta & { stats: StatView[]; latest?: EventView };
+    }
   | { id: string; kind: "activity"; data: ActivityView }
-  | { id: string; kind: "highlights"; data: SectionMeta & { items: HighlightView[]; sources: string[] } }
+  | { id: string; kind: "posts"; data: SectionMeta & { posts: PostView[] } }
   | { id: string; kind: "coding"; data: SectionMeta & { coding: CodingView | null } }
   | { id: string; kind: "projects"; data: SectionMeta & { projects: ProjectView[]; githubUrl?: string } }
   | { id: string; kind: "hobbies"; data: SectionMeta & { hobbies: HobbyView[] } }

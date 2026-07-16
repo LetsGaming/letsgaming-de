@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { en } from "../src/i18n.js";
 import { LAUNCH_MODULE_IDS, LAUNCH_NAV } from "../src/ia.js";
-import { lintNav } from "../src/nav-lint.js";
+import { canPublish, lintNav } from "../src/nav-lint.js";
 import type { NavNode } from "../src/nav.js";
 
 test("the launch IA passes clean", () => {
@@ -98,4 +98,42 @@ test("flags duplicate ids", () => {
   ];
   const r = lintNav(dup);
   assert.ok(r.violations.some((v) => v.code === "DUPLICATE_ID"));
+});
+
+test("a hidden node is exempt from the thin-leaf rule — a draft is empty until it isn't", () => {
+  const nav: NavNode[] = [
+    { id: "home", label: en("Home"), modules: ["hero"] },
+    { id: "blog", label: en("Blog"), modules: [], hidden: true },
+  ];
+  const result = lintNav(nav);
+  assert.equal(result.ok, true);
+});
+
+test("a hidden node still counts for breadth — rot surfaces at build, not at toggle", () => {
+  const nav: NavNode[] = [
+    ...["a", "b", "c", "d", "e"].map((id) => ({ id, label: en(id), modules: ["hero"] })),
+    { id: "blog", label: en("Blog"), modules: ["hero"], hidden: true },
+  ];
+  const result = lintNav(nav);
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.some((v) => v.code === "MAX_CHILDREN" && v.at === "(root)"));
+});
+
+test("canPublish refuses an empty draft — the CMS toggle can't bypass the lint", () => {
+  const nav: NavNode[] = [
+    { id: "home", label: en("Home"), modules: ["hero"] },
+    { id: "blog", label: en("Blog"), modules: [], hidden: true },
+  ];
+  assert.equal(lintNav(nav).ok, true, "hidden: fine");
+  const check = canPublish(nav, "blog");
+  assert.equal(check.ok, false, "publishing it is not");
+  assert.equal(check.violations[0]?.code, "EMPTY_LEAF");
+});
+
+test("canPublish allows a draft that has earned its modules", () => {
+  const nav: NavNode[] = [
+    { id: "home", label: en("Home"), modules: ["hero"] },
+    { id: "blog", label: en("Blog"), modules: ["posts"], hidden: true },
+  ];
+  assert.equal(canPublish(nav, "blog").ok, true);
 });

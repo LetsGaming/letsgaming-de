@@ -32,7 +32,7 @@ test("seed populates content and IA", () => {
   assert.ok(content.hobbies.length > 0);
   const nav = store.ia.getNav();
   const modules = store.ia.getModules();
-  assert.equal(nav.length, 4);
+  assert.equal(nav.length, 5); // home, code, life, about, blog (hidden)
   assert.ok(lintNav(nav, { knownModuleIds: modules.map((m) => m.id) }).ok);
   store.close();
 });
@@ -119,28 +119,64 @@ test("reconcileIa adds and places a newly-registered launch module (IA migration
   seedIfEmpty(db);
   const ia = iaRepo(db);
 
-  // Simulate a store seeded before `highlights` existed: drop its descriptor and
-  // its placement in the Work leaf.
+  // Simulate a store seeded before `posts` existed: drop its descriptor and its
+  // placement in the Blog leaf.
   const nav = ia.getNav();
-  const work = nav.find((n) => n.id === "work");
-  if (!work) throw new Error("expected a work leaf");
-  work.modules = ["activity", "projects"];
+  const blog = nav.find((n) => n.id === "blog");
+  if (!blog) throw new Error("expected a blog leaf");
+  blog.modules = [];
   ia.setNav(nav);
-  ia.setModules(ia.getModules().filter((m) => m.id !== "highlights"));
-  assert.ok(!ia.getModules().some((m) => m.id === "highlights"));
+  ia.setModules(ia.getModules().filter((m) => m.id !== "posts"));
+  assert.ok(!ia.getModules().some((m) => m.id === "posts"));
 
   const res = reconcileIa(db);
-  assert.deepEqual(res.addedModules, ["highlights"]);
-  assert.deepEqual(res.placed, ["highlights"]);
-  assert.ok(ia.getModules().some((m) => m.id === "highlights"));
-  const work2 = ia.getNav().find((n) => n.id === "work");
-  // Placed in launch order — between activity and projects — without disturbing them.
-  assert.deepEqual(work2?.modules, ["activity", "highlights", "projects"]);
+  assert.deepEqual(res.addedModules, ["posts"]);
+  assert.deepEqual(res.placed, ["posts"]);
+  assert.ok(ia.getModules().some((m) => m.id === "posts"));
+  assert.deepEqual(ia.getNav().find((n) => n.id === "blog")?.modules, ["posts"]);
 
   // Idempotent: running again changes nothing.
   const again = reconcileIa(db);
   assert.deepEqual(again.addedModules, []);
   assert.deepEqual(again.placed, []);
+  db.close();
+});
+
+test("reconcileIa migrates an already-seeded store to the new tree (rename, retire, add)", () => {
+  const db = openDatabase(":memory:");
+  seedIfEmpty(db);
+  const ia = iaRepo(db);
+
+  // Rewind to the shape a live deployment actually has: a `work` area holding a
+  // `highlights` module, and no `blog` at all. The additive passes can't express
+  // any of these three changes, so without the structural pass the IA rework
+  // would live in the code and never reach the store.
+  ia.setNav([
+    { id: "home", label: { en: "Home" }, modules: ["hero", "glance", "featured"] },
+    { id: "work", label: { en: "Work" }, modules: ["activity", "highlights", "coding", "projects"] },
+    { id: "life", label: { en: "Life" }, modules: ["presence", "hobbies", "gallery", "now", "guestbook"] },
+    { id: "about", label: { en: "About" }, modules: ["bio", "contact"] },
+  ]);
+  ia.setModules([
+    ...ia.getModules().filter((m) => m.id !== "posts"),
+    { id: "highlights", kind: "highlights", heading: { en: "Recently shipped" } },
+  ] as never);
+
+  reconcileIa(db);
+  const nav = ia.getNav();
+
+  assert.ok(!nav.some((n) => n.id === "work"), "work is renamed, not left behind");
+  const code = nav.find((n) => n.id === "code");
+  assert.ok(code, "work became code");
+  assert.ok(!code?.modules?.includes("highlights"), "the retired module is unplaced");
+  const blog = nav.find((n) => n.id === "blog");
+  assert.ok(blog, "the new area exists");
+  assert.equal(blog?.hidden, true, "and arrives as a draft, not published");
+  assert.ok(!ia.getModules().some((m) => m.id === "highlights"), "its descriptor is gone");
+
+  // Idempotent: the rename only fires while the old shape is present.
+  reconcileIa(db);
+  assert.equal(ia.getNav().filter((n) => n.id === "code").length, 1);
   db.close();
 });
 

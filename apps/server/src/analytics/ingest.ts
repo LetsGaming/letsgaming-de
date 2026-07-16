@@ -12,6 +12,14 @@ export interface IngestResult {
   file: string;
   linesRead: number;
   hits: number;
+  /**
+   * First line the parser couldn't read, if any. The parser expects nginx/Apache
+   * *combined* format; Caddy and Traefik default to JSON, in which case every
+   * line fails and — because a missing log is meant to degrade quietly — the
+   * whole feature looks identical to "not configured". A sample turns that into
+   * a one-line diagnosis.
+   */
+  unparsedSample?: string;
   fromOffset: number;
   toOffset: number;
 }
@@ -27,6 +35,7 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
   let buffer = "";
   let linesRead = 0;
   let hitCount = 0;
+  let unparsedSample: string | undefined;
   try {
     const chunk = Buffer.alloc(64 * 1024);
     while (offset < size) {
@@ -41,7 +50,9 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
         buffer = buffer.slice(nl + 1);
         if (line.trim()) {
           linesRead++;
-          batch.push(...lineToHits(line, ownHost));
+          const hits = lineToHits(line, ownHost);
+          if (!hits.length && unparsedSample === undefined) unparsedSample = line.slice(0, 200);
+          batch.push(...hits);
         }
       }
       if (batch.length) {
@@ -57,5 +68,12 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
   const consumed = size - Buffer.byteLength(buffer, "utf8");
   store.analytics.setOffset(file, consumed);
 
-  return { file, linesRead, hits: hitCount, fromOffset, toOffset: consumed };
+  return {
+    file,
+    linesRead,
+    hits: hitCount,
+    fromOffset,
+    toOffset: consumed,
+    ...(unparsedSample !== undefined ? { unparsedSample } : {}),
+  };
 }

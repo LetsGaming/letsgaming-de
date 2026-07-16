@@ -1,7 +1,7 @@
 import type { SiteView } from "@lg/core";
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
-import { $activeTab, $theme } from "../../src/stores/site";
+import { $theme } from "../../src/stores/site";
 import SiteChrome from "../../src/components/SiteChrome.vue";
 import SitePanels from "../../src/components/SitePanels.vue";
 
@@ -16,7 +16,7 @@ const site = {
 	locale: "en",
 	nav: [
 		{ id: "home", label: "Home", modules: ["hero"] },
-		{ id: "work", label: "Work", modules: ["highlights", "coding"] },
+		{ id: "code", label: "Code", modules: ["activity", "coding"] },
 		{ id: "life", label: "Life", modules: ["guestbook", "gallery"] },
 		{ id: "about", label: "About", modules: ["bio"] },
 	],
@@ -43,14 +43,16 @@ const site = {
 				],
 			},
 		},
-		highlights: {
-			id: "highlights",
-			kind: "highlights",
+		activity: {
+			id: "activity",
+			kind: "activity",
 			data: {
-				heading: "Recently shipped",
-				note: "releases, merged PRs & gists",
+				heading: "Recent",
 				sources: ["GitHub"],
-				items: [
+				stats: [],
+				contributions: { levels: [], total: 0 },
+				languages: [],
+				events: [
 					{
 						type: "release",
 						text: "Released plantcare-tracker v1.2.0",
@@ -91,7 +93,7 @@ const site = {
 			id: "coding",
 			kind: "coding",
 			data: {
-				heading: "What I actually work in",
+				heading: "This week",
 				note: "last 7 days",
 				coding: {
 					range: "last 7 days",
@@ -123,22 +125,22 @@ const site = {
 	},
 } as unknown as SiteView;
 
-// The two islands coordinate through the shared store; a harness renders both,
-// exactly as the page does. Reset the shared atoms between tests for isolation.
+// Areas are routes, so the harness takes the area the server resolved — exactly
+// as AreaPage.astro passes it. There's no shared tab atom to reset any more: the
+// URL is the state, and both islands are told what it is.
 const Shell = {
 	components: { SiteChrome, SitePanels },
-	props: ["site"],
-	template: `<div><SiteChrome :nav="site.nav" :locale="site.locale" /><SitePanels :site="site" /></div>`,
+	props: ["site", "area"],
+	template: `<div><SiteChrome :nav="site.nav" :locale="site.locale" :current="area" /><SitePanels :site="site" :area="area" /></div>`,
 };
 
 beforeEach(() => {
-	$activeTab.set("");
 	$theme.set("dark");
 });
 
 describe("public site islands (SiteChrome + SitePanels)", () => {
 	it("mounts and renders the first section's content without throwing", () => {
-		const wrapper = mount(Shell, { props: { site } });
+		const wrapper = mount(Shell, { props: { site, area: "home" } });
 		expect(wrapper.text()).toContain("Home");
 		expect(wrapper.text()).toContain("About");
 		// The initial (home) section's content is actually rendered — the exact
@@ -147,38 +149,35 @@ describe("public site islands (SiteChrome + SitePanels)", () => {
 		expect(wrapper.text()).toContain("things");
 	});
 
-	it("a nav click in SiteChrome switches the visible panel in SitePanels (cross-island store)", async () => {
-		const wrapper = mount(Shell, { props: { site } });
-		// Before: home is the shown panel, about is hidden.
-		expect(
-			wrapper.find('[data-panel="home"]').attributes("hidden"),
-		).toBeUndefined();
-		expect(
-			wrapper.find('[data-panel="about"]').attributes("hidden"),
-		).toBeDefined();
-
-		const aboutBtn = wrapper
-			.findAll("nav button")
-			.find((b) => b.text().includes("About"));
-		expect(aboutBtn).toBeTruthy();
-		await aboutBtn?.trigger("click");
-
-		// After: the store update flowed from the chrome island to the panels island.
-		expect(
-			wrapper.find('[data-panel="about"]').attributes("hidden"),
-		).toBeUndefined();
-		expect(
-			wrapper.find('[data-panel="home"]').attributes("hidden"),
-		).toBeDefined();
-		expect(wrapper.text()).toContain("I like building things.");
+	it("the nav is real links, one per area, pointing at real URLs", () => {
+		const wrapper = mount(Shell, { props: { site, area: "home" } });
+		const links = wrapper.findAll("nav a");
+		expect(links.length).toBe(site.nav.length);
+		// The first area is the root, not /home — one canonical URL for the landing
+		// page instead of two that render the same thing.
+		expect(links[0]?.attributes("href")).toBe("/");
+		const about = links.find((a) => a.text().includes("About"));
+		expect(about?.attributes("href")).toBe("/about");
+		expect(about?.attributes("aria-current")).toBeUndefined();
 	});
 
-	it("renders the highlights feed (releases/PRs/gists) as external links", async () => {
-		const wrapper = mount(Shell, { props: { site } });
-		const workBtn = wrapper
-			.findAll("nav button")
-			.find((b) => b.text().includes("Work"));
-		await workBtn?.trigger("click");
+	it("renders only the current area — the others aren't in the HTML at all", () => {
+		const wrapper = mount(Shell, { props: { site, area: "home" } });
+		expect(wrapper.text()).toContain("Hi, I build");
+		// Previously every area was SSR'd and the inactive ones hidden with
+		// [hidden], so the whole site shipped in every page's source. Now it doesn't.
+		expect(wrapper.text()).not.toContain("I like building things.");
+
+		const about = mount(Shell, { props: { site, area: "about" } });
+		expect(about.text()).toContain("I like building things.");
+		expect(about.text()).not.toContain("Hi, I build");
+		expect(
+			about.findAll("nav a").find((a) => a.text().includes("About"))?.attributes("aria-current"),
+		).toBe("page");
+	});
+
+	it("renders releases in the merged activity stream as external links", () => {
+		const wrapper = mount(Shell, { props: { site, area: "code" } });
 		expect(wrapper.text()).toContain("Released plantcare-tracker v1.2.0");
 		const link = wrapper
 			.findAll("a")
@@ -187,12 +186,12 @@ describe("public site islands (SiteChrome + SitePanels)", () => {
 			"https://github.com/x/releases/tag/v1.2.0",
 		);
 		expect(link?.attributes("rel")).toContain("noopener");
-		expect(wrapper.text()).toContain("What I actually work in");
+		expect(wrapper.text()).toContain("This week");
 		expect(wrapper.text()).toContain("TypeScript");
 	});
 
 	it("renders approved guestbook entries and the signing form", async () => {
-		const wrapper = mount(Shell, { props: { site } });
+		const wrapper = mount(Shell, { props: { site, area: "life" } });
 		const lifeBtn = wrapper
 			.findAll("nav button")
 			.find((b) => b.text().includes("Life"));

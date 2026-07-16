@@ -30,6 +30,7 @@ type View =
   | "links"
   | "now"
   | "layout"
+  | "posts"
   | "gallery"
   | "library"
   | "presence"
@@ -55,6 +56,7 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
     label: "Structure & media",
     items: [
       { id: "layout", label: "Layout" },
+      { id: "posts", label: "Blog" },
       { id: "library", label: "Asset library" },
       { id: "gallery", label: "Gallery" },
     ],
@@ -73,6 +75,7 @@ const VIEW_TITLES: Record<View, string> = {
   links: "Links",
   now: "Right now",
   layout: "Layout — module order",
+  posts: "Blog",
   library: "Asset library",
   gallery: "Gallery",
   presence: "Presence widget",
@@ -589,32 +592,11 @@ const chart = computed(() => {
   const xAt = (i: number) => (n <= 1 ? (x0 + x1) / 2 : x0 + (i / (n - 1)) * (x1 - x0));
   const yAt = (v: number) => y1 - (v / yTop) * (y1 - y0);
 
-  // Bucket keys are UTC ("YYYY-MM-DDTHH" hourly, "YYYY-MM-DD" daily). Hourly
-  // labels render in the viewer's local timezone; daily stays a calendar date (a
-  // day-granularity bucket doesn't map cleanly onto a single local day).
-  const pad = (x: number) => String(x).padStart(2, "0");
-  const labelFmt = (b: string) => {
-    if (unit === "hour") {
-      const d = new Date(`${b}:00:00Z`);
-      return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}h`;
-    }
-    return b.slice(5);
-  };
-
-  // Build stacked layer paths (bottom-up), tracking each series' busiest bucket
-  // so the panel can show detail when a series is clicked.
+  // Build stacked layer paths (bottom-up).
   const cum = new Array(buckets.length).fill(0);
   const layers = keys.map((key, ki) => {
     const lower = cum.slice();
-    let peakVal = 0;
-    let peakIdx = 0;
-    for (let bi = 0; bi < buckets.length; bi++) {
-      if (matrix[ki][bi] > peakVal) {
-        peakVal = matrix[ki][bi];
-        peakIdx = bi;
-      }
-      cum[bi] += matrix[ki][bi];
-    }
+    for (let bi = 0; bi < buckets.length; bi++) cum[bi] += matrix[ki][bi];
     const top = cum.map((v, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ");
     const bottom = lower
       .map((_, i) => `L${xAt(buckets.length - 1 - i).toFixed(1)} ${yAt(lower[buckets.length - 1 - i]).toFixed(1)}`)
@@ -623,43 +605,28 @@ const chart = computed(() => {
       key,
       color: STACK_COLORS[ki % STACK_COLORS.length],
       total: matrix[ki].reduce((s: number, v: number) => s + v, 0),
-      peak: { value: peakVal, label: peakVal ? labelFmt(buckets[peakIdx]!) : "" },
       path: `${top} ${bottom} Z`,
     };
   });
 
   const total = colTotals.reduce((s, v) => s + v, 0);
+  const labelFmt = (b: string) => (unit === "hour" ? `${b.slice(5, 10)} ${b.slice(11)}h` : b.slice(5));
 
   // Y ticks: value + pixel row + label (for gridlines and the count scale).
   const yTicks = yTickVals.map((v) => ({ v, y: +yAt(v).toFixed(1), label: String(v) }));
-  // X ticks: evenly spread (≤6), always including the first and last bucket, so
-  // labels can't bunch up and overlap. Edge ticks anchor start/end to stay in view.
-  const tickCount = Math.min(n, 6);
+  // X ticks: a readable subset (~6) across the buckets, first & last always shown.
+  // Edge ticks anchor start/end so their labels stay inside the viewBox.
+  const targetX = Math.min(n, 6);
+  const stepX = Math.max(1, Math.round((n - 1) / Math.max(1, targetX - 1)));
   const xTicks: { x: number; label: string; anchor: "start" | "middle" | "end" }[] = [];
-  if (n === 1) {
-    xTicks.push({ x: +xAt(0).toFixed(1), label: labelFmt(buckets[0]!), anchor: "middle" });
-  } else {
-    const seen = new Set<number>();
-    for (let k = 0; k < tickCount; k++) {
-      const i = Math.round((k * (n - 1)) / (tickCount - 1));
-      if (seen.has(i)) continue;
-      seen.add(i);
-      xTicks.push({
-        x: +xAt(i).toFixed(1),
-        label: labelFmt(buckets[i]!),
-        anchor: k === 0 ? "start" : k === tickCount - 1 ? "end" : "middle",
-      });
-    }
+  for (let i = 0; i < n; i += stepX)
+    xTicks.push({ x: +xAt(i).toFixed(1), label: labelFmt(buckets[i]!), anchor: "middle" });
+  if (n > 1 && (n - 1) % stepX !== 0)
+    xTicks.push({ x: +xAt(n - 1).toFixed(1), label: labelFmt(buckets[n - 1]!), anchor: "middle" });
+  if (xTicks.length) {
+    xTicks[0]!.anchor = "start";
+    xTicks[xTicks.length - 1]!.anchor = "end";
   }
-
-  // Viewer's IANA timezone, for the axis caption.
-  const tz = (() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
-    } catch {
-      return "local time";
-    }
-  })();
 
   return {
     W,
@@ -672,7 +639,6 @@ const chart = computed(() => {
     max,
     total,
     unit,
-    tz,
     yTicks,
     xTicks,
     fromLabel: labelFmt(buckets[0] ?? a.range.from),

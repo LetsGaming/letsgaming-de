@@ -34,6 +34,7 @@ export function wakapiSource(config: WakapiConfig): Source<WakapiRaw, WakapiData
     id: "wakapi",
     targetArea: "work",
     schedule: "*/30 * * * *", // every 30 minutes
+    ttl: 2 * 60 * 60 * 1000, // tracked time; polls every 30m
     fetch: () => fetchWakapi(config),
     normalize: normalizeWakapi,
   };

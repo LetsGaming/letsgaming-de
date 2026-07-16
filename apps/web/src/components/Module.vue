@@ -5,13 +5,13 @@ import HeroSection from "./sections/HeroSection.vue";
 import FeaturedSection from "./sections/FeaturedSection.vue";
 import GlanceSection from "./sections/GlanceSection.vue";
 import ActivitySection from "./sections/ActivitySection.vue";
-import HighlightsSection from "./sections/HighlightsSection.vue";
 import CodingSection from "./sections/CodingSection.vue";
 import ProjectsSection from "./sections/ProjectsSection.vue";
 import HobbiesSection from "./sections/HobbiesSection.vue";
 import NowSection from "./sections/NowSection.vue";
 import GuestbookSection from "./sections/GuestbookSection.vue";
 import GallerySection from "./sections/GallerySection.vue";
+import PostsSection from "./sections/PostsSection.vue";
 import PresenceSection from "./sections/PresenceSection.vue";
 import BioSection from "./sections/BioSection.vue";
 import ContactSection from "./sections/ContactSection.vue";
@@ -29,7 +29,6 @@ const sections: Record<ResolvedModule["kind"], Component> = {
   featured: FeaturedSection,
   glance: GlanceSection,
   activity: ActivitySection,
-  highlights: HighlightsSection,
   coding: CodingSection,
   projects: ProjectsSection,
   hobbies: HobbiesSection,
@@ -39,6 +38,7 @@ const sections: Record<ResolvedModule["kind"], Component> = {
   presence: PresenceSection,
   bio: BioSection,
   contact: ContactSection,
+  posts: PostsSection,
 };
 </script>
 

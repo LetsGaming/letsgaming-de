@@ -10,7 +10,7 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "build": "pnpm lint:nav && pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server build && pnpm --filter=@lg/web build",
+    "build": "pnpm lint:nav && pnpm lint:tokens && pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server build && pnpm --filter=@lg/web build",
     "dev": "pnpm --parallel --filter=@lg/server --filter=@lg/web dev",
     "dev:server": "pnpm --filter=@lg/server dev",
     "dev:web": "pnpm --filter=@lg/web dev",
@@ -18,7 +18,8 @@
     "lint:nav": "pnpm --filter=@lg/core lint:nav",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "analytics": "pnpm --filter=@lg/server analytics"
+    "analytics": "pnpm --filter=@lg/server analytics",
+    "lint:tokens": "pnpm --filter=@lg/web lint:tokens"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

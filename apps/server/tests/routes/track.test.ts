@@ -5,7 +5,7 @@ import { buildApp } from "../../src/app.js";
 import { loadEnv } from "../../src/env.js";
 
 async function appWithStore() {
-  const store = openStore(":memory:"); // seeds the launch IA (home/work/life/about)
+  const store = openStore(":memory:"); // seeds the launch IA (home/code/life/about + hidden blog)
   const env = loadEnv({ WEB_ORIGIN: "http://localhost:4321" });
   const app = await buildApp(store, env);
   return { app, store };
@@ -19,9 +19,9 @@ test("records valid engagement events and drops invalid ones", async () => {
     headers: { "content-type": "text/plain" },
     payload: JSON.stringify({
       events: [
-        { d: "tab", k: "work" }, // valid
-        { d: "transition", k: "home>work" }, // valid
-        { d: "dwell", k: "work|30-60s" }, // valid
+        { d: "tab", k: "code" }, // valid
+        { d: "transition", k: "home>code" }, // valid
+        { d: "dwell", k: "code|30-60s" }, // valid
         { d: "click", k: "contact-cta" }, // valid
         { d: "tab", k: "not-a-section" }, // dropped (unknown section)
         { d: "click", k: "buy-now" }, // dropped (not allow-listed)
@@ -33,9 +33,9 @@ test("records valid engagement events and drops invalid ones", async () => {
 
   const tab = store.analytics.topHourly("tab", "0000", "9999");
   assert.equal(tab.length, 1);
-  assert.equal(tab[0]?.key, "work");
+  assert.equal(tab[0]?.key, "code");
   assert.equal(tab[0]?.count, 1);
-  assert.equal(store.analytics.topHourly("transition", "0000", "9999")[0]?.key, "home>work");
+  assert.equal(store.analytics.topHourly("transition", "0000", "9999")[0]?.key, "home>code");
   assert.equal(store.analytics.topHourly("click", "0000", "9999").length, 1);
   await app.close();
 });

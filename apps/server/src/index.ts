@@ -44,7 +44,20 @@ if (env.accessLog) {
   const runIngest = () => {
     try {
       const r = ingestLog(store, file, ownHost);
-      if (r.hits) app.log.info(`[analytics] ingested ${r.linesRead} line(s), ${r.hits} hit(s)`);
+      if (r.hits) {
+        app.log.info(`[analytics] ingested ${r.linesRead} line(s), ${r.hits} hit(s)`);
+      } else if (r.linesRead > 0) {
+        // Lines were read and none parsed. ADR 0013's "degrade quietly" is right
+        // for a *missing* log and wrong for a present, unreadable one: the two
+        // looked identical, so a format mismatch was indistinguishable from "not
+        // configured". The parser wants nginx/Apache combined; Caddy and Traefik
+        // default to JSON. Say so once, with evidence, instead of nothing.
+        app.log.warn(
+          `[analytics] read ${r.linesRead} line(s) from ${r.file} and parsed none — ` +
+            `the parser expects nginx/Apache combined format. First unreadable line: ` +
+            `${r.unparsedSample ?? "(none captured)"}`,
+        );
+      }
     } catch (err) {
       app.log.warn(`[analytics] ingest skipped: ${(err as Error).message}`);
     }

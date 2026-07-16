@@ -20,6 +20,7 @@ export function steamMockSource(): Source<SteamData, SteamData> {
     id: "steam",
     targetArea: "life",
     schedule: "*/15 * * * *",
+  ttl: 60 * 60 * 1000,
     fetch: async () => ok(DEMO),
     normalize: (raw) => raw,
   };

@@ -26,6 +26,10 @@ export async function buildAssetLookup(store: Store, mediaDir: string): Promise<
     };
     if (a.kind === "image" || a.kind === "gif") {
       r.variantWidths = ASSET_WIDTHS.filter((w) => !a.width || w <= a.width);
+    } else if (a.kind === "markdown") {
+      // Same shape as the SVG branch: the resolver needs the contents, not the
+      // path, because frontmatter is what makes a post a post.
+      r.markdown = await readFile(join(assetsDir, `${a.hash}.${a.ext}`), "utf8").catch(() => "");
     } else if (a.kind === "svg") {
       r.svg = await readFile(join(assetsDir, `${a.hash}.${a.ext}`), "utf8").catch(() => "");
     }

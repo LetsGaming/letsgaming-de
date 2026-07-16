@@ -5,8 +5,7 @@ import AssetLibrary from "./AssetLibrary.vue";
 // scoped so the per-panel child components below are styled by the same rules —
 // see styles/cms.css.
 import "../../styles/cms.css";
-import { onBeforeUnmount, onMounted, provide, ref } from "vue";
-import { icons } from "../../lib/icons";
+import { provide } from "vue";
 import { CMS_KEY } from "../../composables/cmsContext";
 import AboutPanel from "./panels/AboutPanel.vue";
 import AnalyticsPanel from "./panels/AnalyticsPanel.vue";
@@ -16,6 +15,7 @@ import GuestbookPanel from "./panels/GuestbookPanel.vue";
 import HobbiesPanel from "./panels/HobbiesPanel.vue";
 import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
 import LayoutPanel from "./panels/LayoutPanel.vue";
+import PostsPanel from "./panels/PostsPanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
 import LinksPanel from "./panels/LinksPanel.vue";
 import NowPanel from "./panels/NowPanel.vue";
@@ -60,36 +60,6 @@ const {
 	viewSite,
 	cms,
 } = context;
-
-// The admin is desktop-first, but on small screens the long nav (~15 entries)
-// pushed all content off-screen. So on mobile the sidebar becomes an off-canvas
-// drawer; this is pure chrome state and stays out of the shared context.
-const navOpen = ref(false);
-function lockScroll(on: boolean) {
-	if (typeof document === "undefined") return;
-	document.body.classList.toggle("nav-locked", on);
-}
-function openNav() {
-	navOpen.value = true;
-	lockScroll(true);
-}
-function closeNav() {
-	navOpen.value = false;
-	lockScroll(false);
-}
-/** Switch panel and close the drawer (no-op on desktop, where it's never open). */
-function selectTab(id: string) {
-	pick(id);
-	closeNav();
-}
-function onKey(e: KeyboardEvent) {
-	if (e.key === "Escape" && navOpen.value) closeNav();
-}
-onMounted(() => window.addEventListener("keydown", onKey));
-onBeforeUnmount(() => {
-	window.removeEventListener("keydown", onKey);
-	lockScroll(false);
-});
 </script>
 
 <template>
@@ -107,15 +77,9 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- APP -->
-    <div v-else class="shell" :class="{ 'nav-open': navOpen }">
-      <!-- Drawer scrim: small screens only. -->
-      <div class="navscrim" :class="{ show: navOpen }" @click="closeNav" />
-
-      <aside class="side" :class="{ open: navOpen }">
-        <div class="sidehead">
-          <div class="brand">CMS</div>
-          <button class="cms-close" aria-label="Close menu" @click="closeNav" v-html="icons.close" />
-        </div>
+    <div v-else class="shell">
+      <aside class="side">
+        <div class="brand">CMS</div>
         <nav class="nav">
           <div v-for="(g, gi) in NAV_GROUPS" :key="gi" class="navgroup">
             <div v-if="g.label" class="navlabel">{{ g.label }}</div>
@@ -123,7 +87,7 @@ onBeforeUnmount(() => {
               v-for="item in g.items"
               :key="item.id"
               :class="{ on: tab === item.id }"
-              @click="selectTab(item.id)"
+              @click="pick(item.id)"
             >
               {{ item.label }}
               <span v-if="item.id === 'guestbook' && guestbook?.pending" class="ndot">{{ guestbook.pending }}</span>
@@ -142,10 +106,7 @@ onBeforeUnmount(() => {
 
       <main class="main">
         <div class="topbar">
-          <div class="topbar-main">
-            <button class="cms-burger" aria-label="Open menu" @click="openNav" v-html="icons.menu" />
-            <h2>{{ VIEW_TITLES[tab] }}</h2>
-          </div>
+          <h2>{{ VIEW_TITLES[tab] }}</h2>
           <div class="topact">
             <button v-if="tab !== 'preview'" class="link" @click="showDock = !showDock">
               {{ showDock ? "Hide preview" : "Show preview" }}
@@ -177,6 +138,8 @@ onBeforeUnmount(() => {
 
       <!-- LAYOUT (module order per area) -->
       <LayoutPanel v-show="tab === 'layout'" />
+
+      <PostsPanel v-if="tab === 'posts'" />
 
       <!-- HOBBIES -->
       <HobbiesPanel v-show="tab === 'hobbies'" />

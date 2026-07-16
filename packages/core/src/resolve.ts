@@ -15,8 +15,10 @@ import type { SiteContent, Project, Link } from "./content.js";
 import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
-import { collectModuleIds, type NavNode } from "./nav.js";
+import { collectModuleIds, type NavNode , visibleNav } from "./nav.js";
 import type { GitHubData, SourceData } from "./source.js";
+import type { FreshnessView, PostView } from "./view.js";
+import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import { defaultPresenceSettings } from "./presence.js";
 import {
@@ -47,6 +49,10 @@ export interface ResolveInput {
   locale?: Locale;
   /** ISO timestamp of the last sync, surfaced to the client. */
   syncedAt?: string;
+  /** Last successful sync per source id, and each source's TTL. Absent entries
+   *  resolve to `never` — no sync has landed yet, which is a real state and not
+   *  an error. */
+  freshness?: { syncedAt: Record<string, string>; ttl: Record<string, number> };
   /** Approved guestbook entries, newest first (the store filters + orders). */
   guestbook?: PublicGuestbookEntry[];
   /** Discord presence: the Lanyard id (env config). Categories are CMS-owned. */
@@ -183,7 +189,23 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       relative: rel(g.updatedAt),
     }));
     // ISO timestamps sort lexicographically == chronologically; newest first.
-    return [...releases, ...prs, ...gists].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
+    return [...releases, ...prs, ...gists];
+  };
+
+  /**
+   * A module's own age, per source. `stale` exists because the brief's failure
+   * mode is going stale: a module that can't tell fresh from old renders old
+   * data as current, which makes the site lie about the one thing it promises.
+   */
+  const freshnessOf = (sourceId: string, hasData: boolean): FreshnessView => {
+    const at = input.freshness?.syncedAt[sourceId];
+    if (!at) return { state: "never", source: sourceId };
+    const ttl = input.freshness?.ttl[sourceId];
+    const age = now.getTime() - new Date(at).getTime();
+    const relative = relativeTime(at, now);
+    if (!hasData) return { state: "empty", syncedAt: at, relative, source: sourceId };
+    const state = ttl !== undefined && age > ttl ? "stale" : "fresh";
+    return { state, syncedAt: at, relative, source: sourceId };
   };
 
   const activeSources = (): string[] =>
@@ -228,8 +250,29 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           data: { heading, note, project: featured },
         };
       }
-      case "glance":
-        return { id: descriptor.id, kind: "glance", data: { heading, note, stats: statViews() } };
+      case "glance": {
+        const latest = gh?.events[0];
+        return {
+          id: descriptor.id,
+          kind: "glance",
+          data: {
+            heading,
+            note,
+            freshness: freshnessOf("github", Boolean(gh)),
+            stats: statViews(),
+            ...(latest
+              ? {
+                  latest: {
+                    type: latest.type,
+                    text: latest.text,
+                    at: latest.at,
+                    relative: relativeTime(latest.at, now),
+                  },
+                }
+              : {}),
+          },
+        };
+      }
       case "activity": {
         // Show the last 26 weeks (182 days) so the calendar stays readable — a
         // full GitHub year would cram ~53 columns into the card (see .heat CSS).
@@ -241,28 +284,54 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           data: {
             heading,
             note,
+            freshness: freshnessOf("github", Boolean(gh)),
             stats: statViews(),
             contributions: heat,
             languages: gh ? gh.languages.map((l) => ({ name: l.name, pct: l.pct })) : [],
             events: gh
-              ? gh.events.map((e) => ({
-                  type: e.type,
-                  text: e.text,
-                  meta: e.meta,
-                  at: e.at,
-                  relative: relativeTime(e.at, now),
-                }))
+              ? [
+                  ...gh.events.map((e) => ({
+                    type: e.type,
+                    text: e.text,
+                    meta: e.meta,
+                    at: e.at,
+                    relative: relativeTime(e.at, now),
+                  })),
+                  ...highlightViews(gh),
+                ]
+                  // ISO timestamps sort lexicographically == chronologically.
+                  .sort((a, b) => b.at.localeCompare(a.at))
+                  .slice(0, 12)
               : [],
             sources: activeSources(),
           },
         };
       }
-      case "highlights":
-        return {
-          id: descriptor.id,
-          kind: "highlights",
-          data: { heading, note, items: gh ? highlightViews(gh) : [], sources: activeSources() },
-        };
+      case "posts": {
+        // Posts are markdown assets with a public slug. Their metadata lives in
+        // the file, so building the index is: parse each one, drop the drafts,
+        // newest first. Drafts are absent here *and* 404 at the route — the index
+        // is not the access control.
+        const posts: PostView[] = [...assets.values()]
+          .filter((a) => a.kind === "markdown" && a.slug?.startsWith(POST_PREFIX) && a.markdown)
+          .map((a) => {
+            const { frontmatter: fm, body } = parsePost(a.markdown!, a.slug!);
+            return { fm, body, slug: a.slug! };
+          })
+          .filter(({ fm }) => !fm.draft)
+          .map(({ fm, body, slug }) => ({
+            slug,
+            title: fm.title,
+            at: fm.date,
+            relative: relativeTime(fm.date, now),
+            // Always give OG something to quote: an explicit excerpt, else the
+            // opening paragraph.
+            excerpt: fm.excerpt ?? firstParagraph(body),
+            tags: fm.tags,
+          }))
+          .sort((a, b) => b.at.localeCompare(a.at));
+        return { id: descriptor.id, kind: "posts", data: { heading, note, posts } };
+      }
       case "coding": {
         const w = source.wakapi;
         const coding: CodingView | null = w
@@ -276,7 +345,11 @@ export function resolveSiteView(input: ResolveInput): SiteView {
               })),
             }
           : null;
-        return { id: descriptor.id, kind: "coding", data: { heading, note, coding } };
+        return {
+          id: descriptor.id,
+          kind: "coding",
+          data: { heading, note, freshness: freshnessOf("wakapi", Boolean(w)), coding },
+        };
       }
       case "projects": {
         const repoCount = gh?.stats.repos;
@@ -286,6 +359,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           data: {
             heading,
             note: note ?? (repoCount != null ? `${compactNumber(repoCount)} public repos` : undefined),
+            freshness: freshnessOf("github", projectList.length > 0),
             projects: projectList,
             githubUrl,
           },
@@ -344,7 +418,16 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             ? { steam: { ...(steam.playing ? { playing: steam.playing } : {}), recent: steam.recent } }
             : {}),
         };
-        return { id: descriptor.id, kind: "presence", data: { heading, note, ...data } };
+        return {
+          id: descriptor.id,
+          kind: "presence",
+          // Steam's half is synced, so it can be stale; Discord's half is fetched
+          // client-side and reports its own state in the widget. `live` above only
+          // says Discord is *configured* — never that it answered.
+          ...(includeSteam
+            ? { data: { heading, note, freshness: freshnessOf("steam", Boolean(steam)), ...data } }
+            : { data: { heading, note, ...data } }),
+        };
       }
       case "gallery": {
         const images: GalleryImageView[] = (content.gallery ?? [])
@@ -407,7 +490,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       location: L(content.meta.location),
       role: L(content.meta.role),
     },
-    nav: localizeNav(input.nav),
+    // Drafts never reach the public view: not rendered, not routable, not in
+    // the SSR'd HTML. `hidden` is only a guarantee if the resolver enforces it.
+    nav: localizeNav(visibleNav(input.nav)),
     modules,
     syncedAt: input.syncedAt,
   };

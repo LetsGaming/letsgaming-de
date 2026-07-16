@@ -68,3 +68,18 @@ export function getSources(env: SourcesEnv): RegisteredSource[] {
 
   return sources;
 }
+
+/**
+ * How long each source's data stays true, in ms. Static because a TTL is a fact
+ * about the upstream, not about this deployment's config — unlike `getSources`,
+ * which depends on which credentials exist.
+ *
+ * GitHub is 8h and not the 2h originally wanted: it polls every 6h, so any TTL
+ * under the poll interval marks it stale for most of every cycle by construction.
+ * 8h is one missed sync of slack. Tighten `schedule` and this can come down.
+ */
+export const SOURCE_TTL: Record<string, number> = {
+  github: 8 * 60 * 60 * 1000,
+  steam: 60 * 60 * 1000,
+  wakapi: 2 * 60 * 60 * 1000,
+};

@@ -58,7 +58,17 @@ export class SyncRunner {
     }
 
     try {
-      const normalized = source.normalize(fetched.value);
+      const base = source.normalize(fetched.value);
+      // Enrichment is a bonus, not a dependency: if it throws, persist the pure
+      // shape rather than losing the whole sync over a decorative field.
+      let normalized = base;
+      if (source.enrich) {
+        try {
+          normalized = await source.enrich(base);
+        } catch {
+          normalized = base;
+        }
+      }
       this.store.source.record(source.id, syncedAt, normalized);
       this.log(`[sync] ${source.id} ok${mock ? " (mock)" : ""} @ ${syncedAt}`);
       return { sourceId: source.id, ok: true, mock, syncedAt };

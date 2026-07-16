@@ -15,7 +15,7 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
-  background: var(--bg-base) var(--bg-glow) fixed;
+  background: var(--surf-0);
   -webkit-font-smoothing: antialiased;
   transition:
     background 0.3s ease,
@@ -51,12 +51,12 @@ a {
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: linear-gradient(140deg, var(--purple-br), var(--purple-d));
+  background: var(--surf-2);
+  border: 1px solid var(--line-2);
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--ink-strong);
   font-size: 15px;
-  box-shadow: 0 4px 14px rgba(124, 92, 255, 0.5);
 }
 .chrome {
   display: flex;
@@ -68,15 +68,15 @@ a {
 .tabs {
   display: flex;
   gap: var(--sp-6);
-  background: var(--card);
+  background: var(--surf-1);
   padding: var(--sp-6);
   border-radius: 16px;
-  border: 1px solid var(--line);
-  box-shadow: var(--sh-1);
+  border: 1px solid var(--line-1);
+  box-shadow: var(--sh-card);
   flex-wrap: wrap;
 }
 .tab {
-  font-family: var(--f-d);
+  font-family: var(--f-b);
   font-weight: 500;
   font-size: 14px;
   color: var(--muted);
@@ -93,21 +93,20 @@ a {
   color: var(--ink);
 }
 .tab.active {
-  color: #fff;
-  background: var(--purple);
-  box-shadow: 0 4px 14px rgba(124, 92, 255, 0.45);
+  color: var(--ink-strong);
+  background: var(--surf-2);
 }
 .theme-toggle {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--card);
+  border: 1px solid var(--line-1);
+  background: var(--surf-1);
   color: var(--muted);
   cursor: pointer;
   display: grid;
   place-items: center;
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-card);
   transition:
     color 0.2s ease,
     transform 0.12s ease;
@@ -124,9 +123,6 @@ a {
 }
 
 /* panels */
-.panel[hidden] {
-  display: none;
-}
 .panel {
   animation: fade 0.4s ease;
 }
@@ -152,7 +148,7 @@ h1 {
   color: var(--ink-strong);
 }
 h1 .pop {
-  color: var(--purple-br);
+  color: var(--ink-strong);
   position: relative;
   white-space: nowrap;
 }
@@ -163,22 +159,11 @@ h1 .pop::after {
   right: -2%;
   bottom: 0.08em;
   height: 0.2em;
-  background: var(--purple);
+  background: var(--line-2);
   opacity: 0.35;
   border-radius: 6px;
   z-index: -1;
   transform: rotate(-1deg);
-}
-.eyebrow {
-  font-family: var(--f-m);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--purple-br);
-  background: var(--purple-wash);
-  display: inline-block;
-  padding: var(--sp-6) 13px;
-  border-radius: 999px;
 }
 .lede {
   font-size: clamp(16px, 2.3vw, 20px);
@@ -202,7 +187,8 @@ h1 .pop::after {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--purple-br);
+  background: var(--live-ink);
+  box-shadow: var(--glow-live);
   animation: pulse 2.2s infinite;
 }
 .status b {
@@ -210,14 +196,8 @@ h1 .pop::after {
   font-weight: 400;
 }
 @keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.55);
-  }
-  70% {
-    box-shadow: 0 0 0 9px rgba(167, 139, 250, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0);
+  50% {
+    opacity: 0.32;
   }
 }
 .links {
@@ -227,7 +207,7 @@ h1 .pop::after {
   margin-top: 26px;
 }
 .btn {
-  font-family: var(--f-d);
+  font-family: var(--f-b);
   font-weight: 600;
   font-size: 15px;
   padding: var(--sp-12) var(--sp-20);
@@ -257,23 +237,18 @@ h1 .pop::after {
   border-radius: 24px;
   object-fit: cover;
   margin-bottom: var(--sp-18);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-1);
 }
 .btn-primary {
-  background: var(--purple);
+  background: var(--live);
   color: #fff;
-  box-shadow:
-    0 5px 0 var(--purple-d),
-    0 12px 26px rgba(124, 92, 255, 0.5);
+  transition: transform var(--dur-press) var(--ease-out);
 }
 .btn-primary:active {
-  transform: translateY(4px);
-  box-shadow:
-    0 1px 0 var(--purple-d),
-    0 4px 12px rgba(124, 92, 255, 0.4);
+  transform: translateY(2px);
 }
 .btn-ghost {
-  background: var(--ghost-bg);
+  background: var(--surf-2);
   color: var(--ink);
   box-shadow:
     0 5px 0 var(--ghost-shadow),
@@ -315,7 +290,7 @@ h1 .pop::after {
   margin-left: auto;
   font-family: var(--f-m);
   font-size: 12px;
-  color: var(--purple-br);
+  color: var(--ink);
   cursor: pointer;
   background: none;
   border: none;
@@ -329,11 +304,11 @@ h1 .pop::after {
   grid-template-columns: repeat(2, 1fr);
 }
 .card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
   padding: var(--sp-24);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-card);
   transition:
     box-shadow 0.3s ease,
     border-color 0.3s ease;
@@ -343,15 +318,15 @@ h1 .pop::after {
   will-change: transform;
 }
 .card:hover {
-  box-shadow: var(--sh-2);
-  border-color: color-mix(in srgb, var(--purple) 40%, transparent);
+  box-shadow: var(--sh-anchor);
+  border-color: var(--line-2);
+  background: var(--surf-2);
 }
 .card.feature {
   grid-column: 1 / -1;
   padding: 32px;
-  border: none;
-  background: linear-gradient(135deg, #7c5cff, #5433cf);
-  box-shadow: 0 12px 34px rgba(110, 70, 240, 0.4);
+  background: var(--surf-2);
+  border: 1px solid var(--line-2);
 }
 .card.feature .desc {
   color: rgba(255, 255, 255, 0.9);
@@ -384,8 +359,8 @@ h1 .pop::after {
   font-weight: 700;
   padding: var(--sp-4) var(--sp-10);
   border-radius: 999px;
-  background: var(--purple-wash);
-  color: var(--purple-br);
+  background: var(--surf-2);
+  color: var(--ink);
   display: inline-block;
 }
 .desc {
@@ -411,7 +386,7 @@ h1 .pop::after {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--purple-wash);
+  background: var(--surf-2);
   display: grid;
   place-items: center;
   transition:
@@ -423,7 +398,7 @@ h1 .pop::after {
 }
 .card:hover .arrow {
   transform: translateX(3px) rotate(-45deg);
-  background: var(--purple);
+  background: var(--surf-3);
 }
 .arrow svg {
   width: 16px;
@@ -438,14 +413,14 @@ h1 .pop::after {
   gap: var(--sp-14);
 }
 .stat {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
   padding: var(--sp-18);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-card);
 }
 .stat .n {
-  font-family: var(--f-d);
+  font-family: var(--f-b);
   font-weight: 700;
   font-size: 30px;
   color: var(--ink-strong);
@@ -459,7 +434,7 @@ h1 .pop::after {
 }
 .stat .n small {
   font-size: 15px;
-  color: var(--purple-br);
+  color: var(--muted);
   font-weight: 600;
 }
 
@@ -471,11 +446,11 @@ h1 .pop::after {
   margin-top: var(--sp-18);
 }
 .box {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
   padding: var(--sp-22);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-card);
 }
 .box h3 {
   font-family: var(--f-d);
@@ -540,7 +515,7 @@ h1 .pop::after {
   flex: 1;
   height: 8px;
   border-radius: 5px;
-  background: var(--lang-track);
+  background: var(--track);
   overflow: hidden;
 }
 .lang .bar b {
@@ -564,7 +539,7 @@ h1 .pop::after {
   gap: var(--sp-12);
   align-items: flex-start;
   padding: 11px 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
 }
 .ev:first-child {
   border-top: none;
@@ -573,7 +548,7 @@ h1 .pop::after {
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: var(--purple-wash);
+  background: var(--surf-2);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -581,7 +556,7 @@ h1 .pop::after {
 .ev .ei svg {
   width: 15px;
   height: 15px;
-  color: var(--purple-br);
+  color: var(--ink);
 }
 .ev .et {
   font-size: 13px;
@@ -608,10 +583,10 @@ a.ev-link {
   text-decoration: none;
 }
 a.ev-link:hover .et {
-  color: var(--purple-br);
+  color: var(--ink);
 }
 a.ev-link:hover .ei {
-  background: var(--purple-br);
+  background: var(--ink);
 }
 a.ev-link:hover .ei svg {
   color: #fff;
@@ -626,7 +601,7 @@ a.ev-link:hover .ei svg {
   gap: var(--sp-8);
 }
 .src-note b {
-  color: var(--purple-br);
+  color: var(--ink);
   font-weight: 400;
 }
 
@@ -637,10 +612,10 @@ a.ev-link:hover .ei svg {
   grid-template-columns: repeat(4, 1fr);
 }
 .tile {
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
   padding: var(--sp-20) var(--sp-18);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-card);
   transition: box-shadow 0.25s ease;
   min-height: 142px;
   display: flex;
@@ -649,7 +624,7 @@ a.ev-link:hover .ei svg {
   will-change: transform;
 }
 .tile:hover {
-  box-shadow: var(--sh-2);
+  box-shadow: var(--sh-anchor);
 }
 .tile .ic {
   width: 40px;
@@ -664,7 +639,7 @@ a.ev-link:hover .ei svg {
   height: 22px;
 }
 .tile h3 {
-  font-family: var(--f-d);
+  font-family: var(--f-b);
   font-weight: 600;
   font-size: 18px;
   color: var(--ink-strong);
@@ -674,34 +649,6 @@ a.ev-link:hover .ei svg {
   color: var(--muted);
   margin-top: 3px;
 }
-.t-purple {
-  background: var(--tile-purple);
-}
-.t-purple .ic {
-  background: var(--purple);
-  color: #fff;
-}
-.t-coral {
-  background: var(--tile-coral);
-}
-.t-coral .ic {
-  background: var(--coral);
-  color: #fff;
-}
-.t-mint {
-  background: var(--tile-mint);
-}
-.t-mint .ic {
-  background: var(--mint);
-  color: #04352a;
-}
-.t-sun {
-  background: var(--tile-sun);
-}
-.t-sun .ic {
-  background: var(--sun);
-  color: #5c3d00;
-}
 
 /* now */
 .nowrow {
@@ -709,7 +656,7 @@ a.ev-link:hover .ei svg {
   gap: var(--sp-14);
   align-items: center;
   padding: var(--sp-12) 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
 }
 .nowrow:first-child {
   border-top: none;
@@ -738,8 +685,8 @@ a.ev-link:hover .ei svg {
 }
 .gal-item {
   margin: 0;
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -763,8 +710,8 @@ a.ev-link:hover .ei svg {
   margin-bottom: var(--sp-6);
 }
 .gb-entry {
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
   border-radius: 14px;
   padding: var(--sp-16) var(--sp-18);
   margin: 0;
@@ -810,7 +757,7 @@ a.ev-link:hover .ei svg {
   max-width: 100%;
   height: auto;
   border-radius: 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-1);
 }
 .prose p:last-child {
   margin-bottom: 0;
@@ -835,8 +782,8 @@ a.ev-link:hover .ei svg {
   top: 24px;
   font-size: 14px;
 }
-/* Docs nav drawer affordances — the bar, close button and scrim only appear on
-   mobile (media block below); on desktop the nav is just the sticky sidebar. */
+/* Docs nav drawer affordances — the bar + close + scrim only appear on mobile
+   (media block near the end); on desktop the nav is just the sticky sidebar. */
 .doc-topbar {
   display: none;
 }
@@ -848,30 +795,11 @@ a.ev-link:hover .ei svg {
 .doc-navhead .doc-home {
   margin-bottom: 0;
 }
-.doc-burger {
-  width: 40px;
-  height: 40px;
-  flex: none;
-  place-items: center;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  cursor: pointer;
-  box-shadow: var(--sh-1);
-}
-.doc-burger svg {
-  width: 20px;
-  height: 20px;
-}
 .doc-close {
   display: none;
 }
 .doc-scrim {
   display: none;
-}
-body.nav-locked {
-  overflow: hidden;
 }
 .doc-home {
   display: inline-block;
@@ -882,7 +810,7 @@ body.nav-locked {
   text-decoration: none;
 }
 .doc-home:hover {
-  color: var(--purple-br);
+  color: var(--ink);
 }
 .doc-group {
   margin-bottom: var(--sp-18);
@@ -910,11 +838,11 @@ body.nav-locked {
   line-height: 1.35;
 }
 .doc-group a:hover {
-  background: var(--purple-wash);
+  background: var(--surf-2);
 }
 .doc-group a.on {
-  background: var(--purple-wash);
-  color: var(--purple-br);
+  background: var(--surf-2);
+  color: var(--ink);
   font-weight: 600;
 }
 /* Rendered markdown */
@@ -939,7 +867,7 @@ body.nav-locked {
   color: var(--ink-strong);
   margin: 34px 0 var(--sp-12);
   padding-top: var(--sp-14);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
 }
 .doc-body h3 {
   font-size: 17px;
@@ -950,7 +878,7 @@ body.nav-locked {
   margin: 0 0 var(--sp-14);
 }
 .doc-body a {
-  color: var(--purple-br);
+  color: var(--ink);
   text-decoration: none;
 }
 .doc-body a:hover {
@@ -967,8 +895,8 @@ body.nav-locked {
 .doc-body code {
   font-family: var(--f-m);
   font-size: 0.88em;
-  background: var(--purple-wash);
-  color: var(--purple-br);
+  background: var(--surf-2);
+  color: var(--ink);
   padding: 1px var(--sp-6);
   border-radius: 6px;
 }
@@ -976,7 +904,7 @@ body.nav-locked {
   margin: 0 0 var(--sp-16);
   padding: var(--sp-14) var(--sp-16);
   border-radius: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-1);
   overflow-x: auto;
   font-size: 13px;
   line-height: 1.55;
@@ -990,7 +918,7 @@ body.nav-locked {
 .doc-body blockquote {
   margin: 0 0 var(--sp-16);
   padding: var(--sp-4) var(--sp-16);
-  border-left: 3px solid var(--purple);
+  border-left: 3px solid var(--line-2);
   color: var(--muted);
 }
 .doc-body table {
@@ -1001,19 +929,19 @@ body.nav-locked {
 }
 .doc-body th,
 .doc-body td {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-1);
   padding: 7px 11px;
   text-align: left;
   vertical-align: top;
 }
 .doc-body th {
-  background: var(--purple-wash);
+  background: var(--surf-2);
   color: var(--ink-strong);
   font-weight: 600;
 }
 .doc-body hr {
   border: none;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
   margin: 28px 0;
 }
 @media (max-width: 720px) {
@@ -1031,12 +959,12 @@ body.nav-locked {
     z-index: 40;
     padding: var(--sp-12) 0;
     margin-bottom: var(--sp-8);
-    background: color-mix(in srgb, var(--bg-base) 86%, transparent);
+    background: color-mix(in srgb, var(--surf-0) 86%, transparent);
     backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--line-1);
   }
   .doc-tt {
-    font-family: var(--f-d);
+  /* Fredoka dropped: .doc-body hr (a rule has no glyphs — this was a no-op) */
     font-weight: 600;
     color: var(--ink-strong);
   }
@@ -1048,20 +976,20 @@ body.nav-locked {
     width: min(280px, 82vw);
     padding: var(--sp-18);
     overflow-y: auto;
-    background: var(--card);
-    border-right: 1px solid var(--line);
-    box-shadow: var(--sh-2);
+    background: var(--surf-1);
+    border-right: 1px solid var(--line-1);
+    box-shadow: var(--sh-anchor);
     transform: translateX(-102%);
     transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
   }
   .doc-nav.open {
     transform: none;
   }
-  .doc-navhead {
-    margin-bottom: var(--sp-16);
-  }
   .doc-close {
     display: grid;
+  }
+  .doc-navhead {
+    margin-bottom: var(--sp-16);
   }
   .doc-scrim.show {
     display: block;
@@ -1080,30 +1008,12 @@ footer {
   color: var(--muted);
 }
 footer b {
-  color: var(--purple-br);
+  color: var(--ink);
 }
 
 /* entrance */
-.rise {
-  opacity: 0;
-  transform: translateY(18px);
-}
-.rise.in {
-  animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
-}
-@keyframes rise {
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 
 @media (max-width: 680px) {
-  .chrome {
-    margin-left: 0;
-    width: 100%;
-    justify-content: center;
-  }
   .dash {
     grid-template-columns: 1fr;
   }
@@ -1113,8 +1023,9 @@ footer b {
   }
 }
 /* Projects/featured grid stays two-up on phones (a pinned card spans the full
-   width via `grid-column: 1 / -1`, keeping the pinned-vs-rest hierarchy instead
-   of flattening to one column). Tighten the cards so two fit at phone widths. */
+   width via `grid-column: 1 / -1`, so the grid keeps the pinned-vs-rest
+   hierarchy instead of flattening to a single column). Tighten the cards so two
+   fit comfortably at phone widths. */
 @media (max-width: 560px) {
   .grid {
     gap: var(--sp-12);
@@ -1133,15 +1044,104 @@ footer b {
     animation: none !important;
     transition: none !important;
   }
-  .rise {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* visible keyboard focus (accessibility floor) */
 :focus-visible {
-  outline: 2px solid var(--purple-br);
+  outline: 2px solid var(--live-ink);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Freshness. Only `fresh` earns the accent and the glow: purple means now, and
+   the whole point of the other states is that they aren't. Stale is legible but
+   quiet — old-and-labelled beats old-and-pretending. */
+.fresh {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.fresh.fr-fresh {
+  color: var(--live-ink);
+}
+.fresh .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--live-ink);
+  box-shadow: var(--glow-live);
+  animation: pulse var(--dur-pulse) ease-in-out infinite;
+}
+
+/* At a glance: four stat cards became one muted line. They were the same four
+   numbers Code already renders, so the copy on Home was decoration — and
+   accumulated totals are the quietest tier by design, not the loudest. */
+.glance-latest {
+  font-size: var(--fs-body);
+  margin-bottom: var(--sp-6);
+}
+.glance-latest .m,
+.glance-stats {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
+.glance-stats span:not(:last-child)::after {
+  content: " · ";
+}
+
+
+/* Blog index. Prose, not cards: a post is a title and a promise, and a grid of
+   boxes would make ten of them look like a product listing. */
+.posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-20);
+}
+.post {
+  padding-bottom: var(--sp-20);
+  border-bottom: 1px solid var(--line-1);
+}
+.post:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.post-t {
+  font-family: var(--f-d);
+  font-size: var(--fs-h3);
+  color: var(--ink-strong);
+  text-decoration: none;
+}
+.post-t:hover {
+  text-decoration: underline;
+}
+.post-x {
+  color: var(--muted);
+  margin: var(--sp-4) 0 var(--sp-6);
+}
+.post-m {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+
+/* Draft banner. --danger, not --live: a preview reader needs to know this isn't
+   real yet, and that's a warning. Purple means now, and a draft is the opposite. */
+.md-draft {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  color: var(--danger-ink);
+  border: 1px solid var(--danger-ink);
+  border-radius: var(--r-chip);
+  padding: var(--sp-8) var(--sp-12);
+  margin-bottom: var(--sp-20);
 }

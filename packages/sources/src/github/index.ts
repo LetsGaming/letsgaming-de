@@ -125,6 +125,7 @@ export function githubSource(config: GitHubConfig): Source<GitHubRaw, GitHubData
     id: "github",
     targetArea: "work",
     schedule: "0 */6 * * *", // every 6 hours
+    ttl: 8 * 60 * 60 * 1000, // polls every 6h; a shorter TTL would be stale by design
     fetch: () => fetchGitHub(config),
     normalize: normalizeGitHub,
   };

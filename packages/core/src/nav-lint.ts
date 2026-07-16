@@ -62,6 +62,19 @@ export function lintNav(nodes: NavNode[], options: NavLintOptions = {}): NavLint
   const seenIds = new Set<string>();
   const referencedModules = new Set<string>();
 
+  // The root row is a forest, not any node's `children` — so the walk below,
+  // which checks breadth via `node.children.length`, never saw it. Depth 1 is
+  // the level the "five at most" rule was written for and the only level that
+  // has ever had children, so it went unenforced. Hidden nodes count: a draft
+  // that would blow the cap on publish is rot you want at build time.
+  if (nodes.length > maxChildren) {
+    violations.push({
+      code: "MAX_CHILDREN",
+      at: "(root)",
+      message: `The nav has ${nodes.length} top-level areas; max ${maxChildren} per level. Split into sub-nodes instead of widening.`,
+    });
+  }
+
   walkNav(nodes, (node, depth) => {
     // Unique ids across the whole tree.
     if (seenIds.has(node.id)) {
@@ -112,8 +125,8 @@ export function lintNav(nodes: NavNode[], options: NavLintOptions = {}): NavLint
         });
       }
     } else if (isLeaf(node)) {
-      // No thin/empty tabs.
-      if (!hasModules) {
+      // No thin/empty tabs — except drafts, which are empty until they aren't.
+      if (!hasModules && !node.hidden) {
         violations.push({
           code: "EMPTY_LEAF",
           at: node.id,
@@ -148,6 +161,31 @@ export function lintNav(nodes: NavNode[], options: NavLintOptions = {}): NavLint
   }
 
   return { ok: violations.length === 0, violations };
+}
+
+/**
+ * Would publishing `id` break the tree?
+ *
+ * `lintNav` runs at build time; the CMS's visibility toggle runs at runtime. Once
+ * visibility is CMS state, publishing an empty node would break the IA without CI
+ * ever seeing it — the lint would stop being a guarantee and become a suggestion.
+ * The CMS calls this before flipping `hidden` and refuses with the reason, so the
+ * same rules cover both surfaces from one implementation rather than two that drift.
+ */
+export function canPublish(
+  nodes: NavNode[],
+  id: string,
+  options: NavLintOptions = {},
+): NavLintResult {
+  const unhide = (list: NavNode[]): NavNode[] =>
+    list.map((node) => ({
+      ...node,
+      ...(node.id === id ? { hidden: false } : {}),
+      ...(node.children ? { children: unhide(node.children) } : {}),
+    }));
+  const result = lintNav(unhide(nodes), options);
+  const mine = result.violations.filter((v) => v.at === id);
+  return { ok: mine.length === 0, violations: mine };
 }
 
 /** Pretty one-liner per violation, for CLI output. */

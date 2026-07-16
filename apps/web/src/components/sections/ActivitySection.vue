@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { icons, langColor } from "../../lib/icons";
+import Freshness from "../Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "activity" }>;
@@ -13,18 +14,18 @@ const heatVar = (level: number) => `var(--heat-${level})`;
 
 <template>
   <section class="sec">
-    <div class="sec-head rise">
+    <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
+      <Freshness :freshness="module.data.freshness" />
     </div>
-    <div class="stats rise">
+    <div class="stats">
       <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
         <div class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></div>
         <div class="l">{{ s.label }}</div>
       </div>
     </div>
     <div class="dash">
-      <div class="box rise">
+      <div class="box">
         <h3>Contributions</h3>
         <div class="sub">last 26 weeks · {{ module.data.contributions.total }} in the window</div>
         <div class="heat">
@@ -40,7 +41,7 @@ const heatVar = (level: number) => `var(--heat-${level})`;
           more
         </div>
       </div>
-      <div class="box rise">
+      <div class="box">
         <h3>Languages</h3>
         <div class="sub">across all public repos</div>
         <div class="lang">
@@ -52,18 +53,28 @@ const heatVar = (level: number) => `var(--heat-${level})`;
         </div>
       </div>
     </div>
-    <div class="box rise" style="margin-top: 18px">
+    <div class="box" style="margin-top: 18px">
       <h3>Recent events</h3>
       <div class="sub">newest first</div>
       <div class="feed">
-        <div v-for="(e, i) in module.data.events" :key="i" class="ev">
+        <p v-if="!module.data.events.length" class="sub">Nothing synced from GitHub yet.</p>
+        <component
+          :is="e.href ? 'a' : 'div'"
+          v-for="(e, i) in module.data.events"
+          :key="i"
+          class="ev"
+          :class="{ 'ev-link': e.href }"
+          :href="e.href"
+          :target="e.href ? '_blank' : undefined"
+          :rel="e.href ? 'noopener noreferrer' : undefined"
+        >
           <span class="ei" v-html="icons[e.type]" />
           <div>
             <div class="et">{{ e.text }}</div>
             <div v-if="e.meta" class="em">{{ e.meta }}</div>
           </div>
           <span class="tm">{{ e.relative }}</span>
-        </div>
+        </component>
       </div>
     </div>
   </section>

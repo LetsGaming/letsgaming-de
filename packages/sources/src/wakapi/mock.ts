@@ -25,6 +25,7 @@ export function wakapiMockSource(): Source<WakapiData, WakapiData> {
     id: "wakapi",
     targetArea: "work",
     schedule: "*/30 * * * *",
+  ttl: 2 * 60 * 60 * 1000,
     fetch: async () => ok(DEMO),
     normalize: (raw) => raw,
   };

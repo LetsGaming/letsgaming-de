@@ -20,6 +20,13 @@ export interface ServerEnv {
   oauth: { clientId?: string; clientSecret?: string; allowedLogin: string };
   /** Secret used to sign session cookies. Falls back to CMS_TOKEN. */
   sessionSecret: string;
+  /**
+   * Signs draft preview links. Optional: unset means no previews at all, which
+   * fails closed — never "every draft is public". Rotating it revokes every
+   * outstanding link at once, which is the whole reason the token is derived
+   * rather than stored in the post.
+   */
+  previewSecret?: string;
   /** Directory for uploaded media (served read-only, backed up alongside the DB). */
   mediaDir: string;
   /** Days of hourly analytics to keep before bundling into daily rows (§ retention). */
@@ -92,6 +99,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
     retainHourlyDays: num(source.RETAIN_HOURLY_DAYS, 90),
     ...(str(source.DISCORD_USER_ID) ? { discordUserId: str(source.DISCORD_USER_ID)! } : {}),
     ...(str(source.ACCESS_LOG) ? { accessLog: str(source.ACCESS_LOG)! } : {}),
+    ...(str(source.PREVIEW_SECRET) ? { previewSecret: str(source.PREVIEW_SECRET)! } : {}),
     ...(str(source.ANALYTICS_OWN_HOST) ? { analyticsOwnHost: str(source.ANALYTICS_OWN_HOST)! } : {}),
     ...(str(source.WAKAPI_URL) && str(source.WAKAPI_KEY)
       ? { wakapi: { url: str(source.WAKAPI_URL)!, key: str(source.WAKAPI_KEY)! } }
