@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { ResolvedModule } from "@lg/core";
-import { icons } from "../../lib/icons";
+import { langColor, icons } from "../../lib/icons";
 import Freshness from "../Freshness.vue";
 import { trackClick, trackProject } from "../../lib/track";
 
@@ -34,7 +34,7 @@ const project = computed(() => props.module.data.project);
         <div class="ptitle">
           {{ project.name }}<span class="arrow" v-html="icons.arrow" />
         </div>
-        <span class="tag">{{ project.tag }}</span>
+        <span class="tag" :style="{ color: langColor(project.tag), borderColor: langColor(project.tag) }">{{ project.tag }}</span>
         <p class="desc">{{ project.description }}</p>
         <div class="meta">
           <span v-for="(m, i) in project.meta" :key="i">{{ m }}</span>

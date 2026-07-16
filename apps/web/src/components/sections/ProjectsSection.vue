@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import { icons } from "../../lib/icons";
+import { langColor, icons } from "../../lib/icons";
 import Freshness from "../Freshness.vue";
 import { trackClick, trackProject } from "../../lib/track";
 
@@ -36,7 +36,7 @@ defineProps<{
         @click="() => { trackClick('project'); trackProject(p.name); }"
       >
         <div class="ptitle">{{ p.name }}<span class="arrow" v-html="icons.arrow" /></div>
-        <span class="tag">{{ p.tag }}</span>
+        <span class="tag" :style="{ color: langColor(p.tag), borderColor: langColor(p.tag) }">{{ p.tag }}</span>
         <p class="desc">{{ p.description }}</p>
         <div class="meta"><span v-for="(m, i) in p.meta" :key="i">{{ m }}</span></div>
       </a>

@@ -1,7 +1,7 @@
 /* Design tokens. See docs/concepts/design-system.md for the rules these encode.
 
    Dark is the default (:root); light overrides live under [data-theme="light"].
-   The CMS adds [data-density="compact"], which remaps radius and type size and
+   The CMS root carries .cms, which remaps radius and type size and
    nothing else — one vocabulary, two ranges (site comfortable, CMS compact).
 
    Three rules are enforceable from this file:
@@ -56,14 +56,22 @@
   /* ── Contribution heat. Neutral: the heatmap is the accumulated tier and is
      meant to be quiet. Only today is purple, which also makes "did he commit
      today" readable at a glance — an all-violet grid can't do that. */
-  --heat-0: #1c1b20;
-  --heat-1: #2e2c35;
-  --heat-2: #454250;
-  --heat-3: #605c6e;
-  --heat-4: #837e93;
+  --heat-0: #1a1730;
+  --heat-1: #2f2456;
+  --heat-2: #46318a;
+  --heat-3: #6544c4;
+  --heat-4: #8b5cf6;
   --heat-today: var(--live-ink);
 
   --track: #221d3c;
+
+  /* Discord's own status colours. Imported, like everything else that isn't the
+     accent: these are Discord's brand, and a visitor already knows what green
+     means there. A blanket rename flattened all three to white, which made the
+     widget say "online" in the same colour it says "do not disturb". */
+  --discord-online: #23a55a;
+  --discord-idle: #f0b232;
+  --discord-dnd: #f23f43;
 
   /* Hobby tile tones — CMS-authored, one per hobby. Not a palette filling slots:
      the owner picks these, which is authorship, not invention. */
@@ -157,11 +165,11 @@
   --sh-card: 0 1px 2px rgba(30, 20, 60, 0.06), 0 6px 16px rgba(30, 20, 60, 0.07);
   --sh-anchor: 0 2px 6px rgba(30, 20, 60, 0.08), 0 16px 40px rgba(30, 20, 60, 0.1);
 
-  --heat-0: #e9e7f0;
-  --heat-1: #cfccd9;
-  --heat-2: #aeaabb;
-  --heat-3: #8b8699;
-  --heat-4: #665f77;
+  --heat-0: #1a1730;
+  --heat-1: #2f2456;
+  --heat-2: #46318a;
+  --heat-3: #6544c4;
+  --heat-4: #8b5cf6;
 
   --track: #e9e4f7;
 
@@ -171,7 +179,7 @@
 /* The CMS root. Fourteen panels, an asset library and a chart on a desktop —
    dense on purpose. Everything else (colour, elevation, motion, the accent rule)
    is shared, so the two surfaces can't drift apart. */
-[data-density="compact"] {
+.cms {
   --r-anchor: 14px;
   --r-card: 10px;
   --r-control: 8px;
@@ -203,7 +211,7 @@
    cannot reach them, so "purple means now" stays greppable in app.css while the
    admin surface waits its turn. Delete this block with the CMS pass; nothing
    outside cms.css may use these. */
-[data-density="compact"] {
+.cms {
   --purple: var(--live);
   --purple-br: var(--live-ink);
   --purple-d: #5b34d6;

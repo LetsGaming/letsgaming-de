@@ -2,12 +2,21 @@
 import type { ResolvedModule } from "@lg/core";
 import { icons, langColor } from "../../lib/icons";
 import Freshness from "../Freshness.vue";
+import { computed, ref } from "vue";
 
-defineProps<{
+const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "activity" }>;
   go: (id: string) => void;
   goAnchor?: (target: string) => void;
 }>();
+
+/** Five is enough to read at a glance; the rest is there when you want it. */
+const EVENTS_SHOWN = 5;
+const expanded = ref(false);
+const events = computed(() =>
+  expanded.value ? props.module.data.events : props.module.data.events.slice(0, EVENTS_SHOWN),
+);
+const hidden = computed(() => props.module.data.events.length - EVENTS_SHOWN);
 
 const heatVar = (level: number) => `var(--heat-${level})`;
 </script>
@@ -60,7 +69,7 @@ const heatVar = (level: number) => `var(--heat-${level})`;
         <p v-if="!module.data.events.length" class="sub">Nothing synced from GitHub yet.</p>
         <component
           :is="e.href ? 'a' : 'div'"
-          v-for="(e, i) in module.data.events"
+          v-for="(e, i) in events"
           :key="i"
           class="ev"
           :class="{ 'ev-link': e.href }"
@@ -75,6 +84,9 @@ const heatVar = (level: number) => `var(--heat-${level})`;
           </div>
           <span class="tm">{{ e.relative }}</span>
         </component>
+        <button v-if="hidden > 0" class="more ev-more" @click="expanded = !expanded">
+          {{ expanded ? "show less" : `show ${hidden} more` }}
+        </button>
       </div>
     </div>
   </section>

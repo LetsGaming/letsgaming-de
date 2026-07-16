@@ -59,10 +59,10 @@ const activityCards = computed(() =>
 
 // Per-category source label + themed motion + accent (currentColor for the motif).
 const CAT: Record<string, { src: string; motif: string; color: string }> = {
-  music: { src: "Listening to Spotify", motif: "music", color: "var(--ink)" },
-  game: { src: "Playing", motif: "game", color: "var(--ink)" },
-  watching: { src: "Watching", motif: "watch", color: "var(--ink)" },
-  streaming: { src: "Streaming", motif: "stream", color: "var(--ink)" },
+  music: { src: "Listening to Spotify", motif: "music", color: "#1db954" },
+  game: { src: "Playing", motif: "game", color: "var(--live-ink)" },
+  watching: { src: "Watching", motif: "watch", color: "#ff0000" },
+  streaming: { src: "Streaming", motif: "stream", color: "#9146ff" },
 };
 
 const activities = computed(() => {
@@ -285,7 +285,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="pw-lane">
-          <span class="pw-fill" :style="{ width: featured.pct + '%' }" />
+          <span class="pw-fill" :style="{ width: featured.pct + '%', '--bar': featured.accent }" />
         </div>
       </a>
 
@@ -312,7 +312,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="pw-row">
               <span class="pw-lane"
-                ><span class="pw-fill" :style="{ width: g.pct + '%' }"
+                ><span class="pw-fill" :style="{ width: g.pct + '%', '--bar': g.accent }"
               /></span>
               <span class="pw-hrs">{{ g.label }}</span>
             </div>
@@ -395,23 +395,23 @@ onBeforeUnmount(() => {
   background: var(--muted);
 }
 .pw-pip.pw-s-online {
-  background: var(--ink);
+  background: var(--discord-online);
 }
 .pw-pip.pw-s-online::after {
   content: "";
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--discord-online);
   opacity: 0.5;
   animation: pw-ping 2.6s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
 }
 .pw-pip.pw-s-idle {
-  background: var(--ink);
+  background: var(--discord-idle);
   animation: pw-breathe 2.6s ease-in-out infinite;
 }
 .pw-pip.pw-s-dnd {
-  background: var(--ink);
+  background: var(--discord-dnd);
 }
 .pw-pip.pw-s-dnd::before {
   content: "";
@@ -888,7 +888,7 @@ onBeforeUnmount(() => {
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--ink), var(--ink));
+  background: var(--bar, var(--live));
 }
 .pw-hrs {
   font-family: var(--f-m);

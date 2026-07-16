@@ -40,21 +40,78 @@ export const icons: Record<string, string> = {
  *  they all are. Linguist is the source of truth, not this file's taste.
  *  Presentation still lives in the frontend, not the API. */
 const LINGUIST: Record<string, string> = {
-  TypeScript: "#3178c6",
-  JavaScript: "#f1e05a",
-  Python: "#3572a5",
-  CSS: "#663399",
-  HTML: "#e34c26",
-  Shell: "#89e051",
-  Vue: "#41b883",
-  Go: "#00add8",
-  Rust: "#dea584",
-  Markdown: "#083fa1",
-  JSON: "#292929",
-  YAML: "#cb171e",
-  PowerShell: "#012456",
-  Dockerfile: "#384d54",
-  Astro: "#ff5a03",
+  typescript: "#3178c6",
+  javascript: "#f1e05a",
+  python: "#3572a5",
+  css: "#663399",
+  scss: "#c6538c",
+  html: "#e34c26",
+  vue: "#41b883",
+  svelte: "#ff3e00",
+  go: "#00add8",
+  rust: "#dea584",
+  java: "#b07219",
+  kotlin: "#a97bff",
+  swift: "#f05138",
+  "c#": "#178600",
+  "c++": "#f34b7d",
+  c: "#555555",
+  php: "#4f5d95",
+  ruby: "#701516",
+  shell: "#89e051",
+  lua: "#000080",
+  dart: "#00b4ab",
+  elixir: "#6e4a7e",
+  haskell: "#5e5086",
+  zig: "#ec915c",
+  json: "#292929",
+  yaml: "#cb171e",
+  toml: "#9c4221",
+  xml: "#0060ac",
+  markdown: "#083fa1",
+  sql: "#e38c00",
+  dockerfile: "#384d54",
+  makefile: "#427819",
+  powershell: "#012456",
+  astro: "#ff5a03",
+  nix: "#7e7eff",
+  "objective-c": "#438eff",
+  perl: "#0298c3",
+  r: "#198ce7",
+  scala: "#c22d40",
+  "vim script": "#199f4b",
+  "jupyter notebook": "#da5b0b",
+  text: "#7d7d7d",
+  other: "#7d7d7d",
+};
+
+/**
+ * Names the tools use that linguist doesn't. Wakapi reports what your editor
+ * calls the buffer, GitHub reports linguist's name, and they disagree — which is
+ * why half the bars were grey: the colour was right and the key never matched.
+ */
+const ALIASES: Record<string, string> = {
+  bash: "shell",
+  sh: "shell",
+  zsh: "shell",
+  "shell script": "shell",
+  ts: "typescript",
+  tsx: "typescript",
+  "typescript react": "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  "javascript react": "javascript",
+  py: "python",
+  golang: "go",
+  csharp: "c#",
+  cpp: "c++",
+  "c++ header": "c++",
+  yml: "yaml",
+  md: "markdown",
+  "vue.js": "vue",
+  docker: "dockerfile",
+  "git config": "text",
+  ini: "toml",
 };
 
 /** Linguist has no dark-background contract: JSON is #292929 and PowerShell is
@@ -99,7 +156,18 @@ export function lift(hex: string, minLightness = MIN_LIGHTNESS): string {
 
 /** A language's colour, lifted to read on the page. Unknown languages get a
  *  neutral rather than an invented hue: colour is imported, never invented. */
+/**
+ * A language's colour, lifted to read on the page.
+ *
+ * Lookup is case- and alias-insensitive because the sources disagree about names
+ * — Wakapi says "Bash", linguist says "Shell", and an exact-match map on
+ * linguist's spelling silently greyed out half the chart.
+ *
+ * Unknown languages still get a neutral rather than an invented hue: colour is
+ * imported, and there's nothing to import from a name nobody recognises.
+ */
 export function langColor(name: string): string {
-  const real = LINGUIST[name];
+  const key = name.trim().toLowerCase();
+  const real = LINGUIST[key] ?? LINGUIST[ALIASES[key] ?? ""];
   return real ? lift(real) : "#7d7d7d";
 }

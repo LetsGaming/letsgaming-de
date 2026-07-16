@@ -39,6 +39,8 @@ a {
   flex-wrap: wrap;
 }
 .brand {
+  text-decoration: none;
+  color: inherit;
   font-family: var(--f-d);
   font-weight: 700;
   font-size: 20px;
@@ -76,6 +78,7 @@ a {
   flex-wrap: wrap;
 }
 .tab {
+  text-decoration: none;
   font-family: var(--f-b);
   font-weight: 500;
   font-size: 14px;
@@ -1089,8 +1092,8 @@ footer b {
   font-size: var(--fs-meta);
   color: var(--muted);
 }
-.glance-stats span:not(:last-child)::after {
-  content: " · ";
+.glance-more {
+  margin-top: var(--sp-12);
 }
 
 
@@ -1161,4 +1164,38 @@ footer b {
 }
 .tile.t-sun {
   background: var(--tile-sun);
+}
+
+
+/* Areas are <a> now. Anchors underline by default and buttons don't — the nav
+   didn't change its look on purpose, it changed element. */
+.tabs a,
+.brand,
+footer a {
+  text-decoration: none;
+}
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* The "full activity →" control sits in a text line, not a section header, so it
+   never picked up .sec-head .more. */
+.glance-stats .more {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.glance-stats .more:hover {
+  color: var(--ink-strong);
+}
+
+
+/* Recent: five, then the rest on request. */
+.ev-more {
+  margin-top: var(--sp-8);
+  align-self: flex-start;
 }

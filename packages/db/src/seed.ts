@@ -140,6 +140,9 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   //    Each entry is one-shot and idempotent: it only fires while the old shape
   //    is still present.
   const renamedNodes: Record<string, string> = { work: "code" };
+  /** Modules that moved area. Additive reconcile can't express a move: it would
+   *  see the module already placed and leave it. */
+  const movedModules: Record<string, string> = { guestbook: "home" };
   const retiredModules = new Set(["highlights"]);
   let structuralChange = false;
 
@@ -161,6 +164,16 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
     }
   };
   renameNodes(nav);
+
+  for (const [moduleId, target] of Object.entries(movedModules)) {
+    const from = nav.find((n) => n.modules?.includes(moduleId) && n.id !== target);
+    if (from?.modules) {
+      from.modules = from.modules.filter((m) => m !== moduleId);
+      const to = nav.find((n) => n.id === target);
+      if (to?.modules && !to.modules.includes(moduleId)) to.modules.push(moduleId);
+      structuralChange = true;
+    }
+  }
 
   // Nodes the launch tree has and the store doesn't. Appended, keeping any
   // store-only areas the CMS added.

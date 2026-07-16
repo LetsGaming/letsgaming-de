@@ -20,11 +20,14 @@ defineProps<{
       {{ module.data.latest.text }}
       <span class="m">{{ module.data.latest.relative }} ago</span>
     </p>
-    <p class="glance-stats m">
-      <span v-for="(s, i) in module.data.stats" :key="i">
-        {{ s.value }}<small v-if="s.unit">{{ s.unit }}</small> {{ s.label }}
-      </span>
-      <button class="more" @click="() => { trackClick('more'); go('code'); }">full activity →</button>
-    </p>
+    <div class="dash">
+      <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
+        <span class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></span>
+        <span class="l">{{ s.label }}</span>
+      </div>
+    </div>
+    <button class="more glance-more" @click="() => { trackClick('more'); go('code'); }">
+      full activity →
+    </button>
   </section>
 </template>

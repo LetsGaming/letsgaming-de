@@ -20,9 +20,9 @@ import type { ModuleDescriptor } from "./modules.js";
 import type { NavNode } from "./nav.js";
 
 export const LAUNCH_NAV: NavNode[] = [
-  { id: "home", label: en("Home"), modules: ["hero", "glance", "featured"] },
+  { id: "home", label: en("Home"), modules: ["hero", "glance", "featured", "guestbook"] },
   { id: "code", label: en("Code"), modules: ["activity", "coding", "projects"] },
-  { id: "life", label: en("Life"), modules: ["presence", "hobbies", "gallery", "now", "guestbook"] },
+  { id: "life", label: en("Life"), modules: ["presence", "hobbies", "gallery", "now"] },
   { id: "about", label: en("About"), modules: ["bio", "contact"] },
   { id: "blog", label: en("Blog"), modules: ["posts"], hidden: true },
 ];

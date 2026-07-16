@@ -18,8 +18,11 @@ const SRC = new URL("../src", import.meta.url).pathname;
 const TOKENS = join(SRC, "styles/tokens.css");
 const EXT = /\.(css|vue|astro|ts)$/;
 
-/** `--name:` — a definition. Excludes `var(--name)`, which is a reference. */
-const DEF = /(?<!var\(\s*)(--[a-z0-9-]+)\s*:/gi;
+/** `--name:` — a definition. Excludes `var(--name)`, which is a reference.
+ *  The optional quote catches custom properties set from an inline style object
+ *  (`:style="{ '--bar': x }"`), which is a real way to pass a value into CSS and
+ *  not something the stylesheet can be expected to declare. */
+const DEF = /(?<!var\(\s*)(--[a-z0-9-]+)['"]?\s*:/gi;
 /** `var(--name)` or `var(--name, fallback)` — a reference. */
 const REF = /var\(\s*(--[a-z0-9-]+)(\$\{)?/gi;
 
