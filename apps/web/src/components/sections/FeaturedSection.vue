@@ -22,7 +22,7 @@ const project = computed(() => props.module.data.project);
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <Freshness :freshness="module.data.freshness" />
-      <button class="more" @click="() => { trackClick('more'); go('work'); }">see all my work →</button>
+      <button class="more" @click="() => { trackClick('more'); go('code'); }">see all my work →</button>
     </div>
     <div class="grid">
       <a

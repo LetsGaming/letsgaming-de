@@ -56,7 +56,7 @@
   /* ── Contribution heat. Neutral: the heatmap is the accumulated tier and is
      meant to be quiet. Only today is purple, which also makes "did he commit
      today" readable at a glance — an all-violet grid can't do that. */
-  --heat-0: #1a1730;
+  --heat-0: #231e3e;
   --heat-1: #2f2456;
   --heat-2: #46318a;
   --heat-3: #6544c4;
@@ -165,11 +165,17 @@
   --sh-card: 0 1px 2px rgba(30, 20, 60, 0.06), 0 6px 16px rgba(30, 20, 60, 0.07);
   --sh-anchor: 0 2px 6px rgba(30, 20, 60, 0.08), 0 16px 40px rgba(30, 20, 60, 0.1);
 
-  --heat-0: #1a1730;
-  --heat-1: #2f2456;
-  --heat-2: #46318a;
-  --heat-3: #6544c4;
-  --heat-4: #8b5cf6;
+  /* Tile tones, light. Same four authored hues, inverted: the gradient carries
+     the tone and the ink stays dark. */
+  --tile-purple: linear-gradient(160deg, #ebe6fb, #f6f4fd);
+  --tile-mint: linear-gradient(160deg, #dff3ec, #f2f8fb);
+  --tile-coral: linear-gradient(160deg, #fbe6ec, #f8f2fb);
+  --tile-sun: linear-gradient(160deg, #f7efd9, #f8f5fb);
+  --heat-0: #e6e2f2;
+  --heat-1: #c9bcf0;
+  --heat-2: #a78bfa;
+  --heat-3: #7c4ddb;
+  --heat-4: #5b21b6;
 
   --track: #e9e4f7;
 
