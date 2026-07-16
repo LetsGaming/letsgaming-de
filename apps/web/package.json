@@ -16,7 +16,7 @@
     "lint:tokens": "tsx scripts/lint-tokens.ts"
   },
   "dependencies": {
-    "@astrojs/node": "^10",
+    "@astrojs/node": "^11",
     "@astrojs/vue": "^6",
     "@fontsource/fredoka": "^5",
     "@fontsource/inter": "^5",
