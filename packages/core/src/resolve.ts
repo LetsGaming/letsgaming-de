@@ -16,11 +16,11 @@ import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
 import { collectModuleIds, type NavNode , visibleNav } from "./nav.js";
-import type { GitHubData, SourceData } from "./source.js";
+import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
 import type { FreshnessView, PostView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
-import { defaultPresenceSettings } from "./presence.js";
+import { defaultPresenceSettings, LIVE_PRESENCE_CATEGORIES, STEAM_CATEGORY } from "./presence.js";
 import {
   resolveAsset,
   type ImageAssetView,
@@ -49,10 +49,11 @@ export interface ResolveInput {
   locale?: Locale;
   /** ISO timestamp of the last sync, surfaced to the client. */
   syncedAt?: string;
-  /** Last successful sync per source id, and each source's TTL. Absent entries
-   *  resolve to `never` — no sync has landed yet, which is a real state and not
-   *  an error. */
-  freshness?: { syncedAt: Record<string, string>; ttl: Record<string, number> };
+  /** Last successful sync per source id, and each source's TTL. A missing
+   *  `syncedAt` resolves to `never` — no sync has landed yet, which is a real
+   *  state and not an error. `ttl` is `SOURCE_TTL`, which is total over SourceId
+   *  by construction, so a synced source always has an age to judge. */
+  freshness?: { syncedAt: Partial<Record<SourceId, string>>; ttl: Record<SourceId, number> };
   /** Approved guestbook entries, newest first (the store filters + orders). */
   guestbook?: PublicGuestbookEntry[];
   /** Discord presence: the Lanyard id (env config). Categories are CMS-owned. */
@@ -63,18 +64,50 @@ export interface ResolveInput {
   now?: Date;
 }
 
-const SOURCE_LABELS: Record<string, string> = { github: "GitHub" };
-
 /**
- * Neutralize any href that isn't http(s), mailto, or a site-relative path — so a
- * `javascript:`/`data:` URL (from stored content or a future source) can't become
- * a clickable script sink (SEC-04). Belt-and-braces with the CMS write schema.
+ * What an href is allowed to be: http(s), mailto, or a site-relative path — and
+ * nothing else, so a `javascript:`/`data:` URL from stored content or a future
+ * source can't become a clickable script sink (SEC-04).
+ *
+ * One pattern, two gates. The CMS write schema uses this string to refuse a bad
+ * href at the boundary; `safeHref` below applies it again at read time, because
+ * content predates schemas and a source isn't the CMS. They were two hand-written
+ * copies of one rule and had already drifted apart on case-sensitivity — which is
+ * what two copies of a rule do, and why the *security* one is a bad place for it.
  */
+export const HREF_PATTERN = "^(https?://|mailto:|/)[^\\s]*$";
+
+/** The read-time gate. Case-insensitive on purpose: `HTTPS://` is a real URL and
+ *  a scheme is case-insensitive per RFC 3986, so refusing one would be pedantry
+ *  rather than defence. The write schema stays exact — Ajv compiles patterns
+ *  without flags, and the CMS has a keyboard. */
+const SAFE_HREF_RE = new RegExp(HREF_PATTERN, "i");
+
 export function safeHref(href: string | undefined): string {
   const value = (href ?? "").trim();
-  if (/^(https?:\/\/|mailto:|\/)/i.test(value)) return value;
-  return "#";
+  return SAFE_HREF_RE.test(value) ? value : "#";
 }
+
+/**
+ * How much of each list reaches the page.
+ *
+ * Editorial, not technical — the adapters already cap what they *fetch*; these
+ * cap what a section *shows*. Named because `slice(-182)` in a switch case is a
+ * number whose meaning lives in a comment.
+ */
+const FEED = {
+  /**
+   * 26 weeks of contribution days. A full GitHub year crams ~53 columns into the
+   * card. Must stay a multiple of DAYS_PER_WEEK: `.heat` in app.css is
+   * `grid-auto-flow: column` over `repeat(7, 1fr)` rows, so a remainder leaves
+   * the last column half-height — which renders wrong without erroring anywhere.
+   */
+  heatDays: 26 * 7,
+  /** Repo cards on Projects. */
+  projects: 12,
+  /** Merged commit/release/PR/gist events on Recent. */
+  events: 12,
+} as const;
 
 export function resolveSiteView(input: ResolveInput): SiteView {
   const locale = input.locale ?? DEFAULT_LOCALE;
@@ -132,7 +165,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       .filter((r): r is NonNullable<typeof r> => Boolean(r));
     const pinnedNames = new Set(pinned.map((r) => r.name));
     const recent = repos.filter((r) => !pinnedNames.has(r.name)); // already push-desc
-    return [...pinned, ...recent].slice(0, 12).map((r) => ({
+    return [...pinned, ...recent].slice(0, FEED.projects).map((r) => ({
       id: r.name,
       name: r.name,
       tag: r.language ?? "",
@@ -197,7 +230,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
    * mode is going stale: a module that can't tell fresh from old renders old
    * data as current, which makes the site lie about the one thing it promises.
    */
-  const freshnessOf = (sourceId: string, hasData: boolean): FreshnessView => {
+  const freshnessOf = (sourceId: SourceId, hasData: boolean): FreshnessView => {
     const at = input.freshness?.syncedAt[sourceId];
     if (!at) return { state: "never", source: sourceId };
     const ttl = input.freshness?.ttl[sourceId];
@@ -209,9 +242,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   };
 
   const activeSources = (): string[] =>
-    (Object.keys(source) as (keyof SourceData)[])
-      .filter((id) => source[id])
-      .map((id) => SOURCE_LABELS[id] ?? id);
+    (Object.keys(source) as SourceId[]).filter((id) => source[id]).map((id) => SOURCE_LABEL[id]);
 
   function resolveModule(descriptor: ModuleDescriptor): ResolvedModule {
     const heading = descriptor.heading ? L(descriptor.heading) : "";
@@ -274,9 +305,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         };
       }
       case "activity": {
-        // Show the last 26 weeks (182 days) so the calendar stays readable — a
-        // full GitHub year would cram ~53 columns into the card (see .heat CSS).
-        const windowed = gh ? gh.contributions.slice(-182) : [];
+        // The last 26 weeks, so the calendar stays readable (see FEED.heatDays —
+        // .heat in app.css sizes its grid to the same number).
+        const windowed = gh ? gh.contributions.slice(-FEED.heatDays) : [];
         const heat = gh ? bucketHeat(windowed) : { levels: [], total: 0 };
         return {
           id: descriptor.id,
@@ -301,7 +332,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
                 ]
                   // ISO timestamps sort lexicographically == chronologically.
                   .sort((a, b) => b.at.localeCompare(a.at))
-                  .slice(0, 12)
+                  .slice(0, FEED.events)
               : [],
             sources: activeSources(),
           },
@@ -404,10 +435,10 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       case "presence": {
         // Category allow-list is CMS-owned (content); the Discord id is env config.
         const show = content.presence?.show ?? defaultPresenceSettings().show;
-        const LIVE_CATEGORIES = ["game", "streaming", "music", "watching", "custom"];
-        const live = Boolean(input.presence?.discordId) && show.some((c) => LIVE_CATEGORIES.includes(c));
+        const liveAllowed = new Set<string>(LIVE_PRESENCE_CATEGORIES);
+        const live = Boolean(input.presence?.discordId) && show.some((c) => liveAllowed.has(c));
         const steam = source.steam;
-        const includeSteam = show.includes("steam") && steam;
+        const includeSteam = show.includes(STEAM_CATEGORY) && steam;
         const avatar = resolveAsset(content.meta.avatar, assets);
         const data: PresenceModuleView = {
           live,

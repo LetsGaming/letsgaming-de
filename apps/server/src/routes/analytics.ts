@@ -8,6 +8,7 @@
  * and the owner can clear fine-grained ranges (last hour, last 3 days, …).
  */
 
+import { clearRange } from "@lg/core";
 import type { AnalyticsDimension, Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
@@ -15,11 +16,20 @@ import { requireAuth } from "../auth/guard.js";
 import { badRequest } from "../errors.js";
 
 const HOUR = 3600_000;
+
+/**
+ * Bounds that sort outside every real bucket, for "clear everything".
+ *
+ * Buckets are ISO prefixes (`2026-07-17T14`, `2026-07-17`) compared as text, so
+ * "before all of them" is any string that sorts below a leading digit-4 year, and
+ * "after all of them" any that sorts above. Named because `"0000"` and `"9999"`
+ * appearing bare in a DELETE range read like typos.
+ */
+const BUCKET_MIN = "0000";
+const BUCKET_MAX = "9999";
+
 function isoHour(d: Date): string {
   return d.toISOString().slice(0, 13);
-}
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
 
 export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
@@ -72,37 +82,29 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
 
   // Clear a range. Fine-grained ranges target engagement (hour-bucketed);
   // "all" also wipes the log-derived day stats.
+  //
+  // The window comes from CLEAR_RANGES, which the CMS's buttons are built from
+  // too. It used to be a switch that re-derived each window by hand — `back(72)`
+  // for "3d" — beside a client list that said 72 for the same id. Two lists, one
+  // meaning, and the failure mode is deleting the wrong window with no undo.
   app.post<{ Body: { range?: string } }>(
     "/api/cms/analytics/clear",
     { preHandler: requireAuth(env) },
-    async (req, reply) => {
-      const range = req.body?.range ?? "";
+    async (req) => {
+      const range = clearRange(req.body?.range ?? "");
+      if (!range) throw badRequest("Unknown range.");
+
       const now = new Date();
       const toB = isoHour(now);
-      const back = (h: number) => isoHour(new Date(now.getTime() - (h - 1) * HOUR));
 
-      let removed = 0;
-      switch (range) {
-        case "hour":
-          removed = store.analytics.clearHourly(toB, toB);
-          break;
-        case "24h":
-          removed = store.analytics.clearHourly(back(24), toB);
-          break;
-        case "3d":
-          removed = store.analytics.clearHourly(back(72), toB);
-          break;
-        case "7d":
-          removed = store.analytics.clearHourly(back(168), toB);
-          break;
-        case "all":
-          removed =
-            store.analytics.clearHourly("0000", "9999") +
-            store.analytics.clearDaily("0000", "9999");
-          break;
-        default:
-          throw badRequest("Unknown range.");
-      }
+      // `hours: null` is the un-windowed one: everything, both tables. The bucket
+      // strings are lexicographic, so these bounds sort outside any real bucket.
+      const removed =
+        range.hours === null
+          ? store.analytics.clearHourly(BUCKET_MIN, BUCKET_MAX) +
+            store.analytics.clearDaily(BUCKET_MIN, BUCKET_MAX)
+          : store.analytics.clearHourly(isoHour(new Date(now.getTime() - (range.hours - 1) * HOUR)), toB);
+
       return { ok: true, removed };
     },
   );

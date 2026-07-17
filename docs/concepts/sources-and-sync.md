@@ -11,13 +11,22 @@ Every source implements `Source<Raw, Normalized>` from
 
 ```ts
 interface Source<Raw, Normalized> {
-  id: string;                        // "github", used as the store key and label
-  targetArea?: string;               // default area its modules belong to
+  id: SourceId;                      // "github" — the store key, the SourceData field
   schedule: string;                  // cron-ish interval the worker reads
-  fetch(): Promise<Raw>;             // hit the external API
+  ttl: number;                       // how long the answer stays true (from SOURCE_TTL)
+  fetch(): Promise<Result<Raw>>;     // hit the external API; a typed failure, never a throw
   normalize(raw: Raw): Normalized;   // map to the common shape stored in the DB
+  enrich?(n: Normalized): Promise<Normalized>;  // optional async pass (see ADR 0005)
 }
 ```
+
+`targetArea?: string` used to sit in this list. Nothing ever read it, and by the
+time it was removed two of the three adapters still declared `targetArea: "work"`
+— an area renamed to `code` months earlier. That it could be wrong for that long
+without anything noticing is the argument for deleting it: a field nothing reads
+is a comment, and this one had gone stale like one. Placement is the nav tree's
+job anyway (a leaf's `modules`), which is why a module descriptor carries no area
+of its own either.
 
 Two properties earn their keep. `fetch` and `normalize` are split so normalization
 stays pure and unit-testable, and so a mock can reuse the same `normalize`. And

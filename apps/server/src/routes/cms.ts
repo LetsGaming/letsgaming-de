@@ -20,7 +20,15 @@ import type {
   SiteMeta,
   Status,
 } from "@lg/core";
-import { lintNav } from "@lg/core";
+import {
+  DEFAULT_GALLERY_ID,
+  galleryUsageContext,
+  galleryUsageLabel,
+  lintNav,
+  MODULE_KIND,
+  parseAssetRef,
+  statusForAction,
+} from "@lg/core";
 import { randomUUID } from "node:crypto";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
@@ -28,6 +36,10 @@ import type { ServerEnv } from "../env.js";
 import { requireAuth, sessionLogin } from "../auth/guard.js";
 import { schemas } from "../schemas.js";
 import { badRequest, notFound } from "../errors.js";
+
+/** A fresh gallery module id. Short random suffix: unique without a lookup, and
+ *  short enough to read in the Layout screen. */
+const newGalleryModuleId = (): string => `gallery-${randomUUID().slice(0, 8)}`;
 
 export function registerCmsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   const preHandler = requireAuth(env);
@@ -107,11 +119,14 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   // "used in" list + delete-warning stay accurate.
   const syncGalleryUsages = () => {
     const items = store.content.getGallery();
-    for (const m of store.ia.getModules().filter((mm) => mm.kind === "gallery")) {
+    for (const m of store.ia.getModules().filter((mm) => mm.kind === MODULE_KIND.gallery)) {
       const entries = items
         .filter((g) => g.module === m.id)
-        .map((g) => ({ assetId: g.asset.replace(/^asset:/, ""), label: `Gallery: ${m.id}` }));
-      store.assets.recordUsage(`gallery:${m.id}`, entries);
+        .flatMap((g) => {
+          const assetId = parseAssetRef(g.asset);
+          return assetId ? [{ assetId, label: galleryUsageLabel(m.id) }] : [];
+        });
+      store.assets.recordUsage(galleryUsageContext(m.id), entries);
     }
   };
 
@@ -129,8 +144,13 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     "/api/cms/gallery-module",
     write(schemas.galleryModule),
     async (req) => {
-      const id = `gallery-${randomUUID().slice(0, 8)}`;
-      store.ia.addModule({ id, kind: "gallery", heading: req.body.heading, ...(req.body.note ? { note: req.body.note } : {}) });
+      const id = newGalleryModuleId();
+      store.ia.addModule({
+        id,
+        kind: MODULE_KIND.gallery,
+        heading: req.body.heading,
+        ...(req.body.note ? { note: req.body.note } : {}),
+      });
       return { ok: true, id };
     },
   );
@@ -139,15 +159,15 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   app.delete<{ Params: { id: string } }>("/api/cms/gallery-module/:id", guard, async (req, reply) => {
     const id = req.params.id;
     const mod = store.ia.getModules().find((m) => m.id === id);
-    if (!mod || mod.kind !== "gallery") {
+    if (!mod || mod.kind !== MODULE_KIND.gallery) {
       throw badRequest("Not a gallery module.");
     }
-    if (id === "gallery") {
+    if (id === DEFAULT_GALLERY_ID) {
       throw badRequest("The default gallery can't be deleted.");
     }
     store.content.deleteGalleryModule(id);
     store.ia.removeModule(id);
-    store.assets.clearUsageContext(`gallery:${id}`);
+    store.assets.clearUsageContext(galleryUsageContext(id));
     return { ok: true };
   });
 
@@ -234,12 +254,10 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     guard,
     async (req, reply) => {
       const id = Number(req.params.id);
-      const status =
-        req.params.action === "approve"
-          ? "approved"
-          : req.params.action === "reject"
-            ? "rejected"
-            : null;
+      // `statusForAction` owns both spellings ("approve" the verb, "approved" the
+      // state) and the mapping between them, so the CMS client and this route
+      // can't drift on either half.
+      const status = statusForAction(req.params.action);
       if (!Number.isInteger(id) || !status) {
         throw badRequest("Invalid id or action.");
       }

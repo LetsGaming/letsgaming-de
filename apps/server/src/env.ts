@@ -2,7 +2,15 @@
  * Environment/config. One typed object read once at boot. No secrets are logged.
  */
 
+import { DEFAULT_GITHUB_USERNAME } from "@lg/sources";
+
 export interface ServerEnv {
+  /** True in production. Read here, not from `process.env.NODE_ENV` at the three
+   *  call sites that used to ask directly — a config read outside this file is a
+   *  default nobody can find. */
+  isProduction: boolean;
+  /** Pino level. */
+  logLevel: string;
   port: number;
   host: string;
   /** SQLite file path. The store is the archive — back this up (§10). */
@@ -48,6 +56,10 @@ export interface ServerEnv {
 /** The literal dev fallback — refused at boot when the CMS is enabled (SEC-01). */
 export const DEV_SESSION_SECRET = "dev-insecure-secret-change-me-please";
 
+/** Node's own convention for the one NODE_ENV value that means anything to us. */
+const PRODUCTION = "production";
+const DEFAULT_LOG_LEVEL = "info";
+
 /**
  * Read an env var, treating an empty/whitespace-only value as unset. Docker
  * Compose passes `${VAR:-}` as "" rather than leaving it undefined, so a plain
@@ -72,13 +84,15 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
   const cmsToken = str(source.CMS_TOKEN);
   const clientId = str(source.GITHUB_OAUTH_CLIENT_ID);
   const clientSecret = str(source.GITHUB_OAUTH_CLIENT_SECRET);
-  const githubUsername = str(source.GITHUB_USERNAME) ?? "LetsGaming";
+  const githubUsername = str(source.GITHUB_USERNAME) ?? DEFAULT_GITHUB_USERNAME;
 
   // Empty-string-aware, so an unset SESSION_SECRET actually falls through to
   // CMS_TOKEN and then to the dev default (which boot-validation then rejects).
   const sessionSecret = str(source.SESSION_SECRET) ?? cmsToken ?? DEV_SESSION_SECRET;
 
   const env: ServerEnv = {
+    isProduction: source.NODE_ENV === PRODUCTION,
+    logLevel: str(source.LOG_LEVEL) ?? DEFAULT_LOG_LEVEL,
     port: num(source.PORT, 8787),
     host: source.HOST ?? "0.0.0.0",
     dbPath: source.DB_PATH ?? "./data/letsgaming.sqlite",

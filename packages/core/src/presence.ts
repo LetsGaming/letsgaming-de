@@ -9,26 +9,48 @@
  * server-synced source folded in alongside.
  */
 
-/** Display categories the owner can toggle. `steam` gates the synced Steam section. */
-export type PresenceCategory = "game" | "streaming" | "music" | "watching" | "custom" | "steam";
-
-export const PRESENCE_CATEGORIES: readonly PresenceCategory[] = [
+/**
+ * Every presence category the owner can toggle, in display order. `steam` gates
+ * the synced Steam section; the rest come from Discord.
+ *
+ * The type derives from this array rather than the other way round, so a new
+ * category can't be added to one and forgotten in the other. Everything that
+ * needs the *list* — the CMS toggles, the write schema's enum, the resolver's
+ * "is anything live?" check — derives from here too, for the same reason.
+ */
+export const PRESENCE_CATEGORIES = [
   "game",
   "streaming",
   "music",
   "watching",
   "custom",
   "steam",
-];
+] as const;
+
+export type PresenceCategory = (typeof PRESENCE_CATEGORIES)[number];
+
+/** The category the Steam half of the widget is gated on (the one non-Discord one). */
+export const STEAM_CATEGORY = "steam" satisfies PresenceCategory;
+
+/** A category Discord's live socket can fill. The `Exclude<>` and the runtime
+ *  list are one derivation, so they can't disagree: the resolver used to hold a
+ *  hand-copied `["game","streaming","music","watching","custom"]`, which a sixth
+ *  Discord category would have silently missed. */
+export type LivePresenceCategory = Exclude<PresenceCategory, typeof STEAM_CATEGORY>;
+
+export const LIVE_PRESENCE_CATEGORIES: readonly LivePresenceCategory[] =
+  PRESENCE_CATEGORIES.filter((c): c is LivePresenceCategory => c !== STEAM_CATEGORY);
 
 /** CMS-owned presence config: which categories the widget may reveal. */
 export interface PresenceSettings {
   show: PresenceCategory[];
 }
 
-/** Sensible starting allow-list; used to seed the store and as a fallback. */
+/** Sensible starting allow-list; used to seed the store and as a fallback.
+ *  Everything except `watching` — a YouTube title is a stronger claim about a
+ *  person than "playing something", so it's opt-in. */
 export function defaultPresenceSettings(): PresenceSettings {
-  return { show: ["game", "streaming", "music", "custom", "steam"] };
+  return { show: PRESENCE_CATEGORIES.filter((c) => c !== "watching") };
 }
 
 /** Keep only valid, de-duplicated categories (guards CMS input + stored rows). */
@@ -43,11 +65,38 @@ export function sanitizePresenceShow(input: unknown): PresenceCategory[] {
   return [...seen];
 }
 
-export type DiscordStatus = "online" | "idle" | "dnd" | "offline";
+/**
+ * Discord's four presence states. A const object, not a bare union: the widget
+ * renders a class and a brand colour per state (`--discord-online` &c.), the
+ * normalizer picks a default, and a blanket rename once flattened all of them —
+ * so the values need one named home rather than a literal at each site.
+ */
+export const DISCORD_STATUS = {
+  Online: "online",
+  Idle: "idle",
+  Dnd: "dnd",
+  Offline: "offline",
+} as const;
+export type DiscordStatus = (typeof DISCORD_STATUS)[keyof typeof DISCORD_STATUS];
+
+/**
+ * Lanyard's `activity.type` numbers, as Discord defines them. Named because a
+ * bare `4` in a map key is unreadable and un-greppable — the old comment beside
+ * the field was the only thing carrying the meaning, and a comment isn't a
+ * lookup. Only the types we surface are listed; 5 (Competing) is ignored.
+ */
+export const LANYARD_ACTIVITY_TYPE = {
+  Playing: 0,
+  Streaming: 1,
+  Listening: 2,
+  Watching: 3,
+  Custom: 4,
+} as const;
 
 /** The subset of Lanyard's payload we read. */
 export interface LanyardActivity {
-  type: number; // 0 Playing, 1 Streaming, 2 Listening, 3 Watching, 4 Custom, 5 Competing
+  /** See {@link LANYARD_ACTIVITY_TYPE}. */
+  type: number;
   name: string;
   state?: string;
   details?: string;
@@ -66,7 +115,7 @@ export interface LanyardData {
 
 /** One curated presence card, ready to render. */
 export interface PresenceCard {
-  category: Exclude<PresenceCategory, "steam">;
+  category: LivePresenceCategory;
   title: string;
   subtitle?: string;
   image?: string;
@@ -81,12 +130,12 @@ export interface PresenceView {
   cards: PresenceCard[];
 }
 
-const TYPE_TO_CATEGORY: Record<number, Exclude<PresenceCategory, "steam">> = {
-  0: "game",
-  1: "streaming",
-  2: "music",
-  3: "watching",
-  4: "custom",
+const TYPE_TO_CATEGORY: Record<number, LivePresenceCategory> = {
+  [LANYARD_ACTIVITY_TYPE.Playing]: "game",
+  [LANYARD_ACTIVITY_TYPE.Streaming]: "streaming",
+  [LANYARD_ACTIVITY_TYPE.Listening]: "music",
+  [LANYARD_ACTIVITY_TYPE.Watching]: "watching",
+  [LANYARD_ACTIVITY_TYPE.Custom]: "custom",
 };
 
 /** Build the Discord CDN avatar URL from the user object (animated -> gif). */
@@ -118,7 +167,7 @@ export function normalizePresence(
   show: readonly PresenceCategory[],
 ): PresenceView {
   const allow = new Set(show);
-  const status: DiscordStatus = data.discord_status ?? "offline";
+  const status: DiscordStatus = data.discord_status ?? DISCORD_STATUS.Offline;
   const avatar = discordAvatarUrl(data.discord_user);
   const cards: PresenceCard[] = [];
 

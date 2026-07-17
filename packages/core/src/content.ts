@@ -70,8 +70,20 @@ export interface Project {
   repo?: string;
 }
 
-/** Visual tone for a hobby tile — maps to an accent in the design system. */
-export type Tone = "purple" | "coral" | "mint" | "sun";
+/**
+ * Visual tone for a hobby tile — each maps to a `--tile-<tone>` gradient.
+ *
+ * The list is the runtime value and the type derives from it, because three
+ * other places need the *list*: the CMS dropdown, the write schema's enum, and
+ * tokens.css. A bare union gave them nothing to import, so all three hand-wrote
+ * it — and a dropdown that offers a tone the tokens don't define renders
+ * nothing, silently, which is precisely what happened to these once already.
+ */
+export const TONES = ["purple", "coral", "mint", "sun"] as const;
+export type Tone = (typeof TONES)[number];
+
+/** The tone a new hobby starts with. */
+export const DEFAULT_TONE: Tone = "purple";
 
 export interface Hobby {
   id: string;

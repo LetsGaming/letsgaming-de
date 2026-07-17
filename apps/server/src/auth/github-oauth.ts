@@ -16,7 +16,7 @@ const STATE_COOKIE = "lg_oauth_state";
 
 export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void {
   const { clientId, clientSecret, allowedLogin } = env.oauth;
-  const secureCookie = process.env.NODE_ENV === "production";
+  const secureCookie = env.isProduction;
 
   app.get("/auth/github/login", async (_req, reply) => {
     if (!clientId) return reply.code(503).send({ error: "OAuth not configured." });

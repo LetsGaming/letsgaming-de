@@ -61,6 +61,25 @@ export interface AssetUsage {
   label?: string;
 }
 
+// ── usage-context keys ──────────────────────────────────────────────────────
+// A context is a string the CMS route writes and later clears by exact match. It
+// was built inline as `gallery:${id}` in two handlers, one of which clears what
+// the other wrote — so a change to the format in one place doesn't fail, it just
+// stops matching, and the library quietly keeps claiming an image is in use by a
+// gallery that no longer exists. One builder, both call sites.
+
+/** Usage context for the images placed in one gallery module. */
+export const galleryUsageContext = (moduleId: string): string => `gallery:${moduleId}`;
+
+/** Human label for that context, as the library's "used in" list shows it. */
+export const galleryUsageLabel = (moduleId: string): string => `Gallery: ${moduleId}`;
+
+/** The mime the CMS stamps on a markdown file it creates. Named because the
+ *  editor was writing `"text/markdown"` as a literal into a `new File()` while
+ *  `classifyAsset` below decides what that string means — and a post the
+ *  classifier calls a `file` is a post that never renders. */
+export const MARKDOWN_MIME = "text/markdown";
+
 /** Accepted upload kinds, mapped from a mime type (with an extension fallback). */
 export function classifyAsset(mime: string, ext: string): AssetKind | null {
   const e = ext.toLowerCase().replace(/^\./, "");
@@ -68,7 +87,7 @@ export function classifyAsset(mime: string, ext: string): AssetKind | null {
   if (mime === "image/gif" || e === "gif") return "gif";
   if (mime === "application/pdf" || e === "pdf") return "pdf";
   if (mime.startsWith("image/")) return "image";
-  if (mime === "text/markdown" || e === "md" || e === "markdown") return "markdown";
+  if (mime === MARKDOWN_MIME || e === "md" || e === "markdown") return "markdown";
   if (mime === "text/plain" && (e === "md" || e === "markdown")) return "markdown";
   // Everything else we still allow, but as a plain downloadable file.
   if (mime && (e === "txt" || e === "csv" || e === "json" || e === "zip")) return "file";
@@ -85,8 +104,22 @@ export function isRaster(kind: AssetKind): boolean {
 // expands it per surface at read time, so moving/optimizing files never breaks
 // references and the client only ever sees resolved output.
 
-const ASSET_REF = /^asset:([A-Za-z0-9_-]+)$/;
+/**
+ * The reference format: `asset:<id>`, and nothing else.
+ *
+ * Exported as a *string* because the CMS write schemas need it as a JSON Schema
+ * `pattern` — they were hand-writing `"^asset:[A-Za-z0-9_-]+$"` twice, next to
+ * `.replace(/^asset:/, "")` in three components and a `` `asset:${id}` `` in four
+ * more. Eight spellings of one four-character prefix, and the helpers below —
+ * which exist precisely for this — had one caller between them.
+ */
+export const ASSET_REF_PATTERN = "^asset:([A-Za-z0-9_-]+)$";
+/** Same, but an empty string also passes (an optional reference, e.g. no avatar). */
+export const OPTIONAL_ASSET_REF_PATTERN = "^(asset:[A-Za-z0-9_-]+)?$";
 
+const ASSET_REF = new RegExp(ASSET_REF_PATTERN);
+
+/** Build a reference to a library asset. */
 export function assetRef(id: string): string {
   return `asset:${id}`;
 }

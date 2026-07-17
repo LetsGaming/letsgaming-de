@@ -18,7 +18,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import type { DB } from "./database.js";
-import { rows } from "./row-mapper.js";
+import { rows, transact } from "./row-mapper.js";
 
 export interface AppliedMigration {
   version: number;
@@ -83,15 +83,15 @@ export function runMigrations(db: DB, dir: string): AppliedMigration[] {
     }
 
     const appliedAt = new Date().toISOString();
-    db.exec("BEGIN");
     try {
-      db.exec(migration.sql);
-      db.prepare(
-        "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
-      ).run(migration.version, migration.name, sum, appliedAt);
-      db.exec("COMMIT");
+      transact(db, () => {
+        db.exec(migration.sql);
+        db.prepare(
+          "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
+        ).run(migration.version, migration.name, sum, appliedAt);
+      });
     } catch (err) {
-      db.exec("ROLLBACK");
+      // Name the migration: "syntax error near ORDER" with no file is unfindable.
       throw new Error(`Migration ${migration.name} failed: ${(err as Error).message}`);
     }
     result.push({ version: migration.version, name: migration.name, checksum: sum, appliedAt });

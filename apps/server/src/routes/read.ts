@@ -4,17 +4,16 @@
  * fetched from an external API here.
  */
 
-import { isLocale, resolveSiteView, type Locale } from "@lg/core";
+import { DEFAULT_LOCALE, isLocale, resolveSiteView, SOURCE_TTL, type Locale } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
-import { SOURCE_TTL } from "@lg/sources";
 import { buildAssetLookup } from "../assets-lookup.js";
 
 export function registerReadRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   app.get<{ Querystring: { locale?: string } }>("/api/site", async (req) => {
     const requested = req.query.locale;
-    const locale: Locale = requested && isLocale(requested) ? requested : "en";
+    const locale: Locale = requested && isLocale(requested) ? requested : DEFAULT_LOCALE;
 
     return resolveSiteView({
       content: store.content.getContent(),

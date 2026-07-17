@@ -12,18 +12,25 @@
  * a migration.
  */
 import { computed, onMounted, ref } from "vue";
-import { POST_PREFIX, parsePost, slugify } from "@lg/core";
-import { useCms } from "../../../composables/useCms";
+import { assetRef, MARKDOWN_MIME, POST_PREFIX, parsePost, slugify } from "@lg/core";
+import type { Asset, AssetFolder } from "@lg/core";
+import { useCmsContext } from "../../../composables/cmsContext";
 
-const { cms, flash, layoutAreas } = useCms();
+const { cms, flash, layoutAreas, openPicker } = useCmsContext();
 
-interface PostAsset {
-  id: string;
-  slug: string;
-  filename: string;
-  title?: string;
-  alt?: string;
-}
+/**
+ * A post is a markdown asset that has a public slug.
+ *
+ * The panel used to declare its own five-field `PostAsset` with `slug: string` —
+ * but the library's slug is optional (most assets have none), so the local shape
+ * claimed a guarantee the API doesn't make and every `post.slug` read was
+ * unchecked. Narrowing here instead: `isPost` is the one place that turns "an
+ * asset" into "a post", and the type follows from the check rather than asserting
+ * past it.
+ */
+type PostAsset = Asset & { slug: string };
+
+const isPost = (a: Asset): a is PostAsset => Boolean(a.slug?.startsWith(POST_PREFIX));
 
 /**
  * `/api/cms/assets` returns `{ assets, folders, tags }`, not a bare array.
@@ -34,8 +41,8 @@ interface PostAsset {
  * next call site can't make the same claim.
  */
 interface AssetListResponse {
-  assets: PostAsset[];
-  folders: { id: string; name: string }[];
+  assets: Asset[];
+  folders: AssetFolder[];
   tags: string[];
 }
 
@@ -52,7 +59,7 @@ const dirty = ref(false);
 
 async function loadList() {
   const { assets } = (await cms.listAssets({ kind: "markdown" })) as AssetListResponse;
-  posts.value = assets.filter((a) => a.slug?.startsWith(POST_PREFIX));
+  posts.value = assets.filter(isPost);
 }
 
 async function open(post: PostAsset) {
@@ -93,7 +100,7 @@ async function create() {
   // Born a draft, with the frontmatter already correct — an empty file that the
   // parser has to guess at is a worse starting point than a filled one.
   const body = `---\ntitle: ${name}\ndate: ${today}\ndraft: true\ntags: []\n---\n\n`;
-  const file = new File([body], `${slug.split("/").pop()}.md`, { type: "text/markdown" });
+  const file = new File([body], `${slug.split("/").pop()}.md`, { type: MARKDOWN_MIME });
   const created = (await cms.uploadAsset(file)) as PostAsset;
   await cms.updateAsset(created.id, { slug, title: name });
   await loadList();
@@ -118,37 +125,33 @@ function insert(text: string) {
   });
 }
 
-/** Image picker: straight into the existing DAM. No uploads here — the library
- *  is the library, and a second upload path would mean two sets of rules. */
-async function pickImage() {
-  const { assets: all } = (await cms.listAssets({ kind: "image" })) as AssetListResponse;
-  if (!all.length) {
-    flash("No images in the library yet.");
-    return;
-  }
-  const choice = window.prompt(
-    `Image to insert:\n${all.map((a, i) => `${i + 1}. ${a.filename}`).join("\n")}`,
-    "1",
-  );
-  const a = choice ? all[Number(choice) - 1] : undefined;
-  if (a) insert(`![${a.alt ?? ""}](asset:${a.id})`);
+/**
+ * Image picker: the library, in the modal the CMS already opens for every other
+ * image field.
+ *
+ * It used to list the filenames in a `window.prompt` and ask you to type the
+ * number — for a media library whose whole job is showing you the picture. The
+ * modal isn't new: `openPicker` is what the avatar, the bio and the gallery all
+ * use, so this is the panel joining the convention rather than a fifth one.
+ */
+function pickImage() {
+  openPicker((id, asset) => insert(`![${asset.alt ?? ""}](${assetRef(id)})`), "image");
 }
 
 /** Link picker: the nav tree the panel already has, so an internal link can't
  *  point at an area that doesn't exist — and can't go stale against a copy
  *  fetched separately. */
+const linkPickerOpen = ref(false);
 function pickLink() {
-  const areas = layoutAreas.value ?? [];
-  if (!areas.length) {
+  if (!layoutAreas.value.length) {
     flash("No areas loaded.");
     return;
   }
-  const choice = window.prompt(
-    `Link to area:\n${areas.map((n, i) => `${i + 1}. ${n.id}`).join("\n")}`,
-    "1",
-  );
-  const n = choice ? areas[Number(choice) - 1] : undefined;
-  if (n) insert(`[${n.id}](/${n.id})`);
+  linkPickerOpen.value = true;
+}
+function insertLink(area: { id: string; label: string }) {
+  linkPickerOpen.value = false;
+  insert(`[${area.label}](/${area.id})`);
 }
 
 function previewUrl(): string {
@@ -204,6 +207,28 @@ onMounted(loadList);
         />
       </div>
       <p v-else class="sub">Pick a post, or make one.</p>
+    </div>
+
+    <!-- Area picker. Same shell as the asset picker (.pickmask/.pickbox), because
+         the CMS has one modal look and this is it. -->
+    <div v-if="linkPickerOpen" class="pickmask" @click.self="linkPickerOpen = false">
+      <div class="pickbox">
+        <div class="pickhead">
+          <b>Link to an area</b>
+          <button class="link" @click="linkPickerOpen = false">close</button>
+        </div>
+        <div class="modlist">
+          <button
+            v-for="area in layoutAreas"
+            :key="area.id"
+            class="posts-item"
+            @click="insertLink(area)"
+          >
+            <span class="pi-t">{{ area.label }}</span>
+            <span class="pi-s">/{{ area.id }}</span>
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>

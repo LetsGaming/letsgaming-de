@@ -47,9 +47,32 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
 }
 
 /**
- * Bucket per-day contribution intensities into levels 0..4 (5 heatmap shades).
- * Thresholds are relative to the window's max so the graph reads well regardless
- * of absolute volume; a zero day is always level 0.
+ * The heatmap's five shades, quietest first.
+ *
+ * Exported because the legend renders the same range and used to spell it as a
+ * literal `[0, 1, 2, 3, 4]` beside a bucketer that produced it — two copies of
+ * one range, and a sixth shade would have shown up in the map and not the key.
+ * Each level `n` also names a `--heat-n` token; that binding is by convention,
+ * which `lint:tokens` is what catches.
+ */
+export const HEAT_LEVELS = [0, 1, 2, 3, 4] as const;
+export type HeatLevel = (typeof HEAT_LEVELS)[number];
+
+/**
+ * Ratio of the window's max at which each level starts, brightest first. Relative
+ * rather than absolute so the graph reads the same for 3 commits a day and 30 —
+ * it shows shape, not volume; the "N this year" caption carries volume.
+ */
+const HEAT_THRESHOLDS: readonly { atLeast: number; level: HeatLevel }[] = [
+  { atLeast: 0.8, level: 4 },
+  { atLeast: 0.6, level: 3 },
+  { atLeast: 0.35, level: 2 },
+];
+
+/**
+ * Bucket per-day contribution intensities into {@link HEAT_LEVELS}. A zero day is
+ * always level 0, and a day with any activity is never level 0 — "did he commit
+ * at all" is the question the grid answers, so it can't round down to nothing.
  */
 export function bucketHeat(contributions: number[]): { levels: number[]; total: number } {
   const total = contributions.reduce((a, b) => a + b, 0);
@@ -58,10 +81,7 @@ export function bucketHeat(contributions: number[]): { levels: number[]; total: 
   const levels = contributions.map((v) => {
     if (v <= 0) return 0;
     const ratio = v / max;
-    if (ratio > 0.8) return 4;
-    if (ratio > 0.6) return 3;
-    if (ratio > 0.35) return 2;
-    return 1;
+    return HEAT_THRESHOLDS.find((t) => ratio > t.atLeast)?.level ?? 1;
   });
   return { levels, total };
 }

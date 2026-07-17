@@ -13,6 +13,8 @@
  * events; the server increments counters. No raw event rows are kept.
  */
 
+import { THEMES } from "./theme.js";
+
 /** Coarse dwell/duration buckets (never store precise milliseconds). */
 export const DWELL_BUCKETS = [
   "<5s",
@@ -80,11 +82,41 @@ export function viewportBucket(width: number): ViewportBucket {
   return "desktop";
 }
 
-/** Themes a visit can be viewed in. */
-export const THEME_KEYS = ["dark", "light"] as const;
+/** Themes a visit can be viewed in — the site's list, not a second copy of it. */
+const THEME_KEYS: readonly string[] = THEMES;
 
 /** A project (repo) name is public, non-personal data. Bound the shape anyway. */
 const PROJECT_KEY = /^[A-Za-z0-9._-]{1,64}$/;
+
+// ── retention ranges ────────────────────────────────────────────────────────
+// The owner-facing "clear analytics" ranges. Both halves of each row used to be
+// written twice: the CMS listed the ids and labels, the route switched on the
+// ids and re-derived the hours (`back(72)` for "3d"). Two lists, one meaning —
+// so a fifth range meant editing a component and a switch, and a wrong number on
+// either side silently clears the wrong window. There is no undo.
+
+export const CLEAR_RANGES = [
+  { id: "hour", label: "last hour", hours: 1 },
+  { id: "24h", label: "24h", hours: 24 },
+  { id: "3d", label: "3d", hours: 72 },
+  { id: "7d", label: "7d", hours: 168 },
+  /** Everything, including the log-derived day rows. `hours: null` is "no window". */
+  { id: "all", label: "everything", hours: null },
+] as const;
+
+export type ClearRangeId = (typeof CLEAR_RANGES)[number]["id"];
+
+export function clearRange(id: string): (typeof CLEAR_RANGES)[number] | undefined {
+  return CLEAR_RANGES.find((r) => r.id === id);
+}
+
+/** Time windows the analytics graph can show, longest label first in the UI. */
+export const VIEW_RANGES = [
+  { label: "24h", hours: 24 },
+  { label: "3d", hours: 72 },
+  { label: "7d", hours: 168 },
+  { label: "30d", hours: 720 },
+] as const;
 
 /**
  * The engagement dimensions written to `analytics_daily` (alongside the
@@ -114,6 +146,35 @@ export interface TrackEvent {
   k: string;
 }
 
+// ── composite key format ────────────────────────────────────────────────────
+// Three dimensions pack two values into one key. The browser writes them and
+// `validateTrackEvent` below takes them apart — two files, two separators, and
+// nothing linking them: change the join and every event of that dimension fails
+// validation and is dropped, which looks exactly like nobody visiting. So the
+// format is written once and both ends call it.
+
+/** `<section>|<bucket>` — dwell and scroll. */
+const PAIR = "|";
+/** `<from>><to>` — a section switch. Distinct from PAIR so a `>` in neither. */
+const ARROW = ">";
+
+export const dwellKey = (section: string, bucket: DwellBucket): string =>
+  `${section}${PAIR}${bucket}`;
+export const scrollKey = (section: string, depth: ScrollDepth): string =>
+  `${section}${PAIR}${depth}`;
+export const transitionKey = (from: string, to: string): string => `${from}${ARROW}${to}`;
+
+/** Split a `<a>|<b>` key. Returns undefined halves for a malformed key, which
+ *  the validator rejects — the parse can't throw on hostile input. */
+const splitPair = (key: string): [string | undefined, string | undefined] => {
+  const [a, b] = key.split(PAIR);
+  return [a, b];
+};
+const splitArrow = (key: string): [string | undefined, string | undefined] => {
+  const [a, b] = key.split(ARROW);
+  return [a, b];
+};
+
 /**
  * Validate one event against the vocabulary and the set of known section ids.
  * Returns the normalized `{ dimension, key }` to record, or null to drop it.
@@ -134,15 +195,15 @@ export function validateTrackEvent(
     case "exit":
       return ok(sectionIds.has(k));
     case "transition": {
-      const [from, to] = k.split(">");
+      const [from, to] = splitArrow(k);
       return ok(!!from && !!to && sectionIds.has(from) && sectionIds.has(to));
     }
     case "dwell": {
-      const [tab, bucket] = k.split("|");
+      const [tab, bucket] = splitPair(k);
       return ok(!!tab && sectionIds.has(tab) && !!bucket && dwellOk(bucket));
     }
     case "scroll": {
-      const [tab, depth] = k.split("|");
+      const [tab, depth] = splitPair(k);
       return ok(!!tab && sectionIds.has(tab) && (SCROLL_DEPTHS as readonly string[]).includes(depth ?? ""));
     }
     case "session_tabs":
@@ -156,7 +217,7 @@ export function validateTrackEvent(
     case "viewport":
       return ok((VIEWPORT_BUCKETS as readonly string[]).includes(k));
     case "theme":
-      return ok((THEME_KEYS as readonly string[]).includes(k));
+      return ok(THEME_KEYS.includes(k));
     default:
       return null;
   }

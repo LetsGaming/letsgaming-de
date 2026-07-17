@@ -10,6 +10,7 @@ import { scoreEntry, FIELD_LIMITS } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import { badRequest, tooManyRequests } from "../errors.js";
+import { RATE_LIMIT, RateLimiter } from "../rate-limit.js";
 
 interface GuestbookBody {
   name: string;
@@ -29,36 +30,11 @@ const bodySchema = {
   additionalProperties: false,
 } as const;
 
-/** Naive per-IP limiter: max 3 posts / 10 min, in memory. Bounded via sweep. */
-class RateLimiter {
-  private hits = new Map<string, number[]>();
-  private lastSweep = 0;
-  constructor(
-    private readonly max = 3,
-    private readonly windowMs = 10 * 60 * 1000,
-  ) {}
-  allow(key: string): boolean {
-    const now = Date.now();
-    if (now - this.lastSweep > this.windowMs) {
-      this.lastSweep = now;
-      for (const [k, t] of this.hits) if (!t.some((x) => now - x < this.windowMs)) this.hits.delete(k);
-    }
-    const recent = (this.hits.get(key) ?? []).filter((t) => now - t < this.windowMs);
-    if (recent.length >= this.max) {
-      this.hits.set(key, recent);
-      return false;
-    }
-    recent.push(now);
-    this.hits.set(key, recent);
-    return true;
-  }
-}
-
 /** Collapse whitespace/newlines so display stays tidy (message keeps newlines). */
 const clean = (v: string) => v.replace(/[ \t]+/g, " ").trim();
 
 export function registerGuestbookRoutes(app: FastifyInstance, store: Store): void {
-  const limiter = new RateLimiter();
+  const limiter = new RateLimiter({ max: RATE_LIMIT.guestbook });
 
   app.post<{ Body: GuestbookBody }>(
     "/api/guestbook",

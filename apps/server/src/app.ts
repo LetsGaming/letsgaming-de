@@ -21,7 +21,7 @@ import { registerTrackRoutes } from "./routes/track.js";
 export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
-      level: process.env.LOG_LEVEL ?? "info",
+      level: env.logLevel,
       // Keep secrets/PII out of logs (undercuts the privacy-by-omission stance otherwise).
       redact: {
         paths: ["req.headers.authorization", "req.headers.cookie", 'res.headers["set-cookie"]'],

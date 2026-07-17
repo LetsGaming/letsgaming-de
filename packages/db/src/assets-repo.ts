@@ -6,6 +6,7 @@ import {
   asText,
   mapRow,
   mapRows,
+  transact,
   type Row,
 } from "./row-mapper.js";
 
@@ -67,18 +68,13 @@ export function assetsRepo(db: DB) {
     mapRow(db.prepare("SELECT * FROM assets WHERE slug = ?"), toAsset, slug) ?? null;
 
   const setTags = (id: string, tags: string[]) => {
-    db.exec("BEGIN");
-    try {
+    transact(db, () => {
       db.prepare("DELETE FROM asset_tags WHERE asset_id = ?").run(id);
       const ins = db.prepare("INSERT OR IGNORE INTO asset_tags (asset_id, tag) VALUES (?, ?)");
       for (const t of [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))]) {
         ins.run(id, t);
       }
-      db.exec("COMMIT");
-    } catch (err) {
-      db.exec("ROLLBACK");
-      throw err;
-    }
+    });
   };
 
   return {
@@ -256,18 +252,13 @@ export function assetsRepo(db: DB) {
     // ── usage tracking (powers "used in" + delete warning) ─────────────────────
     /** Replace all usages recorded for a context with the given asset ids. */
     recordUsage(context: string, entries: { assetId: string; label?: string }[]) {
-      db.exec("BEGIN");
-      try {
+      transact(db, () => {
         db.prepare("DELETE FROM asset_usages WHERE context = ?").run(context);
         const ins = db.prepare(
           "INSERT OR IGNORE INTO asset_usages (asset_id, context, label) VALUES (?, ?, ?)",
         );
         for (const e of entries) ins.run(e.assetId, context, e.label ?? null);
-        db.exec("COMMIT");
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
+      });
     },
     clearUsageContext(context: string) {
       db.prepare("DELETE FROM asset_usages WHERE context = ?").run(context);

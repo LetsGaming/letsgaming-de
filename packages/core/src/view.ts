@@ -10,9 +10,9 @@
  * switches on `kind`. It never knows a module's data came from GitHub vs. the CMS.
  */
 
+import type { Tone } from "./content.js";
 import type { Locale } from "./i18n.js";
 import type { ImageAssetView, GifAssetView } from "./assets.js";
-import type { ModuleKind } from "./modules.js";
 
 export interface ProjectView {
   id: string;
@@ -39,7 +39,7 @@ export interface HobbyView {
   title: string;
   blurb: string;
   icon?: string;
-  tone: "purple" | "coral" | "mint" | "sun";
+  tone: Tone;
 }
 
 export interface NowView {
@@ -246,22 +246,4 @@ export interface SiteView {
   syncedAt?: string;
 }
 
-/** Narrowing helper so the frontend's switch is exhaustive & type-safe. */
-export function isModuleKind(value: string): value is ModuleKind {
-  return [
-    "hero",
-    "featured",
-    "glance",
-    "activity",
-    "highlights",
-    "coding",
-    "projects",
-    "hobbies",
-    "now",
-    "guestbook",
-    "presence",
-    "gallery",
-    "bio",
-    "contact",
-  ].includes(value);
-}
+

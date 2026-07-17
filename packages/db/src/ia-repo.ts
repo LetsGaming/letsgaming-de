@@ -1,6 +1,6 @@
 import type { ModuleDescriptor, NavNode } from "@lg/core";
 import type { DB } from "./database.js";
-import { asText, json, mapRow, SINGLETON_ID } from "./row-mapper.js";
+import { asText, json, mapRow, SINGLETON_ID, transact } from "./row-mapper.js";
 
 /** Repository for the information architecture (nav tree + module registry). */
 export function iaRepo(db: DB) {
@@ -55,14 +55,7 @@ export function iaRepo(db: DB) {
         }
       };
       strip(nav);
-      db.exec("BEGIN");
-      try {
-        writeIa(JSON.stringify(nav), JSON.stringify(modules));
-        db.exec("COMMIT");
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
+      transact(db, () => writeIa(JSON.stringify(nav), JSON.stringify(modules)));
     },
   };
 }

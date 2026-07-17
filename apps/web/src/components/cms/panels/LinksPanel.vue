@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { assetRef } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. All state and handlers come from the shared CMS context.
@@ -25,7 +26,7 @@ const {
             <label>Icon
               <span class="iconfield">
                 <input v-model="l.icon" placeholder="gh, mail, x, linkedin, … or pick an SVG" />
-                <button class="link" type="button" @click="openPicker((id) => { l.icon = 'asset:' + id; saveLink(l); }, 'svg')">pick SVG</button>
+                <button class="link" type="button" @click="openPicker((id) => { l.icon = assetRef(id); saveLink(l); }, 'svg')">pick SVG</button>
               </span>
             </label>
             <label>Label<input :value="lv(l.label, locale)" @input="setLv(l.label, locale, ($event.target as HTMLInputElement).value)" /></label>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { AREA } from "@lg/core";
 import type { ResolvedModule } from "@lg/core";
 import { langColor, icons } from "../../lib/icons";
 import Freshness from "../Freshness.vue";
@@ -22,7 +23,7 @@ const project = computed(() => props.module.data.project);
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <Freshness :freshness="module.data.freshness" />
-      <button class="more" @click="() => { trackClick('more'); go('code'); }">see all my work →</button>
+      <button class="more" @click="() => { trackClick('more'); go(AREA.code); }">see all my work →</button>
     </div>
     <div class="grid">
       <a

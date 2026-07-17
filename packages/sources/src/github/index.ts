@@ -6,7 +6,7 @@
  * half (network), kept in `fetch.ts` so this stays unit-testable.
  */
 
-import type { GitHubData, GitHubEvent, GitHubEventType, Source } from "@lg/core";
+import { SOURCE_TTL, type GitHubData, type GitHubEvent, type GitHubEventType, type Source } from "@lg/core";
 import { fetchGitHub, type GitHubConfig, type GitHubRaw, type RawEvent } from "./fetch.js";
 
 /** Aggregate language bytes across repos into percentages, top languages first. */
@@ -123,9 +123,8 @@ export function normalizeGitHub(raw: GitHubRaw): GitHubData {
 export function githubSource(config: GitHubConfig): Source<GitHubRaw, GitHubData> {
   return {
     id: "github",
-    targetArea: "work",
     schedule: "0 */6 * * *", // every 6 hours
-    ttl: 8 * 60 * 60 * 1000, // polls every 6h; a shorter TTL would be stale by design
+    ttl: SOURCE_TTL.github,
     fetch: () => fetchGitHub(config),
     normalize: normalizeGitHub,
   };

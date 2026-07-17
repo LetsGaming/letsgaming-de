@@ -6,6 +6,7 @@
 import SiteChrome from "./SiteChrome.vue";
 import SitePanels from "./SitePanels.vue";
 import Layout from "../layouts/Layout.astro";
+import { AREA } from "@lg/core";
 import { areaById, areaHref, areaMeta } from "../lib/area";
 import { loadSite, pickLocale } from "../lib/site";
 
@@ -33,7 +34,7 @@ const area = areaById(site.nav, areaId);
       <main>
         <div class="wrap">
           <div class="top">
-            <a class="brand" href={areaHref(site.nav, site.nav[0]?.id ?? "home")}>
+            <a class="brand" href={areaHref(site.nav, site.nav[0]?.id ?? AREA.home)}>
               <span class="mark">D</span>
               <span>{site.meta.name}</span>
             </a>

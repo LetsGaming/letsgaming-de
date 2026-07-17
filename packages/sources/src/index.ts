@@ -8,4 +8,4 @@ export * from "./steam/fetch.js";
 export * from "./steam/index.js";
 export * from "./steam/mock.js";
 export * from "./registry.js";
-export { SOURCE_TTL } from "./registry.js";
+export * from "./identity.js";

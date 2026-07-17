@@ -13,13 +13,19 @@
 
 import {
   type ClickAction,
+  PREVIEW_PARAM,
+  type Theme,
   type TrackEvent,
   dwellBucket,
+  dwellKey,
   scrollDepthsReached,
+  scrollKey,
   sessionTabsBucket,
+  STORAGE_KEY,
+  transitionKey,
   viewportBucket,
 } from "@lg/core";
-import { apiBase } from "./api";
+import { apiBase, apiUrl } from "./api";
 
 
 let enabled = false;
@@ -34,7 +40,9 @@ const tabsVisited = new Set<string>();
 const scrollReached = new Set<string>(); // `${section}|${depth}` already sent
 let ended = false;
 
-const OPTOUT_KEY = "lg-analytics-optout";
+/** The value stored for an active opt-out. Presence is the signal; the value is
+ *  just something non-empty. */
+const OPTED_OUT = "1";
 
 /** The browser's explicit Do-Not-Track signal (we honour DNT, but not GPC). */
 export function dntActive(): boolean {
@@ -48,7 +56,7 @@ export function dntActive(): boolean {
 /** The visitor's own opt-out choice, remembered locally (a functional preference). */
 export function isOptedOut(): boolean {
   try {
-    return localStorage.getItem(OPTOUT_KEY) === "1";
+    return localStorage.getItem(STORAGE_KEY.analyticsOptout) === OPTED_OUT;
   } catch {
     return false;
   }
@@ -66,7 +74,7 @@ export function isPreview(): boolean {
   } catch {
     return true; // cross-origin framing throws — treat as framed
   }
-  return new URLSearchParams(window.location.search).has("preview");
+  return new URLSearchParams(window.location.search).has(PREVIEW_PARAM);
 }
 
 /** May we measure this visit? False if DNT is on, the visitor opted out, previewing, or no API. */
@@ -79,8 +87,8 @@ export function analyticsAllowed(): boolean {
 /** Flip the opt-out at runtime (from the settings panel) and persist it. */
 export function setOptedOut(optout: boolean) {
   try {
-    if (optout) localStorage.setItem(OPTOUT_KEY, "1");
-    else localStorage.removeItem(OPTOUT_KEY);
+    if (optout) localStorage.setItem(STORAGE_KEY.analyticsOptout, OPTED_OUT);
+    else localStorage.removeItem(STORAGE_KEY.analyticsOptout);
   } catch {
     /* private mode — ignore */
   }
@@ -109,7 +117,7 @@ function flush() {
   queue = [];
   // text/plain keeps this a CORS-"simple" request (no preflight for beacons).
   const blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
-  const url = `${apiBase}/api/pulse`;
+  const url = apiUrl("/api/pulse");
   if (navigator.sendBeacon?.(url, blob)) return;
   // Fallback for the rare browser without sendBeacon.
   void fetch(url, { method: "POST", body, keepalive: true }).catch(() => {});
@@ -148,7 +156,7 @@ function onScroll() {
     const max = el.scrollHeight - el.clientHeight;
     const pct = max <= 0 ? 100 : Math.min(100, Math.round((el.scrollTop / max) * 100));
     for (const depth of scrollDepthsReached(pct)) {
-      const key = `${current}|${depth}`;
+      const key = scrollKey(current, depth);
       if (!scrollReached.has(key)) {
         scrollReached.add(key);
         q("scroll", key);
@@ -163,7 +171,7 @@ function end() {
   ended = true;
   const dwell = sectionElapsed();
   sessionActiveMs += dwell;
-  q("dwell", `${current}|${dwellBucket(dwell)}`);
+  q("dwell", dwellKey(current, dwellBucket(dwell)));
   q("exit", current);
   q("session_tabs", sessionTabsBucket(tabsVisited.size));
   q("session_dwell", dwellBucket(sessionActiveMs));
@@ -171,7 +179,7 @@ function end() {
 }
 
 /** Start tracking a visit. Safe to call once, client-side only. */
-export function initTracking(initialSection: string, theme?: "dark" | "light") {
+export function initTracking(initialSection: string, theme?: Theme) {
   if (typeof window === "undefined" || !apiBase) return;
   // Listeners are always attached so the settings toggle can start/stop measuring
   // live; whether anything is actually sent is gated on `enabled` below.
@@ -198,8 +206,8 @@ export function trackSwitch(to: string) {
   const from = current;
   const dwell = sectionElapsed();
   sessionActiveMs += dwell;
-  q("dwell", `${from}|${dwellBucket(dwell)}`);
-  q("transition", `${from}>${to}`);
+  q("dwell", dwellKey(from, dwellBucket(dwell)));
+  q("transition", transitionKey(from, to));
   q("tab", to);
   enterSection(to);
   flush();

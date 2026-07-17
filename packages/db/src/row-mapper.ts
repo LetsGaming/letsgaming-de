@@ -47,6 +47,31 @@ export const json = <T>(v: unknown): T => JSON.parse(String(v)) as T;
 export const SINGLETON_ID = 1;
 
 /**
+ * Run `fn` inside a transaction: commit on return, roll back on throw.
+ *
+ * The BEGIN / try / COMMIT / catch-ROLLBACK-rethrow block was written out eight
+ * times across five repositories — identical every time, which is the point:
+ * it's mechanical, so it's the half that should be factored out while the SQL
+ * stays where you can read it. Hand-copied, the copies drift (one of them had
+ * an inverted sweep guard), and the copy that forgets its ROLLBACK leaves the
+ * connection in a transaction with no error to explain it.
+ *
+ * node:sqlite is synchronous, so `fn` is too: there's no await inside a
+ * transaction, and therefore no way to interleave a second one by accident.
+ */
+export function transact<T>(db: DB, fn: () => T): T {
+  db.exec("BEGIN");
+  try {
+    const result = fn();
+    db.exec("COMMIT");
+    return result;
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
+/**
  * Delete a row by primary key. `table` is always a static identifier from repo
  * code (never user input), so interpolating it is safe; the id is bound.
  */

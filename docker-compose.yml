@@ -55,20 +55,22 @@ services:
     volumes:
       # The store + media are the archive; this volume is what you back up.
       - store:/data
-      # This container runs as `node`, so the access log has to be readable by a
-      # non-root user. Check what you have: stat -c '%U:%G %a %g' <log>
-      #   root:adm 0640 -> group_add: ["4"]   (borrow the existing group)
-      #   root:root 0600 -> no group to borrow. Give it one on the host:
-      #        chgrp adm <log> && chmod 640 <log>     then group_add: ["4"]
-      # Either way the *writer* must keep that mode — logrotate `create 0640 root
-      # adm`, or the copying script's umask — or the next rotation reverts it and
-      # ingest stops without anything changing on this side.
-      #
       # The HOST directory that holds the access log, mounted read-only at /logs.
       # A directory (not the file) so a rotated or replaced log (e.g. a script that
       # swaps the file with mv) is picked up with no restart. Unset ACCESS_LOG_DIR
       # falls back to an empty volume, so the mount is always valid and analytics
       # from the log stay off until you set it.
+      #
+      # This container runs as `node`, so the log has to be world-readable (o+r)
+      # in a traversable directory (o+x). *Whatever writes the file owns that*,
+      # and for a remote proxy that's scripts/ingest-analytics.sh, which chmods
+      # 0644 before an atomic mv and now refuses to report success otherwise.
+      #
+      # Do NOT fix this here. `group_add: ["4"]`, `chgrp adm <log>`, a host-side
+      # `chmod 640` — all of them fix a file that ingest-analytics.sh replaces on
+      # its next run, so they work exactly once and then stop with nothing having
+      # changed. If the log is written locally instead (logrotate, a local nginx),
+      # give the *writer* the mode: `create 0644 root root` in the logrotate stanza.
       - ${ACCESS_LOG_DIR:-logs_empty}:/logs:ro
     ports:
       - "8787:8787"

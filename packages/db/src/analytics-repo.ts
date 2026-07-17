@@ -1,5 +1,5 @@
 import type { DB } from "./database.js";
-import { asNumber, asText, mapRow, mapRows, type Row } from "./row-mapper.js";
+import { asNumber, asText, mapRow, mapRows, transact, type Row } from "./row-mapper.js";
 
 export type AnalyticsDimension =
   // log-derived
@@ -67,26 +67,16 @@ export function analyticsRepo(db: DB) {
   return {
     /** Apply a batch of day-bucketed hits atomically (log-derived). */
     record(hits: AnalyticsHit[]) {
-      db.exec("BEGIN");
-      try {
+      transact(db, () => {
         for (const h of hits) bump.run(h.day, h.dimension, h.key);
-        db.exec("COMMIT");
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
+      });
     },
 
     /** Apply a batch of hour-bucketed engagement hits atomically. */
     recordHourly(hits: HourlyHit[]) {
-      db.exec("BEGIN");
-      try {
+      transact(db, () => {
         for (const h of hits) bumpHour.run(h.bucket, h.dimension, h.key);
-        db.exec("COMMIT");
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
+      });
     },
 
     /** Top keys for a log dimension over an inclusive day range. */
@@ -183,8 +173,7 @@ export function analyticsRepo(db: DB) {
      */
     rollupAndPrune(retainDays: number): { rolledUp: number; pruned: number } {
       const cutoff = new Date(Date.now() - retainDays * 86_400_000).toISOString().slice(0, 13);
-      db.exec("BEGIN");
-      try {
+      return transact(db, () => {
         const rolledUp = Number(
           db
             .prepare(
@@ -199,12 +188,8 @@ export function analyticsRepo(db: DB) {
         const pruned = Number(
           db.prepare(`DELETE FROM analytics_hourly WHERE bucket < ?`).run(cutoff).changes,
         );
-        db.exec("COMMIT");
         return { rolledUp, pruned };
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
+      });
     },
 
     getOffset(source: string): number {

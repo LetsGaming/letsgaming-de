@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
+import type { Asset, AssetFolder, AssetKind, AssetUsage, AssetVariant } from "@lg/core";
 import { cms } from "../../lib/cms";
 
-interface Asset {
-  id: string; kind: string; ext: string; mime: string; bytes: number;
-  width?: number; height?: number; slug?: string; filename: string;
-  alt?: string; title?: string; caption?: string; description?: string;
-  folderId?: string | null; tags: string[]; createdAt: string;
-}
-interface Folder { id: string; name: string; parentId: string | null }
+/**
+ * `Asset` and `AssetFolder` are core's — they were re-declared here field for
+ * field, which is a copy that doesn't fail when the original changes, it just
+ * quietly stops describing it.
+ */
 interface Detail extends Asset {
-  variants: { format: string; width: number; bytes: number }[];
-  usages: { context: string; label?: string }[];
+  variants: AssetVariant[];
+  usages: AssetUsage[];
 }
 
 // In `pick` mode the grid emits a chosen asset instead of opening the editor.
 // `only` locks the type filter (e.g. "svg" for an icon picker, "image" for a photo).
-const props = defineProps<{ pick?: boolean; only?: string }>();
+// `only` locks the picker to one kind; "" (or absent) is the whole library. Typed
+// as AssetKind rather than string so the ACCEPT map below can't be indexed by a
+// kind that doesn't exist — the accept hint failing is invisible until you're on
+// a phone wondering why it only offers the camera.
+const props = defineProps<{ pick?: boolean; only?: AssetKind | "" }>();
 const emit = defineEmits<{ (e: "select", asset: Asset): void }>();
 
 // When the picker is locked to a type, hint the OS file dialog with a matching
@@ -24,7 +27,7 @@ const emit = defineEmits<{ (e: "select", asset: Asset): void }>();
 // an image accept makes the photo gallery a first-class option (the whole point of
 // picking an avatar/hero from your phone). Left unset for the general library so any
 // file type can still be uploaded.
-const ACCEPT: Record<string, string> = {
+const ACCEPT: Partial<Record<AssetKind, string>> = {
   image: "image/*",
   svg: ".svg,image/svg+xml",
   gif: "image/gif",
@@ -34,7 +37,7 @@ const ACCEPT: Record<string, string> = {
 const acceptAttr = computed(() => (props.only ? ACCEPT[props.only] : undefined));
 
 const assets = ref<Asset[]>([]);
-const folders = ref<Folder[]>([]);
+const folders = ref<AssetFolder[]>([]);
 const tags = ref<string[]>([]);
 const activeFolder = ref<"all" | "root" | string>("all");
 const activeTag = ref("");

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { assetRef } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. All state and handlers come from the shared CMS context.
@@ -30,7 +31,7 @@ const {
             </div>
             <div class="actions">
               <button class="link" @click="addBio">+ paragraph</button>
-              <button class="link" @click="openPicker((id) => { bio.push({ en: 'asset:' + id }); saveBio(); }, 'image')">+ image</button>
+              <button class="link" @click="openPicker((id) => { bio.push({ en: assetRef(id) }); saveBio(); }, 'image')">+ image</button>
               <button class="btn" @click="saveBio">Save bio</button>
             </div>
           </div>

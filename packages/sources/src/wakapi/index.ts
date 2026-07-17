@@ -3,7 +3,7 @@
  * `normalize` is pure (raw WakaTime-compat shapes in, the common shape out).
  */
 
-import type { Source, WakapiData } from "@lg/core";
+import { SOURCE_TTL, type Source, type WakapiData } from "@lg/core";
 import { fetchWakapi, type WakapiConfig, type WakapiRaw } from "./fetch.js";
 
 export function normalizeWakapi(raw: WakapiRaw): WakapiData {
@@ -32,9 +32,8 @@ export function normalizeWakapi(raw: WakapiRaw): WakapiData {
 export function wakapiSource(config: WakapiConfig): Source<WakapiRaw, WakapiData> {
   return {
     id: "wakapi",
-    targetArea: "work",
     schedule: "*/30 * * * *", // every 30 minutes
-    ttl: 2 * 60 * 60 * 1000, // tracked time; polls every 30m
+    ttl: SOURCE_TTL.wakapi,
     fetch: () => fetchWakapi(config),
     normalize: normalizeWakapi,
   };

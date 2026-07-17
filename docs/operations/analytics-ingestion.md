@@ -39,31 +39,49 @@ That's the whole setup if your reverse proxy runs on the Docker host.
 ## When the proxy runs on another host
 
 If the proxy is on a different box (an NPMplus LXC, say), the container can't read
-its filesystem. Sync the log into `ACCESS_LOG_DIR` on the Docker host first. A
-small scp on a timer does it:
+its filesystem. Sync the log into `ACCESS_LOG_DIR` on the Docker host first.
+
+**Use `scripts/ingest-analytics.sh`.** It scp's the log in and puts it where the
+container reads it. It does not parse anything — the server ingests `/logs` itself
+every 5 minutes (ADR 0013), so this script's only job is to put a *readable* file
+there.
 
 ```bash
-mkdir -p /opt/lg/logs
-cat >/opt/lg/pull-access-log.sh <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-scp -q -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new \
-  root@192.168.2.12:/opt/npmplus/nginx/logs/letsgaming_combined.log \
-  /opt/lg/logs/access.log.tmp
-mv -f /opt/lg/logs/access.log.tmp /opt/lg/logs/access.log
-EOF
-chmod +x /opt/lg/pull-access-log.sh
+# on the Docker host, once: an SSH key to the proxy, and the two env vars
+#   ACCESS_LOG_DIR=/opt/lg/logs     (the HOST directory, mounted at /logs)
+#   ACCESS_LOG=/logs/access.log     (the path INSIDE the container)
+*/10 * * * *  /apps/letsgaming-de/scripts/ingest-analytics.sh >> /var/log/lg-analytics.log 2>&1
 ```
 
-Run it from a systemd timer every couple of minutes (a `Type=oneshot` service plus
-`OnUnitActiveSec=2min`), with `ACCESS_LOG_DIR=/opt/lg/logs` and
-`ACCESS_LOG=/logs/access.log`. The `mv` swap is fine here because the directory is
-what's mounted, and the ingest tracks its own byte offset, so copying the whole
-file each run is fine.
+`PROXY_HOST`, `PROXY_LOG`, `LOCAL_DIR`, `LOCAL_LOG` and `ENV_FILE` are overridable
+by environment; everything else it reads from `.env`, so the script and the
+container can't disagree about which directory they mean.
 
-A ready-made version is `scripts/ingest-analytics.sh`, which scp's the log and runs
-the CLI in one shot, with `PROXY_HOST`, `PROXY_LOG`, `LOCAL_LOG`, and `OWN_HOST`
-overridable by environment.
+### Don't hand-roll the copy
+
+This section used to print a two-line scp snippet to paste into your own
+`/opt/lg/pull-access-log.sh`, and mention the shipped script afterwards as an
+alternative. The snippet was missing the only line that matters:
+
+```bash
+scp -q root@proxy:/…/letsgaming_combined.log /opt/lg/logs/access.log.tmp
+mv -f /opt/lg/logs/access.log.tmp /opt/lg/logs/access.log   # ← and nothing else
+```
+
+`scp` propagates the source file's mode, and an nginx access log is `0640`. The
+container runs as `node` (see `apps/server/Dockerfile`), so the copy lands
+unreadable — the scp succeeds, the `mv` succeeds, the file is *right there* with
+the right name and the right contents, and ingest reads nothing, for ever, with no
+error anywhere. `ingest-analytics.sh` exists for that one line; it `chmod 0644`s
+before the atomic `mv`, and since the file is recreated every run, it is the only
+thing that *can* own the mode. A host-side `chmod`, a `chgrp adm`, a
+`group_add: ["4"]` in compose — each fixes a file that the next copy replaces, so
+each works exactly once and then stops with nothing having changed.
+
+If you already followed the old snippet: point the timer at
+`scripts/ingest-analytics.sh` instead and delete `pull-access-log.sh`. The script
+now verifies the mode it just set and fails loudly rather than printing `ok`, so
+you'll know on the next run either way.
 
 ## Alternative: host-side cron via the CLI
 

@@ -23,7 +23,7 @@ const runner = new SyncRunner(
     githubToken: env.github.token,
     ...(env.wakapi ? { wakapiUrl: env.wakapi.url, wakapiKey: env.wakapi.key } : {}),
     ...(env.steam ? { steamApiKey: env.steam.apiKey, steamId: env.steam.steamId } : {}),
-    useMocks: process.env.NODE_ENV !== "production",
+    useMocks: !env.isProduction,
   },
   (msg) => app.log.info(msg),
   env.retainHourlyDays,

@@ -2,7 +2,22 @@
  * JSON schemas for CMS write bodies. Fastify validates and coerces against these
  * before a handler runs, so malformed content can't reach the store. Kept in one
  * place; each route references the piece it needs.
+ *
+ * Every enum and pattern here is *imported*, never typed out. A hand-written
+ * `enum: ["purple", "coral", "mint", "sun"]` is a copy of a list that lives in
+ * core, and the copies drift silently in the one direction that hurts: the schema
+ * keeps accepting a value the renderer dropped, so the CMS saves a tone that
+ * renders nothing. That exact pair — dropdown and renderer disagreeing — has
+ * already cost this project once.
  */
+
+import {
+  ASSET_REF_PATTERN,
+  HREF_PATTERN,
+  OPTIONAL_ASSET_REF_PATTERN,
+  PRESENCE_CATEGORIES,
+  TONES,
+} from "@lg/core";
 
 const localized = {
   type: "object",
@@ -13,11 +28,11 @@ const localized = {
 
 const localizedArray = { type: "array", items: localized } as const;
 
-// href accepts http(s), mailto, or a site-relative path — never javascript:/data: (SEC-04).
-const href = {
-  type: "string",
-  pattern: "^(https?://|mailto:|/)[^\\s]*$",
-} as const;
+// href accepts http(s), mailto, or a site-relative path — never javascript:/data:
+// (SEC-04). The pattern is core's, the same one `safeHref` enforces at read time:
+// these are belt-and-braces for one rule, and two spellings of one rule is one
+// rule and one bug. They already disagreed on case-sensitivity.
+const href = { type: "string", pattern: HREF_PATTERN } as const;
 
 export const schemas = {
   localized,
@@ -30,7 +45,7 @@ export const schemas = {
       handle: { type: "string", minLength: 1 },
       location: localized,
       role: localized,
-      avatar: { type: "string", pattern: "^(asset:[A-Za-z0-9_-]+)?$" },
+      avatar: { type: "string", pattern: OPTIONAL_ASSET_REF_PATTERN },
     },
     additionalProperties: false,
   },
@@ -77,7 +92,7 @@ export const schemas = {
       title: localized,
       blurb: localized,
       icon: { type: "string" },
-      tone: { type: "string", enum: ["purple", "coral", "mint", "sun"] },
+      tone: { type: "string", enum: TONES },
       sort: { type: "integer" },
     },
     additionalProperties: false,
@@ -114,7 +129,7 @@ export const schemas = {
     properties: {
       show: {
         type: "array",
-        items: { enum: ["game", "streaming", "music", "watching", "custom", "steam"] },
+        items: { enum: PRESENCE_CATEGORIES },
         uniqueItems: true,
       },
     },
@@ -126,7 +141,7 @@ export const schemas = {
     properties: {
       id: { type: "string", minLength: 1 },
       module: { type: "string", minLength: 1 },
-      asset: { type: "string", pattern: "^asset:[A-Za-z0-9_-]+$" },
+      asset: { type: "string", pattern: ASSET_REF_PATTERN },
       caption: localized,
       sort: { type: "integer" },
     },

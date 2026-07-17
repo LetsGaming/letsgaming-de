@@ -7,7 +7,7 @@
  * `githubSource`, which requires a token for the contribution calendar.
  */
 
-import { ok } from "@lg/core";
+import { ok, SOURCE_TTL } from "@lg/core";
 import type { GitHubData, Source } from "@lg/core";
 
 /** A stable 182-day contribution ramp so the heatmap looks alive without RNG. */
@@ -125,9 +125,8 @@ function daysAgo(n: number): string {
 export function githubMockSource(): Source<GitHubData, GitHubData> {
   return {
     id: "github",
-    targetArea: "work",
     schedule: "0 */6 * * *",
-  ttl: 8 * 60 * 60 * 1000,
+    ttl: SOURCE_TTL.github,
     fetch: async () => ok(DEMO),
     normalize: (raw) => raw,
   };

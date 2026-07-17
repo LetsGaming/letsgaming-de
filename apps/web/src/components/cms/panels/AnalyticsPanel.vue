@@ -39,12 +39,12 @@ const {
               </div>
               <div class="seg ranges">
                 <button
-                  v-for="[label, h] in RANGES"
-                  :key="h"
-                  :class="{ on: rangeHours === h }"
-                  @click="setRange(h)"
+                  v-for="r in RANGES"
+                  :key="r.hours"
+                  :class="{ on: rangeHours === r.hours }"
+                  @click="setRange(r.hours)"
                 >
-                  {{ label }}
+                  {{ r.label }}
                 </button>
               </div>
             </div>
@@ -99,14 +99,14 @@ const {
             <div class="clearbar">
               <span class="muted">Clear:</span>
               <button
-                v-for="[label, range] in CLEARS"
-                :key="range"
+                v-for="c in CLEARS"
+                :key="c.id"
                 class="clearbtn"
-                :class="{ danger: range === 'all' }"
+                :class="{ danger: c.hours === null }"
                 :disabled="clearing"
-                @click="clearRange(range, label)"
+                @click="clearRange(c.id, c.label)"
               >
-                {{ label }}
+                {{ c.label }}
               </button>
             </div>
           </div>

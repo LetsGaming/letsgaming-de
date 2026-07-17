@@ -93,9 +93,11 @@ Rationale and rejected alternatives live in `docs/concepts/design-system.md`.
 - **`canPublish(nav, id)`** — `lint:nav` runs at build, the CMS visibility toggle
   runs at runtime. One implementation, both surfaces.
 - **`vue-tsc`** in `typecheck`, closing the hole above.
-- **`CLAUDE.md`** at the root: the brief, the three rules, the gate. The original
-  finding was never purple — it was that nothing had been re-decided since the
-  prototype, and this is what notices next time.
+- **`docs/concepts/design-system.md`** carries the brief, the three rules and the
+  gate. The original finding was never purple — it was that nothing had been
+  re-decided since the prototype, and this is what notices next time. (The
+  agent-facing copy lives in `.skills/`, which is gitignored: it's personal
+  tooling, and `docs/**` is published.)
 
 **Contract changes.**
 

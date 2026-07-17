@@ -1,4 +1,5 @@
 export * from "./i18n.js";
+export * from "./theme.js";
 export * from "./nav.js";
 export * from "./nav-lint.js";
 export * from "./content.js";

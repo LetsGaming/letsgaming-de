@@ -4,7 +4,7 @@
  * end-to-end offline. Deterministic — no RNG — so dev builds are stable.
  */
 
-import { ok } from "@lg/core";
+import { ok, SOURCE_TTL } from "@lg/core";
 import type { Source, WakapiData } from "@lg/core";
 
 const DEMO: WakapiData = {
@@ -23,9 +23,8 @@ const DEMO: WakapiData = {
 export function wakapiMockSource(): Source<WakapiData, WakapiData> {
   return {
     id: "wakapi",
-    targetArea: "work",
     schedule: "*/30 * * * *",
-  ttl: 2 * 60 * 60 * 1000,
+    ttl: SOURCE_TTL.wakapi,
     fetch: async () => ok(DEMO),
     normalize: (raw) => raw,
   };

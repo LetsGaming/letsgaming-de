@@ -17,10 +17,8 @@ import type { Result } from "./result.js";
  * @typeParam Normalized - the common shape persisted to the store and served.
  */
 export interface Source<Raw = unknown, Normalized = unknown> {
-  /** Stable id, e.g. "github". Used as the store key and the source label. */
-  id: string;
-  /** Default nav area its modules belong to, if any. */
-  targetArea?: string;
+  /** Stable id — the store key, the `SourceData` field, the freshness label. */
+  id: SourceId;
   /** How often the sync runner polls it — a cron-ish interval string. */
   schedule: string;
   /**
@@ -35,6 +33,12 @@ export interface Source<Raw = unknown, Normalized = unknown> {
    *
    * A `ttl` shorter than `schedule` means the source is stale by design; that's
    * a config error, not a strictness setting.
+   *
+   * **Set this from {@link SOURCE_TTL}, never inline.** The read API can't ask an
+   * adapter — an unconfigured source still has stored data, and its age still has
+   * to be judged — so it reads the table, and the table is what makes a module
+   * stale. An adapter that declares its own number is declaring a value nothing
+   * consumes, next to a table that quietly says something else.
    */
   ttl: number;
   /**
@@ -196,3 +200,47 @@ export interface SteamData {
 }
 
 export type SourceId = keyof SourceData;
+
+/** Every source id, for iteration and for narrowing an untrusted store row. */
+export const SOURCE_IDS = ["github", "wakapi", "steam"] as const satisfies readonly SourceId[];
+
+export function isSourceId(value: unknown): value is SourceId {
+  return typeof value === "string" && (SOURCE_IDS as readonly string[]).includes(value);
+}
+
+/**
+ * How long each source's data stays true, in ms. The one home for the value:
+ * adapters set `Source.ttl` from here, and the read API hands the whole table to
+ * the resolver.
+ *
+ * It's static, and keyed by `SourceId` rather than `string`, and both matter.
+ *
+ * *Static*, because a TTL is a fact about the upstream, not about this
+ * deployment's config: an unconfigured source still has yesterday's rows in the
+ * store, and their age still has to be judged. Deriving the table from the
+ * *registered* sources would leave those rows with no TTL — and a missing TTL
+ * resolves to `fresh`, so the failure mode is a module that silently claims to be
+ * current forever. That's the exact bug the freshness model exists to prevent, so
+ * the table can't be allowed to have holes.
+ *
+ * *`Record<SourceId, …>`*, because that's what makes the hole impossible: add a
+ * field to `SourceData` and this stops compiling until it has a TTL. Before, it
+ * was `Record<string, number>` — a new source typechecked, shipped, and rendered
+ * `fresh` in perpetuity.
+ *
+ * GitHub is 8h and not the 2h originally wanted: it polls every 6h, so any TTL
+ * under the poll interval marks it stale for most of every cycle by construction.
+ * 8h is one missed sync of slack. Tighten `schedule` and this can come down.
+ */
+export const SOURCE_TTL: Record<SourceId, number> = {
+  github: 8 * 60 * 60 * 1000,
+  steam: 60 * 60 * 1000,
+  wakapi: 2 * 60 * 60 * 1000,
+};
+
+/** Human label per source, for the "sources" line on a module. */
+export const SOURCE_LABEL: Record<SourceId, string> = {
+  github: "GitHub",
+  steam: "Steam",
+  wakapi: "Wakapi",
+};

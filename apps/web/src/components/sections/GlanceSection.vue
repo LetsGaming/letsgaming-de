@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AREA } from "@lg/core";
 import type { ResolvedModule } from "@lg/core";
 import { trackClick } from "../../lib/track";
 import Freshness from "../Freshness.vue";
@@ -26,7 +27,7 @@ defineProps<{
         <span class="l">{{ s.label }}</span>
       </div>
     </div>
-    <button class="more glance-more" @click="() => { trackClick('more'); go('code'); }">
+    <button class="more glance-more" @click="() => { trackClick('more'); go(AREA.code); }">
       full activity →
     </button>
   </section>

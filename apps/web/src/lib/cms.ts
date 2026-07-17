@@ -7,8 +7,10 @@
  * Runs only in the CMS, never on the public site.
  */
 
+import { MODERATION_ACTION, STORAGE_KEY, type ModerationAction } from "@lg/core";
 import { apiBase } from "./api";
-const TOKEN_KEY = "cms_token";
+
+const TOKEN_KEY = STORAGE_KEY.cmsToken;
 
 let token: string | null = null;
 
@@ -84,7 +86,7 @@ export const cms = {
       headers: headers(false),
       credentials: "include",
     }).then(handle),
-  moderate: (id: number, action: "approve" | "reject") =>
+  moderate: (id: number, action: ModerationAction) =>
     fetch(`${apiBase}/api/cms/guestbook/${id}/${action}`, {
       method: "POST",
       headers: headers(false),

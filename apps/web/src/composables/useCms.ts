@@ -1,18 +1,47 @@
-import type { Hobby, Link, Localized, NavNode, NowItem } from "@lg/core";
+import {
+  AREA,
+  assetRef,
+  CLEAR_RANGES,
+  DEFAULT_GALLERY_ID,
+  DEFAULT_LOCALE,
+  DEFAULT_TONE,
+  isModuleKind,
+  MODULE_KIND,
+  parseAssetRef,
+  PRESENCE_CATEGORIES,
+  PREVIEW_PARAM,
+  VIEW_RANGES,
+} from "@lg/core";
+import type {
+  AreaId,
+  Asset,
+  AssetKind,
+  ClearRangeId,
+  GuestbookEntry,
+  Hobby,
+  Link,
+  Locale,
+  Localized,
+  ModuleDescriptor,
+  ModuleKind,
+  NavNode,
+  NowItem,
+  PresenceCategory,
+} from "@lg/core";
 import { computed, onMounted, reactive, ref } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
 
 export interface GalleryRow { id: string; module: string; asset: string; caption: Localized; sort?: number }
 
-export interface ModEntry {
-  id: number;
-  name: string;
-  message: string;
-  createdAt: string;
-  status: "pending" | "approved" | "rejected";
-  flags: string[];
-  score: number;
-}
+/**
+ * What the moderation queue shows. This is core's `GuestbookEntry` — it was
+ * re-declared here, field for field, including its own `"pending" | "approved" |
+ * "rejected"` beside the `GuestbookStatus` that exists to be the one home for
+ * exactly those three strings. A hand-copied shape doesn't fail when the original
+ * grows a field; it just silently doesn't have it, which is how `ActivityView`
+ * lost `freshness`.
+ */
+export type ModEntry = GuestbookEntry;
 
 /**
  * All CMS editor state + behaviour, lifted out of CmsApp.vue so the component
@@ -88,7 +117,7 @@ const authed = ref(false);
 const login = ref<string | null>(null);
 const loading = ref(true);
 const tab = ref<View>("dashboard");
-const locale = ref<"en" | "de">("en");
+const locale = ref<Locale>(DEFAULT_LOCALE);
 const tokenInput = ref("");
 const toast = ref("");
 
@@ -105,23 +134,38 @@ const analytics = ref<any>(null);
 
 // Layout (module order per area) + gallery images.
 
-const modules = ref<{ id: string; kind?: string; heading?: Localized }[]>([]);
+/** The module registry as the API returns it. `kind` is narrowed on load rather
+ *  than trusted: it arrives as JSON, and `m.kind === "gallery"` against a loose
+ *  string is a comparison that can't fail and can't be renamed. */
+const modules = ref<ModuleDescriptor[]>([]);
 const layoutAreas = ref<{ id: string; label: string; modules: string[] }[]>([]);
 const hiddenModules = ref<string[]>([]);
 const gallery = ref<GalleryRow[]>([]);
-const activeGallery = ref<string>("gallery");
+const activeGallery = ref<string>(DEFAULT_GALLERY_ID);
 
-// Presence widget category allow-list (CMS-owned curation).
-const PRESENCE_OPTIONS: { key: string; label: string; hint: string }[] = [
-  { key: "game", label: "Games", hint: "Discord 'Playing …'" },
-  { key: "streaming", label: "Streaming", hint: "going live" },
-  { key: "music", label: "Music", hint: "Spotify" },
-  { key: "watching", label: "Watching", hint: "e.g. YouTube" },
-  { key: "custom", label: "Custom status", hint: "your set status + emoji" },
-  { key: "steam", label: "Steam", hint: "recently-played section" },
-];
-const presenceShow = ref<string[]>([]);
-function togglePresence(key: string) {
+/**
+ * The presence toggles, one per category.
+ *
+ * Copy lives here (it's UI); the *list* comes from PRESENCE_CATEGORIES, which is
+ * what the resolver filters on and the write schema validates against. It used to
+ * be a hand-written array of `{ key: string }` — so a seventh category would have
+ * appeared in the type, the schema and the renderer, and never in this panel, and
+ * a renamed one would have rendered a toggle that silently saved nothing. That's
+ * the tile-tone bug: a dropdown offering a value nothing downstream honours.
+ */
+const PRESENCE_COPY: Record<PresenceCategory, { label: string; hint: string }> = {
+  game: { label: "Games", hint: "Discord 'Playing …'" },
+  streaming: { label: "Streaming", hint: "going live" },
+  music: { label: "Music", hint: "Spotify" },
+  watching: { label: "Watching", hint: "e.g. YouTube" },
+  custom: { label: "Custom status", hint: "your set status + emoji" },
+  steam: { label: "Steam", hint: "recently-played section" },
+};
+const PRESENCE_OPTIONS: { key: PresenceCategory; label: string; hint: string }[] =
+  PRESENCE_CATEGORIES.map((key) => ({ key, ...PRESENCE_COPY[key] }));
+
+const presenceShow = ref<PresenceCategory[]>([]);
+function togglePresence(key: PresenceCategory) {
   const s = presenceShow.value;
   presenceShow.value = s.includes(key) ? s.filter((k) => k !== key) : [...s, key];
 }
@@ -160,10 +204,10 @@ function removeEntry(id: number) {
 function emptyL(): Localized {
   return { en: "" };
 }
-function lv(obj: Localized, l: "en" | "de") {
+function lv(obj: Localized, l: Locale) {
   return obj[l] ?? "";
 }
-function setLv(obj: Localized, l: "en" | "de", val: string) {
+function setLv(obj: Localized, l: Locale, val: string) {
   obj[l] = val;
 }
 function flash(msg: string) {
@@ -202,7 +246,7 @@ async function loadAll() {
   gallery.value = (data.content.gallery ?? []).map((g: GalleryRow, i: number) => ({ ...g, sort: i }));
 
   // Layout: flatten nav leaves (areas that hold an ordered module list).
-  modules.value = data.modules ?? [];
+  modules.value = ((data.modules ?? []) as ModuleDescriptor[]).filter((m) => isModuleKind(m.kind));
   const leaves: { id: string; label: string; modules: string[] }[] = [];
   const walk = (nodes: NavNode[]) => {
     for (const n of nodes) {
@@ -215,8 +259,8 @@ async function loadAll() {
   const placed = new Set(leaves.flatMap((l) => l.modules));
   hiddenModules.value = modules.value.map((m) => m.id).filter((id) => !placed.has(id));
   // Default the gallery editor to the first gallery module.
-  const firstGallery = modules.value.find((m) => m.kind === "gallery");
-  if (firstGallery && !modules.value.some((m) => m.id === activeGallery.value && m.kind === "gallery")) {
+  const firstGallery = modules.value.find((m) => m.kind === MODULE_KIND.gallery);
+  if (firstGallery && !modules.value.some((m) => m.id === activeGallery.value && m.kind === MODULE_KIND.gallery)) {
     activeGallery.value = firstGallery.id;
   }
 }
@@ -256,12 +300,12 @@ const saveLayout = () =>
   );
 
 // ── gallery: multiple instances, each a gallery module ──────────────────────
-const galleryModules = computed(() => modules.value.filter((m) => m.kind === "gallery"));
+const galleryModules = computed(() => modules.value.filter((m) => m.kind === MODULE_KIND.gallery));
 const activeGalleryItems = computed(() =>
   gallery.value.filter((g) => g.module === activeGallery.value),
 );
 function addGalleryAsset(assetId: string, target = activeGallery.value) {
-  const ref = `asset:${assetId}`;
+  const ref = assetRef(assetId);
   if (gallery.value.some((g) => g.asset === ref && g.module === target)) {
     flash("Already in this gallery.");
     return;
@@ -279,26 +323,28 @@ function addGalleryAsset(assetId: string, target = activeGallery.value) {
 const saveGalleryItem = (g: GalleryRow) => guarded(() => cms.put(`gallery/${g.id}`, strip(g)));
 
 // Reusable asset picker (modal): openPicker(cb) opens the library in pick mode;
-// selecting an asset invokes cb with its id.
+// selecting an asset invokes cb with its id, and with the asset itself for the
+// callers that need more than the reference (the blog editor wants `alt`).
+// Callbacks may take just the id — fewer parameters is always assignable.
 const pickerOpen = ref(false);
-const pickerOnly = ref("");
-let pickerCb: ((id: string) => void) | null = null;
-function openPicker(cb: (id: string) => void, only = "") {
+const pickerOnly = ref<AssetKind | "">("");
+let pickerCb: ((id: string, asset: Asset) => void) | null = null;
+function openPicker(cb: (id: string, asset: Asset) => void, only: AssetKind | "" = "") {
   pickerCb = cb;
   pickerOnly.value = only;
   pickerOpen.value = true;
 }
-function onPick(asset: { id: string }) {
+function onPick(asset: Asset) {
   const cb = pickerCb;
   pickerCb = null;
   pickerOpen.value = false;
-  cb?.(asset.id);
+  cb?.(asset.id, asset);
 }
 function closePicker() {
   pickerCb = null;
   pickerOpen.value = false;
 }
-const assetIdOf = (ref: string) => ref.replace(/^asset:/, "");
+const assetIdOf = (ref: string) => parseAssetRef(ref) ?? "";
 const galleryThumb = (ref: string) => cms.assetUrl(assetIdOf(ref), "w320.webp");
 function removeGalleryItem(id: string) {
   gallery.value = gallery.value.filter((g) => g.id !== id);
@@ -405,7 +451,7 @@ function move(arr: any[], i: number, dir: -1 | 1, kind: string) {
 // links/now alike); the timestamp suffix keeps each new row distinct.
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
 const addHobby = () =>
-  hobbies.value.push({ id: newId("hobby"), title: emptyL(), blurb: emptyL(), tone: "purple", sort: hobbies.value.length });
+  hobbies.value.push({ id: newId("hobby"), title: emptyL(), blurb: emptyL(), tone: DEFAULT_TONE, sort: hobbies.value.length });
 const addLink = () =>
   links.value.push({ id: newId("link"), label: emptyL(), href: "", sort: links.value.length });
 const addNow = () =>
@@ -414,7 +460,7 @@ const addBio = () => bio.value.push(emptyL());
 // A bio paragraph is an "image block" when its (locale-independent) value is an asset ref.
 function bioImageRef(p: Localized): string {
   const v = (p.en ?? "").trim();
-  return /^asset:[A-Za-z0-9_-]+$/.test(v) ? v : "";
+  return parseAssetRef(v) ? v : "";
 }
 
 /** Drop empty `de` keys so we don't persist blank translations. */
@@ -440,20 +486,12 @@ const METRIC_LABELS: Record<MetricKey, string> = {
   visitLength: "Visit length",
 };
 const metricKeys = Object.keys(METRIC_LABELS) as MetricKey[];
-// [label, hours]
-const RANGES: [string, number][] = [
-  ["24h", 24],
-  ["3d", 72],
-  ["7d", 168],
-  ["30d", 720],
-];
-const CLEARS: [string, string][] = [
-  ["last hour", "hour"],
-  ["24h", "24h"],
-  ["3d", "3d"],
-  ["7d", "7d"],
-  ["everything", "all"],
-];
+// Both lists come from core: the server switches on the same CLEAR_RANGES ids and
+// derives each window from the same `hours`. They were two hand-written tables —
+// this one saying "3d" means 72, the route saying `back(72)` for "3d" — for an
+// action with no undo.
+const RANGES = VIEW_RANGES;
+const CLEARS = CLEAR_RANGES;
 // Chart palette lives in tokens.css (--stack-1..7); referenced as CSS variables
 // so the theme owns the colours and the chart carries no hard-coded hex. Used as
 // both an SVG `fill` and a CSS `background`, both of which accept var().
@@ -483,7 +521,7 @@ function setRange(h: number) {
   rangeHours.value = h;
   void loadAnalytics();
 }
-async function clearRange(range: string, label: string) {
+async function clearRange(range: ClearRangeId, label: string) {
   if (!confirm(`Delete analytics for ${label}? This can't be undone.`)) return;
   clearing.value = true;
   await guarded(async () => {
@@ -657,25 +695,39 @@ function pick(v: View) {
 // Live preview: an iframe of the actual site, aimed at the area you're editing.
 // Content screens map to the site area that renders them, so the preview shows
 // "what you're working on", not the whole page. Saves bump the key to reload.
-const AREA_FOR_VIEW: Partial<Record<View, string>> = {
-  site: "home",
-  home: "home",
-  about: "about",
-  links: "about",
-  hobbies: "life",
-  now: "life",
-  gallery: "life",
-  presence: "life",
+const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
+  site: AREA.home,
+  home: AREA.home,
+  about: AREA.about,
+  links: AREA.about,
+  hobbies: AREA.life,
+  now: AREA.life,
+  gallery: AREA.life,
+  presence: AREA.life,
 };
-const previewArea = ref<string>("home");
+const previewArea = ref<AreaId>(AREA.home);
 const previewKey = ref(0);
 const showDock = ref(false); // side-by-side live preview while editing
-const previewSrc = computed(() => `/?preview=1#${encodeURIComponent(previewArea.value)}`);
+
+/**
+ * Where the preview points.
+ *
+ * Areas are routes (ADR 0003), so this is `/life`, not `/#life`. Both of these
+ * still built a hash after the tab store and its `location.hash` reader were
+ * deleted — a URL nothing reads, so every preview and every "view site" opened
+ * Home regardless of the panel, and `AREA_FOR_VIEW` above was feeding a dead
+ * fragment. Nothing failed: a hash to nowhere is a valid URL.
+ *
+ * `areaPath` rather than `areaHref(site.nav, id)`: the CMS doesn't hold the
+ * resolved nav, and the first area is the root.
+ */
+const areaPath = (id: AreaId): string => (id === AREA.home ? "/" : `/${id}`);
+const previewSrc = computed(() => `${areaPath(previewArea.value)}?${PREVIEW_PARAM}=1`);
 function areaLabel(id: string): string {
   return layoutAreas.value.find((a) => a.id === id)?.label ?? id;
 }
 function viewSite() {
-  window.open(`/#${encodeURIComponent(previewArea.value)}`, "_blank", "noopener");
+  window.open(areaPath(previewArea.value), "_blank", "noopener");
 }
 
 // Dashboard: quick counts + jump-in links (WP-style landing).

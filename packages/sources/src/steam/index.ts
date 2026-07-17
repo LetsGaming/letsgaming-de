@@ -2,7 +2,7 @@
  * The Steam adapter — Source<SteamRaw, SteamData>. `normalize` is pure.
  */
 
-import type { Source, SteamData } from "@lg/core";
+import { SOURCE_TTL, type Source, type SteamData } from "@lg/core";
 import { fetchSteam, type SteamConfig, type SteamRaw } from "./fetch.js";
 import { sampleAccent } from "./accent.js";
 
@@ -56,9 +56,8 @@ export function normalizeSteam(raw: SteamRaw): SteamData {
 export function steamSource(config: SteamConfig): Source<SteamRaw, SteamData> {
   return {
     id: "steam",
-    targetArea: "life",
     schedule: "*/15 * * * *", // every 15 minutes
-    ttl: 60 * 60 * 1000, // a two-week window doesn't move fast
+    ttl: SOURCE_TTL.steam,
     fetch: () => fetchSteam(config),
     normalize: normalizeSteam,
     enrich: withAccents,
