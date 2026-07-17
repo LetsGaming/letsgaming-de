@@ -16,6 +16,7 @@ import type { DB } from "./database.js";
 import {
   asBool,
   asNullableText,
+  asNumber,
   asText,
   boolToInt,
   deleteById,
@@ -26,6 +27,10 @@ import {
   transact,
   type Row,
 } from "./row-mapper.js";
+
+/** Revisions per history page. Enough to find last week's wording, small enough
+ *  that the panel doesn't become a scroll. */
+const REVISION_PAGE = 50;
 
 // ── row readers: the only place a raw column becomes a domain value ──────────
 const toProject = (r: Row): Project => ({
@@ -91,12 +96,57 @@ export function contentRepo(db: DB) {
     return show ? { show } : defaultPresenceSettings();
   };
 
-  /** Update one scalar column on the single site_content row. */
-  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio", value: unknown): void => {
-    db.prepare(`UPDATE site_content SET ${col} = ? WHERE id = ?`).run(JSON.stringify(value), SINGLETON_ID);
+  /**
+   * Snapshot the whole document into the revision archive.
+   *
+   * Runs inside the caller's transaction, so a save either lands with its history
+   * or doesn't land. Archiving afterwards would lose exactly the revisions where
+   * something went wrong — the ones you'd want.
+   *
+   * Reads `getContent()` *after* the write, so the newest revision is the current
+   * state. Restore is then a write, not a replay — the same relationship
+   * `source_current` has with `source_snapshots`.
+   */
+  const archive = (reason: string): void => {
+    db.prepare(
+      "INSERT INTO site_content_revisions (saved_at, reason, content) VALUES (?, ?, ?)",
+    ).run(new Date().toISOString(), reason, JSON.stringify(repo.getContent()));
   };
 
-  return {
+  /**
+   * Update one scalar column on the single site_content row, keeping the old one.
+   *
+   * 0001 archives every GitHub sync forever because "history can't be re-fetched",
+   * and UPDATEs your bio in place. GitHub would hand its data back tomorrow; the
+   * paragraph you just replaced existed nowhere else. The CMS saves on blur, so
+   * that was every edit, silently.
+   */
+  /**
+   * Every CMS-owned write goes through here: do it, archive it, atomically.
+   *
+   * A seam rather than `transact(db, () => { …; archive("x") })` at seventeen call
+   * sites, because seventeen hand-copied pairs is sixteen chances to forget the
+   * second half — and the one that forgets doesn't fail, it quietly stops keeping
+   * history for that field. Same shape as the seven TTLs. Here it's structural:
+   * there is no path that writes content without archiving it, because this is the
+   * only path that writes.
+   */
+  const write = <T>(reason: string, fn: () => T): T =>
+    transact(db, () => {
+      const result = fn();
+      archive(reason);
+      return result;
+    });
+
+  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio", value: unknown): void =>
+    write(col, () => {
+      db.prepare(`UPDATE site_content SET ${col} = ? WHERE id = ?`).run(
+        JSON.stringify(value),
+        SINGLETON_ID,
+      );
+    });
+
+  const repo = {
     /** Assemble the whole CMS-owned document (used by the resolver on read). */
     getContent(): SiteContent {
       const content = mapRow(
@@ -131,22 +181,28 @@ export function contentRepo(db: DB) {
     getPresence: readPresence,
     setPresence(settings: PresenceSettings) {
       const show = sanitizePresenceShow(settings.show);
-      db.prepare(
-        `INSERT INTO site_presence (id, show) VALUES (?, ?)
-         ON CONFLICT(id) DO UPDATE SET show = excluded.show`,
-      ).run(SINGLETON_ID, JSON.stringify(show));
+      write("presence", () =>
+        db
+          .prepare(
+            `INSERT INTO site_presence (id, show) VALUES (?, ?)
+             ON CONFLICT(id) DO UPDATE SET show = excluded.show`,
+          )
+          .run(SINGLETON_ID, JSON.stringify(show)),
+      );
     },
 
     /** Gallery images (CMS-owned; chosen from the media library). */
     getGallery: readGallery,
     upsertGalleryItem(item: GalleryItem, sort = 0) {
-      db.prepare(
-        `INSERT INTO gallery (id, module, asset, caption, sort) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET module = excluded.module, asset = excluded.asset,
-           caption = excluded.caption, sort = excluded.sort`,
-      ).run(item.id, item.module, item.asset, JSON.stringify(item.caption), sort);
+      write("gallery", () =>
+        db.prepare(
+          `INSERT INTO gallery (id, module, asset, caption, sort) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET module = excluded.module, asset = excluded.asset,
+             caption = excluded.caption, sort = excluded.sort`,
+        ).run(item.id, item.module, item.asset, JSON.stringify(item.caption), sort),
+      );
     },
-    deleteGalleryItem: (id: string) => deleteById(db, "gallery", id),
+    deleteGalleryItem: (id: string) => write("gallery", () => deleteById(db, "gallery", id)),
     /**
      * Write a whole gallery's order in one transaction.
      *
@@ -167,70 +223,136 @@ export function contentRepo(db: DB) {
      */
     reorderGallery(moduleId: string, ids: string[]) {
       const stmt = db.prepare("UPDATE gallery SET sort = ? WHERE id = ? AND module = ?");
-      transact(db, () => {
+      write("gallery", () => {
         ids.forEach((id, i) => stmt.run(i, id, moduleId));
       });
     },
     /** Remove every image belonging to a gallery module (used when deleting one). */
     deleteGalleryModule(moduleId: string) {
-      db.prepare("DELETE FROM gallery WHERE module = ?").run(moduleId);
+      write("gallery", () => db.prepare("DELETE FROM gallery WHERE module = ?").run(moduleId));
     },
 
     // ── list CRUD (CMS) ─────────────────────────────────────────────────────
     upsertProject(p: Project, sort = 0) {
-      db.prepare(
-        `INSERT INTO projects (id, name, tag, description, meta, href, featured, repo, sort)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           name = excluded.name, tag = excluded.tag, description = excluded.description,
-           meta = excluded.meta, href = excluded.href, featured = excluded.featured,
-           repo = excluded.repo, sort = excluded.sort`,
-      ).run(
-        p.id,
-        p.name,
-        JSON.stringify(p.tag),
-        JSON.stringify(p.description),
-        JSON.stringify(p.meta),
-        p.href,
-        boolToInt(p.featured),
-        p.repo ?? null,
-        sort,
+      write("projects", () =>
+        db.prepare(
+          `INSERT INTO projects (id, name, tag, description, meta, href, featured, repo, sort)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             name = excluded.name, tag = excluded.tag, description = excluded.description,
+             meta = excluded.meta, href = excluded.href, featured = excluded.featured,
+             repo = excluded.repo, sort = excluded.sort`,
+        ).run(
+          p.id,
+          p.name,
+          JSON.stringify(p.tag),
+          JSON.stringify(p.description),
+          JSON.stringify(p.meta),
+          p.href,
+          boolToInt(p.featured),
+          p.repo ?? null,
+          sort,
+        ),
       );
     },
-    deleteProject: (id: string) => deleteById(db, "projects", id),
+    deleteProject: (id: string) => write("projects", () => deleteById(db, "projects", id)),
 
-    upsertHobby(h: Hobby, sort = 0) {
-      db.prepare(
-        `INSERT INTO hobbies (id, title, blurb, icon, tone, sort)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           title = excluded.title, blurb = excluded.blurb, icon = excluded.icon,
-           tone = excluded.tone, sort = excluded.sort`,
-      ).run(h.id, JSON.stringify(h.title), JSON.stringify(h.blurb), h.icon ?? null, h.tone, sort);
+      upsertHobby(h: Hobby, sort = 0) {
+        write("hobbies", () =>
+          db.prepare(
+          `INSERT INTO hobbies (id, title, blurb, icon, tone, sort)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             title = excluded.title, blurb = excluded.blurb, icon = excluded.icon,
+             tone = excluded.tone, sort = excluded.sort`,
+        ).run(h.id, JSON.stringify(h.title), JSON.stringify(h.blurb), h.icon ?? null, h.tone, sort),
+      );
     },
-    deleteHobby: (id: string) => deleteById(db, "hobbies", id),
+    deleteHobby: (id: string) => write("hobbies", () => deleteById(db, "hobbies", id)),
 
     upsertLink(l: Link, sort = 0) {
-      db.prepare(
-        `INSERT INTO links (id, label, href, icon, is_primary, sort)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           label = excluded.label, href = excluded.href, icon = excluded.icon,
-           is_primary = excluded.is_primary, sort = excluded.sort`,
-      ).run(l.id, JSON.stringify(l.label), l.href, l.icon ?? null, boolToInt(l.primary), sort);
+      write("links", () =>
+        db.prepare(
+          `INSERT INTO links (id, label, href, icon, is_primary, sort)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             label = excluded.label, href = excluded.href, icon = excluded.icon,
+             is_primary = excluded.is_primary, sort = excluded.sort`,
+        ).run(l.id, JSON.stringify(l.label), l.href, l.icon ?? null, boolToInt(l.primary), sort),
+      );
     },
-    deleteLink: (id: string) => deleteById(db, "links", id),
+    deleteLink: (id: string) => write("links", () => deleteById(db, "links", id)),
 
     upsertNow(n: NowItem, sort = 0) {
-      db.prepare(
-        `INSERT INTO now_items (id, key, value, sort)
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           key = excluded.key, value = excluded.value, sort = excluded.sort`,
-      ).run(n.id, JSON.stringify(n.key), JSON.stringify(n.value), sort);
+      write("now_items", () =>
+        db.prepare(
+          `INSERT INTO now_items (id, key, value, sort)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             key = excluded.key, value = excluded.value, sort = excluded.sort`,
+        ).run(n.id, JSON.stringify(n.key), JSON.stringify(n.value), sort),
+      );
     },
-    deleteNow: (id: string) => deleteById(db, "now_items", id),
+    deleteNow: (id: string) => write("now_items", () => deleteById(db, "now_items", id)),
+
+    // ── history ─────────────────────────────────────────────────────────────
+    /** Newest first. `content` is the whole document at that moment. */
+    listRevisions(limit = REVISION_PAGE): { id: number; savedAt: string; reason: string }[] {
+      return mapRows(
+        db.prepare(
+          "SELECT id, saved_at, reason FROM site_content_revisions ORDER BY saved_at DESC, id DESC LIMIT ?",
+        ),
+        (r) => ({ id: asNumber(r.id), savedAt: asText(r.saved_at), reason: asText(r.reason) }),
+        limit,
+      );
+    },
+
+    getRevision(id: number): SiteContent | undefined {
+      return mapRow(
+        db.prepare("SELECT content FROM site_content_revisions WHERE id = ?"),
+        (r) => json<SiteContent>(r.content),
+        id,
+      );
+    },
+
+    /**
+     * Put a past revision back.
+     *
+     * Writes forward rather than deleting anything: the restore is itself
+     * archived, so undoing a restore is another restore. An archive you can
+     * rewrite isn't one.
+     *
+     * Scalars only, deliberately. The lists are real tables with their own ids
+     * and foreign keys, and replaying them means reconciling deletes — a
+     * different job with a different failure mode, and doing half of it silently
+     * would be worse than not offering it. `listsDiffer` tells the caller when
+     * that limit is actually being hit rather than leaving them to find out.
+     */
+    restoreRevision(id: number): { ok: boolean; listsDiffer: boolean } {
+      const past = repo.getRevision(id);
+      if (!past) return { ok: false, listsDiffer: false };
+      return transact(db, () => {
+        const before = repo.getContent();
+        db.prepare(
+          "UPDATE site_content SET meta = ?, headline = ?, lede = ?, status = ?, bio = ? WHERE id = ?",
+        ).run(
+          JSON.stringify(past.meta),
+          JSON.stringify(past.headline),
+          JSON.stringify(past.lede),
+          JSON.stringify(past.status),
+          JSON.stringify(past.bio),
+          SINGLETON_ID,
+        );
+        archive(`restore:${id}`);
+        const listsDiffer =
+          JSON.stringify([past.hobbies, past.links, past.now, past.gallery, past.projects]) !==
+          JSON.stringify([before.hobbies, before.links, before.now, before.gallery, before.projects]);
+        return { ok: true, listsDiffer };
+      });
+    },
   };
+
+  return repo;
 }
 
 export type ContentRepo = ReturnType<typeof contentRepo>;

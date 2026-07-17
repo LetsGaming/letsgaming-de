@@ -252,6 +252,34 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     },
   );
 
+  // ── content history ────────────────────────────────────────────────────────
+  //
+  // 0001 archives every sync forever because "history can't be re-fetched", and
+  // UPDATEs the owner's writing in place. This is the other half: the same
+  // current/archive pair, applied to the half that genuinely can't be re-fetched
+  // from anywhere.
+  app.get("/api/cms/revisions", guard, async () => ({
+    revisions: store.content.listRevisions(),
+  }));
+
+  app.get<{ Params: { id: string } }>("/api/cms/revisions/:id", guard, async (req) => {
+    const content = store.content.getRevision(Number(req.params.id));
+    if (!content) throw notFound("No such revision.");
+    return { content };
+  });
+
+  app.post<{ Params: { id: string } }>(
+    "/api/cms/revisions/:id/restore",
+    guard,
+    async (req) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) throw badRequest("Invalid revision id.");
+      const result = store.content.restoreRevision(id);
+      if (!result.ok) throw notFound("No such revision.");
+      return result;
+    },
+  );
+
   /**
    * What the site *would* look like with this order — resolved, not saved.
    *

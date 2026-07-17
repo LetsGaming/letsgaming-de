@@ -96,3 +96,35 @@ export function visibleNav(nodes: NavNode[]): NavNode[] {
     .filter((node) => !node.hidden)
     .map((node) => (node.children ? { ...node, children: visibleNav(node.children) } : node));
 }
+
+
+/**
+ * Areas are routes, not hash tabs.
+ *
+ * The first area is the site root — `/` rather than `/home` — so there's one
+ * canonical URL for the landing page instead of two rendering the same thing.
+ *
+ * Here rather than in the web app because it's a *resolution rule*, and the
+ * resolver is what has the nav. While it lived in `apps/web/src/lib/area.ts`, the
+ * resolver couldn't turn `#contact` into a URL, so it did the only thing it could
+ * with an href it didn't recognise: threw it away.
+ */
+export function areaHref(nav: { id: string }[], id: string): string {
+  return id === nav[0]?.id ? "/" : `/${id}`;
+}
+
+/**
+ * Resolve an in-page target — a module id like `contact`, or an area id — to the
+ * URL that shows it.
+ *
+ * A module lives in exactly one area, so `#contact` is `/about#contact`: a real
+ * URL, which a browser can follow, a person can middle-click, and a crawler can
+ * index. The site used to answer this with a click handler that called
+ * `window.location.assign`, which is an `<a href>` with the useful parts removed.
+ */
+export function targetHref(nav: { id: string; modules?: string[] }[], target: string): string {
+  const holder = nav.find((a) => (a.modules ?? []).includes(target));
+  if (holder) return `${areaHref(nav, holder.id)}#${target}`;
+  const area = nav.find((a) => a.id === target);
+  return area ? areaHref(nav, area.id) : `#${target}`;
+}

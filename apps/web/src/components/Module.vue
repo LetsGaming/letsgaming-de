@@ -19,7 +19,6 @@ import ContactSection from "./sections/ContactSection.vue";
 defineProps<{
   module: ResolvedModule;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 
 // One component per module kind. Typing the map as Record<kind, …> makes it
@@ -43,5 +42,5 @@ const sections: Record<ResolvedModule["kind"], Component> = {
 </script>
 
 <template>
-  <component :is="sections[module.kind]" :module="module" :go="go" :go-anchor="goAnchor" />
+  <component :is="sections[module.kind]" :module="module" :go="go" />
 </template>

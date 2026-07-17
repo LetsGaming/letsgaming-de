@@ -29,6 +29,10 @@ export const PRESENCE_CATEGORIES = [
 
 export type PresenceCategory = (typeof PRESENCE_CATEGORIES)[number];
 
+export function isPresenceCategory(value: unknown): value is PresenceCategory {
+  return typeof value === "string" && (PRESENCE_CATEGORIES as readonly string[]).includes(value);
+}
+
 /** The category the Steam half of the widget is gated on (the one non-Discord one). */
 export const STEAM_CATEGORY = "steam" satisfies PresenceCategory;
 
@@ -37,6 +41,20 @@ export const STEAM_CATEGORY = "steam" satisfies PresenceCategory;
  *  hand-copied `["game","streaming","music","watching","custom"]`, which a sixth
  *  Discord category would have silently missed. */
 export type LivePresenceCategory = Exclude<PresenceCategory, typeof STEAM_CATEGORY>;
+
+/**
+ * Is this a category Discord's socket can actually fill?
+ *
+ * A predicate rather than `LIVE_PRESENCE_CATEGORIES.includes(c as …)`, because the
+ * derived list is `LivePresenceCategory[]` and `includes` therefore refuses a
+ * plain `PresenceCategory` — correctly: `steam` is in the vocabulary and not in
+ * this list. The server used to hand-write `["game","streaming","music",
+ * "watching","custom"]` typed as `PresenceCategory[]`, which took anything and
+ * asked nothing. The narrower type is the better question.
+ */
+export function isLivePresenceCategory(c: PresenceCategory): c is LivePresenceCategory {
+  return c !== STEAM_CATEGORY;
+}
 
 export const LIVE_PRESENCE_CATEGORIES: readonly LivePresenceCategory[] =
   PRESENCE_CATEGORIES.filter((c): c is LivePresenceCategory => c !== STEAM_CATEGORY);
@@ -56,13 +74,9 @@ export function defaultPresenceSettings(): PresenceSettings {
 /** Keep only valid, de-duplicated categories (guards CMS input + stored rows). */
 export function sanitizePresenceShow(input: unknown): PresenceCategory[] {
   if (!Array.isArray(input)) return [];
-  const seen = new Set<PresenceCategory>();
-  for (const v of input) {
-    if (typeof v === "string" && (PRESENCE_CATEGORIES as readonly string[]).includes(v)) {
-      seen.add(v as PresenceCategory);
-    }
-  }
-  return [...seen];
+  // The predicate narrows, so nothing here asserts. `includes` + `as` was the
+  // same check written as a claim the compiler couldn't verify.
+  return [...new Set(input.filter(isPresenceCategory))];
 }
 
 /**

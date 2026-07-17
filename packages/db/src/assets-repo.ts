@@ -1,3 +1,4 @@
+import { FALLBACK_ASSET_KIND, isAssetKind } from "@lg/core";
 import type { Asset, AssetFolder, AssetKind, AssetVariant } from "@lg/core";
 import type { DB } from "./database.js";
 import {
@@ -35,13 +36,27 @@ export function assetsRepo(db: DB) {
       id,
     );
 
-  /** Build an Asset from a raw row, attaching its tags. The one place columns
-   *  become a domain Asset — optional fields are only set when present. */
+  /**
+   * Build an Asset from a raw row, attaching its tags. The one place columns
+   * become a domain Asset — optional fields are only set when present.
+   *
+   * `kind` is checked, not asserted. It used to be `asText(r.kind) as AssetKind`,
+   * which takes the store's word for a value the store has no opinion about:
+   * `kind` is a bare TEXT column, so a row written by a version that knew a kind
+   * this one doesn't — or by hand — would flow into the site typed as something it
+   * isn't, and fail at whatever rendered it.
+   *
+   * Unrecognised falls back to `file` rather than throwing: `file` is the
+   * vocabulary's own word for "bytes with no better name", so it's the defined
+   * answer rather than an invented one, and one odd row shouldn't take the whole
+   * library down with it.
+   */
   const toAsset = (r: Row): Asset => {
+    const rawKind = asText(r.kind);
     const a: Asset = {
       id: asText(r.id),
       hash: asText(r.hash),
-      kind: asText(r.kind) as AssetKind,
+      kind: isAssetKind(rawKind) ? rawKind : FALLBACK_ASSET_KIND,
       ext: asText(r.ext),
       mime: asText(r.mime),
       bytes: asNumber(r.bytes),

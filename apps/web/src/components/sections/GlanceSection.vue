@@ -7,7 +7,6 @@ import Freshness from "../Freshness.vue";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "glance" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

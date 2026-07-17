@@ -8,8 +8,29 @@
  * by the server (storage/serving), the resolver (expansion), and the CMS (UI).
  */
 
-/** What a stored asset is — drives processing and how a reference renders. */
-export type AssetKind = "image" | "svg" | "gif" | "pdf" | "markdown" | "file";
+/**
+ * What a stored asset is — drives processing and how a reference renders.
+ *
+ * A list, not a union, because a union has no runtime existence and every
+ * boundary that needed to *check* one therefore asserted instead:
+ * `asText(r.kind) as AssetKind` took the store's word, and
+ * `q.kind as AssetKind` took a query string's. The vocabularies in this repo that
+ * have a predicate (ModuleKind, SourceId, Locale, Theme) are the ones that never
+ * get cast anywhere — that isn't a coincidence, it's the same fact twice.
+ *
+ * `file` is last and load-bearing: it's the vocabulary's own word for "bytes we
+ * have no better name for", which makes it the honest landing place for anything
+ * unrecognised rather than an invented default.
+ */
+export const ASSET_KINDS = ["image", "svg", "gif", "pdf", "markdown", "file"] as const;
+export type AssetKind = (typeof ASSET_KINDS)[number];
+
+/** The kind to fall back to when nothing else fits — the generic download. */
+export const FALLBACK_ASSET_KIND: AssetKind = "file";
+
+export function isAssetKind(value: unknown): value is AssetKind {
+  return typeof value === "string" && (ASSET_KINDS as readonly string[]).includes(value);
+}
 
 /** A derived, cached rendition of an image asset (one width in one format). */
 export interface AssetVariant {

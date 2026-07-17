@@ -29,9 +29,10 @@ import type {
   NowItem,
   PresenceCategory,
 } from "@lg/core";
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
 import type { SortableMove } from "./sortable";
+import { useEntityList } from "./useEntityList";
 import { isFromCanvas, isSameOrigin, type ToCanvas } from "../lib/canvas-protocol";
 
 export interface GalleryRow { id: string; module: string; asset: string; caption: Localized; sort?: number }
@@ -147,9 +148,27 @@ const headline = reactive<any>({ before: emptyL(), highlight: emptyL(), after: e
 const lede = reactive<Localized>(emptyL());
 const status = reactive<any>({ verb: emptyL(), now: emptyL() });
 const bio = ref<Localized[]>([]);
-const hobbies = ref<(Hobby & { sort?: number })[]>([]);
-const links = ref<(Link & { sort?: number })[]>([]);
-const now = ref<(NowItem & { sort?: number })[]>([]);
+const hobbiesList = useEntityList<Hobby & { sort?: number }>({
+  kind: "hobbies",
+  strip,
+  guarded,
+  blank: (i) => ({ id: newId("hobby"), title: emptyL(), blurb: emptyL(), tone: DEFAULT_TONE, sort: i }),
+});
+const hobbies = hobbiesList.items;
+const linksList = useEntityList<Link & { sort?: number }>({
+  kind: "links",
+  strip,
+  guarded,
+  blank: (i) => ({ id: newId("link"), label: emptyL(), href: "", sort: i }),
+});
+const links = linksList.items;
+const nowList = useEntityList<NowItem & { sort?: number }>({
+  kind: "now",
+  strip,
+  guarded,
+  blank: (i) => ({ id: newId("now"), key: emptyL(), value: emptyL(), sort: i }),
+});
+const now = nowList.items;
 const analytics = ref<any>(null);
 
 // Layout (module order per area) + gallery images.
@@ -266,7 +285,7 @@ async function loadAll() {
   gallery.value = (data.content.gallery ?? []).map((g: GalleryRow, i: number) => ({ ...g, sort: i }));
 
   // Layout: flatten nav leaves (areas that hold an ordered module list).
-  modules.value = ((data.modules ?? []) as ModuleDescriptor[]).filter((m) => isModuleKind(m.kind));
+  modules.value = (data.modules ?? []).filter((m) => isModuleKind(m.kind));
   const leaves: { id: string; label: string; modules: string[] }[] = [];
   const walk = (nodes: NavNode[]) => {
     for (const n of nodes) {
@@ -274,7 +293,7 @@ async function loadAll() {
       if (n.children) walk(n.children);
     }
   };
-  walk((data.nav ?? []) as NavNode[]);
+  walk(data.nav ?? []);
   layoutAreas.value = leaves;
   const placed = new Set(leaves.flatMap((l) => l.modules));
   hiddenModules.value = modules.value.map((m) => m.id).filter((id) => !placed.has(id));
@@ -492,7 +511,16 @@ function signOut() {
   authed.value = false;
 }
 
-async function guarded(fn: () => Promise<void>, ok = "Saved") {
+/**
+ * Run a write, then toast or handle the failure.
+ *
+ * `Promise<unknown>`, not `Promise<void>`: now that the API client returns real
+ * shapes instead of `any`, every `cms.put(…)` resolves to `{ ok: true }` — and a
+ * `Promise<void>` parameter would have meant twenty call sites each wrapping
+ * their own `void (await …)` to throw the value away. `guarded` doesn't read the
+ * result; it should say so once rather than make everyone prove it.
+ */
+async function guarded(fn: () => Promise<unknown>, ok = "Saved") {
   try {
     await fn();
     flash(ok);
@@ -513,45 +541,12 @@ const saveHeadline = () => guarded(() => cms.put("headline", strip(headline)));
 const saveLede = () => guarded(() => cms.put("lede", strip(lede)));
 const saveStatus = () => guarded(() => cms.put("status", strip(status)));
 const saveBio = () => guarded(() => cms.put("bio", bio.value.map(strip)));
-const saveHobby = (h: any) => guarded(() => cms.put(`hobbies/${h.id}`, strip(h)));
-const saveLink = (l: any) => guarded(() => cms.put(`links/${l.id}`, strip(l)));
-const saveNow = (n: any) => guarded(() => cms.put(`now/${n.id}`, strip(n)));
-
-// Deletes
-const delItem = (arr: any[], i: number, kind: string) =>
-  guarded(async () => {
-    const item = arr[i];
-    if (item?.id) await cms.del(`${kind}/${item.id}`);
-    arr.splice(i, 1);
-  }, "Deleted");
-
-/** Move an item up/down in a sortable list and persist the new order. */
-function move(arr: any[], i: number, dir: -1 | 1, kind: string) {
-  const j = i + dir;
-  if (j < 0 || j >= arr.length) return;
-  const a = arr[i];
-  const b = arr[j];
-  arr[i] = b;
-  arr[j] = a;
-  arr[i].sort = i;
-  arr[j].sort = j;
-  void guarded(async () => {
-    await cms.put(`${kind}/${arr[i].id}`, strip(arr[i]));
-    await cms.put(`${kind}/${arr[j].id}`, strip(arr[j]));
-  }, "Reordered");
-}
 
 // Adders
 // Seed a unique id per new row. A fixed default like "new-link" would collide on
 // the primary key if two rows are added before renaming (applies to hobbies/
 // links/now alike); the timestamp suffix keeps each new row distinct.
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
-const addHobby = () =>
-  hobbies.value.push({ id: newId("hobby"), title: emptyL(), blurb: emptyL(), tone: DEFAULT_TONE, sort: hobbies.value.length });
-const addLink = () =>
-  links.value.push({ id: newId("link"), label: emptyL(), href: "", sort: links.value.length });
-const addNow = () =>
-  now.value.push({ id: newId("now"), key: emptyL(), value: emptyL(), sort: now.value.length });
 const addBio = () => bio.value.push(emptyL());
 // A bio paragraph is an "image block" when its (locale-independent) value is an asset ref.
 function bioImageRef(p: Localized): string {
@@ -559,14 +554,20 @@ function bioImageRef(p: Localized): string {
   return parseAssetRef(v) ? v : "";
 }
 
-/** Drop empty `de` keys so we don't persist blank translations. */
+/**
+ * Drop empty `de` keys so we don't persist blank translations.
+ *
+ * `unknown` walked and narrowed, not `any`: a JSON tree genuinely has no static
+ * shape, which is the one place `unknown` is the honest type — `any` here would
+ * be the same claim with the checking switched off.
+ */
 function strip<T>(obj: T): T {
-  const clone = JSON.parse(JSON.stringify(obj));
-  const walk = (o: any) => {
-    if (o && typeof o === "object") {
-      if ("en" in o && "de" in o && !o.de) delete o.de;
-      for (const k of Object.keys(o)) walk(o[k]);
-    }
+  const clone = JSON.parse(JSON.stringify(obj)) as T;
+  const walk = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    const record = node as Record<string, unknown>;
+    if ("en" in record && "de" in record && !record.de) delete record.de;
+    for (const key of Object.keys(record)) walk(record[key]);
   };
   walk(clone);
   return clone;
@@ -574,14 +575,30 @@ function strip<T>(obj: T): T {
 
 
 // Analytics
-type MetricKey = "pageviews" | "sections" | "clicks" | "visitLength";
+/**
+ * The headline metrics, in the order they read as an argument.
+ *
+ * `pageviews` and `sections` are not two facts, they're a bracket. The log can
+ * only say a request *claimed* to be a browser; the beacon can only fire if one
+ * actually ran. So page views are the ceiling on human traffic and section views
+ * the floor, and the gap is people with JS off, people who opted out, and bots
+ * that lied about being bots. `bots` is the ones that didn't lie.
+ *
+ * Still hand-matched to the server's `chart` object — see SWEEP §4. That's the
+ * next thing to fix here, not this.
+ */
+const METRIC_KEYS = ["pageviews", "sections", "clicks", "visitLength", "bots"] as const;
+type MetricKey = (typeof METRIC_KEYS)[number];
 const METRIC_LABELS: Record<MetricKey, string> = {
   pageviews: "Page views",
-  sections: "Section views",
+  sections: "Confirmed visits",
   clicks: "Clicks",
   visitLength: "Visit length",
+  bots: "Bots",
 };
-const metricKeys = Object.keys(METRIC_LABELS) as MetricKey[];
+/** METRIC_KEYS, not `Object.keys(METRIC_LABELS) as MetricKey[]` — a cast is a
+ *  check that can't fail, and the list already exists. */
+const metricKeys: readonly MetricKey[] = METRIC_KEYS;
 // Both lists come from core: the server switches on the same CLEAR_RANGES ids and
 // derives each window from the same `hours`. They were two hand-written tables —
 // this one saying "3d" means 72, the route saying `back(72)` for "3d" — for an
@@ -746,7 +763,13 @@ function yAxisTicks(max: number): { top: number; ticks: number[] } {
 const metricTotals = computed<Record<MetricKey, number>>(() => {
   const c = analytics.value?.chart;
   const sum = (a?: { count: number }[]) => (a ?? []).reduce((s, r) => s + r.count, 0);
-  return { pageviews: sum(c?.pageviews), sections: sum(c?.sections), clicks: sum(c?.clicks), visitLength: sum(c?.visitLength) };
+  return {
+    pageviews: sum(c?.pageviews),
+    sections: sum(c?.sections),
+    clicks: sum(c?.clicks),
+    visitLength: sum(c?.visitLength),
+    bots: sum(c?.bots),
+  };
 });
 
 /** Stacked-area geometry for the selected metric (composition over time). */
@@ -948,8 +971,17 @@ const PANEL_FOR_KIND: Record<ModuleKind, View | null> = {
 /** The pending layout, as the preview endpoint wants it. */
 const layoutOrder = () => layoutAreas.value.map((a) => ({ area: a.id, modules: a.modules }));
 
-/** What the canvas is rendering: the site resolved with the *pending* order. */
-const canvasSite = ref<SiteView | null>(null);
+/**
+ * What the canvas is rendering: the site resolved with the *pending* order.
+ *
+ * `shallowRef`, not `ref`, and that's load-bearing. `ref()` wraps its value in a
+ * reactive Proxy, `postMessage` serializes with structured clone, and structured
+ * clone cannot clone a Proxy — so posting it threw `DataCloneError` and the canvas
+ * stayed blank. Nothing here reads *into* this object reactively; it's an opaque
+ * blob resolved by the server and handed straight to the iframe, so deep-proxying
+ * it bought nothing and cost the feature.
+ */
+const canvasSite = shallowRef<SiteView | null>(null);
 const canvasSelected = ref<string | undefined>();
 const canvasLoading = ref(false);
 /** Set when the canvas iframe reports it has mounted (see canvas-protocol). */
@@ -967,7 +999,7 @@ async function refreshCanvas() {
   if (!authed.value) return;
   canvasLoading.value = true;
   try {
-    canvasSite.value = (await cms.preview(layoutOrder(), locale.value)) as SiteView;
+    canvasSite.value = await cms.preview(layoutOrder(), locale.value);
   } catch (e) {
     if (e instanceof AuthError) authed.value = false;
     else flash((e as Error).message || "Couldn't render the preview.");
@@ -1015,17 +1047,32 @@ function insertModule(mid: string) {
 const canvasWidth = ref("100%");
 const canvasFrame = ref<HTMLIFrameElement | null>(null);
 
-/** Push the current pending state into the canvas. */
-function postCanvas() {
-  const frame = canvasFrame.value?.contentWindow;
-  if (!frame || !canvasSite.value || !canvasReady.value) return;
-  const message: ToCanvas = {
+/**
+ * The render message, or null if there's nothing to say yet.
+ *
+ * Split from the posting so it can be tested. The bug this file shipped with was
+ * entirely in the *payload* — a Vue Proxy that `postMessage` refused to clone —
+ * and no test could see it, because the only code that built the payload also
+ * needed an iframe to exist. A function that returns the message can be handed to
+ * `structuredClone`, which is the same algorithm `postMessage` uses and the same
+ * one that threw.
+ */
+function canvasMessage(): ToCanvas | null {
+  if (!canvasSite.value || !canvasReady.value) return null;
+  return {
     type: "canvas:render",
     site: canvasSite.value,
     area: previewArea.value,
     editing: true,
     ...(canvasSelected.value ? { selected: canvasSelected.value } : {}),
   };
+}
+
+/** Push the current pending state into the canvas. */
+function postCanvas() {
+  const frame = canvasFrame.value?.contentWindow;
+  const message = canvasMessage();
+  if (!frame || !message) return;
   frame.postMessage(message, window.location.origin);
 }
 
@@ -1169,6 +1216,7 @@ onUnmounted(() => {
     layoutOrder,
     canvasWidth,
     canvasFrame,
+    canvasMessage,
     areaOptions,
     saveLayout,
     galleryModules,
@@ -1195,15 +1243,10 @@ onUnmounted(() => {
     saveLede,
     saveStatus,
     saveBio,
-    saveHobby,
-    saveLink,
-    saveNow,
-    delItem,
-    move,
+    hobbiesList,
+    linksList,
+    nowList,
     newId,
-    addHobby,
-    addLink,
-    addNow,
     addBio,
     bioImageRef,
     strip,

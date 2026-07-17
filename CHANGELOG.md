@@ -2,6 +2,133 @@
 
 ## Unreleased
 
+### Boundary rework — the things that were asserted get checked
+
+Four habits, each replicated across the tree, each producing live bugs. A
+vocabulary authored as a union instead of derived from a list, so every consumer
+that needed the list at runtime wrote its own. An API boundary with no contract,
+so each shape was written three times and agreed with itself by luck. Functions
+shaped by the button that called them instead of the operation they perform. And
+prose asserting facts about the code that nothing verified — despite `lint:nav`,
+`lint:tokens` and `storage-keys.test.ts` already being the cure, used three times.
+
+**Bugs this surfaced, in the order they were found.**
+
+- **The hero's primary CTA pointed nowhere.** The seed writes `href: "#contact"`;
+  `HREF_PATTERN` allowed `https?://`, `mailto:` and `/` but not `#`, so `safeHref`
+  flattened it to `"#"`. `HeroSection` then intercepted the click and passed
+  `"#".slice(1)` — an empty string — to `goAnchor`, which asked the nav for `""`.
+  The pattern guards against `javascript:`/`data:` script sinks; a fragment has no
+  scheme. `#` was excluded by accident, and the click handler hid the result.
+- **Reordering a list wrote two rows.** `move(arr, i, dir)` swapped neighbours and
+  PUT both, so moving item 0 to the end left the other eight with stale `sort` —
+  which `ORDER BY sort, id` then settles by id, an order nobody chose.
+- **The dashboard counted the dashboard.** `isPageView` excluded assets and
+  `?preview=1` but not `/admin`, so opening the editor logged two page views (the
+  panel, and the canvas iframe). Of six recorded "visits", five were the owner and
+  one was a `curl` — which `parseUserAgent` resolved to `Other`/`Other`/`desktop`
+  and counted in every card.
+- **`(await cms.uploadAsset(file)) as PostAsset`** claimed the server returns a
+  slug. It doesn't — the next line was `updateAsset(created.id, { slug })`,
+  disproving the cast one statement later. It compiled, built and shipped.
+- **`asText(r.kind) as AssetKind`** took the store's word about a bare `TEXT`
+  column, and **`q.kind as AssetKind`** took a query string's.
+
+**Vocabularies are values; types derive from them.**
+
+- `AssetKind` was a bare union — no runtime list, so every boundary that needed to
+  *check* one asserted instead. Now `ASSET_KINDS` + `isAssetKind`, with
+  `FALLBACK_ASSET_KIND` for rows the vocabulary doesn't recognise. `isTone` and
+  `isPresenceCategory` join it; those lists already existed and never got a
+  predicate. **The vocabularies that had a predicate (`ModuleKind`, `SourceId`,
+  `Locale`, `Theme`) are exactly the ones never cast anywhere.**
+- `AnalyticsDimension` was a second union in `@lg/db` listing all sixteen members
+  including every one of core's `ENGAGEMENT_DIMENSIONS`, in a different order. Now
+  `LOG_DIMENSIONS + ENGAGEMENT_DIMENSIONS`, derived in core.
+- `TONES` had five copies. The fifth was `HobbiesPanel`'s hardcoded
+  `<option>purple</option>…` — the dropdown that decides what you can pick. The
+  sixth-in-waiting is `tone TEXT NOT NULL, -- 'purple' | 'coral' | …`: SQLite can't
+  `ADD CONSTRAINT` and a `CHECK` would be another copy, so a test asserts the
+  comment lists exactly `TONES`, as `storage-keys.test.ts` does for the inline
+  script.
+- `areaHref`/`targetHref` moved to `@lg/core`. They're resolution rules, and while
+  they lived in `apps/web/src/lib` the resolver had no way to turn `#contact` into
+  a URL — so it threw it away.
+
+**The API boundary has a contract.** `handle()` returned `res.json()` — `any` — so
+all 24 client methods returned `any` and each endpoint's shape was written three
+times: JSON Schema (requests), a TS interface (the entity, not the envelope), and a
+cast at the call site. `packages/core/src/api.ts` is the missing description; both
+ends import it and **the server's routes are typed to return it**, so a route that
+drifts fails the server's typecheck. **API-boundary casts 8 → 0; string-to-domain
+casts 6 → 0; zero `any` in `useCms.ts`.** Half the casts turned out to be
+redundant — `classifyAsset` already returns `AssetKind | null`, `readPresence`
+already sanitizes — which is worse than wrong: a redundant cast reads like a
+checkpoint.
+
+**Content has a history.** `0001` archives every sync forever because "history
+can't be re-fetched", then stored everything the owner writes in one row under
+`CHECK (id = 1)` and UPDATEd it in place. GitHub would hand its data back tomorrow;
+a rewritten bio existed nowhere else — and the CMS saves on blur, so that was every
+edit. `0002_content_revisions.sql` is the pair `0001` already uses, applied to the
+owner: `site_content_revisions` is to `site_content` what `source_snapshots` is to
+`source_current`. All thirteen CMS-owned writes route through one `write(reason, fn)`
+seam that archives inside the caller's transaction — structurally, there is no path
+that writes content without archiving it. Restore writes forward and is itself
+archived; scalars only, returning `listsDiffer` rather than half-replaying the list
+tables silently.
+
+**Operations are named for what they do, not for the button.** `moveModule` swapped
+neighbours; `setModuleArea` appended; `moveGallery` PUT two rows and only worked on
+adjacent items. None could express a drag. One primitive — `moveModuleTo(fromList,
+fromIdx, toList, toIdx)` — now backs ↑/↓, the area dropdown and drag alike, with
+`PUT /api/cms/gallery-order` renumbering a whole gallery in one transaction.
+`useEntityList<T>` is the client's mirror of the server's `registerCrud<T>`: typed
+(the old helpers took `any[]`), and `moveTo(from, to)` rather than `move(i, dir)`.
+
+**Drag and drop, and a visual editor.** `sortablejs` (MIT, 0 deps, 45KB) lands only
+in the `/admin` chunk. The keyboard path stays — a11y floor. The editor canvas
+renders the site's **real** section components: `Layout.astro` already loads
+`app.css` on every page including `/admin`, and `SitePanels` already takes a whole
+`SiteView`. It's a separate document (`/admin/canvas`) for two reasons that agree:
+`cms.css`'s `.cms .card` (0,2,0) would out-specify `app.css`'s `.card` (0,1,0), so a
+canvas inside the admin would show you admin styling and you'd believe it; and a
+prerendered, data-less document ships nothing to an unauthenticated visitor.
+`POST /api/cms/preview` resolves the pending order and writes nothing, sharing
+`applyLayoutOrder` with the save so the canvas can't show a layout Save then
+refuses. It deliberately doesn't lint: mid-drag an area is legitimately empty.
+
+**Analytics counts people.** `/admin` is no longer the site. `agent.ts` classifies
+self-identifying non-humans into six coarse families, counted as `dimension: "bot"`
+and kept out of `path`/`browser`/`os`/`device`. The rule — separate *a* human from
+*not a* human, never one human from another — makes "a request with no interaction
+is a crawler" un-implementable as stated: correlating a log line with a beacon needs
+a shared identifier, which is the thing being avoided. So no join, two counts: page
+views are the **ceiling** (a request claimed to be a browser), confirmed visits the
+**floor** (a browser actually ran JS — `initTracking` already sent this on every
+load; it was mislabelled "Section views"). Tested as a property: two people on the
+same page produce byte-identical hits.
+
+**Removed.**
+
+- `goAnchor` from all fourteen sections — **eleven declared it and never used it**,
+  taking it only because `Module.vue` handed it to everyone. `goToAnchor` deleted
+  with them. `go` survives in two sections pending a resolved `moreHref`.
+- `targetArea`; the `any[]` `move`/`delItem` helpers; `LIVE_CATEGORIES` in
+  `presence.ts` (core already derived it); `OWN_HOST` and `LOCAL_DIR_EXPLICIT` from
+  the ingest script.
+
+**Also.** `robots.txt` disallowing `/admin` (there wasn't one, and the admin now has
+two routes). CMS tab persisted in the URL hash — bookmarkable, survives reload, two
+tabs don't fight; not a walk-back of "areas are routes", which is about the site.
+Analytics polls every 30s only while its panel is open and the document is visible,
+on its own read path — it previously ran through `guarded()`, which bumps
+`previewKey` and reloaded the preview iframe every poll. `docs/operations/analytics-ingestion.md`
+no longer hands out a copy-paste `pull-access-log.sh` with no `chmod`; the shipped
+script asserts its own postcondition and its `.env` parser no longer mangles inline
+comments into the path.
+
+
 ### Design rework — the look gets decided instead of inherited
 
 `OVERVIEW.md` said "the look is locked from the prototype", `app.css` said

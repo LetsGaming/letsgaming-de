@@ -4,7 +4,6 @@ import type { ResolvedModule } from "@lg/core";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "posts" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

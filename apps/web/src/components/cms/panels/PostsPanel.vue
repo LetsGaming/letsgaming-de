@@ -58,7 +58,7 @@ const parsed = computed(() => parsePost(source.value, current.value?.slug ?? "un
 const dirty = ref(false);
 
 async function loadList() {
-  const { assets } = (await cms.listAssets({ kind: "markdown" })) as AssetListResponse;
+  const { assets } = await cms.listAssets({ kind: "markdown" });
   posts.value = assets.filter(isPost);
 }
 
@@ -101,7 +101,7 @@ async function create() {
   // parser has to guess at is a worse starting point than a filled one.
   const body = `---\ntitle: ${name}\ndate: ${today}\ndraft: true\ntags: []\n---\n\n`;
   const file = new File([body], `${slug.split("/").pop()}.md`, { type: MARKDOWN_MIME });
-  const created = (await cms.uploadAsset(file)) as PostAsset;
+  const created = await cms.uploadAsset(file);
   await cms.updateAsset(created.id, { slug, title: name });
   await loadList();
   await open({ ...created, slug });

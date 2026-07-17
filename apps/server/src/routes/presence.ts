@@ -11,22 +11,25 @@
  * regardless of how many visitors are watching.
  */
 
-import { normalizePresence, type LanyardData, type PresenceCategory, type PresenceView } from "@lg/core";
+import { isLivePresenceCategory, normalizePresence, type LanyardData, type PresenceView } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 
 const LANYARD_REST = "https://api.lanyard.rest/v1/users";
 const CACHE_MS = 15_000;
-const LIVE_CATEGORIES: PresenceCategory[] = ["game", "streaming", "music", "watching", "custom"];
+
 const OFFLINE: PresenceView = { status: "offline", cards: [] };
 
 export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, store: Store): void {
   let cache: { at: number; key: string; view: PresenceView } | null = null;
 
   app.get("/api/presence", async () => {
-    const show = store.content.getPresence().show as PresenceCategory[];
-    const enabled = Boolean(env.discordUserId) && show.some((c) => LIVE_CATEGORIES.includes(c));
+    // No cast: readPresence() runs sanitizePresenceShow, so `show` is already
+    // PresenceCategory[]. The old `as` asserted something that was true anyway —
+    // which reads like a checkpoint and is nothing of the kind.
+    const show = store.content.getPresence().show;
+    const enabled = Boolean(env.discordUserId) && show.some(isLivePresenceCategory);
     if (!enabled || !env.discordUserId) return OFFLINE;
 
     const key = show.join(",");

@@ -9,6 +9,7 @@
  */
 
 import { clearRange } from "@lg/core";
+import type { AnalyticsResponse, ClearAnalyticsResponse } from "@lg/core";
 import type { AnalyticsDimension, Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
@@ -46,7 +47,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, fromB, toB);
       const series = (d: AnalyticsDimension) => store.analytics.seriesHourly(d, fromB, toB, unit);
 
-      return {
+      const response: AnalyticsResponse = {
         range: { from: fromB, to: toB, hours, unit },
         // Log-derived top lists (now hour-bucketed, same pipeline).
         paths: top("path"),
@@ -54,6 +55,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         browsers: top("browser"),
         os: top("os"),
         devices: top("device"),
+        bots: top("bot"),
         // The graph: stacked composition over time, per metric.
         chart: {
           unit,
@@ -61,6 +63,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
           sections: series("tab"),
           clicks: series("click"),
           visitLength: series("session_dwell"),
+          bots: series("bot"),
         },
         // Engagement top lists (hour-bucketed).
         engagement: {
@@ -77,6 +80,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
           theme: top("theme"),
         },
       };
+      return response;
     },
   );
 
@@ -105,7 +109,8 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
             store.analytics.clearDaily(BUCKET_MIN, BUCKET_MAX)
           : store.analytics.clearHourly(isoHour(new Date(now.getTime() - (range.hours - 1) * HOUR)), toB);
 
-      return { ok: true, removed };
+      const cleared: ClearAnalyticsResponse = { ok: true, removed };
+      return cleared;
     },
   );
 }

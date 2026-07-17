@@ -82,6 +82,10 @@ export interface Project {
 export const TONES = ["purple", "coral", "mint", "sun"] as const;
 export type Tone = (typeof TONES)[number];
 
+export function isTone(value: unknown): value is Tone {
+  return typeof value === "string" && (TONES as readonly string[]).includes(value);
+}
+
 /** The tone a new hobby starts with. */
 export const DEFAULT_TONE: Tone = "purple";
 

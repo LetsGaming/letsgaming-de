@@ -1,7 +1,8 @@
-import { lintNav, resolveSiteView, type GitHubData } from "@lg/core";
+import { lintNav, resolveSiteView, TONES, type GitHubData } from "@lg/core";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { openDatabase, openStore, iaRepo, reconcileIa, seedIfEmpty } from "../src/index.js";
+import { openDatabase, openStore, contentRepo, iaRepo, reconcileIa, seedIfEmpty } from "../src/index.js";
 
 const sampleGitHub: GitHubData = {
   stats: { repos: 17, commitsYear: 428, commitsAllTime: 2100, longestStreakDays: 19 },
@@ -339,4 +340,165 @@ test("assets: markdown slug lookup", () => {
   assert.equal(store.assets.getBySlug("about")?.id, "m1");
   assert.equal(store.assets.getBySlug("missing"), null);
   store.close();
+});
+
+// ── content history ──────────────────────────────────────────────────────────
+//
+// 0001 archives every GitHub sync forever ("history can't be re-fetched") and
+// UPDATEs site_content in place. GitHub would hand its data back tomorrow; the
+// paragraph you replaced existed nowhere else. These lock the symmetry:
+// site_content_revisions is to site_content what source_snapshots is to
+// source_current.
+
+test("a content write archives the whole document, like a sync does", () => {
+  const store = openStore(":memory:");
+
+  const before = store.content.listRevisions().length;
+
+  store.content.setLede({ en: "first wording", de: "erste Fassung" });
+  store.content.setLede({ en: "second wording", de: "zweite Fassung" });
+
+  const revs = store.content.listRevisions();
+  assert.equal(revs.length, before + 2);
+  assert.equal(revs[0]?.reason, "lede");
+
+  // Newest first, and the newest is the current state — as source_current is.
+  const newest = store.content.getRevision(revs[0]!.id);
+  assert.equal(newest?.lede.en, "second wording");
+  const previous = store.content.getRevision(revs[1]!.id);
+  assert.equal(previous?.lede.en, "first wording");
+});
+
+test("list writes are archived too — a hobby blurb is prose as much as a bio is", () => {
+  const store = openStore(":memory:");
+
+  const before = store.content.listRevisions().length;
+
+  store.content.upsertHobby(
+    { id: "h1", title: { en: "Homelab" }, blurb: { en: "Proxmox and regret" }, tone: "purple" },
+    0,
+  );
+  store.content.deleteHobby("h1");
+
+  const revs = store.content.listRevisions();
+  assert.equal(revs.length, before + 2);
+  assert.equal(revs[0]?.reason, "hobbies");
+});
+
+test("restoring writes forward — undoing a restore is another restore", () => {
+  const store = openStore(":memory:");
+
+
+  store.content.setLede({ en: "the good version" });
+  const good = store.content.listRevisions()[0]!.id;
+  store.content.setLede({ en: "the regrettable version" });
+  assert.equal(store.content.getContent().lede.en, "the regrettable version");
+
+  const result = store.content.restoreRevision(good);
+  assert.equal(result.ok, true);
+  assert.equal(store.content.getContent().lede.en, "the good version");
+
+  // The restore is itself a revision, and the mistake is still in the archive.
+  const revs = store.content.listRevisions();
+  assert.equal(revs[0]?.reason, `restore:${good}`);
+  assert.ok(revs.some((r) => store.content.getRevision(r.id)?.lede.en === "the regrettable version"));
+});
+
+test("a failed write leaves no revision behind", () => {
+  const store = openStore(":memory:");
+
+  const before = store.content.listRevisions().length;
+
+  // NOT NULL, not a bad tone: `tone TEXT NOT NULL, -- 'purple' | 'coral' | …`
+  // keeps its vocabulary in a *comment*, so the column accepts any string and a
+  // bad tone doesn't throw here at all. (The write schema catches it at the API
+  // boundary; the store — PROJECT.md §2.2's "single source of truth" — has no
+  // opinion. That's the fifth copy of TONES and the only unenforced one.)
+  assert.throws(() =>
+    store.content.upsertHobby(
+      { id: "bad", title: undefined as never, blurb: { en: "y" }, tone: "purple" },
+      0,
+    ),
+  );
+  assert.equal(store.content.listRevisions().length, before);
+});
+
+test("if the archive fails, the write fails with it", () => {
+  // The claim `write()` makes is that a save lands *with* its history or not at
+  // all. A write that throws proves nothing — the archive after it never runs
+  // either way, so archive-inside and archive-after-commit both pass. The only
+  // case that discriminates is the archive itself failing, so: make it fail.
+  const db = openDatabase(":memory:");
+  seedIfEmpty(db);
+  const content = contentRepo(db);
+  db.exec("DROP TABLE site_content_revisions");
+
+  assert.throws(() => content.setLede({ en: "written without history" }));
+  // Rolled back — not committed-then-unarchived.
+  assert.notEqual(content.getContent().lede.en, "written without history");
+});
+
+// ── the schema's comments are claims, and claims rot ──────────────────────────
+//
+// `tone TEXT NOT NULL, -- 'purple' | 'coral' | 'mint' | 'sun'` is the fifth copy
+// of TONES and the only unenforced one: SQLite takes any string, so the store —
+// PROJECT.md §2.2's "single source of truth" — has no opinion about its own
+// vocabulary. A CHECK would be a sixth copy, and SQLite can't ADD CONSTRAINT to
+// an existing table anyway. So the comment stays and this makes it a claim that
+// gets checked, the same way storage-keys.test.ts checks an inline script that
+// can't import a constant either.
+
+test("the schema's tone comment lists exactly TONES", () => {
+  const sql = readFileSync(
+    new URL("../src/migrations/0001_init.sql", import.meta.url),
+    "utf8",
+  );
+  const line = sql.split("\n").find((l) => /^\s*tone\s+TEXT/.test(l));
+  assert.ok(line, "no tone column found — did the schema move?");
+
+  const documented = [...line.matchAll(/'([a-z]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(
+    [...documented].sort(),
+    [...TONES].sort(),
+    "the tone column's comment and core's TONES disagree",
+  );
+});
+
+// ── the store's word is checked, not taken ───────────────────────────────────
+
+test("an asset kind the vocabulary doesn't know falls back to file", () => {
+  const store = openStore(":memory:");
+
+  // `kind` is a bare TEXT column — the store has no opinion about it. A row from
+  // an older version, or written by hand, used to be typed as whatever it claimed
+  // and fail at whatever rendered it. `file` is the vocabulary's own word for
+  // "bytes with no better name", so it's the defined answer, not an invented one.
+  store.assets.create({
+    id: "a1",
+    hash: "h1",
+    kind: "hologram" as never,
+    ext: "hol",
+    mime: "application/x-hologram",
+    bytes: 10,
+    filename: "x.hol",
+    folderId: null,
+  });
+
+  const a = store.assets.getById("a1");
+  assert.equal(a?.kind, "file");
+});
+
+test("a kind the vocabulary does know survives the round trip", () => {
+  const store = openStore(":memory:");
+  store.assets.create({
+    id: "a2",
+    hash: "h2",
+    kind: "markdown",
+    ext: "md",
+    mime: "text/markdown",
+    bytes: 10,
+    filename: "post.md",
+    folderId: null,
+  });
+  assert.equal(store.assets.getById("a2")?.kind, "markdown");
 });

@@ -5,7 +5,6 @@ import { icons } from "../../lib/icons";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "hobbies" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

@@ -6,7 +6,6 @@ import AssetPicture from "../AssetPicture.vue";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "bio" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

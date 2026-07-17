@@ -12,7 +12,15 @@
 
 import type { FastifyInstance } from "fastify";
 import type { Store } from "@lg/db";
-import { classifyAsset, parsePost, slugify, type Asset, type AssetKind } from "@lg/core";
+import {
+  ASSET_KINDS,
+  classifyAsset,
+  isAssetKind,
+  parsePost,
+  slugify,
+  type Asset,
+  type AssetKind,
+} from "@lg/core";
 import { isValidPreviewToken } from "../preview.js";
 import { createReadStream } from "node:fs";
 import { mkdir, readFile, writeFile, stat, unlink, readdir } from "node:fs/promises";
@@ -94,7 +102,7 @@ export async function registerAssetRoutes(
     const file = await req.file({ limits: { fileSize: MAX_BYTES } });
     if (!file) throw badRequest("No file uploaded.");
     const ext = (file.filename.split(".").pop() ?? "").toLowerCase();
-    const kind = classifyAsset(file.mimetype, ext) as AssetKind | null;
+    const kind = classifyAsset(file.mimetype, ext);
     if (!kind) throw unsupportedMedia(`Unsupported type ${file.mimetype || ext}.`);
 
     let buf = await file.toBuffer();
@@ -248,10 +256,17 @@ export async function registerAssetRoutes(
     guard,
     async (req) => {
       const q = req.query;
+      // A query string is a stranger. `q.kind as AssetKind` asserted it was one of
+      // six words; anything else reached the SQL, matched no rows, and showed an
+      // empty library with no hint that the filter was the problem. A typo should
+      // say so.
+      if (q.kind !== undefined && !isAssetKind(q.kind)) {
+        throw badRequest(`Unknown asset kind "${q.kind}". Expected one of: ${ASSET_KINDS.join(", ")}.`);
+      }
       const assets = store.assets.list({
         ...(q.folder === "root" ? { folderId: null } : q.folder ? { folderId: q.folder } : {}),
         ...(q.tag ? { tag: q.tag } : {}),
-        ...(q.kind ? { kind: q.kind as AssetKind } : {}),
+        ...(q.kind ? { kind: q.kind } : {}),
         ...(q.q ? { q: q.q } : {}),
       });
       return { assets, folders: store.assets.listFolders(), tags: store.assets.allTags() };

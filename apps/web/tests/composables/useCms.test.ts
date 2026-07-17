@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { cms } from "../../src/lib/cms";
+import type { AnalyticsChart, AnalyticsResponse, Localized, SiteContent, SiteView } from "@lg/core";
 import { useCms } from "../../src/composables/useCms";
 
 /**
@@ -95,10 +96,69 @@ describe("which panel is open", () => {
   });
 });
 
+
+// ── fixtures ─────────────────────────────────────────────────────────────────
+//
+// These used to be `{}`. That typechecked because `cms.*` returned `any`, which
+// meant every test here proved the composable works against a server returning
+// literally anything — including nothing. Now the client declares the shapes from
+// @lg/core, so a mock has to be a response the server could actually send. That's
+// the point of the exercise: the fixtures were the third place the API shape was
+// being asserted without being checked.
+
+const emptyChart = (): AnalyticsChart => ({
+  unit: "hour",
+  pageviews: [],
+  sections: [],
+  clicks: [],
+  visitLength: [],
+  bots: [],
+});
+
+const emptyAnalytics = (): AnalyticsResponse => ({
+  range: { from: "2026-07-17T00", to: "2026-07-17T12", hours: 12, unit: "hour" },
+  paths: [],
+  referrers: [],
+  browsers: [],
+  os: [],
+  devices: [],
+  bots: [],
+  chart: emptyChart(),
+  engagement: {
+    tabs: [], exits: [], transitions: [], dwell: [], scroll: [],
+    sessionTabs: [], sessionDwell: [], clicks: [], projects: [],
+    viewport: [], theme: [],
+  },
+});
+
+const L = (en: string): Localized => ({ en });
+
+/** A SiteView the canvas could actually render. `{}` used to satisfy this. */
+const emptySiteView = (): SiteView => ({
+  locale: "en",
+  meta: { name: "Domenic", handle: "@LetsGaming", location: "DE", role: "dev" },
+  nav: [],
+  modules: {},
+});
+
+const emptyContent = (): SiteContent => ({
+  // Authored meta: location/role are Localized. The *view's* meta is the resolved
+  // one, with plain strings — two shapes an `any` mock happily conflated.
+  meta: { name: "Domenic", handle: "@LetsGaming", location: L("DE"), role: L("dev") },
+  headline: { before: L("a"), highlight: L("b"), after: L("c") },
+  lede: L("lede"),
+  status: { verb: L("building"), now: L("things") },
+  bio: [],
+  projects: [],
+  hobbies: [],
+  links: [],
+  now: [],
+});
+
 describe("analytics refresh", () => {
   it("polls while the panel is open, and stops when you leave it", async () => {
     vi.useFakeTimers();
-    const load = vi.spyOn(cms, "analytics").mockResolvedValue({ chart: {} });
+    const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
     const { api } = mountCms();
 
     api().pick("analytics");
@@ -117,7 +177,7 @@ describe("analytics refresh", () => {
 
   it("does not poll a backgrounded tab", async () => {
     vi.useFakeTimers();
-    const load = vi.spyOn(cms, "analytics").mockResolvedValue({ chart: {} });
+    const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
     const { api } = mountCms();
     api().pick("analytics");
     await flushPromises();
@@ -145,7 +205,7 @@ describe("analytics refresh", () => {
   });
 
   it("a read never invalidates the preview — that's a save's job", async () => {
-    vi.spyOn(cms, "analytics").mockResolvedValue({ chart: {} });
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
     const { api } = mountCms();
     await flushPromises();
     const before = api().previewKey.value;
@@ -168,13 +228,12 @@ function seedContent() {
   vi.spyOn(cms, "me").mockResolvedValue({ login: "LetsGaming" });
   vi.spyOn(cms, "content").mockResolvedValue({
     content: {
-      meta: {}, headline: {}, lede: {}, status: {},
-      bio: [], hobbies: [], links: [], now: [],
+      ...emptyContent(),
       gallery: [
-        { id: "img1", module: "gallery", asset: "asset:a", caption: {} },
-        { id: "img2", module: "gallery", asset: "asset:b", caption: {} },
-        { id: "img3", module: "gallery", asset: "asset:c", caption: {} },
-        { id: "img4", module: "gallery", asset: "asset:d", caption: {} },
+        { id: "img1", module: "gallery", asset: "asset:a", caption: L("a") },
+        { id: "img2", module: "gallery", asset: "asset:b", caption: L("b") },
+        { id: "img3", module: "gallery", asset: "asset:c", caption: L("c") },
+        { id: "img4", module: "gallery", asset: "asset:d", caption: L("d") },
       ],
     },
     modules: [
@@ -305,7 +364,7 @@ describe("editor canvas", () => {
   beforeEach(seedContent);
 
   it("resolves the pending order server-side without saving it", async () => {
-    const preview = vi.spyOn(cms, "preview").mockResolvedValue({ nav: [], modules: {} });
+    const preview = vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
     const put = vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
@@ -326,7 +385,7 @@ describe("editor canvas", () => {
   });
 
   it("a canvas drag goes through the same primitive as everything else", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue({ nav: [], modules: {} });
+    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
     const { api } = mountCms();
     await flushPromises();
 
@@ -335,7 +394,7 @@ describe("editor canvas", () => {
   });
 
   it("clicking a module opens the panel that edits it", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue({ nav: [], modules: {} });
+    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
     const { api } = mountCms();
     await flushPromises();
 
@@ -344,7 +403,7 @@ describe("editor canvas", () => {
   });
 
   it("says so instead of opening an empty panel for a synced module", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue({ nav: [], modules: {} });
+    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
     const { api } = mountCms();
     await flushPromises();
     api().pick("dashboard");
@@ -355,7 +414,7 @@ describe("editor canvas", () => {
   });
 
   it("the inserter offers what's unplaced, and drops it where you asked", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue({ nav: [], modules: {} });
+    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
     const { api } = mountCms();
     await flushPromises();
 
@@ -388,3 +447,58 @@ describe("canvas protocol: it is a trust boundary", () => {
     expect(isToCanvas({ type: "canvas:move" })).toBe(false);
   });
 });
+
+describe("the canvas payload has to survive the wire", () => {
+  beforeEach(seedContent);
+
+  /**
+   * The regression this shipped with: `canvasSite` was a `ref`, so its value was
+   * a Vue reactive Proxy, and `postMessage` — which serializes with structured
+   * clone — refuses to clone a Proxy. `DataCloneError`, blank canvas, and every
+   * other test still green, because nothing else ever tried to serialize it.
+   *
+   * `structuredClone` here is not a stand-in for postMessage. It's the same
+   * algorithm, and the same call that threw.
+   */
+  it("builds a message the browser can clone", async () => {
+    vi.spyOn(cms, "preview").mockResolvedValue({
+      ...emptySiteView(),
+      nav: [{ id: "home", label: "Home", modules: ["hero"] }],
+      modules: {
+        hero: {
+          id: "hero",
+          kind: "hero",
+          data: {
+            eyebrow: "dev",
+            headline: { before: "a", highlight: "b", after: "c" },
+            lede: "lede",
+            status: { verb: "building", now: "things" },
+            links: [],
+          },
+        },
+      },
+    });
+    const { api } = mountCms();
+    await flushPromises();
+
+    await api().refreshCanvas();
+    api().canvasReady.value = true;
+
+    const msg = api().canvasMessage();
+    expect(msg).not.toBeNull();
+    expect(() => structuredClone(msg)).not.toThrow();
+  });
+
+  it("says nothing until the canvas reports it's listening", async () => {
+    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
+    const { api } = mountCms();
+    await flushPromises();
+    await api().refreshCanvas();
+
+    // A message posted before the island mounts goes nowhere — the "works on the
+    // second click" bug. canvas:ready is the handshake.
+    expect(api().canvasMessage()).toBeNull();
+    api().canvasReady.value = true;
+    expect(api().canvasMessage()).not.toBeNull();
+  });
+})

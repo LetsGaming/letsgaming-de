@@ -15,7 +15,7 @@ import type { SiteContent, Project, Link } from "./content.js";
 import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
-import { collectModuleIds, type NavNode , visibleNav } from "./nav.js";
+import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
 import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
 import type { FreshnessView, PostView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
@@ -65,9 +65,17 @@ export interface ResolveInput {
 }
 
 /**
- * What an href is allowed to be: http(s), mailto, or a site-relative path — and
- * nothing else, so a `javascript:`/`data:` URL from stored content or a future
- * source can't become a clickable script sink (SEC-04).
+ * What an href is allowed to be: http(s), mailto, a site-relative path, or an
+ * in-page target — and nothing else, so a `javascript:`/`data:` URL from stored
+ * content or a future source can't become a clickable script sink (SEC-04).
+ *
+ * `#` belongs here and was excluded by accident, not by design. A fragment has no
+ * scheme, so it can't execute anything — it was never the threat this pattern
+ * exists for. Meanwhile the CMS's own seed ships `href: "#contact"` on the hero's
+ * primary CTA, so `safeHref` rewrote it to `"#"`, and the button did nothing. Not
+ * visibly: `HeroSection` intercepted the click and handed the *stripped* target to
+ * `goAnchor`, which asked the nav for `""` and got `"#"` back. A rule too narrow in
+ * the file that also holds the click handler papering over it.
  *
  * One pattern, two gates. The CMS write schema uses this string to refuse a bad
  * href at the boundary; `safeHref` below applies it again at read time, because
@@ -75,7 +83,7 @@ export interface ResolveInput {
  * copies of one rule and had already drifted apart on case-sensitivity — which is
  * what two copies of a rule do, and why the *security* one is a bad place for it.
  */
-export const HREF_PATTERN = "^(https?://|mailto:|/)[^\\s]*$";
+export const HREF_PATTERN = "^(https?://|mailto:|/|#)[^\\s]*$";
 
 /** The read-time gate. Case-insensitive on purpose: `HTTPS://` is a real URL and
  *  a scheme is case-insensitive per RFC 3986, so refusing one would be pedantry
@@ -120,11 +128,37 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const gh = source.github;
   const repoByName = new Map((gh?.repos ?? []).map((r) => [r.name.toLowerCase(), r]));
 
+  const localizeNav = (nodes: NavNode[]): NavView[] =>
+    nodes.map((n) => ({
+      id: n.id,
+      label: L(n.label),
+      icon: n.icon,
+      ...(n.children ? { children: localizeNav(n.children) } : {}),
+      ...(n.modules ? { modules: n.modules } : {}),
+    }));
+
+  /**
+   * The nav a visitor can actually reach, used for two things: the view's own
+   * `nav`, and turning `#target` links into URLs. Computed once, up here, because
+   * `resolveLink` needs it — links used to resolve without it, which is why an
+   * in-page target had nowhere to go and got flattened to `"#"`.
+   *
+   * `visibleNav` first: a link into a draft area shouldn't resolve to a URL that
+   * 404s. It falls through to `#target` instead, which is inert and honest.
+   */
+  const navView = localizeNav(visibleNav(input.nav));
+
   const resolveLink = (link: Link): LinkView => {
+    const raw = safeHref(link.href);
     const view: LinkView = {
       id: link.id,
       label: L(link.label),
-      href: safeHref(link.href),
+      // `#contact` is a module id, not a URL. The resolver knows where that module
+      // lives, so it answers with `/about#contact` — a real link, which the browser
+      // can follow with no JavaScript at all, and which middle-click, ctrl-click and
+      // "copy link address" all work on. The site used to answer this with a click
+      // handler, which is an <a href> with the useful parts taken out.
+      href: raw.startsWith("#") && raw.length > 1 ? targetHref(navView, raw.slice(1)) : raw,
       icon: link.icon,
       primary: Boolean(link.primary),
     };
@@ -503,15 +537,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     const descriptor = descriptorById.get(id);
     if (descriptor) modules[id] = resolveModule(descriptor);
   }
-
-  const localizeNav = (nodes: NavNode[]): NavView[] =>
-    nodes.map((n) => ({
-      id: n.id,
-      label: L(n.label),
-      icon: n.icon,
-      ...(n.children ? { children: localizeNav(n.children) } : {}),
-      ...(n.modules ? { modules: n.modules } : {}),
-    }));
 
   return {
     locale,

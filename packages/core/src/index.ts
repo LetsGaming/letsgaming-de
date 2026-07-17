@@ -16,3 +16,4 @@ export * from "./resolve.js";
 export * from "./limits.js";
 export * from "./result.js";
 export * from "./frontmatter.js";
+export * from "./api.js";

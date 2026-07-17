@@ -7,7 +7,6 @@ import { computed, ref } from "vue";
 const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "activity" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 
 /** Five is enough to read at a glance; the rest is there when you want it. */

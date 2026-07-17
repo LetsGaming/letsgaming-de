@@ -7,7 +7,6 @@ import { trackClick, trackProject } from "../../lib/track";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "projects" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

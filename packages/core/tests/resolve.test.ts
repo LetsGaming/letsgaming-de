@@ -293,3 +293,87 @@ test("freshness: data past its source's TTL renders stale, not fresh", () => {
   if (!g3 || g3.kind !== "glance") throw new Error("expected glance");
   assert.equal(g3.data.freshness?.state, "never");
 });
+
+// ── in-page targets are URLs ─────────────────────────────────────────────────
+
+/** A minimal site with a hero on `/` and a contact module in `about`. */
+const baseInput = {
+  content: {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p1")],
+    links: [] as SiteContent["links"],
+    projects: [],
+    hobbies: [],
+    now: [],
+  } satisfies SiteContent,
+  source: {},
+  nav: [
+    { id: "home", label: en("Home"), modules: ["hero"] },
+    { id: "about", label: en("About"), modules: ["bio", "contact"] },
+  ] satisfies NavNode[],
+  modules: [
+    { id: "hero", kind: "hero", heading: en("Hi") },
+    { id: "bio", kind: "bio", heading: en("About") },
+    { id: "contact", kind: "contact", heading: en("Contact") },
+  ] satisfies ModuleDescriptor[],
+  locale: "en" as const,
+};
+
+test("an in-page target resolves to the URL that shows it", () => {
+  // The seed's hero CTA is `href: "#contact"`, and `contact` is a module in the
+  // `about` area. That's `/about#contact` — a real link, which a browser follows
+  // with no JavaScript, a person can middle-click, and a crawler can index.
+  const view = resolveSiteView({
+    ...baseInput,
+    content: {
+      ...baseInput.content,
+      links: [
+        { id: "contact", label: en("Get in touch"), href: "#contact", primary: true },
+        { id: "gh", label: en("GitHub"), href: "https://github.com/LetsGaming" },
+      ],
+    },
+  });
+  const hero = view.modules.hero;
+  assert.equal(hero?.kind, "hero");
+  const links = hero.kind === "hero" ? hero.data.links : [];
+  assert.equal(links.find((l) => l.id === "contact")?.href, "/about#contact");
+  // An external href is untouched.
+  assert.equal(links.find((l) => l.id === "gh")?.href, "https://github.com/LetsGaming");
+});
+
+test("a fragment is not a script sink, and is not treated as one", () => {
+  // `safeHref` used to reject `#contact` because HREF_PATTERN allowed only
+  // http(s)/mailto/`/`. It returned "#", so the CMS's own default CTA pointed
+  // nowhere — and HeroSection's click handler swallowed the click, so nobody saw.
+  // A fragment has no scheme; it was never what that pattern guards against.
+  assert.equal(safeHref("#contact"), "#contact");
+  assert.equal(safeHref("javascript:alert(1)"), "#");
+  assert.equal(safeHref("data:text/html,<script>"), "#");
+  assert.equal(safeHref("  #contact  "), "#contact");
+});
+
+test("a target in a draft area stays inert rather than 404ing", () => {
+  // visibleNav strips hidden nodes before targetHref sees them, so a link into an
+  // unpublished area falls through to `#target` — which goes nowhere, honestly,
+  // instead of to a URL that 404s. (The field is `hidden`, not `draft`; my first
+  // draft of this test said `draft: true` and the resolver happily produced
+  // `/secret#bio` — an excess property on an object literal in a spread isn't
+  // checked, so the test lied in the same way the code used to.)
+  const view = resolveSiteView({
+    ...baseInput,
+    nav: [
+      { id: "home", label: en("Home"), modules: ["hero"] },
+      { id: "secret", label: en("Secret"), modules: ["bio"], hidden: true },
+    ],
+    content: {
+      ...baseInput.content,
+      links: [{ id: "l", label: en("Peek"), href: "#bio" }],
+    },
+  });
+  const hero = view.modules.hero;
+  const links = hero?.kind === "hero" ? hero.data.links : [];
+  assert.equal(links[0]?.href, "#bio");
+});

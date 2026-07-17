@@ -9,7 +9,6 @@ import { trackClick, trackProject } from "../../lib/track";
 const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "featured" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 
 /** Narrowed once here rather than in the template: a `v-if` on the element can't

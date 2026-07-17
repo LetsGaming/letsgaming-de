@@ -1,25 +1,11 @@
+import type { AnalyticsDimension } from "@lg/core";
 import type { DB } from "./database.js";
 import { asNumber, asText, mapRow, mapRows, transact, type Row } from "./row-mapper.js";
 
-export type AnalyticsDimension =
-  // log-derived
-  | "path"
-  | "referrer"
-  | "browser"
-  | "os"
-  | "device"
-  // engagement (cookieless beacon)
-  | "tab"
-  | "exit"
-  | "transition"
-  | "dwell"
-  | "scroll"
-  | "session_tabs"
-  | "session_dwell"
-  | "click"
-  | "project"
-  | "viewport"
-  | "theme";
+// The vocabulary is core's — this file held a second copy of all sixteen, in a
+// different order, and the store is the thing that refuses to record a dimension
+// it doesn't know.
+export type { AnalyticsDimension } from "@lg/core";
 
 export interface AnalyticsHit {
   day: string; // YYYY-MM-DD

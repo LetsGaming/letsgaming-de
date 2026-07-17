@@ -5,22 +5,25 @@ import { mdBold } from "../../lib/site";
 import { trackClick } from "../../lib/track";
 import AssetPicture from "../AssetPicture.vue";
 
-const props = defineProps<{
+defineProps<{
   module: Extract<ResolvedModule, { kind: "hero" }>;
-  go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 
-/** Intercept internal `#anchor` links so they switch tab + scroll instead of no-oping. */
-function onLink(e: MouseEvent, href: string) {
-  if (href.startsWith("#")) {
-    e.preventDefault();
-    props.goAnchor?.(href.slice(1));
-    trackClick("contact-cta");
-  } else {
-    trackClick("social");
-  }
-}
+/**
+ * Report the click. Don't intercept it.
+ *
+ * This used to `preventDefault()` on any `#` href and hand the target to
+ * `goAnchor` — "so they switch tab + scroll instead of no-oping", from when areas
+ * were tabs and `#contact` pointed at something not in the DOM. Areas have been
+ * routes for a while; the resolver now answers `#contact` with `/about#contact`,
+ * and a browser has known what to do with that since 1993.
+ *
+ * The interception wasn't merely redundant, it was load-bearing in the wrong
+ * direction: `safeHref` had been flattening `#contact` to `"#"` because the href
+ * pattern didn't allow fragments, and this handler swallowed the click before
+ * anyone could notice the CTA was dead.
+ */
+const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsWith("#") ? "contact-cta" : "social");
 </script>
 
 <template>
@@ -41,7 +44,7 @@ function onLink(e: MouseEvent, href: string) {
       class="btn"
       :class="l.primary ? 'btn-primary' : 'btn-ghost'"
       :href="l.href"
-      @click="onLink($event, l.href)"
+      @click="onLink(l.href)"
     >
       <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span
         v-else-if="l.icon"

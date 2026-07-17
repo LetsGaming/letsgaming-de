@@ -5,7 +5,6 @@ import AssetPicture from "../AssetPicture.vue";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "gallery" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

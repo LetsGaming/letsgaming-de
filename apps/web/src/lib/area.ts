@@ -1,30 +1,17 @@
 import type { NavView } from "@lg/core";
 
-/**
- * Areas are routes, not hash tabs.
- *
- * The first area is the site root — `/` rather than `/home` — so there's one
- * canonical URL for the landing page instead of two that render the same thing.
- * Everything else is `/{id}`.
- */
-export function areaHref(nav: NavView[], id: string): string {
-  return id === nav[0]?.id ? "/" : `/${id}`;
-}
+// `areaHref` and `targetHref` moved to @lg/core: they're resolution rules, and the
+// resolver is what has the nav. While they lived here, the resolver couldn't turn
+// `#contact` into a URL — so it did the only thing it could with an href it didn't
+// recognise, and flattened it to `"#"`. Re-exported rather than re-imported at
+// nine call sites; this module is still the site's own vocabulary for routes.
+export { areaHref, targetHref } from "@lg/core";
 
 /** The area a route segment names, or undefined — which the page turns into a
  *  404. Drafts are already absent from `nav` (the resolver strips them), so an
  *  unpublished area 404s here for free rather than needing its own guard. */
 export function areaById(nav: NavView[], id: string | undefined): NavView | undefined {
   return id ? nav.find((a) => a.id === id) : nav[0];
-}
-
-/** Resolve an in-page target (a module id like `contact`, or an area id) to the
- *  URL that shows it. Powers links that used to be tab-switch handlers. */
-export function targetHref(nav: NavView[], target: string): string {
-  const holder = nav.find((a) => (a.modules ?? []).includes(target));
-  if (holder) return `${areaHref(nav, holder.id)}#${target}`;
-  const area = nav.find((a) => a.id === target);
-  return area ? areaHref(nav, area.id) : `#${target}`;
 }
 
 /** Per-area <title> and description, so a link pasted into a chat unfurls as the

@@ -147,6 +147,15 @@ const age = computed(() => {
             <div class="card"><h3>Browsers</h3><ul><li v-for="r in analytics.browsers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
             <div class="card"><h3>OS</h3><ul><li v-for="r in analytics.os" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
             <div class="card"><h3>Devices</h3><ul><li v-for="r in analytics.devices" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+            <!-- Counted, and kept out of the four cards above: those describe
+                 people, and a crawler answers all four with noise. -->
+            <div class="card">
+              <h3>Bots <span class="muted">(not counted as visits)</span></h3>
+              <ul>
+                <li v-for="r in analytics.bots" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li>
+              </ul>
+              <p v-if="!analytics.bots?.length" class="muted">Nothing self-identified as a bot in this range.</p>
+            </div>
           </div>
           <template v-if="analytics.engagement">
             <h3 style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page</span></h3>

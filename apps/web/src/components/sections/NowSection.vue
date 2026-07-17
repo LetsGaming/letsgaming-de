@@ -5,7 +5,6 @@ import { mdBold } from "../../lib/site";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "now" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

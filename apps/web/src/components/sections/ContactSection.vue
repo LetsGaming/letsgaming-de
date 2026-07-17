@@ -7,7 +7,6 @@ import ContactForm from "../ContactForm.vue";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "contact" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

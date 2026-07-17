@@ -14,7 +14,7 @@
  * the same order: `SitePanels` renders one root per module, in sequence. So the
  * Nth child is the Nth module, and that's all the coupling there is.
  */
-import { onMounted, onUnmounted, ref, nextTick } from "vue";
+import { onMounted, onUnmounted, ref, shallowRef, nextTick } from "vue";
 import type { SiteView } from "@lg/core";
 import SitePanels from "../SitePanels.vue";
 import {
@@ -23,7 +23,10 @@ import {
   type FromCanvas,
 } from "../../lib/canvas-protocol";
 
-const site = ref<SiteView | null>(null);
+/** shallowRef: the SiteView arrives whole and is never mutated, only replaced.
+ *  Deep-proxying it would cost a walk of the entire site on every render for
+ *  reactivity nothing uses — and it's what broke the parent's postMessage. */
+const site = shallowRef<SiteView | null>(null);
 const area = ref("");
 const editing = ref(false);
 const selected = ref<string | undefined>();

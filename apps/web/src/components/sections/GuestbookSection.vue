@@ -5,7 +5,6 @@ import GuestbookForm from "../GuestbookForm.vue";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "guestbook" }>;
   go: (id: string) => void;
-  goAnchor?: (target: string) => void;
 }>();
 </script>
 

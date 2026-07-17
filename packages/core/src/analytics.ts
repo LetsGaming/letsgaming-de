@@ -138,6 +138,35 @@ export const ENGAGEMENT_DIMENSIONS = [
 ] as const;
 export type EngagementDimension = (typeof ENGAGEMENT_DIMENSIONS)[number];
 
+/**
+ * The dimensions derived from the access log, by the server, after the fact.
+ *
+ * Separate from the engagement list because they answer different questions and
+ * only one of them can lie. The log records what a *request* claimed; the beacon
+ * records that a browser actually ran. Neither knows who.
+ */
+export const LOG_DIMENSIONS = [
+  "path", // a page was served                    → key: <path>
+  "referrer", // where it came from               → key: <host>
+  "browser", // coarse UA family                  → key: Chrome|Firefox|…
+  "os", // coarse platform                        → key: Windows|macOS|…
+  "device", // coarse form factor                 → key: mobile|desktop
+  "bot", // a request that says it isn't a person → key: <BotFamily>
+] as const;
+export type LogDimension = (typeof LOG_DIMENSIONS)[number];
+
+/**
+ * Everything the store counts.
+ *
+ * Derived, because `@lg/db` used to declare its own union with all sixteen
+ * members typed out — including every one of ENGAGEMENT_DIMENSIONS, in a second
+ * order, in another package. Two lists, one vocabulary: a dimension added here and
+ * missed there is a counter the store refuses to hold, and the beacon fails
+ * validation silently, which reads as nobody visiting.
+ */
+export const ANALYTICS_DIMENSIONS = [...LOG_DIMENSIONS, ...ENGAGEMENT_DIMENSIONS] as const;
+export type AnalyticsDimension = (typeof ANALYTICS_DIMENSIONS)[number];
+
 /** One event as it travels from browser to server. Intentionally tiny. */
 export interface TrackEvent {
   /** dimension */

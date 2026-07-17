@@ -2,9 +2,14 @@
  * Access-log parsing for analytics (§9). Pure and testable. The IP field is
  * deliberately never captured — only path, referrer host, and coarse UA family
  * survive, which is all the aggregates need. Nothing personal is derived.
+ *
+ * That constraint is also the ceiling on what this file can say about bots. With
+ * no identifier there is nothing to correlate across requests, so a line is judged
+ * on what it carries and nothing else: see agent.ts.
  */
 
 import type { HourlyHit } from "@lg/db";
+import { botFamily } from "./agent.js";
 
 export interface ParsedUA {
   browser: string;
@@ -60,12 +65,24 @@ function logHour(stamp: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 13);
 }
 
+/**
+ * Paths that aren't the site.
+ *
+ * `/admin` is the new one and it was the loudest: the CMS and its editor canvas
+ * were counted as page views, so opening the editor logged two — one for the
+ * panel, one for the iframe — and the dashboard reported the owner reading his own
+ * dashboard as traffic. Same reasoning as the `?preview=1` check below, which was
+ * already here; the preview is the site, framed by the admin, and `/admin` is the
+ * admin itself.
+ */
+const NOT_THE_SITE = /^\/(admin|_astro|_image|media|api|favicon|robots|sitemap)(\/|$)/;
+const ASSET_EXT = /\.(css|js|mjs|map|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|xml|txt|json)$/i;
+
 function isPageView(method: string, status: number, path: string): boolean {
   if (method !== "GET") return false;
   if (status < 200 || status >= 400) return false;
-  if (/^\/(_astro|_image|media|api|favicon|robots|sitemap)/.test(path)) return false;
-  if (/\.(css|js|mjs|map|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|xml|txt|json)$/i.test(path))
-    return false;
+  if (NOT_THE_SITE.test(path)) return false;
+  if (ASSET_EXT.test(path)) return false;
   return true;
 }
 
@@ -90,6 +107,16 @@ export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   const path = (rawPath ?? "").split("?")[0] ?? "/";
   const status = Number(statusStr);
   if (!isPageView(method!, status, path)) return [];
+
+  // A request that says it isn't a person is counted, and counted separately.
+  //
+  // Not dropped: knowing that search engines crawl you, or that an uptime monitor
+  // hits you every minute, is worth seeing — and a bot silently discarded is a
+  // gap you'd spend an afternoon explaining. But it doesn't belong in `path`,
+  // `browser`, `os` or `device`, because those exist to describe *people* and a
+  // crawler answers all four with noise. Half this dashboard's "Other" was curl.
+  const family = botFamily(ua ?? "");
+  if (family) return [{ bucket, dimension: "bot", key: family }];
 
   const hits: HourlyHit[] = [{ bucket, dimension: "path", key: path }];
 
