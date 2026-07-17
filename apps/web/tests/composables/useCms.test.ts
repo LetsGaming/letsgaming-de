@@ -428,77 +428,35 @@ describe("editor canvas", () => {
   });
 });
 
-describe("canvas protocol: it is a trust boundary", () => {
-  it("ignores messages from another origin", async () => {
-    const { isSameOrigin } = await import("../../src/lib/canvas-protocol");
-    expect(isSameOrigin({ origin: window.location.origin } as MessageEvent)).toBe(true);
-    expect(isSameOrigin({ origin: "https://evil.example" } as MessageEvent)).toBe(false);
-  });
-
-  it("narrows inbound messages by shape, not by trust", async () => {
-    const { isFromCanvas, isToCanvas } = await import("../../src/lib/canvas-protocol");
-    expect(isFromCanvas({ type: "canvas:move", area: "home", oldIndex: 0, newIndex: 1 })).toBe(true);
-    expect(isFromCanvas({ type: "canvas:ready" })).toBe(true);
-    // Anything else is not a message we act on.
-    expect(isFromCanvas({ type: "please:save" })).toBe(false);
-    expect(isFromCanvas("canvas:move")).toBe(false);
-    expect(isFromCanvas(null)).toBe(false);
-    expect(isToCanvas({ type: "canvas:render" })).toBe(true);
-    expect(isToCanvas({ type: "canvas:move" })).toBe(false);
-  });
-});
-
-describe("the canvas payload has to survive the wire", () => {
+describe("the canvas is a component now", () => {
   beforeEach(seedContent);
 
   /**
-   * The regression this shipped with: `canvasSite` was a `ref`, so its value was
-   * a Vue reactive Proxy, and `postMessage` — which serializes with structured
-   * clone — refuses to clone a Proxy. `DataCloneError`, blank canvas, and every
-   * other test still green, because nothing else ever tried to serialize it.
-   *
-   * `structuredClone` here is not a stand-in for postMessage. It's the same
-   * algorithm, and the same call that threw.
+   * What used to be here: a `structuredClone` regression for `DataCloneError`, and
+   * a `canvas:ready` handshake test. Both were tests *of the boundary*, not of the
+   * editor — postMessage can't clone a Vue proxy, and a parent can't know when a
+   * `client:only` island inside an iframe has mounted. Neither failure exists once
+   * the canvas is a component holding a prop, so the tests go with the boundary
+   * rather than outliving it as decoration.
    */
-  it("builds a message the browser can clone", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue({
-      ...emptySiteView(),
-      nav: [{ id: "home", label: "Home", modules: ["hero"] }],
-      modules: {
-        hero: {
-          id: "hero",
-          kind: "hero",
-          data: {
-            eyebrow: "dev",
-            headline: { before: "a", highlight: "b", after: "c" },
-            lede: "lede",
-            status: { verb: "building", now: "things" },
-            links: [],
-          },
-        },
-      },
-    });
-    const { api } = mountCms();
-    await flushPromises();
-
-    await api().refreshCanvas();
-    api().canvasReady.value = true;
-
-    const msg = api().canvasMessage();
-    expect(msg).not.toBeNull();
-    expect(() => structuredClone(msg)).not.toThrow();
-  });
-
-  it("says nothing until the canvas reports it's listening", async () => {
+  it("hands the canvas the pending view, and nothing serializes", async () => {
     vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
     const { api } = mountCms();
     await flushPromises();
-    await api().refreshCanvas();
 
-    // A message posted before the island mounts goes nowhere — the "works on the
-    // second click" bug. canvas:ready is the handshake.
-    expect(api().canvasMessage()).toBeNull();
-    api().canvasReady.value = true;
-    expect(api().canvasMessage()).not.toBeNull();
+    await api().refreshCanvas();
+    // A prop. Not a message, not a clone — the same object the fetch returned.
+    expect(api().canvasSite.value).not.toBeNull();
+    expect(api().canvasSite.value?.locale).toBe("en");
   });
-})
+
+  it("opens and closes as a mode", async () => {
+    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
+    const { api } = mountCms();
+    await flushPromises();
+
+    expect(api().editorOpen.value).toBe(false);
+    api().editorOpen.value = true;
+    expect(api().editorOpen.value).toBe(true);
+  });
+});

@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <section id="contact" class="sec">
+  <section :id="module.id" class="sec">
     <div class="sec-head"><h2>{{ module.data.heading }}</h2></div>
     <div
       v-if="module.data.links.filter((l) => !l.href.startsWith('#')).length"

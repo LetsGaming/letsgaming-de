@@ -1,31 +1,35 @@
 <script setup lang="ts">
 /**
- * The visual editor: the site, with handles on it.
+ * The visual editor.
  *
- * The canvas is an iframe (`/admin/canvas`) rather than a component here. Two
- * reasons, and they agree — see lib/canvas-protocol.ts. Short version: inside this
- * document `.cms .card` would out-specify the site's `.card`, so the preview would
- * show you admin styling and you'd believe it; and a separate prerendered document
- * lets the canvas hold no data of its own, so nothing unpublished is ever on a
- * public route.
+ * The canvas is a component (`CanvasHost`) that teleports out of `.cms` and takes
+ * the screen. It was an iframe at `/admin/canvas`, which cost a postMessage
+ * protocol, a mount handshake, origin and shape checks, a separate build entry —
+ * and produced two bugs that can only exist across a document boundary. The
+ * justification that survived was device-width previews; devtools does that better,
+ * and full-screen is an honest desktop width rather than a 660px column labelled
+ * "Desktop".
  *
- * A canvas shows one page. Moving a module to *another* page therefore can't be a
- * drag on the canvas — there's nowhere to drop it. That's what the rail is: the
- * other areas, plus Hidden, as drop targets beside the page you're looking at.
- * It's the Widgets screen folded down to one column, and it's why the Layout panel
- * still exists for when you want to see every area at once.
+ * A canvas shows one page, so moving a module to *another* page can't be a drag on
+ * it — there's nowhere to drop. That's the rail: the other areas, plus Unplaced,
+ * beside the page you're looking at. The Widgets screen folded into one column,
+ * which is also why the Layout panel still exists for seeing every area at once.
  */
 import { computed } from "vue";
 import { vSortable } from "../../../composables/sortable";
 import { useCmsContext } from "../../../composables/cmsContext";
-import { CANVAS_PATH } from "../../../lib/canvas-protocol";
+import CanvasHost from "../CanvasHost.vue";
 
 const {
 	areaLabel,
 	canvasLoading,
 	canvasSelected,
-	canvasWidth,
+	canvasSite,
+	canvasInsert,
+	canvasMove,
+	canvasSelect,
 	dropModule,
+	editorOpen,
 	hiddenModules,
 	insertAt,
 	insertModule,
@@ -34,22 +38,17 @@ const {
 	previewArea,
 	refreshCanvas,
 	saveLayout,
-	canvasFrame,
-	tab,
 	viewSite,
 } = useCmsContext();
 
-const CANVAS_SRC = CANVAS_PATH;
-
-/** Areas other than the one on the canvas, plus Hidden — the drop targets for
+/** Areas other than the one on the canvas, plus Unplaced — the drop targets for
  *  "put this somewhere else". */
 const otherAreas = computed(() => layoutAreas.value.filter((a) => a.id !== previewArea.value));
 
-const WIDTHS = [
-	{ id: "full", label: "Desktop", css: "100%" },
-	{ id: "tablet", label: "Tablet", css: "820px" },
-	{ id: "phone", label: "Phone", css: "390px" },
-] as const;
+function open() {
+	editorOpen.value = true;
+	void refreshCanvas();
+}
 </script>
 
 <template>
@@ -60,36 +59,39 @@ const WIDTHS = [
           <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
         </select>
       </label>
-      <span class="seg">
-        <button
-          v-for="w in WIDTHS"
-          :key="w.id"
-          :class="{ on: canvasWidth === w.css }"
-          @click="canvasWidth = w.css"
-        >
-          {{ w.label }}
-        </button>
-      </span>
       <span class="editact">
-        <span v-if="canvasLoading" class="muted">rendering…</span>
-        <button class="link" title="Re-render" @click="refreshCanvas">⟳</button>
         <button class="link" title="Open the real page" @click="viewSite">↗</button>
-        <button class="btn" @click="saveLayout">Save layout</button>
+        <button class="btn primary" @click="open">Open editor</button>
       </span>
     </div>
 
     <p class="muted editnote">
-      Drag a module by its grip to reorder this page. Click one to edit its content. Use
-      <b>+</b> to add an unplaced module here, or drag onto the rail to move it to another page.
-      Nothing is live until <b>Save layout</b>.
+      The editor takes the screen so the page renders at a real width. Drag a handle to
+      reorder, click a module to edit it, <b>+</b> to add an unplaced one, or drag onto the
+      rail to move it to another page. Nothing is live until <b>Save layout</b>.
+      <b>Esc</b> closes it.
     </p>
 
-    <div class="editwrap">
-      <div class="canvasbox" :style="{ width: canvasWidth }">
-        <iframe ref="canvasFrame" :src="CANVAS_SRC" title="Editor canvas" class="canvasframe" />
-      </div>
+    <CanvasHost
+      v-if="editorOpen"
+      :site="canvasSite"
+      :area="previewArea"
+      :area-label="areaLabel(previewArea)"
+      :selected="canvasSelected"
+      :loading="canvasLoading"
+      @move="canvasMove"
+      @select="canvasSelect"
+      @insert="canvasInsert"
+      @close="editorOpen = false"
+    >
+      <template #actions>
+        <select v-model="previewArea" class="lgedit-page-pick">
+          <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
+        </select>
+        <button class="lgedit-save" @click="saveLayout">Save layout</button>
+      </template>
 
-      <aside class="rail">
+      <template #rail>
         <h4>Move to another page</h4>
         <ol
           v-for="a in otherAreas"
@@ -97,12 +99,12 @@ const WIDTHS = [
           v-sortable="{ group: 'modules', id: a.id, onMove: dropModule, handle: '.grip', draggable: '.modrow' }"
           class="modlist railbox"
         >
-          <li class="railhead muted">{{ a.label }} <span class="muted">/{{ a.id }}</span></li>
+          <li class="railhead">{{ a.label }} <span class="dim">/{{ a.id }}</span></li>
           <li v-for="mid in a.modules" :key="mid" class="modrow">
             <span class="grip" aria-hidden="true">⠿</span>
             <span class="modname">{{ moduleHeading(mid) }}</span>
           </li>
-          <li v-if="!a.modules.length" class="dropzone muted">empty</li>
+          <li v-if="!a.modules.length" class="dropzone dim">empty</li>
         </ol>
 
         <h4>Unplaced</h4>
@@ -114,13 +116,13 @@ const WIDTHS = [
             <span class="grip" aria-hidden="true">⠿</span>
             <span class="modname">{{ moduleHeading(mid) }}</span>
           </li>
-          <li v-if="!hiddenModules.length" class="dropzone muted">nothing unplaced</li>
+          <li v-if="!hiddenModules.length" class="dropzone dim">nothing unplaced</li>
         </ol>
-      </aside>
-    </div>
+      </template>
+    </CanvasHost>
 
-    <!-- The inserter. Modules are singletons, so this offers what's unplaced
-         rather than a palette that copies — you can't have two heroes. -->
+    <!-- The inserter. Modules are singletons, so this offers what's unplaced rather
+         than a palette that copies — you can't have two heroes. -->
     <div v-if="insertAt" class="pickmask" @click.self="insertAt = null">
       <div class="pickbox">
         <div class="pickhead">

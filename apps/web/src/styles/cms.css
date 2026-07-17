@@ -1076,14 +1076,232 @@ body.is-dragging .cms .glist .gthumb {
 }
 
 /* ── the visual editor ────────────────────────────────────────────────────────
-   The canvas is an iframe of /admin/canvas — a separate document so the site's
-   own stylesheet renders it, and so the canvas itself can hold no data. Nothing
-   in here styles the canvas; it styles the frame around it. */
+   Deliberately NOT under `.cms`.
+
+   That's the whole point of the teleport: the canvas renders the site's real
+   sections, and inside `<div class="cms">` the admin's `.cms .card` (0,2,0) would
+   out-specify the site's `.card` (0,1,0) — every card would wear admin styling and
+   the preview would lie. Outside it, `app.css` styles the page exactly as it
+   styles the site, and only these `lgedit-*` rules — which `app.css` never
+   defines — sit on top. That isolation is what an iframe was buying, at the price
+   of a message protocol.
+
+   Everything here is prefixed, for the same reason: this file may not squat on a
+   class name the site uses. */
+.lgedit {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  color: var(--ink);
+}
+.lgedit-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-8) var(--sp-14);
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+  flex: none;
+}
+.lgedit-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+.lgedit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-left: auto;
+}
+.lgedit-dim {
+  color: var(--muted);
+  font-size: 12px;
+}
+.lgedit-page-pick,
+.lgedit-save,
+.lgedit-close {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px var(--sp-10);
+  border-radius: var(--r-s);
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.lgedit-save {
+  border-color: var(--ink);
+}
+.lgedit-close:hover,
+.lgedit-save:hover {
+  border-color: var(--ink);
+}
+.lgedit-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  /* minmax(0, 1fr): `1fr` is `minmax(auto, 1fr)`, and `auto` floors a track at its
+     content — which is how a canvas once widened its own column past the pane and
+     made "Desktop" narrower than "Tablet". */
+  grid-template-columns: minmax(0, 1fr) 260px;
+  overflow: hidden;
+}
+.lgedit-page {
+  position: relative;
+  overflow: auto;
+  padding: var(--sp-20) var(--sp-24) 40vh;
+}
+.lgedit-wait {
+  padding: var(--sp-24);
+}
+.lgedit-rail {
+  border-left: 1px solid var(--line);
+  background: var(--card);
+  overflow: auto;
+  padding: var(--sp-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.lgedit-rail h4 {
+  margin: var(--sp-8) 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.lgedit-overlay {
+  position: absolute;
+  inset: var(--sp-20) var(--sp-24) 40vh;
+  pointer-events: none;
+}
+.lgedit-mod {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  border: 1px dashed transparent;
+  border-radius: var(--r-s);
+}
+.lgedit-mod:hover {
+  border-color: var(--line-2);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+.lgedit-mod.sel {
+  border-color: var(--ink);
+  border-style: solid;
+}
+/* Where a dragged module will land. A line, not a fill: the section underneath is
+   what you're reading, and a wash over it hides the answer. */
+.lgedit-mod.over::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+/* A module that rendered to nothing still has to be grabbable, or the only way to
+   fix an empty module is to already know it's there. */
+.lgedit-mod.empty {
+  border-color: var(--line-2);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.lgedit-grip,
+.lgedit-tag,
+.lgedit-add {
+  position: absolute;
+  font: 500 11px/1 var(--f-m, monospace);
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 3px 5px;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+/* Visible without hunting.
+   The first version hid every affordance behind `:hover` on the module, so the only
+   way to learn what was draggable was to sweep the whole page with the mouse. An
+   editor's handles are the interface, not a reveal. */
+.lgedit-grip,
+.lgedit-tag {
+  opacity: 0.55;
+}
+.lgedit-add {
+  opacity: 0;
+}
+.lgedit-mod:hover .lgedit-grip,
+.lgedit-mod:hover .lgedit-tag,
+.lgedit-mod:hover .lgedit-add,
+.lgedit-mod.sel .lgedit-grip,
+.lgedit-mod.sel .lgedit-tag,
+.lgedit-mod.sel .lgedit-add {
+  opacity: 1;
+}
+/* A grab target you can hit. The drag only starts on the handle, so the handle has
+   to be findable and hittable or the feature isn't there. */
+.lgedit-grip {
+  left: 2px;
+  top: 4px;
+  cursor: grab;
+  font-size: 16px;
+  padding: 6px 8px;
+  line-height: 1;
+}
+.lgedit-grip:active {
+  cursor: grabbing;
+}
+.lgedit-mod:hover .lgedit-grip {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.lgedit-tag {
+  right: 4px;
+  top: 4px;
+}
+.lgedit-add {
+  left: 50%;
+  transform: translateX(-50%);
+  top: -10px;
+  cursor: pointer;
+  pointer-events: auto;
+  line-height: 1;
+  padding: 2px 7px;
+}
+.lgedit-add:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.lgedit-add.end {
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .lgedit-body {
+    grid-template-columns: 1fr;
+  }
+  .lgedit-rail {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lgedit-grip,
+  .lgedit-tag,
+  .lgedit-add {
+    transition: none;
+  }
+}
+
+/* ── the editor's launcher, inside the CMS ─────────────────────────────────── */
 .cms .editor {
   display: flex;
   flex-direction: column;
   gap: var(--sp-10);
-  min-height: 0;
 }
 .cms .editbar {
   display: flex;
@@ -1100,73 +1318,5 @@ body.is-dragging .cms .glist .gthumb {
 .cms .editnote {
   font-size: 12px;
   margin: 0;
-}
-.cms .editwrap {
-  display: grid;
-  grid-template-columns: 1fr 240px;
-  gap: var(--sp-12);
-  align-items: start;
-  min-height: 0;
-}
-/* The canvas gets a page-ish backdrop so a narrowed viewport reads as a device
-   rather than as a broken layout. */
-.cms .canvasbox {
-  margin: 0 auto;
-  max-width: 100%;
-  border: 1px solid var(--line);
-  border-radius: var(--r-m);
-  overflow: hidden;
-  background: var(--bg-base);
-  transition: width var(--dur-fast) var(--ease-out);
-}
-.cms .canvasframe {
-  display: block;
-  width: 100%;
-  height: 72vh;
-  border: 0;
-  background: var(--bg-base);
-}
-.cms .rail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-8);
-  position: sticky;
-  top: var(--sp-10);
-}
-.cms .rail h4 {
-  margin: var(--sp-8) 0 0;
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 600;
-}
-.cms .railbox {
-  border: 1px solid var(--line);
-  border-radius: var(--r-s);
-  padding: var(--sp-6);
-  background: var(--card);
-  min-height: 44px; /* droppable when empty */
-}
-.cms .railbox .railhead {
-  border: 0;
-  background: transparent;
-  padding: 0 0 var(--sp-4);
-  font-size: 11px;
-}
-.cms .railbox .modrow {
-  font-size: 12px;
-  padding: var(--sp-4) var(--sp-6);
-}
-
-@media (max-width: 1100px) {
-  .cms .editwrap {
-    grid-template-columns: 1fr;
-  }
-  .cms .rail {
-    position: static;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cms .canvasbox {
-    transition: none;
-  }
+  max-width: 62ch;
 }

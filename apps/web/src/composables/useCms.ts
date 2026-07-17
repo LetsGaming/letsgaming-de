@@ -33,7 +33,6 @@ import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } fr
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
 import type { SortableMove } from "./sortable";
 import { useEntityList } from "./useEntityList";
-import { isFromCanvas, isSameOrigin, type ToCanvas } from "../lib/canvas-protocol";
 
 export interface GalleryRow { id: string; module: string; asset: string; caption: Localized; sort?: number }
 
@@ -1042,66 +1041,10 @@ function insertModule(mid: string) {
   void refreshCanvas();
 }
 
-/** How wide the canvas renders. The iframe is its own viewport, so this is a real
- *  responsive check and not a scaled picture of one. */
-const canvasWidth = ref("100%");
-const canvasFrame = ref<HTMLIFrameElement | null>(null);
+/** The editor is a full-screen mode, not a panel with a frame in it: the canvas
+ *  teleports out of `.cms` so `app.css` can style it the way it styles the site. */
+const editorOpen = ref(false);
 
-/**
- * The render message, or null if there's nothing to say yet.
- *
- * Split from the posting so it can be tested. The bug this file shipped with was
- * entirely in the *payload* — a Vue Proxy that `postMessage` refused to clone —
- * and no test could see it, because the only code that built the payload also
- * needed an iframe to exist. A function that returns the message can be handed to
- * `structuredClone`, which is the same algorithm `postMessage` uses and the same
- * one that threw.
- */
-function canvasMessage(): ToCanvas | null {
-  if (!canvasSite.value || !canvasReady.value) return null;
-  return {
-    type: "canvas:render",
-    site: canvasSite.value,
-    area: previewArea.value,
-    editing: true,
-    ...(canvasSelected.value ? { selected: canvasSelected.value } : {}),
-  };
-}
-
-/** Push the current pending state into the canvas. */
-function postCanvas() {
-  const frame = canvasFrame.value?.contentWindow;
-  const message = canvasMessage();
-  if (!frame || !message) return;
-  frame.postMessage(message, window.location.origin);
-}
-
-/**
- * The canvas talking back.
- *
- * Origin-checked and shape-checked: a message from a framed document is as
- * untrusted as anything off the network, and this handler calls the same
- * mutations the UI does. `isFromCanvas` is a predicate rather than a cast for the
- * same reason the hash is — it's a string a stranger could send.
- */
-function onCanvasMessage(event: MessageEvent) {
-  if (!isSameOrigin(event) || !isFromCanvas(event.data)) return;
-  const msg = event.data;
-  if (msg.type === "canvas:ready") {
-    canvasReady.value = true;
-    postCanvas();
-  } else if (msg.type === "canvas:move") {
-    canvasMove(msg.area, msg.oldIndex, msg.newIndex);
-  } else if (msg.type === "canvas:select") {
-    canvasSelect(msg.moduleId);
-  } else if (msg.type === "canvas:insert") {
-    canvasInsert(msg.area, msg.index);
-  }
-}
-
-// Any change to the pending layout, the page being viewed, or the selection is a
-// re-render. `canvasSite` is set by refreshCanvas(); this just ships it.
-watch([canvasSite, previewArea, canvasSelected, canvasReady], postCanvas);
 // Opening the editor, or changing the page, needs a fresh resolve.
 watch([tab, previewArea, locale], () => {
   if (tab.value === "editor") void refreshCanvas();
@@ -1148,13 +1091,11 @@ onMounted(() => {
   // already the one the URL names, so signing in lands where you left off.
   pick(viewFromHash(), false);
   window.addEventListener("hashchange", onHashChange);
-  window.addEventListener("message", onCanvasMessage);
   document.addEventListener("visibilitychange", onVisibility);
   void boot();
 });
 onUnmounted(() => {
   window.removeEventListener("hashchange", onHashChange);
-  window.removeEventListener("message", onCanvasMessage);
   document.removeEventListener("visibilitychange", onVisibility);
   stopAnalyticsPoll();
 });
@@ -1206,7 +1147,6 @@ onUnmounted(() => {
     canvasSite,
     canvasSelected,
     canvasLoading,
-    canvasReady,
     refreshCanvas,
     canvasMove,
     canvasSelect,
@@ -1214,9 +1154,7 @@ onUnmounted(() => {
     insertAt,
     insertModule,
     layoutOrder,
-    canvasWidth,
-    canvasFrame,
-    canvasMessage,
+    editorOpen,
     areaOptions,
     saveLayout,
     galleryModules,

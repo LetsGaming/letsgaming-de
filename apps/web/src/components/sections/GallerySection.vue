@@ -9,7 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <section class="sec">
+  <section :id="module.id" class="sec">
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <span v-if="module.data.note">{{ module.data.note }}</span>

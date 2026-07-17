@@ -109,6 +109,71 @@ views are the **ceiling** (a request claimed to be a browser), confirmed visits 
 load; it was mislabelled "Section views"). Tested as a property: two people on the
 same page produce byte-identical hits.
 
+**The editor.** Seven reports, five causes.
+
+- **The wrong item got dragged.** The canvas mapped `.panel`'s Nth child to the Nth
+  module. Thirteen sections render one root; `HeroSection` was a fragment of five,
+  so from the hero down every handle sat on a different section than the one it
+  outlined. Position was never the key: every section now carries
+  `:id="module.id"` and the canvas finds each module by id. `ContactSection`'s
+  hardcoded `id="contact"` — a second spelling of the module id — is gone with it,
+  which is also why `#contact` was the only deep link that had ever worked.
+  `SitePanels` scrolls with `getElementById(moduleId)`; nothing else had one.
+- **"Shows you where it will land and then does nothing."** `dragover` set no
+  `dropEffect`, so it mismatched `effectAllowed` and the browser rejected the drop
+  *after* drawing the indicator.
+- **Navigating inside the editor killed it.** The canvas's links are real — that's
+  the point — so clicking one took the iframe to the actual page, which has no
+  canvas in it. Clicks on `a[href]` are now trapped at capture; an in-page anchor
+  still scrolls.
+- **Nothing looked draggable.** Every affordance was hidden behind `:hover` on the
+  module, so the only way to find a handle was to sweep the page. Handles are an
+  editor's interface, not a reveal: faint at rest, solid on approach, and a real
+  target rather than `⠿` at 13px.
+- **Desktop preview was narrower than Tablet.** `grid-template-columns: 1fr 240px`
+  — `1fr` is `minmax(auto, 1fr)`, and `auto` floors a track at its content, so the
+  820px tablet canvas widened its own column while "Desktop" took what was left.
+  `minmax(0, 1fr)`.
+- **The guestbook and the presence widget rendered unstyled.** `client:only` means
+  Astro never renders the component at build, so it can't walk the tree and never
+  emitted the stylesheet for what's inside — the site's scoped component CSS
+  (`ContactForm`, `GuestbookForm`, `PresenceWidget`, `BaseForm`; ~16KB) shipped in a
+  chunk the canvas page never linked. `client:load` fixes it and changes no data:
+  the shell renders "Waiting for the editor…" either way, and got *smaller*
+  (8.3KB → 6.8KB) because the empty state is now server-rendered rather than
+  bootstrapped.
+
+`tests/components/module-anchors.test.ts` locks the invariant both the canvas and
+deep links depend on and neither stated: **one element per module, carrying its
+id**. A fragment or a missing `:id` fails it.
+
+**And then the iframe went.** Asked whether it was the right approach, its three
+justifications were re-checked and one survived.
+
+- *"It ships no data to a non-admin"* — **confused**. `/admin` is already a 6.7KB
+  data-less shell. The requirement was "don't put edit mode on the public site";
+  a component behind the same auth meets it identically. A real requirement had been
+  quietly upgraded into an architecture nobody asked for.
+- *"`.cms .card` (0,2,0) out-specifies `.card` (0,1,0)"* — true, and **dissolvable**.
+  `cms.css` defines 7 selectors outside its namespace, `app.css` defines none of
+  them, and there are no bare element rules — so `<Teleport to="body">` buys the
+  same isolation as a document boundary, in one line.
+- *Device-width previews* — the only irreducible one (an iframe has its own
+  viewport, so media queries fire at its width). Dropped: devtools does it better,
+  and full-screen is an honest desktop width rather than a 660px column labelled
+  "Desktop".
+
+Deleted: `canvas-protocol.ts` (110 lines), `/admin/canvas` and its build entry, the
+`canvas:ready` handshake, origin and shape checks, ~31 postMessage call sites — and
+with them two bug classes that only exist across a document boundary, both of which
+had already bitten: `DataCloneError` (postMessage can't clone a Vue proxy) and the
+16KB of CSS a `client:only` entry can't be traced for at build. `useCms.ts` 1282 →
+1.    The site's rendered HTML is byte-identical.
+
+The tests went with the boundary rather than outliving it as decoration: a
+`structuredClone` regression and a handshake test were tests *of postMessage*, not
+of the editor.
+
 **Removed.**
 
 - `goAnchor` from all fourteen sections — **eleven declared it and never used it**,
