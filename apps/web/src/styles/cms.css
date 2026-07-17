@@ -973,3 +973,200 @@
     padding-right: 0;
   }
 }
+
+/* ── drag & drop ──────────────────────────────────────────────────────────────
+   Layout modules and gallery images are draggable (see composables/sortable.ts).
+   Three states, and SortableJS names all three:
+     .sort-ghost  — the gap showing where it will land
+     .sort-chosen — the row you have hold of
+     .sort-drag   — the copy that follows the pointer
+
+   Every colour here is --line/--card/--ink. Not purple: Rule 1 reserves it for
+   live or just-happened data, and "where this will land" is neither — it's a
+   control responding to your own hand. A drop indicator glowing like a live
+   Discord status would make the one signal on the site that means something mean
+   nothing. --danger is likewise a state, not an accent, so it stays out too. */
+
+.cms .grip {
+  cursor: grab;
+  flex: none;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-xs);
+  user-select: none;
+  touch-action: none; /* or the browser scrolls instead of letting us drag */
+}
+.cms .grip:hover {
+  color: var(--ink);
+  background: var(--card);
+}
+.cms .modrow .modname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The dragged original: dimmed, so the eye follows the floating copy instead. */
+.cms .sort-chosen {
+  opacity: 0.4;
+}
+/* Where it lands. A dashed outline over an empty box reads as "a space", which
+   is what it is — a filled highlight reads as a selected row, which it isn't. */
+.cms .sort-ghost {
+  opacity: 1;
+  background: var(--bg-base);
+  border: 1px dashed var(--line-2);
+}
+.cms .sort-ghost > * {
+  visibility: hidden;
+}
+/* The copy under the pointer: lifted off the page. */
+.cms .sort-drag {
+  box-shadow: var(--sh-2);
+  border-color: var(--line-2);
+  opacity: 1;
+}
+.cms body.is-dragging,
+body.is-dragging .cms {
+  cursor: grabbing;
+}
+body.is-dragging .cms .grip {
+  cursor: grabbing;
+}
+
+/* An empty area still needs somewhere to aim at: with no rows, a list has no
+   height, and you cannot drop into nothing. */
+.cms .modlist .dropzone {
+  border: 1px dashed var(--line-2);
+  background: transparent;
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  padding: var(--sp-14) var(--sp-10);
+}
+
+/* Gallery: a grid, because the images are the thing being ordered and a column of
+   cards hides the order they're in. */
+.cms .glist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-12);
+}
+.cms .glist .gitem {
+  margin: 0;
+}
+.cms .glist .gthumb {
+  cursor: grab;
+  touch-action: none;
+}
+body.is-dragging .cms .glist .gthumb {
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cms .sort-chosen,
+  .cms .sort-ghost,
+  .cms .sort-drag {
+    transition: none;
+  }
+}
+
+/* ── the visual editor ────────────────────────────────────────────────────────
+   The canvas is an iframe of /admin/canvas — a separate document so the site's
+   own stylesheet renders it, and so the canvas itself can hold no data. Nothing
+   in here styles the canvas; it styles the frame around it. */
+.cms .editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+  min-height: 0;
+}
+.cms .editbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-14);
+  flex-wrap: wrap;
+}
+.cms .editact {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  margin-left: auto;
+}
+.cms .editnote {
+  font-size: 12px;
+  margin: 0;
+}
+.cms .editwrap {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: var(--sp-12);
+  align-items: start;
+  min-height: 0;
+}
+/* The canvas gets a page-ish backdrop so a narrowed viewport reads as a device
+   rather than as a broken layout. */
+.cms .canvasbox {
+  margin: 0 auto;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  overflow: hidden;
+  background: var(--bg-base);
+  transition: width var(--dur-fast) var(--ease-out);
+}
+.cms .canvasframe {
+  display: block;
+  width: 100%;
+  height: 72vh;
+  border: 0;
+  background: var(--bg-base);
+}
+.cms .rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  position: sticky;
+  top: var(--sp-10);
+}
+.cms .rail h4 {
+  margin: var(--sp-8) 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.cms .railbox {
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: var(--sp-6);
+  background: var(--card);
+  min-height: 44px; /* droppable when empty */
+}
+.cms .railbox .railhead {
+  border: 0;
+  background: transparent;
+  padding: 0 0 var(--sp-4);
+  font-size: 11px;
+}
+.cms .railbox .modrow {
+  font-size: 12px;
+  padding: var(--sp-4) var(--sp-6);
+}
+
+@media (max-width: 1100px) {
+  .cms .editwrap {
+    grid-template-columns: 1fr;
+  }
+  .cms .rail {
+    position: static;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cms .canvasbox {
+    transition: none;
+  }
+}

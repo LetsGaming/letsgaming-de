@@ -10,6 +10,7 @@ import { CMS_KEY } from "../../composables/cmsContext";
 import AboutPanel from "./panels/AboutPanel.vue";
 import AnalyticsPanel from "./panels/AnalyticsPanel.vue";
 import DashboardPanel from "./panels/DashboardPanel.vue";
+import EditorPanel from "./panels/EditorPanel.vue";
 import GalleryPanel from "./panels/GalleryPanel.vue";
 import GuestbookPanel from "./panels/GuestbookPanel.vue";
 import HobbiesPanel from "./panels/HobbiesPanel.vue";
@@ -139,6 +140,7 @@ const {
       <!-- LAYOUT (module order per area) -->
       <LayoutPanel v-show="tab === 'layout'" />
 
+      <EditorPanel v-if="tab === 'editor'" />
       <PostsPanel v-if="tab === 'posts'" />
 
       <!-- HOBBIES -->

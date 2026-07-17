@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, onUnmounted, ref } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. All state and handlers come from the shared CMS context.
@@ -7,6 +8,7 @@ const {
 	METRIC_LABELS,
 	RANGES,
 	analytics,
+	analyticsAt,
 	chart,
 	clearRange,
 	clearing,
@@ -15,9 +17,29 @@ const {
 	metricKeys,
 	metricTotals,
 	rangeHours,
+	refreshAnalytics,
 	setRange,
 	tab,
 } = useCmsContext();
+
+/**
+ * "updated 12s ago" — the panel refreshes itself now, so it has to be able to
+ * say how old what you're reading is. A number that changes on its own and can't
+ * tell you when it last changed is the site's own worst bug wearing a dashboard.
+ *
+ * A ticking `now` rather than a computed over `analyticsAt` alone: the age
+ * changes with the clock, not with the data, so nothing would recompute between
+ * polls and the label would sit at "0s ago" for half a minute.
+ */
+const now = ref(Date.now());
+const tick = setInterval(() => (now.value = Date.now()), 1000);
+onUnmounted(() => clearInterval(tick));
+
+const age = computed(() => {
+	if (!analyticsAt.value) return "";
+	const secs = Math.max(0, Math.round((now.value - analyticsAt.value) / 1000));
+	return secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)}m ago`;
+});
 </script>
 
 <template>
@@ -95,6 +117,10 @@ const {
             <div v-if="chart" class="axistip">
               <span><b>{{ METRIC_LABELS[metric] }}</b> per {{ chart.unit === "hour" ? "hour" : "day" }} (vertical) · time in UTC (horizontal)</span>
               <span v-if="loadingA" class="muted">updating…</span>
+              <span v-else-if="age" class="muted">
+                updated {{ age }} · refreshes itself
+                <button class="link" :disabled="loadingA" @click="refreshAnalytics">refresh now</button>
+              </span>
             </div>
             <div class="clearbar">
               <span class="muted">Clear:</span>

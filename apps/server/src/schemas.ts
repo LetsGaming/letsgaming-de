@@ -13,6 +13,7 @@
 
 import {
   ASSET_REF_PATTERN,
+  LOCALES,
   HREF_PATTERN,
   OPTIONAL_ASSET_REF_PATTERN,
   PRESENCE_CATEGORIES,
@@ -151,6 +152,48 @@ export const schemas = {
     type: "object",
     required: ["heading"],
     properties: { heading: localized, note: localized },
+    additionalProperties: false,
+  },
+  /**
+   * A whole gallery's order. `ids` is the list as the CMS shows it; the server
+   * renumbers `sort` to match. The entire list rather than a diff, exactly as
+   * `layout` below sends every area's modules — one request that can't
+   * half-succeed, and the same shape for the same job.
+   */
+  galleryOrder: {
+    type: "object",
+    required: ["module", "ids"],
+    properties: {
+      module: { type: "string", minLength: 1, maxLength: 64 },
+      ids: {
+        type: "array",
+        items: { type: "string", minLength: 1, maxLength: 64 },
+        uniqueItems: true,
+        maxItems: 500,
+      },
+    },
+    additionalProperties: false,
+  },
+  /** Same body as `layout`, plus the locale to resolve in. The editor canvas asks
+   *  "what would this look like?"; `layout` says "make it so". */
+  preview: {
+    type: "object",
+    required: ["order"],
+    properties: {
+      order: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["area", "modules"],
+          properties: {
+            area: { type: "string", minLength: 1 },
+            modules: { type: "array", items: { type: "string" } },
+          },
+          additionalProperties: false,
+        },
+      },
+      locale: { type: "string", enum: LOCALES },
+    },
     additionalProperties: false,
   },
   layout: {

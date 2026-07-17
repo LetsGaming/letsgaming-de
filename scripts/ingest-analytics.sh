@@ -28,13 +28,30 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-${HERE}/.env}"
 
-# Read ACCESS_LOG_DIR from .env rather than hardcoding a second default.
-# This script and the container have to agree on one directory; when they didn't,
-# the copy landed somewhere that wasn't mounted and ingest silently saw nothing.
+# Read ACCESS_LOG_DIR / ACCESS_LOG from .env rather than hardcoding a second set
+# of defaults. This script and the container have to agree on one directory; when
+# they didn't, the copy landed somewhere that wasn't mounted and ingest silently
+# saw nothing.
+#
+# `# trailing comments` are stripped, because .env.example writes them on its own
+# option lines, so the file teaches the style. Without this, a comment on the
+# ACCESS_LOG line became part of the value and the copy went to
+# `access.log#pathinsidethecontainer` while the container read `/logs/access.log`
+# — the file is present, correct and invisible, which is this pipeline's whole
+# genre of bug.
+env_value() {
+  local key="$1"
+  grep -E "^[[:space:]]*${key}=" "$ENV_FILE" 2>/dev/null \
+    | tail -1 \
+    | cut -d= -f2- \
+    | sed -e 's/[[:space:]]#.*$//' \
+          -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"
+}
+
 if [[ -f "$ENV_FILE" ]]; then
-  # shellcheck disable=SC1090
-  ACCESS_LOG_DIR="$(grep -E '^\s*ACCESS_LOG_DIR=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"'"'"' ' || true)"
-  ACCESS_LOG="$(grep -E '^\s*ACCESS_LOG=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"'"'"' ' || true)"
+  ACCESS_LOG_DIR="$(env_value ACCESS_LOG_DIR)"
+  ACCESS_LOG="$(env_value ACCESS_LOG)"
 fi
 
 PROXY_HOST="${PROXY_HOST:-root@192.168.2.12}"

@@ -16,6 +16,7 @@ import type {
   AreaId,
   Asset,
   AssetKind,
+  SiteView,
   ClearRangeId,
   GuestbookEntry,
   Hobby,
@@ -28,8 +29,10 @@ import type {
   NowItem,
   PresenceCategory,
 } from "@lg/core";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
+import type { SortableMove } from "./sortable";
+import { isFromCanvas, isSameOrigin, type ToCanvas } from "../lib/canvas-protocol";
 
 export interface GalleryRow { id: string; module: string; asset: string; caption: Localized; sort?: number }
 
@@ -50,26 +53,42 @@ export type ModEntry = GuestbookEntry;
  */
 export function useCms() {
 
-type View =
-  | "dashboard"
-  | "site"
-  | "home"
-  | "about"
-  | "hobbies"
-  | "links"
-  | "now"
-  | "layout"
-  | "posts"
-  | "gallery"
-  | "library"
-  | "presence"
-  | "guestbook"
-  | "analytics"
-  | "preview";
+/**
+ * The panels, in nav order.
+ *
+ * A list rather than a bare union, because the URL now names one: a hash is a
+ * string a stranger can type, so turning it back into a `View` needs a runtime
+ * check, and `Object.keys(VIEW_TITLES) as View[]` would be a cast — a check that
+ * cannot fail. The type derives from this, so the two can't disagree.
+ */
+const VIEWS = [
+  "dashboard",
+  "site",
+  "home",
+  "about",
+  "hobbies",
+  "links",
+  "now",
+  "editor",
+  "layout",
+  "posts",
+  "gallery",
+  "library",
+  "presence",
+  "guestbook",
+  "analytics",
+  "preview",
+] as const;
+
+type View = (typeof VIEWS)[number];
+
+/** Where the CMS opens when the URL doesn't say. */
+const DEFAULT_VIEW: View = "dashboard";
 
 // Grouped left-nav, so it's obvious what each screen edits (a small WP/Typo3 shape).
 const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
   { label: "", items: [{ id: "dashboard", label: "Dashboard" }] },
+  { label: "", items: [{ id: "editor", label: "Editor" }] },
   {
     label: "Content",
     items: [
@@ -103,7 +122,8 @@ const VIEW_TITLES: Record<View, string> = {
   hobbies: "Hobbies",
   links: "Links",
   now: "Right now",
-  layout: "Layout — module order",
+  editor: "Editor — drag the page",
+  layout: "Layout — every area at once",
   posts: "Blog",
   library: "Asset library",
   gallery: "Gallery",
@@ -116,7 +136,7 @@ const VIEW_TITLES: Record<View, string> = {
 const authed = ref(false);
 const login = ref<string | null>(null);
 const loading = ref(true);
-const tab = ref<View>("dashboard");
+const tab = ref<View>(DEFAULT_VIEW);
 const locale = ref<Locale>(DEFAULT_LOCALE);
 const tokenInput = ref("");
 const toast = ref("");
@@ -276,18 +296,69 @@ function moduleHeading(id: string): string {
 }
 
 // ── layout: reorder, move between areas, hide/show ──────────────────────────
-function moveModule(areaIdx: number, i: number, dir: -1 | 1) {
-  const mods = layoutAreas.value[areaIdx]!.modules;
-  const j = i + dir;
-  if (j < 0 || j >= mods.length) return;
-  [mods[i], mods[j]] = [mods[j]!, mods[i]!];
+/** The pseudo-area for modules that aren't placed anywhere. */
+const HIDDEN_LIST = "hidden";
+
+/** The module ids in one bucket — an area, or the Hidden pile. */
+function moduleList(listId: string): string[] | undefined {
+  if (listId === HIDDEN_LIST) return hiddenModules.value;
+  return layoutAreas.value.find((a) => a.id === listId)?.modules;
 }
-/** Move a module to another area, or to "hidden" (unplaced). */
+
+/** Which bucket holds a module right now, and where in it. */
+function findModule(mid: string): { listId: string; index: number } | undefined {
+  for (const a of layoutAreas.value) {
+    const index = a.modules.indexOf(mid);
+    if (index !== -1) return { listId: a.id, index };
+  }
+  const index = hiddenModules.value.indexOf(mid);
+  return index === -1 ? undefined : { listId: HIDDEN_LIST, index };
+}
+
+/**
+ * The one layout operation: take the module at `fromIdx` in `fromList` and put it
+ * at `toIdx` in `toList`. Works within a bucket or across two, including Hidden.
+ *
+ * Everything that rearranges the layout goes through here — ↑/↓, the area
+ * dropdown, and dragging. Not tidiness: the two that already existed each encoded
+ * a different, smaller idea of what a move is. `moveModule` *swapped* neighbours,
+ * which is indistinguishable from a move only while the distance is 1;
+ * `setModuleArea` *appended* to the target, which is a move that ignores where you
+ * aimed. A drag is "position X to position Y" and neither one can express it, so
+ * dragging on top of them would have meant a third implementation and three ways
+ * to disagree about the same list.
+ */
+function moveModuleTo(fromList: string, fromIdx: number, toList: string, toIdx: number) {
+  const from = moduleList(fromList);
+  const to = moduleList(toList);
+  if (!from || !to) return;
+  const [mid] = from.splice(fromIdx, 1);
+  if (mid === undefined) return;
+  to.splice(Math.max(0, Math.min(toIdx, to.length)), 0, mid);
+}
+
+/** ↑/↓. Kept, and not as a fallback: it's the keyboard path, and an admin you
+ *  can only operate with a mouse fails the a11y floor. WordPress keeps its
+ *  move-up/move-down controls for the same reason, Gutenberg included. */
+function moveModule(areaIdx: number, i: number, dir: -1 | 1) {
+  const area = layoutAreas.value[areaIdx];
+  if (!area) return;
+  const j = i + dir;
+  if (j < 0 || j >= area.modules.length) return;
+  moveModuleTo(area.id, i, area.id, j);
+}
+
+/** The area dropdown: still appends to the end of the target, because a
+ *  `<select>` names a destination and not a position. */
 function setModuleArea(mid: string, target: string) {
-  for (const a of layoutAreas.value) a.modules = a.modules.filter((m) => m !== mid);
-  hiddenModules.value = hiddenModules.value.filter((m) => m !== mid);
-  if (target === "hidden") hiddenModules.value.push(mid);
-  else layoutAreas.value.find((a) => a.id === target)?.modules.push(mid);
+  const at = findModule(mid);
+  if (!at || at.listId === target) return;
+  moveModuleTo(at.listId, at.index, target, moduleList(target)?.length ?? 0);
+}
+
+/** Dropping a module into an area (or Hidden) at a given position. */
+function dropModule(move: SortableMove) {
+  moveModuleTo(move.from, move.oldIndex, move.to, move.newIndex);
 }
 const areaOptions = computed(() => [
   ...layoutAreas.value.map((a) => ({ id: a.id, label: a.label })),
@@ -350,23 +421,48 @@ function removeGalleryItem(id: string) {
   gallery.value = gallery.value.filter((g) => g.id !== id);
   void guarded(() => cms.del(`gallery/${id}`), "Removed");
 }
+/**
+ * Move an image within the active gallery, and persist the whole order.
+ *
+ * The old version swapped two rows and PUT both, setting `a.sort = j; b.sort = i`
+ * — which only holds while the two positions are adjacent *and* `sort` happens to
+ * equal the index. Neither survives a drag: moving image 9 to the front changes
+ * nine positions, and `sort` drifts from the index as soon as you delete an image
+ * and add another (new items take `sort = <length>`, so a delete-then-add makes a
+ * duplicate, and `ORDER BY sort, id` then settles it by id).
+ *
+ * So: reorder the list, send the list. The server renumbers, which normalizes
+ * `sort` back to 0..n-1 on every move as a side effect.
+ */
+function reorderGalleryTo(fromIdx: number, toIdx: number) {
+  const items = [...activeGalleryItems.value];
+  const [moved] = items.splice(fromIdx, 1);
+  if (!moved) return;
+  items.splice(Math.max(0, Math.min(toIdx, items.length)), 0, moved);
+
+  // Reflect it locally: keep the rows for other galleries where they are, and
+  // rewrite this gallery's in the new order.
+  const ids = items.map((g) => g.id);
+  items.forEach((g, i) => (g.sort = i));
+  const rest = gallery.value.filter((g) => g.module !== activeGallery.value);
+  gallery.value = [...rest, ...items];
+
+  void guarded(
+    () => cms.reorderGallery(activeGallery.value, ids),
+    "Reordered",
+  );
+}
+
+/** ↑/↓ — the keyboard path, on the same operation dragging uses. */
 function moveGallery(i: number, dir: -1 | 1) {
-  // Reorder within the active gallery only.
-  const items = activeGalleryItems.value;
   const j = i + dir;
-  if (j < 0 || j >= items.length) return;
-  const a = items[i]!;
-  const b = items[j]!;
-  const ai = gallery.value.indexOf(a);
-  const bi = gallery.value.indexOf(b);
-  gallery.value[ai] = b;
-  gallery.value[bi] = a;
-  a.sort = j;
-  b.sort = i;
-  void guarded(async () => {
-    await cms.put(`gallery/${a.id}`, strip(a));
-    await cms.put(`gallery/${b.id}`, strip(b));
-  }, "Reordered");
+  if (j < 0 || j >= activeGalleryItems.value.length) return;
+  reorderGalleryTo(i, j);
+}
+
+/** Dropping an image at a position in the grid. */
+function dropGallery(move: SortableMove) {
+  reorderGalleryTo(move.oldIndex, move.newIndex);
 }
 async function createGallery() {
   const name = prompt("Name for the new gallery (e.g. Travel):")?.trim();
@@ -510,16 +606,84 @@ const metric = ref<MetricKey>("pageviews");
 const loadingA = ref(false);
 const clearing = ref(false);
 
-async function loadAnalytics() {
-  loadingA.value = true;
-  await guarded(async () => {
+/**
+ * How often the open analytics panel refreshes itself.
+ *
+ * The numbers move on two clocks: the beacon writes as visitors browse, and the
+ * log ingest lands every 5 minutes (ADR 0013). 30s is under both, so the panel
+ * reads as live without asking anything of the server that a page reload wasn't
+ * already asking — which is what you had to do to see a new number.
+ */
+const ANALYTICS_POLL_MS = 30_000;
+let analyticsPoll: ReturnType<typeof setInterval> | undefined;
+
+/**
+ * Load the analytics aggregates. A *read*, so deliberately not via `guarded()`:
+ * that bumps `previewKey` on success, which is right for a save ("any successful
+ * save invalidates the preview") and wrong here — it reloads the preview iframe
+ * for a query that changed nothing. Polling through it would have re-rendered the
+ * site every 30 seconds in a hidden dock.
+ *
+ * `quiet` is for the poll: no spinner and no toast, because a refresh you didn't
+ * ask for shouldn't flash "updating…" at you twice a minute or shout when the
+ * wifi blips. It still surfaces an expired session, because a poll that 401s
+ * every 30s forever is worse than saying so once.
+ */
+async function loadAnalytics(opts: { quiet?: boolean } = {}) {
+  if (!opts.quiet) loadingA.value = true;
+  try {
     analytics.value = await cms.analytics(rangeHours.value);
-  }, "");
-  loadingA.value = false;
+    analyticsAt.value = Date.now();
+  } catch (e) {
+    if (e instanceof AuthError) {
+      authed.value = false;
+      stopAnalyticsPoll();
+      flash("Session expired — sign in again.");
+    } else if (!opts.quiet) {
+      flash((e as Error).message || "Couldn't load analytics.");
+    }
+  } finally {
+    loadingA.value = false;
+  }
 }
+
+/** When the numbers on screen were fetched. Drives the "updated Ns ago" line —
+ *  a dashboard that can't say how old it is has the site's own worst bug. */
+const analyticsAt = ref(0);
+
+function stopAnalyticsPoll() {
+  if (analyticsPoll !== undefined) clearInterval(analyticsPoll);
+  analyticsPoll = undefined;
+}
+
+/** Poll only while the panel is open *and* the tab is in front. A backgrounded
+ *  admin tab polling all afternoon is a request every 30s to look at nothing. */
+function syncAnalyticsPoll() {
+  const wanted =
+    tab.value === "analytics" && typeof document !== "undefined" && !document.hidden;
+  if (!wanted) return stopAnalyticsPoll();
+  if (analyticsPoll !== undefined) return; // already running
+  analyticsPoll = setInterval(() => void loadAnalytics({ quiet: true }), ANALYTICS_POLL_MS);
+}
+
+/** Coming back to the tab: refresh now rather than waiting out the interval —
+ *  the whole point is that what's on screen is current. */
+function onVisibility() {
+  if (typeof document === "undefined") return;
+  if (!document.hidden && tab.value === "analytics") void loadAnalytics({ quiet: true });
+  syncAnalyticsPoll();
+}
+
+/** The manual one. Restarts the interval so an explicit refresh buys a full
+ *  period rather than a poll landing a second later. */
+function refreshAnalytics() {
+  stopAnalyticsPoll();
+  void loadAnalytics().then(syncAnalyticsPoll);
+}
+
 function setRange(h: number) {
   rangeHours.value = h;
-  void loadAnalytics();
+  refreshAnalytics();
 }
 async function clearRange(range: ClearRangeId, label: string) {
   if (!confirm(`Delete analytics for ${label}? This can't be undone.`)) return;
@@ -684,12 +848,57 @@ const chart = computed(() => {
   };
 });
 
-function pick(v: View) {
+/**
+ * Which panel is open, in the URL.
+ *
+ * Reloading used to dump you back on Dashboard: the panel was a ref and nothing
+ * else, so the one thing you were doing was the one thing the page didn't
+ * remember. Sixteen panels deep in the Layout screen, F5 is a punishment.
+ *
+ * The hash, not localStorage. It survives a reload the same, and it also makes
+ * `/admin#analytics` a link you can bookmark, back/forward step through the
+ * panels you visited, and two open tabs stop fighting over one stored key — a
+ * storage key would mean the tab you *last clicked in* decides where the other
+ * one reopens.
+ *
+ * This isn't a walk-back of ADR 0003. That's routes-over-hash for the *site*,
+ * because hidden must be hidden and a shared link has to unfurl as what it points
+ * at. Neither is true of an authed single-page admin that renders nothing server
+ * side: here the hash is the whole address.
+ */
+const isView = (value: unknown): value is View =>
+  typeof value === "string" && VIEWS.includes(value as View);
+
+/** The panel named by the current URL, or the default. Unknown hashes (a stale
+ *  bookmark, a renamed panel) fall back rather than rendering nothing. */
+function viewFromHash(): View {
+  if (typeof window === "undefined") return DEFAULT_VIEW;
+  const id = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+  return isView(id) ? id : DEFAULT_VIEW;
+}
+
+/**
+ * Open a panel.
+ *
+ * `push` distinguishes a click (a new history entry, so Back returns you) from
+ * restoring what the URL already says (no entry — pushing there would trap Back
+ * on the admin page).
+ */
+function pick(v: View, push = true) {
   tab.value = v;
   if ((v === "guestbook" || v === "dashboard") && !guestbook.value) void loadGuestbook();
   if (v === "analytics" && !analytics.value) void loadAnalytics();
   if (AREA_FOR_VIEW[v]) previewArea.value = AREA_FOR_VIEW[v]!; // remember what to preview
   if (v === "preview") previewKey.value++; // always show the freshest render
+  if (push && typeof window !== "undefined" && viewFromHash() !== v) {
+    window.location.hash = v;
+  }
+}
+
+/** Back/forward, and someone editing the address bar. */
+function onHashChange() {
+  const next = viewFromHash();
+  if (next !== tab.value) pick(next, false);
 }
 
 // Live preview: an iframe of the actual site, aimed at the area you're editing.
@@ -708,6 +917,149 @@ const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
 const previewArea = ref<AreaId>(AREA.home);
 const previewKey = ref(0);
 const showDock = ref(false); // side-by-side live preview while editing
+
+// ── the editor canvas ───────────────────────────────────────────────────────
+/**
+ * Which panel edits a module's content.
+ *
+ * `Record<ModuleKind, …>` on purpose: clicking a module on the canvas has to land
+ * somewhere for *every* kind, so a new kind shouldn't compile until it says where.
+ * `null` is a real answer — a hero's copy is the Home panel's, but `activity` and
+ * `coding` render synced data that nothing in the CMS edits, and pretending
+ * otherwise would send you to a panel with nothing on it.
+ */
+const PANEL_FOR_KIND: Record<ModuleKind, View | null> = {
+  hero: "home",
+  featured: null, // derived from GitHub
+  glance: null, // derived from GitHub + Wakapi
+  activity: null, // synced
+  coding: null, // synced
+  projects: null, // synced
+  hobbies: "hobbies",
+  now: "now",
+  guestbook: "guestbook",
+  gallery: "gallery",
+  presence: "presence",
+  bio: "about",
+  contact: "links",
+  posts: "posts",
+};
+
+/** The pending layout, as the preview endpoint wants it. */
+const layoutOrder = () => layoutAreas.value.map((a) => ({ area: a.id, modules: a.modules }));
+
+/** What the canvas is rendering: the site resolved with the *pending* order. */
+const canvasSite = ref<SiteView | null>(null);
+const canvasSelected = ref<string | undefined>();
+const canvasLoading = ref(false);
+/** Set when the canvas iframe reports it has mounted (see canvas-protocol). */
+const canvasReady = ref(false);
+
+/**
+ * Re-resolve the pending layout for the canvas.
+ *
+ * Server-side, because the canvas renders real sections and real sections need a
+ * real `SiteView` — live GitHub/Steam data, the asset lookup, freshness. Resolving
+ * it here would mean shipping the resolver's whole input set to the browser.
+ * Nothing is saved; `/api/cms/preview` writes nothing.
+ */
+async function refreshCanvas() {
+  if (!authed.value) return;
+  canvasLoading.value = true;
+  try {
+    canvasSite.value = (await cms.preview(layoutOrder(), locale.value)) as SiteView;
+  } catch (e) {
+    if (e instanceof AuthError) authed.value = false;
+    else flash((e as Error).message || "Couldn't render the preview.");
+  } finally {
+    canvasLoading.value = false;
+  }
+}
+
+/** A module was dragged on the canvas — same primitive as the list and the buttons. */
+function canvasMove(area: string, oldIndex: number, newIndex: number) {
+  moveModuleTo(area, oldIndex, area, newIndex);
+  void refreshCanvas();
+}
+
+/** A module was clicked on the canvas: open the panel that edits it. */
+function canvasSelect(moduleId: string) {
+  canvasSelected.value = moduleId;
+  const kind = modules.value.find((m) => m.id === moduleId)?.kind;
+  const panel = kind ? PANEL_FOR_KIND[kind] : null;
+  if (panel) pick(panel);
+  else flash("That module renders synced data — there's nothing to edit by hand.");
+}
+
+/** The `+` between two modules: park the insertion point, offer what's unplaced. */
+const insertAt = ref<{ area: string; index: number } | null>(null);
+function canvasInsert(area: string, index: number) {
+  if (!hiddenModules.value.length) {
+    flash("Nothing unplaced to add — every module is already on a page.");
+    return;
+  }
+  insertAt.value = { area, index };
+}
+function insertModule(mid: string) {
+  const at = insertAt.value;
+  insertAt.value = null;
+  if (!at) return;
+  const from = findModule(mid);
+  if (!from) return;
+  moveModuleTo(from.listId, from.index, at.area, at.index);
+  void refreshCanvas();
+}
+
+/** How wide the canvas renders. The iframe is its own viewport, so this is a real
+ *  responsive check and not a scaled picture of one. */
+const canvasWidth = ref("100%");
+const canvasFrame = ref<HTMLIFrameElement | null>(null);
+
+/** Push the current pending state into the canvas. */
+function postCanvas() {
+  const frame = canvasFrame.value?.contentWindow;
+  if (!frame || !canvasSite.value || !canvasReady.value) return;
+  const message: ToCanvas = {
+    type: "canvas:render",
+    site: canvasSite.value,
+    area: previewArea.value,
+    editing: true,
+    ...(canvasSelected.value ? { selected: canvasSelected.value } : {}),
+  };
+  frame.postMessage(message, window.location.origin);
+}
+
+/**
+ * The canvas talking back.
+ *
+ * Origin-checked and shape-checked: a message from a framed document is as
+ * untrusted as anything off the network, and this handler calls the same
+ * mutations the UI does. `isFromCanvas` is a predicate rather than a cast for the
+ * same reason the hash is — it's a string a stranger could send.
+ */
+function onCanvasMessage(event: MessageEvent) {
+  if (!isSameOrigin(event) || !isFromCanvas(event.data)) return;
+  const msg = event.data;
+  if (msg.type === "canvas:ready") {
+    canvasReady.value = true;
+    postCanvas();
+  } else if (msg.type === "canvas:move") {
+    canvasMove(msg.area, msg.oldIndex, msg.newIndex);
+  } else if (msg.type === "canvas:select") {
+    canvasSelect(msg.moduleId);
+  } else if (msg.type === "canvas:insert") {
+    canvasInsert(msg.area, msg.index);
+  }
+}
+
+// Any change to the pending layout, the page being viewed, or the selection is a
+// re-render. `canvasSite` is set by refreshCanvas(); this just ships it.
+watch([canvasSite, previewArea, canvasSelected, canvasReady], postCanvas);
+// Opening the editor, or changing the page, needs a fresh resolve.
+watch([tab, previewArea, locale], () => {
+  if (tab.value === "editor") void refreshCanvas();
+});
+
 
 /**
  * Where the preview points.
@@ -739,7 +1091,26 @@ const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
   { label: "Modules", n: modules.value.length, to: "layout" },
 ]);
 
-onMounted(boot);
+// Start/stop the analytics poll as the panel opens and closes. A watcher rather
+// than a hook inside AnalyticsPanel, because the panel is `v-show` — it stays
+// mounted once rendered, so mount/unmount say nothing about whether you can see it.
+watch(tab, syncAnalyticsPoll);
+
+onMounted(() => {
+  // Restore before boot: the gate may render first, but the panel behind it is
+  // already the one the URL names, so signing in lands where you left off.
+  pick(viewFromHash(), false);
+  window.addEventListener("hashchange", onHashChange);
+  window.addEventListener("message", onCanvasMessage);
+  document.addEventListener("visibilitychange", onVisibility);
+  void boot();
+});
+onUnmounted(() => {
+  window.removeEventListener("hashchange", onHashChange);
+  window.removeEventListener("message", onCanvasMessage);
+  document.removeEventListener("visibilitychange", onVisibility);
+  stopAnalyticsPoll();
+});
 
   return {
     NAV_GROUPS,
@@ -783,7 +1154,21 @@ onMounted(boot);
     pickL,
     moduleHeading,
     moveModule,
+    dropModule,
     setModuleArea,
+    canvasSite,
+    canvasSelected,
+    canvasLoading,
+    canvasReady,
+    refreshCanvas,
+    canvasMove,
+    canvasSelect,
+    canvasInsert,
+    insertAt,
+    insertModule,
+    layoutOrder,
+    canvasWidth,
+    canvasFrame,
     areaOptions,
     saveLayout,
     galleryModules,
@@ -799,6 +1184,7 @@ onMounted(boot);
     galleryThumb,
     removeGalleryItem,
     moveGallery,
+    dropGallery,
     createGallery,
     deleteGallery,
     signIn,
@@ -831,6 +1217,8 @@ onMounted(boot);
     loadingA,
     clearing,
     loadAnalytics,
+    refreshAnalytics,
+    analyticsAt,
     setRange,
     clearRange,
     axisBuckets,

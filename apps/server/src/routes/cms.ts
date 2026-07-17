@@ -22,12 +22,15 @@ import type {
 } from "@lg/core";
 import {
   DEFAULT_GALLERY_ID,
+  DEFAULT_LOCALE,
+  isLocale,
   galleryUsageContext,
   galleryUsageLabel,
   lintNav,
   MODULE_KIND,
   parseAssetRef,
   statusForAction,
+  type Locale,
 } from "@lg/core";
 import { randomUUID } from "node:crypto";
 import type { Store } from "@lg/db";
@@ -36,12 +39,50 @@ import type { ServerEnv } from "../env.js";
 import { requireAuth, sessionLogin } from "../auth/guard.js";
 import { schemas } from "../schemas.js";
 import { badRequest, notFound } from "../errors.js";
+import { buildSiteView } from "../site-view.js";
 
 /** A fresh gallery module id. Short random suffix: unique without a lookup, and
  *  short enough to read in the Layout screen. */
 const newGalleryModuleId = (): string => `gallery-${randomUUID().slice(0, 8)}`;
 
 export function registerCmsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
+  /**
+   * Validate a proposed module order and return the nav with it applied.
+   *
+   * Shared by the layout save and the editor preview, because they ask the same
+   * question ("is this order legal, and what does the nav look like with it?") and
+   * differ only in what they do with the answer. Copied, the preview would have
+   * validated a little differently from the save — so the canvas would show you a
+   * layout the Save button then refuses, with no way to tell which one is lying.
+   *
+   * Works on a fresh copy from the store, so nothing is mutated unless the caller
+   * saves it.
+   */
+  const applyLayoutOrder = (order: { area: string; modules: string[] }[]): NavNode[] => {
+    const nav = store.ia.getNav();
+    const registry = new Set(store.ia.getModules().map((m) => m.id));
+    const leaves = new Map<string, NavNode>();
+    const collect = (nodes: NavNode[]) => {
+      for (const n of nodes) {
+        if (n.modules) leaves.set(n.id, n);
+        if (n.children) collect(n.children);
+      }
+    };
+    collect(nav);
+
+    const seen = new Set<string>();
+    for (const entry of order) {
+      if (!leaves.has(entry.area)) throw badRequest(`Unknown area "${entry.area}".`);
+      for (const mid of entry.modules) {
+        if (!registry.has(mid)) throw badRequest(`Unknown module "${mid}".`);
+        if (seen.has(mid)) throw badRequest(`Module "${mid}" placed in more than one area.`);
+        seen.add(mid);
+      }
+    }
+    for (const entry of order) leaves.get(entry.area)!.modules = [...entry.modules];
+    return nav;
+  };
+
   const preHandler = requireAuth(env);
   const guard = { preHandler };
   const write = (body: unknown) => ({ preHandler, schema: { body } });
@@ -138,6 +179,25 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     after: syncGalleryUsages,
   });
 
+  // Reorder a whole gallery in one write. The CMS sends the list as it shows it;
+  // the server renumbers `sort` to match, inside one transaction.
+  //
+  // Dragging an image from the end to the front moves everything between it, so
+  // the old two-PUT swap (all ±1 could ever need) doesn't describe the operation:
+  // N PUTs can half-succeed and leave an order nobody chose. `PUT /api/cms/layout`
+  // already sends the whole order for modules; this is the same shape for images.
+  app.put<{ Body: { module: string; ids: string[] } }>(
+    "/api/cms/gallery-order",
+    write(schemas.galleryOrder),
+    async (req) => {
+      const { module: moduleId, ids } = req.body;
+      const mod = store.ia.getModules().find((m) => m.id === moduleId);
+      if (!mod || mod.kind !== MODULE_KIND.gallery) throw badRequest("Not a gallery module.");
+      store.content.reorderGallery(moduleId, ids);
+      return { ok: true };
+    },
+  );
+
   // Create a new gallery instance (a gallery-kind module). It starts unplaced
   // ("hidden"); the owner positions it via the Layout screen.
   app.post<{ Body: { heading: Localized; note?: Localized } }>(
@@ -179,39 +239,40 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     "/api/cms/layout",
     write(schemas.layout),
     async (req, reply) => {
-      const nav = store.ia.getNav();
-      const registry = new Set(store.ia.getModules().map((m) => m.id));
-      const leaves = new Map<string, NavNode>();
-      const collect = (nodes: NavNode[]) => {
-        for (const n of nodes) {
-          if (n.modules) leaves.set(n.id, n);
-          if (n.children) collect(n.children);
-        }
-      };
-      collect(nav);
-
-      const seen = new Set<string>();
-      for (const entry of req.body.order) {
-        if (!leaves.has(entry.area)) {
-          throw badRequest(`Unknown area "${entry.area}".`);
-        }
-        for (const mid of entry.modules) {
-          if (!registry.has(mid)) throw badRequest(`Unknown module "${mid}".`);
-          if (seen.has(mid)) {
-            throw badRequest(`Module "${mid}" placed in more than one area.`);
-          }
-          seen.add(mid);
-        }
-      }
-
-      for (const entry of req.body.order) leaves.get(entry.area)!.modules = [...entry.modules];
-
+      const nav = applyLayoutOrder(req.body.order);
+      // Lint on save, not on preview: mid-drag an area is legitimately empty, and
+      // a preview that refuses to render the thing you're looking at is no help.
+      // This is the gate; the canvas is a mirror.
       const result = lintNav(nav);
       if (!result.ok) {
         throw badRequest(result.violations.map((v) => v.message).join("; "));
       }
       store.ia.setNav(nav);
       return { ok: true };
+    },
+  );
+
+  /**
+   * What the site *would* look like with this order — resolved, not saved.
+   *
+   * The editor canvas renders real site components, so it needs a real `SiteView`,
+   * which means the resolver, which means live source data and the asset lookup.
+   * Both live on this side, so resolving here is the only way the canvas can show
+   * your unsaved layout without the browser also holding a copy of everything the
+   * resolver needs.
+   *
+   * Authed, and it writes nothing. That combination is the point: the canvas
+   * document itself ships no data (see apps/web/src/pages/admin/canvas.astro), so
+   * unpublished layout only ever exists behind this session.
+   */
+  app.post<{ Body: { order: { area: string; modules: string[] }[]; locale?: string } }>(
+    "/api/cms/preview",
+    write(schemas.preview),
+    async (req) => {
+      const nav = applyLayoutOrder(req.body.order);
+      const requested = req.body.locale;
+      const locale: Locale = requested && isLocale(requested) ? requested : DEFAULT_LOCALE;
+      return buildSiteView(store, env, locale, nav);
     },
   );
 

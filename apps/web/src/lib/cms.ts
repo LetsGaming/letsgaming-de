@@ -93,6 +93,19 @@ export const cms = {
       credentials: "include",
     }).then(handle),
 
+  /** What the site *would* look like with this order. Resolves, saves nothing. */
+  preview: (order: { area: string; modules: string[] }[], locale: string) =>
+    fetch(`${apiBase}/api/cms/preview`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: JSON.stringify({ order, locale }),
+    }).then(handle),
+
+  /** A whole gallery's order in one request — see PUT /api/cms/gallery-order. */
+  reorderGallery: (module: string, ids: string[]) =>
+    cms.put("gallery-order", { module, ids }),
+
   put: (path: string, body: unknown) =>
     fetch(`${apiBase}/api/cms/${path}`, {
       method: "PUT",

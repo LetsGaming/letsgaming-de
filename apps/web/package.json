@@ -25,11 +25,13 @@
     "astro": "^6.1.6",
     "marked": "^18.0.5",
     "nanostores": "^1.4.0",
+    "sortablejs": "^1.15.7",
     "vue": "^3.5.13"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9",
     "@lg/core": "workspace:^",
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6",
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^20.8.9",

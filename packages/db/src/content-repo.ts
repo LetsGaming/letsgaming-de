@@ -23,6 +23,7 @@ import {
   mapRow,
   mapRows,
   SINGLETON_ID,
+  transact,
   type Row,
 } from "./row-mapper.js";
 
@@ -146,6 +147,30 @@ export function contentRepo(db: DB) {
       ).run(item.id, item.module, item.asset, JSON.stringify(item.caption), sort);
     },
     deleteGalleryItem: (id: string) => deleteById(db, "gallery", id),
+    /**
+     * Write a whole gallery's order in one transaction.
+     *
+     * `sort` is rewritten to the position in `ids`, which also *normalizes* it:
+     * items are created with `sort = <list length at the time>`, so a delete
+     * followed by an add produces duplicates, and `ORDER BY sort, id` then breaks
+     * the tie by id — an order nobody chose. Renumbering the list on every reorder
+     * means the column can't drift away from what the CMS shows.
+     *
+     * The whole list, not the moved items: dragging the last image to the front
+     * changes every position between, and one request that can't half-succeed
+     * beats N that can. This is what `PUT /api/cms/layout` already does for
+     * modules; galleries were the surface still saving two rows at a time, which
+     * is why they could only move an image one step.
+     *
+     * `AND module = ?` so a stale id from another gallery can't be renumbered into
+     * this one.
+     */
+    reorderGallery(moduleId: string, ids: string[]) {
+      const stmt = db.prepare("UPDATE gallery SET sort = ? WHERE id = ? AND module = ?");
+      transact(db, () => {
+        ids.forEach((id, i) => stmt.run(i, id, moduleId));
+      });
+    },
     /** Remove every image belonging to a gallery module (used when deleting one). */
     deleteGalleryModule(moduleId: string) {
       db.prepare("DELETE FROM gallery WHERE module = ?").run(moduleId);

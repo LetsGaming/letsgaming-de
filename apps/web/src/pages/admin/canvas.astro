@@ -1,0 +1,22 @@
+---
+import CanvasHost from "../../components/cms/CanvasHost.vue";
+import Layout from "../../layouts/Layout.astro";
+
+// The editor canvas: the CMS frames this and posts the site into it.
+//
+// Prerendered and data-less on purpose. Open /admin/canvas as an anonymous
+// visitor and you get an empty page — there is no fetch, no session read, and
+// nothing server-rendered. It becomes the site only when an authenticated parent
+// posts a resolved SiteView through the canvas protocol, so unsaved layout and
+// unplaced modules never exist on a public route.
+//
+// It uses Layout for one reason: `app.css`. That's the site's stylesheet, and
+// loading it *without* `cms.css` is what makes the rendering honest — inside the
+// admin document, `.cms .card` (0,2,0) would beat `.card` (0,1,0) and every
+// section would quietly wear admin styling.
+export const prerender = true;
+---
+
+<Layout title="Editor canvas">
+  <CanvasHost client:only="vue" />
+</Layout>
