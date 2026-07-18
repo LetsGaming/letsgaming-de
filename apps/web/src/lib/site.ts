@@ -58,11 +58,9 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
   const s = getStore();
   if (s) {
     try {
-      const discordUserId = envVar("DISCORD_USER_ID");
       const view = await buildSiteView(s, {
         locale,
         mediaDir: envVar("MEDIA_DIR") ?? "",
-        ...(discordUserId ? { discordUserId } : {}),
       });
       cache.set(locale, { at: Date.now(), view });
       return view;

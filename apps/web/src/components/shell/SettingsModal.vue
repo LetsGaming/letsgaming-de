@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import { analyticsAllowed, dntActive, setOptedOut } from "../lib/track";
+import { analyticsAllowed, dntActive, setOptedOut } from "../../lib/track";
 
 const props = defineProps<{ open: boolean; theme: "dark" | "light"; locale: "en" | "de" }>();
 const emit = defineEmits<{ close: []; "toggle-theme": []; "set-locale": ["en" | "de"] }>();

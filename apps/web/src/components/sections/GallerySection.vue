@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import AssetPicture from "../AssetPicture.vue";
+import AssetPicture from "../ui/AssetPicture.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "gallery" }>;

@@ -6,7 +6,7 @@
 // from `site.nav`, so `areaById` can't find one, `area` is undefined, and the
 // page renders nothing but a 404. That's what makes `hidden` a fact rather than
 // a flag — the router enforces it.
-import AreaPage from "../components/AreaPage.astro";
+import AreaPage from "../components/shell/AreaPage.astro";
 import { areaById } from "../lib/area";
 import { loadSite } from "../lib/site";
 import { pickLocale } from "../lib/text";

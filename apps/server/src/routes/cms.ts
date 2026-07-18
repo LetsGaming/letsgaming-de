@@ -310,7 +310,6 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
         locale,
         mediaDir: env.mediaDir,
         nav,
-        ...(env.discordUserId ? { discordUserId: env.discordUserId } : {}),
       });
     },
   );

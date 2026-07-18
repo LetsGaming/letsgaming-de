@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { trackClick } from "../../lib/track";
-import Freshness from "../Freshness.vue";
+import Freshness from "../ui/Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "glance" }>;

@@ -20,7 +20,9 @@
  */
 import { computed, ref } from "vue";
 import type { MusicDayResponse, MusicRankView, ResolvedModule } from "@lg/core";
-import { apiUrl, presenceMediaUrl } from "../../lib/api";
+import { presenceMediaUrl } from "../../lib/api";
+import { useDayDrill } from "../../composables/useDayDrill";
+import { fetchMusicDay } from "../../lib/music-api";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
 const d = computed(() => props.module.data);
@@ -47,40 +49,23 @@ function showList(which: ListKind) {
 }
 
 // ── the day drill-in: fetch that day's tracks on click ────────────────────────
-const selected = ref<string | null>(null);
-const dayTracks = ref<MusicDayResponse["tracks"] | null>(null);
-const dayLoading = ref(false);
-const dayError = ref(false);
+// Same state machine as Playtime, from the shared composable; `dayExpanded` is
+// Music's own (the "show more tracks" toggle), so it stays local and is reset
+// alongside the drill.
+const drill = useDayDrill<MusicDayResponse["tracks"]>();
+const { selected, data: dayTracks, loading: dayLoading, error: dayError } = drill;
 const dayExpanded = ref(false);
 
-async function selectDay(iso: string, minutes: number) {
-  if (selected.value === iso) return clearDay(); // click the selected bar again → back
-  selected.value = iso;
+// A silent day is a real answer — resolve [] without a fetch; otherwise fetch the
+// day's tracks. Collapse "show more" whenever the selection changes.
+const selectDay = (iso: string, minutes: number) => {
   dayExpanded.value = false;
-  dayError.value = false;
-  if (minutes === 0) {
-    // A silent day is a real answer — show it without a fetch.
-    dayTracks.value = [];
-    return;
-  }
-  dayTracks.value = null;
-  dayLoading.value = true;
-  try {
-    const res = await fetch(apiUrl(`/api/music/day?day=${iso}`), { headers: { Accept: "application/json" } });
-    if (!res.ok) throw new Error(String(res.status));
-    dayTracks.value = ((await res.json()) as MusicDayResponse).tracks;
-  } catch {
-    dayError.value = true;
-  } finally {
-    dayLoading.value = false;
-  }
-}
+  return drill.select(iso, () => (minutes === 0 ? Promise.resolve([]) : fetchMusicDay(iso)));
+};
 
 function clearDay() {
-  selected.value = null;
-  dayTracks.value = null;
-  dayError.value = false;
   dayExpanded.value = false;
+  drill.clear();
 }
 
 const shownDayTracks = computed(() => {

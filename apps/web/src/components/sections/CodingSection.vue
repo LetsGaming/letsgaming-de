@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { langColor } from "../../lib/icons";
-import Freshness from "../Freshness.vue";
+import Freshness from "../ui/Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "coding" }>;

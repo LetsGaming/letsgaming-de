@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SubmitState } from "../composables/useSubmit";
+import type { SubmitState } from "../../composables/useSubmit";
 
 defineProps<{
   state: SubmitState;

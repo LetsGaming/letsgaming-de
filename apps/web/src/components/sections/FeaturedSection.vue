@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { ResolvedModule } from "@lg/core";
 import { langColor, icons } from "../../lib/icons";
-import Freshness from "../Freshness.vue";
+import Freshness from "../ui/Freshness.vue";
 import { trackClick, trackProject } from "../../lib/track";
 
 const props = defineProps<{

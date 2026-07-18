@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import PresenceWidget from "../PresenceWidget.vue";
+import PresenceWidget from "../presence/PresenceWidget.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "presence" }>;
@@ -15,7 +15,7 @@ defineProps<{
     </div>
     <div>
       <PresenceWidget
-        :live="module.data.live"
+        :enabled="module.data.enabled"
         :name="module.data.name"
         :handle="module.data.handle"
         :avatar="module.data.avatar"

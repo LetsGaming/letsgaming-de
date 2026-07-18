@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import BaseForm from "./BaseForm.vue";
-import { useSubmit } from "../composables/useSubmit";
+import { useSubmit } from "../../composables/useSubmit";
 import { FIELD_LIMITS } from "@lg/core";
 
 const name = ref("");

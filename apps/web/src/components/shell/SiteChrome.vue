@@ -2,9 +2,9 @@
 import type { NavView } from "@lg/core";
 import { useStore } from "@nanostores/vue";
 import { computed, onMounted, ref } from "vue";
-import { icons } from "../lib/icons";
-import { $theme, initSite, setLocale, toggleTheme } from "../stores/site";
-import { areaHref } from "../lib/area";
+import { icons } from "../../lib/icons";
+import { $theme, initSite, setLocale, toggleTheme } from "../../stores/site";
+import { areaHref } from "../../lib/area";
 import SettingsModal from "./SettingsModal.vue";
 
 const props = defineProps<{ nav: NavView[]; locale: "en" | "de"; current: string }>();

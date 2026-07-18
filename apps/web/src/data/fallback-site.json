@@ -546,7 +546,7 @@
       "kind": "presence",
       "data": {
         "heading": "Right now",
-        "live": true,
+        "enabled": true,
         "name": "Domenic",
         "handle": "LetsGaming"
       }

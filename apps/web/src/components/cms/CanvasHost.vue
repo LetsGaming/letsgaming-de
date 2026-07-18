@@ -31,7 +31,7 @@
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { SiteView } from "@lg/core";
-import SitePanels from "../SitePanels.vue";
+import SitePanels from "../shell/SitePanels.vue";
 
 const props = defineProps<{
   site: SiteView | null;

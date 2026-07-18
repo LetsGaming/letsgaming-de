@@ -3,7 +3,7 @@ import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
 import { mdBold } from "../../lib/text";
 import { trackClick } from "../../lib/track";
-import AssetPicture from "../AssetPicture.vue";
+import AssetPicture from "../ui/AssetPicture.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "hero" }>;

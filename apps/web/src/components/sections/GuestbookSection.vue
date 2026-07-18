@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import GuestbookForm from "../GuestbookForm.vue";
+import GuestbookForm from "../forms/GuestbookForm.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "guestbook" }>;

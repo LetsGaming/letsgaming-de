@@ -2,7 +2,7 @@
 import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
 import { trackClick } from "../../lib/track";
-import ContactForm from "../ContactForm.vue";
+import ContactForm from "../forms/ContactForm.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "contact" }>;

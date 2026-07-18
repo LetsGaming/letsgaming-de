@@ -1,40 +1,26 @@
 <script setup lang="ts">
-import type {
-  GifAssetView,
-  ImageAssetView,
-  PresenceView,
-} from "@lg/core";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import AssetPicture from "./AssetPicture.vue";
-import { apiUrl, presenceMediaUrl } from "../lib/api";
+import type { GifAssetView, ImageAssetView } from "@lg/core";
+import { computed } from "vue";
+import AssetPicture from "../ui/AssetPicture.vue";
+import { presenceMediaUrl } from "../../lib/api";
+import { usePresence } from "../../composables/usePresence";
 
-// The client only ever knows whether to poll, the owner identity for the profile
-// header, and (optionally) the game Steam says is being played right now. It never
-// receives the Discord id, the category list, any disabled activity, or the
-// playtime history — the server filters before this, and history lives in the
-// playtime module now.
+// The client only ever knows whether presence is enabled (a CMS display toggle)
+// and the owner identity for the profile header. It never receives the Discord
+// id, the category list, any disabled activity, or the playtime history — the
+// server filters before this, and history lives in the playtime module now.
 const props = defineProps<{
-  live: boolean;
+  enabled: boolean;
   name: string;
   handle: string;
   avatar?: ImageAssetView | GifAssetView;
 }>();
 
-const POLL_MS = 25_000;
-
-const view = ref<PresenceView | null>(null);
-const loaded = ref(false);
-/**
- * Unreachable is not offline.
- *
- * `status` falls back to "offline" when `view` is null, so a failed fetch used to
- * render "Offline" — a specific claim about a person, made from a network error.
- * This module is Life's anchor and the site's floor ("a visitor notices the thing
- * is alive"), and it depends on a third party, so its failure state has to say
- * something true rather than something confident.
- */
-const unreachable = ref(false);
-let poll: ReturnType<typeof setInterval> | null = null;
+// Fetching + the poll loop live in the composable (a component doesn't fetch);
+// this component only renders whatever the server returns. `unreachable` stays an
+// honest "couldn't reach the relay, never had a snapshot" — a successful *offline*
+// response is a real fact and renders as its own state below.
+const { view, loaded, unreachable } = usePresence(() => props.enabled);
 
 // ── Discord half ────────────────────────────────────────────────────────────
 const status = computed(() => view.value?.status ?? "offline");
@@ -88,43 +74,21 @@ const initials = computed(() => {
   return (props.name || h).slice(0, 2).toUpperCase();
 });
 
-// ── polling ─────────────────────────────────────────────────────────────────
-async function refresh() {
-  try {
-    const res = await fetch(apiUrl("/api/presence"), {
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      view.value = (await res.json()) as PresenceView;
-      unreachable.value = false;
-    } else {
-      unreachable.value = view.value === null;
-    }
-  } catch {
-    // Keep the last snapshot on a hiccup — old-and-labelled beats blank. But if
-    // there's never been one, say so instead of inventing a status.
-    unreachable.value = view.value === null;
-  } finally {
-    loaded.value = true;
-  }
-}
-onMounted(() => {
-  if (props.live) {
-    void refresh();
-    poll = setInterval(refresh, POLL_MS);
-  }
-});
-onBeforeUnmount(() => {
-  if (poll) clearInterval(poll);
-});
+// Reachable, loaded, and nothing playing — a real "quiet right now" state, shown
+// as a gentle line rather than a bare header. Distinct from `unreachable`.
+const idle = computed(
+  () => loaded.value && !unreachable.value && !activities.value?.length,
+);
 </script>
+
 
 <template>
   <!-- Every class is pw-namespaced so the site's global .tile/.stat/.grid/.meta
-       rules can't leak into the widget. -->
-  <div v-if="live" class="pw">
-    <!-- Discord profile (live; already filtered by the server) -->
-    <div v-if="live" class="pw-unit">
+       rules can't leak into the widget. Rendered whenever presence is enabled in
+       the CMS; the server decides what (if anything) is actually shown. -->
+  <div v-if="enabled" class="pw">
+    <!-- Discord profile — already filtered by the server -->
+    <div class="pw-unit">
       <div class="pw-who">
         <div class="pw-avatar">
           <img v-if="discordAvatarSrc" :src="discordAvatarSrc" alt="" class="pw-av" />
@@ -183,16 +147,17 @@ onBeforeUnmount(() => {
           </div>
         </template>
       </div>
-      <div v-else-if="loaded && status !== 'offline'" class="pw-act pw-off">
-        No activity to display right now
+      <div v-else-if="idle" class="pw-act pw-off">
+        {{ status === "offline" ? "Offline right now — nothing to show" : "No activity to display right now" }}
       </div>
     </div>
   </div>
 
-  <p v-else class="pw-muted pw-np">
-    Presence isn't live yet — set <code>DISCORD_USER_ID</code> and enable a live
-    category in the CMS (Presence), then join discord.gg/lanyard so it's exposed.
-  </p>
+  <!-- Enabled but nothing has loaded yet is handled above (the profile shows
+       "loading…"); this branch is only the deliberate "owner hid every live
+       category" case. No mention of any server config — that's not the visitor's
+       concern, and never leaking it is the whole point of the split. -->
+  <p v-else class="pw-muted pw-np">Nothing to show here right now.</p>
 </template>
 
 <style scoped>

@@ -151,11 +151,19 @@ export interface CodingView {
 /**
  * What the *client* is allowed to know about presence. Deliberately minimal: no
  * Discord id, no category list — the browser never talks to Lanyard and never
- * learns what was disabled. `live` just says whether to poll the server's
- * already-filtered `/api/presence`; `steam` is included only when enabled.
+ * learns what was disabled.
+ *
+ * `enabled` is a pure display decision owned by the CMS: it's true when the owner
+ * has left at least one live category visible (the presence allow-list). It says
+ * "render the widget and poll `/api/presence`" — nothing about whether Discord is
+ * configured or currently online. That is the server's concern: the widget polls
+ * regardless and shows whatever comes back (a filtered snapshot, or an offline
+ * fallback). Deliberately decoupled from any `DISCORD_USER_ID` so the SSR process
+ * needs no presence secret to resolve this flag. `steam` is included only when the
+ * Steam category is shown.
  */
 export interface PresenceModuleView {
-  live: boolean;
+  enabled: boolean;
   /** Owner identity for the Discord-style profile header (from meta). */
   name: string;
   handle: string;

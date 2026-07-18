@@ -23,7 +23,7 @@ import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
   defaultPresenceSettings,
-  LIVE_PRESENCE_CATEGORIES,
+  isLivePresenceCategory,
   isHiddenGame,
   mergePlaytime,
   STEAM_CATEGORY,
@@ -68,8 +68,6 @@ export interface ResolveInput {
   freshness?: { syncedAt: Partial<Record<SourceId, string>>; ttl: Record<SourceId, number> };
   /** Approved guestbook entries, newest first (the store filters + orders). */
   guestbook?: PublicGuestbookEntry[];
-  /** Discord presence: the Lanyard id (env config). Categories are CMS-owned. */
-  presence?: { discordId?: string };
   /** Observed playtime, accumulated from presence polls (see PresenceSampler).
    *  Not a source: it's the store's own accumulation, so it arrives here already
    *  summed rather than as a snapshot to normalize. */
@@ -506,10 +504,13 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         return { id: descriptor.id, kind: "guestbook", data: { heading, note, entries } };
       }
       case "presence": {
-        // Category allow-list is CMS-owned (content); the Discord id is env config.
+        // Enablement is purely the owner's CMS allow-list: is any live category
+        // still shown? No env, no Discord id here — the widget polls the
+        // server-filtered /api/presence and the *server* owns whether Discord is
+        // configured and online. Keeping this env-free is the point: the SSR
+        // process resolves this flag without any presence secret.
         const show = content.presence?.show ?? defaultPresenceSettings().show;
-        const liveAllowed = new Set<string>(LIVE_PRESENCE_CATEGORIES);
-        const live = Boolean(input.presence?.discordId) && show.some((c) => liveAllowed.has(c));
+        const enabled = show.some(isLivePresenceCategory);
         const steam = source.steam;
         const includeSteam = show.includes(STEAM_CATEGORY) && steam;
         const avatar = resolveAsset(content.meta.avatar, assets);
@@ -519,7 +520,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // module, where history belongs. The live Discord half is fetched by the
         // widget client-side.
         const data: PresenceModuleView = {
-          live,
+          enabled,
           name: content.meta.name,
           handle: content.meta.handle,
           ...(avatar && (avatar.kind === "image" || avatar.kind === "gif") ? { avatar } : {}),
@@ -529,8 +530,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           id: descriptor.id,
           kind: "presence",
           // Steam's half is synced, so it can be stale; Discord's half is fetched
-          // client-side and reports its own state in the widget. `live` above only
-          // says Discord is *configured* — never that it answered.
+          // client-side and reports its own state in the widget. `enabled` above is
+          // a display toggle (a live category is shown) — it says nothing about
+          // whether Discord answered.
           ...(includeSteam
             ? { data: { heading, note, freshness: freshnessOf("steam", Boolean(steam)), ...data } }
             : { data: { heading, note, ...data } }),

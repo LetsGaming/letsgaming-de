@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { SiteView } from "@lg/core";
-import SitePanels from "../../src/components/SitePanels.vue";
+import SitePanels from "../../src/components/shell/SitePanels.vue";
 
 /**
  * Every module is exactly one element, and it carries its own id.

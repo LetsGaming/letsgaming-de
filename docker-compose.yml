@@ -91,13 +91,11 @@ services:
       # can't write, which is what keeps it from racing the server's migrations.
       DB_PATH: /data/letsgaming.sqlite
       MEDIA_DIR: /data/media
-      # web runs buildSiteView itself now (direct store read), and the resolver
-      # gates presence.live on the Discord id being present in *this* process:
-      # `Boolean(discordId) && <a live category is shown>`. Without it the SSR'd
-      # /life card resolves live=false and the widget never polls /api/presence,
-      # while the CMS (resolved by the server, which has the id) shows it fine.
-      # Same value as the server — it's a public id, not a secret.
-      DISCORD_USER_ID: ${DISCORD_USER_ID:-}
+      # No DISCORD_USER_ID here, deliberately: presence enablement is a CMS display
+      # decision resolved from the store, and the live Discord data is fetched by
+      # the browser from the server's /api/presence. The web process never talks to
+      # Lanyard, so it needs no presence secret. (This is the presence/enablement
+      # split — keep it that way; don't re-add the id to make a card light up.)
       # Kept as a fallback for when the store file isn't reachable (buildSiteView
       # falls back to this, then to the committed fixture). Also lets the browser
       # find the API for presence/CMS/media, which stays cross-origin.

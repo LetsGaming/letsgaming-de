@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { icons, langColor } from "../../lib/icons";
-import Freshness from "../Freshness.vue";
+import Freshness from "../ui/Freshness.vue";
+import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 import { computed, ref } from "vue";
 
 const props = defineProps<{
@@ -16,6 +17,12 @@ const events = computed(() =>
 );
 const hidden = computed(() => props.module.data.events.length - EVENTS_SHOWN);
 
+// Levels are bucketed on the server; the grid just needs {level} per day.
+const contributionCells = computed<HeatCell[]>(() =>
+  props.module.data.contributions.levels.map((level) => ({ level })),
+);
+
+// Legend swatches only (the grid owns its own cell colours now).
 const heatVar = (level: number) => `var(--heat-${level})`;
 </script>
 
@@ -35,13 +42,7 @@ const heatVar = (level: number) => `var(--heat-${level})`;
       <div class="box">
         <h3>Contributions</h3>
         <div class="sub">last 26 weeks · {{ module.data.contributions.total }} in the window</div>
-        <div class="heat">
-          <i
-            v-for="(lvl, i) in module.data.contributions.levels"
-            :key="i"
-            :style="{ background: heatVar(lvl) }"
-          />
-        </div>
+        <HeatGrid :cells="contributionCells" />
         <div class="heat-legend">
           less
           <i v-for="n in [0, 1, 2, 3, 4]" :key="n" :style="{ background: heatVar(n) }" />

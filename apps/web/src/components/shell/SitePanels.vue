@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NavView, SiteView } from "@lg/core";
 import { computed, nextTick, onMounted } from "vue";
-import { initSite } from "../stores/site";
+import { initSite } from "../../stores/site";
 import Module from "./Module.vue";
 
 const props = defineProps<{ site: SiteView; area: string }>();

@@ -5,11 +5,11 @@
 // markup to anyone reading source. Routes fix all three.
 import SiteChrome from "./SiteChrome.vue";
 import SitePanels from "./SitePanels.vue";
-import Layout from "../layouts/Layout.astro";
+import Layout from "../../layouts/Layout.astro";
 import { AREA } from "@lg/core";
-import { areaById, areaHref, areaMeta } from "../lib/area";
-import { loadSite } from "../lib/site";
-import { pickLocale } from "../lib/text";
+import { areaById, areaHref, areaMeta } from "../../lib/area";
+import { loadSite } from "../../lib/site";
+import { pickLocale } from "../../lib/text";
 
 interface Props {
   area?: string | undefined;

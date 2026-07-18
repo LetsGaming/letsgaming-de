@@ -2,8 +2,8 @@ import type { SiteView } from "@lg/core";
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { $theme } from "../../src/stores/site";
-import SiteChrome from "../../src/components/SiteChrome.vue";
-import SitePanels from "../../src/components/SitePanels.vue";
+import SiteChrome from "../../src/components/shell/SiteChrome.vue";
+import SitePanels from "../../src/components/shell/SitePanels.vue";
 
 /** A minimal but structurally-real SiteView (four areas, a hero, a bio, …). */
 const site = {

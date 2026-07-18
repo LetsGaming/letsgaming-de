@@ -37,8 +37,6 @@ export interface BuildSiteViewOptions {
   locale: Locale;
   /** Root media directory; assets live under `<mediaDir>/assets`. */
   mediaDir: string;
-  /** Lanyard id, if presence is configured. */
-  discordUserId?: string;
   /** Pending nav, for the CMS editor canvas. Omit for the site's saved nav. */
   nav?: NavNode[];
 }
@@ -62,9 +60,6 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
     playHistory: buildPlayHistory(store),
     musicHistory: buildMusicHistory(store),
-    presence: {
-      ...(opts.discordUserId ? { discordId: opts.discordUserId } : {}),
-    },
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
 }

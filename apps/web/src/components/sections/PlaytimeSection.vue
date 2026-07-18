@@ -13,9 +13,12 @@
  * - **The heatmap** — weekday×hour, the same `.heat` component as the contribution
  *   graph, so "when do I play" reads the way "did he commit today" does.
  */
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
-import { apiUrl, presenceMediaUrl } from "../../lib/api";
+import { presenceMediaUrl } from "../../lib/api";
+import { useDayDrill } from "../../composables/useDayDrill";
+import { fetchPlaytimeDay } from "../../lib/playtime-api";
+import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
 const d = computed(() => props.module.data);
@@ -46,41 +49,15 @@ const fmtDay = (iso: string) =>
 const todayIso = new Date().toISOString().slice(0, 10);
 
 // The selected day: null = all-time. When set, the drill panel splits and pins
-// all-time beside the day.
-const selected = ref<string | null>(null);
-const dayGames = ref<PlaytimeDayResponse["games"] | null>(null);
-const dayLoading = ref(false);
-const dayError = ref(false);
+// all-time beside the day. The state machine (select/close/loading/error) is the
+// shared drill composable; only the loader differs from Music.
+const drill = useDayDrill<PlaytimeDayResponse["games"]>();
+const { selected, data: dayGames, loading: dayLoading, error: dayError, clear } = drill;
 
-async function selectDay(iso: string, minutes: number) {
-  if (selected.value === iso) return clear();
-  if (minutes === 0) {
-    // A day with no play is a real answer; show it without a fetch.
-    selected.value = iso;
-    dayGames.value = [];
-    dayError.value = false;
-    return;
-  }
-  selected.value = iso;
-  dayGames.value = null;
-  dayError.value = false;
-  dayLoading.value = true;
-  try {
-    const res = await fetch(apiUrl(`/api/playtime/day?day=${iso}`), { headers: { Accept: "application/json" } });
-    if (!res.ok) throw new Error(String(res.status));
-    dayGames.value = ((await res.json()) as PlaytimeDayResponse).games;
-  } catch {
-    dayError.value = true;
-  } finally {
-    dayLoading.value = false;
-  }
-}
-
-function clear() {
-  selected.value = null;
-  dayGames.value = null;
-  dayError.value = false;
-}
+// A day with no play is a real answer — resolve [] without a fetch; otherwise ask
+// the server for that day's per-game breakdown.
+const selectDay = (iso: string, minutes: number) =>
+  drill.select(iso, () => (minutes === 0 ? Promise.resolve([]) : fetchPlaytimeDay(iso)));
 
 // ── the heatmap ──────────────────────────────────────────────────────────────
 
@@ -101,6 +78,19 @@ const heatLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min /
 const now = new Date();
 const nowHour = now.getHours();
 const nowMonFirst = (now.getDay() + 6) % 7;
+
+// Flatten the 7×24 grid into the shared HeatGrid's cells, column-major (a day per
+// column, matching the day labels beside it). Level bucketing stays local — the
+// linear quartile above is playtime's own, not the contribution graph's.
+const heatCells = computed<HeatCell[]>(() =>
+  HEAT.value.flatMap((row, day) =>
+    row.map((min, hour) => ({
+      level: heatLevel(min),
+      today: day === nowMonFirst && hour === nowHour,
+      title: `${DAY_LABELS[day] ?? ""} ${String(hour).padStart(2, "0")}:00 · ${min ? fmtHrs(min) : "nothing"}`,
+    })),
+  ),
+);
 
 const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length > 0 || recent.value.length > 0);
 </script>
@@ -214,17 +204,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
           <div class="pt-days">
             <span v-for="lbl in DAY_LABELS" :key="lbl" class="pt-m">{{ lbl }}</span>
           </div>
-          <div class="pt-heat">
-            <template v-for="(row, day) in HEAT" :key="day">
-              <i
-                v-for="hour in 24"
-                :key="`${day}-${hour}`"
-                :data-l="heatLevel(row[hour - 1]!) || null"
-                :data-now="day === nowMonFirst && hour - 1 === nowHour ? '' : null"
-                :title="`${DAY_LABELS[day] ?? ''} ${String(hour - 1).padStart(2, '0')}:00 · ${row[hour - 1] ? fmtHrs(row[hour - 1]!) : 'nothing'}`"
-              />
-            </template>
-          </div>
+          <HeatGrid :cells="heatCells" :min-cell="8" />
         </div>
         <div class="pt-axis">
           <span class="pt-m">00:00</span><span class="pt-m">12:00</span><span class="pt-m">23:00</span>
@@ -509,26 +489,12 @@ a.pt-rrow:hover .pt-rname {
 .pt-days span {
   line-height: 1;
 }
-.pt-heat {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(8px, 1fr);
-  grid-template-rows: repeat(7, 1fr);
-  gap: 3px;
+/* The grid itself is HeatGrid now; it just needs to fill the row beside the day
+   labels (the old .pt-heat carried `flex: 1` for the same reason). */
+.pt-heatwrap > :deep(.hg) {
   flex: 1;
-  overflow-x: auto;
+  min-width: 0;
 }
-.pt-heat i {
-  aspect-ratio: 1;
-  border-radius: 3px;
-  background: var(--heat-0);
-  display: block;
-}
-.pt-heat i[data-l="1"] { background: var(--heat-1); }
-.pt-heat i[data-l="2"] { background: var(--heat-2); }
-.pt-heat i[data-l="3"] { background: var(--heat-3); }
-.pt-heat i[data-l="4"] { background: var(--heat-4); }
-.pt-heat i[data-now] { background: var(--heat-today); }
 
 @media (max-width: 560px) {
   .pt-drill.split {

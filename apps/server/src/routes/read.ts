@@ -17,7 +17,6 @@ export function registerReadRoutes(app: FastifyInstance, store: Store, env: Serv
     return buildSiteView(store, {
       locale,
       mediaDir: env.mediaDir,
-      ...(env.discordUserId ? { discordUserId: env.discordUserId } : {}),
     });
   });
 }

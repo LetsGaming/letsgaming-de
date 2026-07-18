@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { mdBold } from "../../lib/text";
-import AssetPicture from "../AssetPicture.vue";
+import AssetPicture from "../ui/AssetPicture.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "bio" }>;
