@@ -20,7 +20,15 @@ import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from ".
 import type { FreshnessView, PostView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
-import { defaultPresenceSettings, LIVE_PRESENCE_CATEGORIES, STEAM_CATEGORY } from "./presence.js";
+import {
+  defaultPresenceSettings,
+  LIVE_PRESENCE_CATEGORIES,
+  mergePlaytime,
+  STEAM_CATEGORY,
+  type LedgerDay,
+  type PlaytimeEntry,
+  type PlaytimeHeatCell,
+} from "./presence.js";
 import {
   resolveAsset,
   type ImageAssetView,
@@ -58,6 +66,14 @@ export interface ResolveInput {
   guestbook?: PublicGuestbookEntry[];
   /** Discord presence: the Lanyard id (env config). Categories are CMS-owned. */
   presence?: { discordId?: string };
+  /** Observed playtime, accumulated from presence polls (see PresenceSampler).
+   *  Not a source: it's the store's own accumulation, so it arrives here already
+   *  summed rather than as a snapshot to normalize. */
+  playtime?: PlaytimeEntry[];
+  /** The historical playtime module's data (features 02 + 03): all-time day strip
+   *  and weekday×hour heatmap. Pre-computed by the server — the ledger differences
+   *  archived snapshots, the heatmap groups sessions — so the resolver stays pure. */
+  playHistory?: { ledger: LedgerDay[]; heat: PlaytimeHeatCell[]; since?: string };
   /** Library assets referenced by content, keyed by id (built by the read route). */
   assets?: Map<string, ResolvableAsset>;
   /** Injectable clock for deterministic relative times (tests). */
@@ -115,6 +131,9 @@ const FEED = {
   projects: 12,
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
+  /** Games in the playtime chart. Editorial, like the rest: a bar chart of twenty
+   *  is a list, and the tail of a fortnight is a game you opened once. */
+  playtime: 6,
 } as const;
 
 export function resolveSiteView(input: ResolveInput): SiteView {
@@ -474,6 +493,16 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const steam = source.steam;
         const includeSteam = show.includes(STEAM_CATEGORY) && steam;
         const avatar = resolveAsset(content.meta.avatar, assets);
+        // Steam's fortnight and Discord's observations are different measurements
+        // of the same hours: Discord reports Steam games too, so summing them
+        // double-counts everything Steam already knows. `mergePlaytime` takes
+        // Steam's number where Steam has one — it counts hours Discord wasn't
+        // watching — and the observed one everywhere else, which is the only place
+        // a non-Steam game was ever going to come from.
+        const playtime = show.includes("game")
+          ? mergePlaytime(includeSteam ? steam.recent : [], input.playtime ?? [])
+          : [];
+
         const data: PresenceModuleView = {
           live,
           name: content.meta.name,
@@ -482,6 +511,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           ...(includeSteam
             ? { steam: { ...(steam.playing ? { playing: steam.playing } : {}), recent: steam.recent } }
             : {}),
+          ...(playtime.length ? { playtime: playtime.slice(0, FEED.playtime) } : {}),
         };
         return {
           id: descriptor.id,
@@ -492,6 +522,25 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           ...(includeSteam
             ? { data: { heading, note, freshness: freshnessOf("steam", Boolean(steam)), ...data } }
             : { data: { heading, note, ...data } }),
+        };
+      }
+      case "playtime": {
+        // Pre-computed by the server; the resolver only shapes it into the view.
+        // Absent history is an empty module, not an error — a fresh install has no
+        // snapshots to difference and no sessions to bucket yet.
+        const hist = input.playHistory ?? { ledger: [], heat: [] };
+        const totalMinutes = hist.ledger.reduce((sum, d) => sum + d.minutes, 0);
+        return {
+          id: descriptor.id,
+          kind: "playtime",
+          data: {
+            heading,
+            note,
+            totalHours: Math.round(totalMinutes / 60),
+            ledger: hist.ledger,
+            heat: hist.heat,
+            ...(hist.since ? { since: hist.since } : {}),
+          },
         };
       }
       case "gallery": {

@@ -44,6 +44,7 @@ export function normalizeSteam(raw: SteamRaw): SteamData {
       name: g.name,
       appId: g.appid,
       minutes2Weeks: g.playtime_2weeks ?? 0,
+      minutesForever: g.playtime_forever ?? 0,
       ...(iconUrl(g.appid, g.img_icon_url) ? { iconUrl: iconUrl(g.appid, g.img_icon_url) } : {}),
     }))
     .sort((a, b) => b.minutes2Weeks - a.minutes2Weeks)

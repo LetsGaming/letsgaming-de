@@ -62,10 +62,10 @@ describe("which panel is open", () => {
   });
 
   it("restores the panel named by the URL on load — the reload complaint", async () => {
-    await withHash("#layout");
+    await withHash("#hobbies");
     const { api } = mountCms();
     await flushPromises();
-    expect(api().tab.value).toBe("layout");
+    expect(api().tab.value).toBe("hobbies");
   });
 
   it("falls back rather than rendering nothing for a stale or hostile hash", async () => {
@@ -212,7 +212,8 @@ describe("analytics refresh", () => {
 
     api().pick("analytics");
     await flushPromises();
-    await api().refreshAnalytics();
+    api().refreshAnalytics();
+    await flushPromises();
     await flushPromises();
 
     // Polling through guarded() would have reloaded the preview iframe every 30s.
@@ -393,38 +394,39 @@ describe("editor canvas", () => {
     expect(areaIds(api(), "home")).toEqual(["projects", "hero"]);
   });
 
-  it("clicking a module opens the panel that edits it", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
+  it("clicking a module selects it and names the panel that edits it", async () => {
+    // It used to `pick(panel)` — switch the CMS's tab behind the full-screen
+    // editor — so the only thing clicking a module did was leave the editor. Now it
+    // records the selection and the rail renders that panel beside the page.
     const { api } = mountCms();
     await flushPromises();
 
-    api().canvasSelect("gallery");
-    expect(api().tab.value).toBe("gallery");
+    api().canvasSelect("hero");
+    expect(api().canvasSelected.value).toBe("hero");
+    expect(api().selectedPanel.value).toBe("home");
+    // and it did NOT navigate
+    expect(api().tab.value).not.toBe("home");
   });
 
-  it("says so instead of opening an empty panel for a synced module", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
+  it("clicking the same module again deselects it", async () => {
     const { api } = mountCms();
     await flushPromises();
-    api().pick("dashboard");
 
-    api().canvasSelect("activity"); // rendered from synced data — nothing to edit
-    expect(api().tab.value).toBe("dashboard");
-    expect(api().toast.value).toContain("synced data");
+    api().canvasSelect("hero");
+    api().canvasSelect("hero");
+    expect(api().canvasSelected.value).toBeUndefined();
+    expect(api().selectedPanel.value).toBeNull();
   });
 
-  it("the inserter offers what's unplaced, and drops it where you asked", async () => {
-    vi.spyOn(cms, "preview").mockResolvedValue(emptySiteView());
+  it("a synced module selects, but has no panel to offer", async () => {
+    // `projects` renders GitHub data. There's nothing to type at it, so the rail
+    // says so rather than opening an empty form.
     const { api } = mountCms();
     await flushPromises();
 
-    api().canvasInsert("home", 1);
-    expect(api().insertAt.value).toEqual({ area: "home", index: 1 });
-
-    api().insertModule("guestbook");
-    expect(areaIds(api(), "home")).toEqual(["hero", "guestbook", "projects"]);
-    expect(api().hiddenModules.value).toEqual(["gallery"]);
-    expect(api().insertAt.value).toBeNull();
+    api().canvasSelect("projects");
+    expect(api().canvasSelected.value).toBe("projects");
+    expect(api().selectedPanel.value).toBeNull();
   });
 });
 

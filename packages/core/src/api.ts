@@ -122,6 +122,13 @@ export interface ClearAnalyticsResponse extends OkResponse {
   removed: number;
 }
 
+/** The ledger drill-in: what was played on one day. Games only — the chart is
+ *  games, and the route never exposes other categories. */
+export interface PlaytimeDayResponse {
+  day: string;
+  games: { name: string; minutes: number; sessions: number; exact: boolean }[];
+}
+
 // ── guestbook ────────────────────────────────────────────────────────────────
 
 export interface GuestbookListResponse {

@@ -13,6 +13,7 @@ import GuestbookSection from "./sections/GuestbookSection.vue";
 import GallerySection from "./sections/GallerySection.vue";
 import PostsSection from "./sections/PostsSection.vue";
 import PresenceSection from "./sections/PresenceSection.vue";
+import PlaytimeSection from "./sections/PlaytimeSection.vue";
 import BioSection from "./sections/BioSection.vue";
 import ContactSection from "./sections/ContactSection.vue";
 
@@ -35,6 +36,7 @@ const sections: Record<ResolvedModule["kind"], Component> = {
   guestbook: GuestbookSection,
   gallery: GallerySection,
   presence: PresenceSection,
+  playtime: PlaytimeSection,
   bio: BioSection,
   contact: ContactSection,
   posts: PostsSection,

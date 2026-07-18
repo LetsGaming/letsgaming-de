@@ -51,7 +51,7 @@ export type ModEntry = GuestbookEntry;
  * is view-only. Owns the loaded content model, the save/delete/reorder handlers,
  * the asset-picker modal, analytics, and the live-preview wiring.
  */
-export function useCms() {
+
 
 /**
  * The panels, in nav order.
@@ -70,17 +70,15 @@ const VIEWS = [
   "links",
   "now",
   "editor",
-  "layout",
   "posts",
   "gallery",
   "library",
   "presence",
   "guestbook",
   "analytics",
-  "preview",
 ] as const;
 
-type View = (typeof VIEWS)[number];
+export type View = (typeof VIEWS)[number];
 
 /** Where the CMS opens when the URL doesn't say. */
 const DEFAULT_VIEW: View = "dashboard";
@@ -103,7 +101,6 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
   {
     label: "Structure & media",
     items: [
-      { id: "layout", label: "Layout" },
       { id: "posts", label: "Blog" },
       { id: "library", label: "Asset library" },
       { id: "gallery", label: "Gallery" },
@@ -112,7 +109,6 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
   { label: "Widgets", items: [{ id: "presence", label: "Presence" }] },
   { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
   { label: "Insights", items: [{ id: "analytics", label: "Analytics" }] },
-  { label: "", items: [{ id: "preview", label: "Preview" }] },
 ];
 const VIEW_TITLES: Record<View, string> = {
   dashboard: "Dashboard",
@@ -122,16 +118,16 @@ const VIEW_TITLES: Record<View, string> = {
   hobbies: "Hobbies",
   links: "Links",
   now: "Right now",
-  editor: "Editor — drag the page",
-  layout: "Layout — every area at once",
+  editor: "Editor — arrange and write",
   posts: "Blog",
   library: "Asset library",
   gallery: "Gallery",
   presence: "Presence widget",
   guestbook: "Guestbook",
   analytics: "Analytics",
-  preview: "Live preview",
 };
+
+export function useCms() {
 
 const authed = ref(false);
 const login = ref<string | null>(null);
@@ -911,7 +907,6 @@ function pick(v: View, push = true) {
   if ((v === "guestbook" || v === "dashboard") && !guestbook.value) void loadGuestbook();
   if (v === "analytics" && !analytics.value) void loadAnalytics();
   if (AREA_FOR_VIEW[v]) previewArea.value = AREA_FOR_VIEW[v]!; // remember what to preview
-  if (v === "preview") previewKey.value++; // always show the freshest render
   if (push && typeof window !== "undefined" && viewFromHash() !== v) {
     window.location.hash = v;
   }
@@ -962,6 +957,10 @@ const PANEL_FOR_KIND: Record<ModuleKind, View | null> = {
   guestbook: "guestbook",
   gallery: "gallery",
   presence: "presence",
+  // Playtime is configured by the same Discord/Steam settings as presence — the
+  // category allow-list decides what the sampler records, and that panel owns it.
+  // A separate panel would be a second set of knobs for one set of settings.
+  playtime: "presence",
   bio: "about",
   contact: "links",
   posts: "posts",
@@ -983,9 +982,6 @@ const layoutOrder = () => layoutAreas.value.map((a) => ({ area: a.id, modules: a
 const canvasSite = shallowRef<SiteView | null>(null);
 const canvasSelected = ref<string | undefined>();
 const canvasLoading = ref(false);
-/** Set when the canvas iframe reports it has mounted (see canvas-protocol). */
-const canvasReady = ref(false);
-
 /**
  * Re-resolve the pending layout for the canvas.
  *
@@ -1013,14 +1009,29 @@ function canvasMove(area: string, oldIndex: number, newIndex: number) {
   void refreshCanvas();
 }
 
-/** A module was clicked on the canvas: open the panel that edits it. */
+/**
+ * A module was clicked on the canvas.
+ *
+ * This used to `pick(panel)` — switch the CMS's tab to the panel that edits it,
+ * *behind* the full-screen editor. So the only thing clicking a module did was
+ * leave the editor. You could arrange a page or write its words, never both.
+ *
+ * Now it just records the selection; the editor renders that module's panel in its
+ * own rail, beside the page it changes. Same panel component, same context, no
+ * navigation — which is the point of a visual editor and was the one thing this one
+ * couldn't do.
+ */
 function canvasSelect(moduleId: string) {
-  canvasSelected.value = moduleId;
-  const kind = modules.value.find((m) => m.id === moduleId)?.kind;
-  const panel = kind ? PANEL_FOR_KIND[kind] : null;
-  if (panel) pick(panel);
-  else flash("That module renders synced data — there's nothing to edit by hand.");
+  canvasSelected.value = canvasSelected.value === moduleId ? undefined : moduleId;
 }
+
+/** Which panel edits the selected module, if any edits it by hand. */
+const selectedPanel = computed<View | null>(() => {
+  const id = canvasSelected.value;
+  if (!id) return null;
+  const kind = modules.value.find((m) => m.id === id)?.kind;
+  return kind ? PANEL_FOR_KIND[kind] : null;
+});
 
 /** The `+` between two modules: park the insertion point, offer what's unplaced. */
 const insertAt = ref<{ area: string; index: number } | null>(null);
@@ -1078,7 +1089,7 @@ const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
   { label: "Links", n: links.value.length, to: "links" },
   { label: "Right-now items", n: now.value.length, to: "now" },
   { label: "Gallery images", n: gallery.value.length, to: "gallery" },
-  { label: "Modules", n: modules.value.length, to: "layout" },
+  { label: "Modules", n: modules.value.length, to: "editor" },
 ]);
 
 // Start/stop the analytics poll as the panel opens and closes. A watcher rather
@@ -1155,6 +1166,7 @@ onUnmounted(() => {
     insertModule,
     layoutOrder,
     editorOpen,
+    selectedPanel,
     areaOptions,
     saveLayout,
     galleryModules,

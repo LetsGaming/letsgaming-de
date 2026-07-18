@@ -39,6 +39,7 @@ export const MODULE_KIND = {
   bio: "bio",
   contact: "contact",
   posts: "posts",
+  playtime: "playtime",
 } as const;
 
 export type ModuleKind = (typeof MODULE_KIND)[keyof typeof MODULE_KIND];

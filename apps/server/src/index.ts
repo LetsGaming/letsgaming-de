@@ -1,6 +1,8 @@
 import { buildApp } from "./app.js";
 import { loadEnv } from "./env.js";
 import { getStore } from "./store.js";
+import { PRESENCE_SAMPLE_SCHEDULE } from "@lg/core";
+import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
 import { ingestLog } from "./analytics/ingest.js";
 import cron from "node-cron";
@@ -29,6 +31,12 @@ const runner = new SyncRunner(
   env.retainHourlyDays,
 );
 runner.start();
+
+// Presence is polled on its own schedule, not as a source: a source's newest
+// snapshot is the truth and a missed sync costs nothing, but a missed presence
+// sample is playtime that never existed. See sync/presence-sampler.ts.
+const sampler = new PresenceSampler(env, store, PRESENCE_SAMPLE_SCHEDULE, (m) => app.log.info(m));
+sampler.start();
 
 // Traffic analytics: if an access log is configured, ingest it in-process on a
 // schedule (incremental + idempotent) so path/referrer/browser/OS/device stats
@@ -121,6 +129,7 @@ if (env.accessLog) {
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down`);
   runner.stop();
+  sampler.stop();
   ingestTask?.stop();
   await app.close();
   store.close();

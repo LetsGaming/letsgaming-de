@@ -10,6 +10,7 @@
  * switches on `kind`. It never knows a module's data came from GitHub vs. the CMS.
  */
 
+import type { PlaytimeView } from "./presence.js";
 import type { Tone } from "./content.js";
 import type { Locale } from "./i18n.js";
 import type { ImageAssetView, GifAssetView } from "./assets.js";
@@ -164,6 +165,19 @@ export interface PresenceModuleView {
     playing?: { name: string; appId: number };
     recent: { name: string; appId: number; minutes2Weeks: number; iconUrl?: string }[];
   };
+  /**
+   * Playtime per game, Steam and non-Steam together, each saying where it came
+   * from.
+   *
+   * `steam` above is the raw fortnight and stays — the widget's "recently on
+   * Steam" list is a different claim than "what I've played". This is the merged
+   * one: Steam's minutes where Steam has them (it counts hours Discord was closed),
+   * observed minutes for everything else (Steam never saw them at all).
+   *
+   * `source` is on every entry because the two aren't interchangeable and a chart
+   * that hides which is which is a chart that invites the wrong conclusion.
+   */
+  playtime?: PlaytimeView[];
 }
 
 /** One resolved gallery image: a client-ready picture spec plus its caption. */
@@ -222,9 +236,36 @@ export type ResolvedModule =
   | { id: string; kind: "now"; data: SectionMeta & { items: NowView[] } }
   | { id: string; kind: "guestbook"; data: SectionMeta & { entries: GuestbookEntryView[] } }
   | { id: string; kind: "presence"; data: SectionMeta & PresenceModuleView }
+  | { id: string; kind: "playtime"; data: SectionMeta & PlaytimeModuleView }
   | { id: string; kind: "gallery"; data: SectionMeta & { images: GalleryImageView[] } }
   | { id: string; kind: "bio"; data: SectionMeta & { blocks: BioBlock[] } }
   | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
+
+/**
+ * The historical playtime module (features 02 + 03).
+ *
+ * Deliberately separate from `PresenceModuleView`, which is present-tense — "Right
+ * now", the live dot, the fortnight. This is the *past*: an all-time day strip and
+ * a weekday×hour heatmap, both built from data the present-tense card never reads
+ * (`source_snapshots` history and accumulated `presence_sessions`). Two subjects,
+ * two modules — the split the sampler-vs-source distinction already drew.
+ *
+ * `dayBreakdown` isn't here: it's fetched on demand when a column is clicked, so
+ * the module ships one day-strip and one grid rather than 30 days of breakdowns
+ * nobody asked to see.
+ */
+export interface PlaytimeModuleView {
+  /** All-time hours, rounded, for the headline figure. */
+  totalHours: number;
+  /** The day strip: exact minutes played per day, differenced from lifetime
+   *  counters. Oldest first. */
+  ledger: { day: string; minutes: number }[];
+  /** The heatmap: minutes per weekday×hour over the window. Sparse — only cells
+   *  with play are present; the view fills the 7×24 grid. */
+  heat: { weekday: number; hour: number; minutes: number }[];
+  /** How many days the ledger covers, for "since <date>" copy. */
+  since?: string;
+}
 
 /** A nav node with its label already localized (children/modules preserved). */
 export interface NavView {

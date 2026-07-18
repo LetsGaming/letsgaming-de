@@ -109,7 +109,7 @@ views are the **ceiling** (a request claimed to be a browser), confirmed visits 
 load; it was mislabelled "Section views"). Tested as a property: two people on the
 same page produce byte-identical hits.
 
-**The editor.** Seven reports, five causes.
+**The editor, after someone actually opened it.** Seven reports, five causes.
 
 - **The wrong item got dragged.** The canvas mapped `.panel`'s Nth child to the Nth
   module. Thirteen sections render one root; `HeroSection` was a fragment of five,
@@ -168,11 +168,164 @@ Deleted: `canvas-protocol.ts` (110 lines), `/admin/canvas` and its build entry, 
 with them two bug classes that only exist across a document boundary, both of which
 had already bitten: `DataCloneError` (postMessage can't clone a Vue proxy) and the
 16KB of CSS a `client:only` entry can't be traced for at build. `useCms.ts` 1282 →
-1.    The site's rendered HTML is byte-identical.
+1219. The site's rendered HTML is byte-identical.
 
 The tests went with the boundary rather than outliving it as decoration: a
 `structuredClone` regression and a handshake test were tests *of postMessage*, not
 of the editor.
+
+**A verification note, because it's the same bug.** The gate used to be run as
+`pnpm typecheck | grep -cE "error TS"`. `astro check` reports `error ts(2322)` —
+lowercase — so that filter could not match an astro check error, ever. Every
+"0 typecheck errors" it produced was a check that couldn't fail, which is the exact
+shape of the `as PostAsset` cast and the unenforced `tone` comment this entry is
+about. `pnpm typecheck` already returns a verdict as an exit code; grepping its
+output was a second copy of the rule that disagreed with the first. It caught four
+dead declarations once read properly: `canvasReady` (left behind when the iframe
+went — its comment cited the deleted `canvas-protocol`), an unused
+`MODERATION_ACTION` import, an unused `ModuleKind` in a test, and an `await` on a
+synchronous function.
+
+**The editor after opening it a second time.** The canvas rendered with no
+background at all — you could read the CMS's sidebar through it — and the rail was
+unstyled. Both from one line: `<Teleport to="body">`.
+
+`.cms` carries three things, and the teleport threw out all three to escape one.
+The token layer (**34 custom properties**, `--bg-base`, `--card`, `--line`, `--ink`
+…) is defined on `.cms`, so outside it every `var()` in the editor resolved to
+nothing and `background: var(--bg-base)` was invalid — hence transparent. The rail
+is built from `.cms .modlist` / `.cms .grip`, which stopped matching for the same
+reason. Only `.cms .card` and `.cms .btn` were ever in the way, and only for the
+canvas. That's `:not(.lgedit-page *)` on four rules, and the editor stays inside
+`.cms` where its variables live — `position: fixed` covers the screen from there
+regardless, since `.cms` sets no transform, filter or containment.
+
+`.cms .editor` was also defined twice — CmsApp's panel column and the editor's
+launcher, one class name, two components, one stylesheet. Gone with the dock.
+
+**`/admin` was `client:only` too, and for a reason that wasn't true.** The comment
+said it kept private content out of SSR. There is no private content at build time
+— `CmsApp` renders "Loading…" until a token fetch returns, and that's what SSR
+emits either way. What it actually did was stop Astro walking the component tree,
+so the site's scoped styles (ContactForm, GuestbookForm, PresenceWidget, BaseForm)
+never reached the page: **the guestbook and presence widget rendered naked inside
+the editor because of one word.** Same bug as the deleted canvas page had, same fix,
+`client:load`.
+
+**The editor absorbed Layout, Preview, and content.**
+
+- **Clicking a module edits it, in the rail.** It used to `pick(panel)` — switch the
+  CMS's tab *behind* the full-screen editor — so the only thing selecting a module
+  did was leave the editor. You could arrange a page or write its words, never both.
+  The rail now renders that module's own panel component, unchanged, beside the page
+  it changes. Synced modules say so instead of opening an empty form.
+- **`Layout` is gone.** The editor's rail already listed every area and every
+  unplaced module, and dropping onto it already moved things. Two screens for one
+  job.
+- **`Preview` and the docked preview iframe are gone.** The editor *is* a preview,
+  and a better one: it renders the *pending* layout at the full viewport, where the
+  dock rendered the *saved* one in a 660px column. `showDock`, `previewKey`,
+  `previewSrc`, `.worksplit`, `.dock*` — 44 lines of CSS and a whole iframe.
+
+`VIEWS` also moved out of `useCms()` to module scope, which is where a constant
+belongs: the function is 1200 lines, so a type declared in it can't be exported and
+a panel that wants to name a `View` couldn't have one.
+
+**Playtime for games Steam has never heard of.** The "Right now" chart was Steam's
+`minutes2Weeks` and nothing else, so anything not launched through Steam was
+invisible — not undercounted, absent. Discord already knows what's running; nothing
+was writing it down.
+
+**A sampler is not a source, and that distinction is the whole design.**
+`Source.ttl`'s own comment rules presence out in one line — "Discord presence is
+worthless after a minute" — which is why Lanyard was never registered as one and why
+`/api/presence` fetches live. A source pulls a complete state its adapter can pull
+again tomorrow: the newest snapshot is the truth and a missed sync costs nothing. A
+sample is a *moment*, and nobody can hand one back — a poll that doesn't happen is
+playtime that never existed, and the truth is the accumulation rather than the
+newest row. That's the shape of `analytics_hits`, not `source_current`, and
+`presence_sessions` (`0003`) sits with it.
+
+It also can't live in `/api/presence`, where the Lanyard fetch already is, which is
+what makes it look free: accumulating in the request path would make playtime a
+measure of the site's traffic. Nobody visits at 3am, so nothing was played at 3am.
+
+**Sessions, not samples.** A row per poll times the interval is ±5 minutes of error
+at each end of every session. Discord answers better: `timestamps.start` dates the
+activity, so a poll says "playing X, *since S*". `(category, name, started_at)` is
+the session's identity and a poll only moves `last_seen_at` — the sampler is
+**idempotent by the primary key**, so polling twice, retrying, or overlapping runs
+cannot inflate a total. Duration is `last_seen - started`; the only error left is the
+tail before quitting, bounded by the interval, always an under-count, never
+compounding.
+
+**Steam and Discord are not two numbers to add.** Discord reports Steam games too,
+so summing double-counts every hour Steam already knows about. Nor is it `max()` —
+that's still a guess about which measurement you're holding. Steam's fortnight
+counts hours Discord was closed, so it wins where it has an answer; observed minutes
+fill in everywhere else, which is the only place a non-Steam game was ever coming
+from. Every entry carries its `source`, and Steam's `appId`/icon/accent travel with
+it — so a Steam tile is still a store link and an observed one renders as a `<div>`,
+because Discord gives a name and nothing to link to. Verified against the running
+stack: Counter-Strike 2 appears **once** (620 Steam minutes, not 620 + 200 observed),
+Minecraft appears at all.
+
+**A bug this found in itself.** Discord doesn't date every activity, and the undated
+path used `started_at = now` — which made *every poll its own zero-length session*,
+so an undated game accumulated nothing, forever, silently, because
+`PLAYTIME_MIN_SECONDS` dropped each row. Found by mutating the idempotence test and
+noticing it failed somewhere other than expected. Undated polls now extend whatever
+session is still open (`PRESENCE_SESSION_GAP_MS` — twice the interval, so one failed
+poll doesn't saw a session in half), and `started_exact` marks the total as the floor
+it is.
+
+**Spotify listens now record the artist, not "Spotify".** The sampler keyed music
+sessions on `activity.name` — which Discord sets to the literal string "Spotify"
+for every listen — so "top artists" would have been one bar labelled Spotify. The
+artist rides in `activity.state` (the song is in `details`); a new `sessionSubject`
+function reads the right field per category, and "top artists" now falls straight
+out of the same `SUM(duration) GROUP BY name` the games use. The music *module* is
+held until there's a place for it, but the data it needs is accumulating correctly
+from now on rather than being silently thrown away.
+
+**Two historical playtime features, both from data already on disk.**
+
+*Feature 03 — when I play.* A weekday×hour heatmap, the same `.heat` component as
+the contribution graph, so "when do I play" reads the way "did he commit today"
+does. Pure SQL over `started_at` — no new sampling, the rows were already there.
+Neutral tiers, only the current hour purple.
+
+*Feature 02 — the all-time ledger.* Exact minutes per day, and this is where the
+`playtime_forever` work pays off. The Steam adapter fetched `GetRecentlyPlayedGames`
+and dropped that field — it wasn't even in the type. Now it flows through to
+`SteamData`, gets archived in every `source_snapshots` row like the rest, and
+`differenceLedger` differences consecutive snapshots into exact per-day minutes.
+`playtime_2weeks` couldn't do this: it decays (played minus expired), so its delta
+isn't playtime. `playtime_forever` is monotonic, so its delta is. `source.history`
+— written for "the raw material for long-range trends" and until now called only by
+a test — is finally the caller it was built for.
+
+The differ has three cases that each cost a test proven to bite: a game's **first
+sighting** seeds its baseline and credits nothing (else Counter-Strike's 74,000
+lifetime minutes would land on day one), a **backwards counter** is noise clamped to
+zero and re-baselined, and a delta is attributed to the **newer** snapshot's day.
+
+The ledger strip is navigable, as asked: clicking a column fetches that day's
+breakdown (`/api/playtime/day`, games-only, date-validated) and pins it against the
+all-time figures, so a day is always read against the whole. A day with no play is a
+real answer — "Nothing recorded this day" — not a blank.
+
+Both live in a new `playtime` `ModuleKind` with its resolver, view, component, and
+CMS wiring — but it is **not placed in the nav yet**, by request. It exists and is
+placeable; where it goes is a later decision. Its CMS panel points at the existing
+presence panel, because the category allow-list that decides what the sampler
+records is the same setting — a second panel would be a second set of knobs for one
+set of settings.
+
+Retention/pruning (mockup 05) is deliberately *not* in this change: the two features
+work without it, and a new column plus a scheduled prune is a separate concern worth
+its own tranche rather than folding in silently. `sessions.prune()` still exists,
+still uncalled.
 
 **Removed.**
 

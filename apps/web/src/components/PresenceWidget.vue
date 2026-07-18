@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { ImageAssetView, GifAssetView, PresenceView } from "@lg/core";
+import type {
+  GifAssetView,
+  ImageAssetView,
+  PlaytimeSource,
+  PlaytimeView,
+  PresenceView,
+} from "@lg/core";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AssetPicture from "./AssetPicture.vue";
 import { apiUrl, presenceMediaUrl } from "../lib/api";
@@ -22,6 +28,10 @@ const props = defineProps<{
       accent?: string;
     }[];
   };
+  /** The merged chart: Steam's fortnight plus everything Discord watched. `steam`
+   *  above is still the raw feed — `playing` comes from it, and it stays the
+   *  source of the "Playing now" crown. */
+  playtime?: PlaytimeView[];
 }>();
 
 const POLL_MS = 25_000;
@@ -93,12 +103,16 @@ const initials = computed(() => {
 });
 
 // ── Steam half ──────────────────────────────────────────────────────────────
-const hasSteam = computed(() => !!props.steam?.recent.length);
+// The section exists if anything was played, from either half. It used to key off
+// `steam.recent`, which is why a fortnight of non-Steam games rendered as nothing
+// at all rather than as a list without Steam in it.
+const hasSteam = computed(() => !!props.playtime?.length);
 const playingAppId = computed(() => props.steam?.playing?.appId ?? null);
 
 interface Game {
   name: string;
-  appId: number;
+  /** Steam only. Absent means no store link — Discord gives a name and nothing else. */
+  appId?: number;
   hours: number;
   label: string;
   pct: number;
@@ -106,38 +120,53 @@ interface Game {
   iconSrc?: string;
   accent: string;
   playing: boolean;
+  source: PlaytimeSource;
+  /** False when the total is a floor rather than a measurement. */
+  exact: boolean;
 }
+/**
+ * Every game played, not just the Steam ones.
+ *
+ * `playtime` is the resolver's merge: Steam's fortnight where Steam has a number
+ * (it counts hours Discord was closed), and hours observed from Discord presence
+ * for everything else — which is the only place a non-Steam game was ever going to
+ * come from, because nothing was watching them.
+ *
+ * The two aren't summed. Discord reports Steam games too, so adding them would
+ * double-count every hour Steam already knows about.
+ */
 const steamGames = computed<Game[]>(() => {
-  const recent = props.steam?.recent ?? [];
+  const played = props.playtime ?? [];
   const hoursOf = (m: number) => Math.round((m / 60) * 10) / 10;
-  const total = recent.reduce((s, g) => s + g.minutes2Weeks / 60, 0) || 1;
-  return recent.map((g) => {
-    const hours = hoursOf(g.minutes2Weeks);
+  const total = played.reduce((s, g) => s + g.minutes / 60, 0) || 1;
+  return played.map((g) => {
+    const hours = hoursOf(g.minutes);
     return {
       name: g.name,
-      appId: g.appId,
+      ...(g.appId != null ? { appId: g.appId } : {}),
       hours,
       label: (hours % 1 === 0 ? hours : hours.toFixed(1)) + "h",
-      pct: Math.max(2, Math.round((g.minutes2Weeks / 60 / total) * 100)),
+      pct: Math.max(2, Math.round((g.minutes / 60 / total) * 100)),
       ...(g.iconUrl ? { iconUrl: g.iconUrl, iconSrc: presenceMediaUrl({ url: g.iconUrl }) } : {}),
       // Sampled from the game's own icon at sync — imported, not assigned.
-      // Neutral when the icon didn't load: a fallback, never a guess.
+      // Neutral when the icon didn't load, or when there's no icon to sample
+      // because Discord doesn't hand one over: a fallback, never a guess.
       accent: g.accent ?? "var(--surf-3)",
       playing: playingAppId.value != null && g.appId === playingAppId.value,
+      source: g.source,
+      exact: g.exact,
     };
   });
 });
 const featured = computed(() => steamGames.value[0] ?? null);
 const others = computed(() => steamGames.value.slice(1));
 const totalHours = computed(
-  () =>
-    Math.round(
-      (props.steam?.recent ?? []).reduce(
-        (s, g) => s + g.minutes2Weeks / 60,
-        0,
-      ) * 10,
-    ) / 10,
+  () => Math.round((props.playtime ?? []).reduce((s, g) => s + g.minutes / 60, 0) * 10) / 10,
 );
+
+/** True when any of it is a floor — an undated session we timed from first sight,
+ *  or any observed game at all, since Discord only sees what it's running for. */
+const anyObserved = computed(() => (props.playtime ?? []).some((g) => g.source === "observed"));
 const iconGrad = (accent: string) =>
   `linear-gradient(135deg, ${accent}, var(--surf-3))`;
 const storeUrl = (appId: number) =>
@@ -245,17 +274,21 @@ onBeforeUnmount(() => {
 
     <!-- Steam: what I actually play (server-synced) -->
     <div v-if="hasSteam" class="pw-steam">
-      <div class="pw-steam-h"><span class="pw-t">Recently on Steam</span></div>
+      <div class="pw-steam-h"><span class="pw-t">Recently played</span></div>
       <p class="pw-steam-cap">
-        Share of {{ totalHours }} h played in the last 2 weeks
+        Share of {{ totalHours }} h in the last 2 weeks<template v-if="anyObserved">
+          · non-Steam hours are what Discord saw, so they're a floor</template>
       </p>
 
-      <a
+      <component
+        :is="featured?.appId != null ? 'a' : 'div'"
         v-if="featured"
         class="pw-feat"
-        :href="storeUrl(featured.appId)"
-        target="_blank"
-        rel="noreferrer noopener"
+        v-bind="
+          featured.appId != null
+            ? { href: storeUrl(featured.appId), target: '_blank', rel: 'noreferrer noopener' }
+            : {}
+        "
       >
         <span class="pw-crown">
           <svg viewBox="0 0 24 24" fill="currentColor">
@@ -287,16 +320,19 @@ onBeforeUnmount(() => {
         <div class="pw-lane">
           <span class="pw-fill" :style="{ width: featured.pct + '%', '--bar': featured.accent }" />
         </div>
-      </a>
+      </component>
 
       <div class="pw-grid">
-        <a
+        <component
+          :is="g.appId != null ? 'a' : 'div'"
           v-for="g in others"
-          :key="g.appId"
+          :key="g.name"
           class="pw-tile"
-          :href="storeUrl(g.appId)"
-          target="_blank"
-          rel="noreferrer noopener"
+          v-bind="
+            g.appId != null
+              ? { href: storeUrl(g.appId), target: '_blank', rel: 'noreferrer noopener' }
+              : {}
+          "
         >
           <img v-if="g.iconSrc" :src="g.iconSrc" alt="" class="pw-ico" />
           <span
@@ -317,7 +353,7 @@ onBeforeUnmount(() => {
               <span class="pw-hrs">{{ g.label }}</span>
             </div>
           </div>
-        </a>
+        </component>
       </div>
     </div>
   </div>

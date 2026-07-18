@@ -25,7 +25,15 @@ export interface RawSteamSummary {
 
 export interface RawSteamRecent {
   response?: {
-    games?: { appid: number; name: string; playtime_2weeks?: number; img_icon_url?: string }[];
+    games?: {
+      appid: number;
+      name: string;
+      playtime_2weeks?: number;
+      /** Lifetime minutes. Monotonic, unlike the 2-week window — which is what
+       *  makes differencing two snapshots of it exact rather than decay-corrupted. */
+      playtime_forever?: number;
+      img_icon_url?: string;
+    }[];
   };
 }
 

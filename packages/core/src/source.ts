@@ -188,6 +188,14 @@ export interface SteamData {
     name: string;
     appId: number;
     minutes2Weeks: number;
+    /**
+     * Lifetime minutes on this game, as of this sync. Archived in every
+     * `source_snapshots` row, so differencing two snapshots gives *exact* minutes
+     * played in that interval — `playtime_2weeks` decays (played minus expired),
+     * this only ever grows. It's the raw material the ledger differences; the
+     * widget itself never shows a lifetime counter.
+     */
+    minutesForever: number;
     iconUrl?: string;
     /**
      * Dominant colour of the game's own icon, sampled at sync. Colour is

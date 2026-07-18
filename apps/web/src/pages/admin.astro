@@ -3,10 +3,21 @@ import CmsApp from "../components/cms/CmsApp.vue";
 import Layout from "../layouts/Layout.astro";
 
 // Static shell — auth and data all happen client-side against the API, so the
-// server never renders private content. `client:only` keeps it out of SSR.
+// server never renders private content.
+//
+// `client:load`, not `client:only`. The old comment said `client:only` was what
+// kept private content out of SSR; it wasn't. There *is* no private content at
+// build time — `CmsApp` renders "Loading…" until a token fetch returns, and that's
+// what SSR emits either way. What `client:only` actually did was stop Astro
+// rendering the component at build, so it couldn't walk the tree, so it never
+// emitted the stylesheet for anything inside: the editor's canvas renders the
+// site's real sections, and their scoped styles (ContactForm, GuestbookForm,
+// PresenceWidget, BaseForm — ~16KB) shipped in a chunk this page never linked.
+// The guestbook and the presence widget rendered naked in the editor because of
+// this one word.
 export const prerender = true;
 ---
 
 <Layout title="CMS — letsgaming.de">
-  <CmsApp client:only="vue" />
+  <CmsApp client:load />
 </Layout>

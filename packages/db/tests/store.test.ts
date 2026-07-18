@@ -502,3 +502,181 @@ test("a kind the vocabulary does know survives the round trip", () => {
   });
   assert.equal(store.assets.getById("a2")?.kind, "markdown");
 });
+
+// ── observed play sessions ───────────────────────────────────────────────────
+
+test("polling the same session twice does not inflate it", () => {
+  // The whole reason sessions are keyed by (category, name, started_at) rather
+  // than written per-poll. Discord dates the start, so two polls of one session
+  // are one row and only last_seen moves. Idempotence isn't a nicety here: the
+  // sampler runs on a cron, and a retry or an overlapping run must not invent
+  // playtime.
+  const store = openStore(":memory:");
+  const started = "2026-07-17T20:00:00.000Z";
+
+  store.sessions.observe({
+    category: "game", name: "Minecraft", startedAt: started,
+    seenAt: "2026-07-17T20:05:00.000Z", startedExact: true,
+  });
+  store.sessions.observe({
+    category: "game", name: "Minecraft", startedAt: started,
+    seenAt: "2026-07-17T20:05:00.000Z", startedExact: true,
+  });
+  store.sessions.observe({
+    category: "game", name: "Minecraft", startedAt: started,
+    seenAt: "2026-07-17T20:30:00.000Z", startedExact: true,
+  });
+
+  const [row] = store.sessions.playtime("game", "2026-07-17T00:00:00.000Z");
+  assert.equal(row?.minutes, 30, "three polls of one 30-minute session is 30 minutes");
+  assert.equal(row?.sessions, 1);
+});
+
+test("a poll that arrives out of order cannot shorten a session", () => {
+  const store = openStore(":memory:");
+  const started = "2026-07-17T20:00:00.000Z";
+  store.sessions.observe({
+    category: "game", name: "Factorio", startedAt: started,
+    seenAt: "2026-07-17T21:00:00.000Z", startedExact: true,
+  });
+  // A retried or delayed poll carrying an older timestamp.
+  store.sessions.observe({
+    category: "game", name: "Factorio", startedAt: started,
+    seenAt: "2026-07-17T20:10:00.000Z", startedExact: true,
+  });
+  assert.equal(store.sessions.playtime("game", "2026-07-17T00:00:00.000Z")[0]?.minutes, 60);
+});
+
+test("restarting a game is a new session, and they sum", () => {
+  const store = openStore(":memory:");
+  store.sessions.observe({
+    category: "game", name: "Hades II", startedAt: "2026-07-17T10:00:00.000Z",
+    seenAt: "2026-07-17T11:00:00.000Z", startedExact: true,
+  });
+  store.sessions.observe({
+    category: "game", name: "Hades II", startedAt: "2026-07-17T15:00:00.000Z",
+    seenAt: "2026-07-17T15:30:00.000Z", startedExact: true,
+  });
+  const [row] = store.sessions.playtime("game", "2026-07-17T00:00:00.000Z");
+  assert.equal(row?.minutes, 90);
+  assert.equal(row?.sessions, 2);
+});
+
+test("an undated game accumulates across polls", () => {
+  // The bug this exists for: `started_at = now` on every poll made each one its
+  // own zero-length session, so a game Discord doesn't date accumulated *nothing,
+  // forever* — and silently, because PLAYTIME_MIN_SECONDS dropped every row. The
+  // poll extends the open session instead.
+  const store = openStore(":memory:");
+  for (const t of ["12:00", "12:05", "12:10", "12:15"]) {
+    store.sessions.observe({
+      category: "game", name: "Solitaire",
+      startedAt: `2026-07-17T${t}:00.000Z`, seenAt: `2026-07-17T${t}:00.000Z`,
+      startedExact: false,
+    });
+  }
+  const [row] = store.sessions.playtime("game", "2026-07-17T00:00:00.000Z");
+  assert.equal(row?.minutes, 15, "four polls five minutes apart is a 15-minute session");
+  assert.equal(row?.sessions, 1, "one session, not four");
+  assert.equal(row?.exact, false, "timed from first sight, so it's a floor");
+});
+
+test("an undated session that lapses is a new one, not an extension", () => {
+  // Past the gap, gluing them together would invent playtime across a break.
+  const store = openStore(":memory:");
+  store.sessions.observe({
+    category: "game", name: "Solitaire", startedAt: "2026-07-17T12:00:00.000Z",
+    seenAt: "2026-07-17T12:00:00.000Z", startedExact: false,
+  });
+  store.sessions.observe({
+    category: "game", name: "Solitaire", startedAt: "2026-07-17T12:05:00.000Z",
+    seenAt: "2026-07-17T12:05:00.000Z", startedExact: false,
+  });
+  // an hour later — a different sitting
+  store.sessions.observe({
+    category: "game", name: "Solitaire", startedAt: "2026-07-17T13:05:00.000Z",
+    seenAt: "2026-07-17T13:05:00.000Z", startedExact: false,
+  });
+  store.sessions.observe({
+    category: "game", name: "Solitaire", startedAt: "2026-07-17T13:10:00.000Z",
+    seenAt: "2026-07-17T13:10:00.000Z", startedExact: false,
+  });
+  const [row] = store.sessions.playtime("game", "2026-07-17T00:00:00.000Z");
+  assert.equal(row?.sessions, 2, "two sittings, not one hour-long one");
+  assert.equal(row?.minutes, 10, "5 + 5, not 70");
+});
+
+test("a session glimpsed once, undated, is not a fact", () => {
+  // No timestamps.start from Discord and only one poll: last_seen == started, so
+  // zero seconds. Charting it would name a game we can say nothing about.
+  const store = openStore(":memory:");
+  store.sessions.observe({
+    category: "game", name: "Solitaire", startedAt: "2026-07-17T10:00:00.000Z",
+    seenAt: "2026-07-17T10:00:00.000Z", startedExact: false,
+  });
+  assert.deepEqual(store.sessions.playtime("game", "2026-07-17T00:00:00.000Z"), []);
+});
+
+test("one undated session makes the whole total a floor", () => {
+  const store = openStore(":memory:");
+  store.sessions.observe({
+    category: "game", name: "Terraria", startedAt: "2026-07-17T10:00:00.000Z",
+    seenAt: "2026-07-17T11:00:00.000Z", startedExact: true,
+  });
+  store.sessions.observe({
+    category: "game", name: "Terraria", startedAt: "2026-07-17T14:00:00.000Z",
+    seenAt: "2026-07-17T14:30:00.000Z", startedExact: false,
+  });
+  assert.equal(store.sessions.playtime("game", "2026-07-17T00:00:00.000Z")[0]?.exact, false);
+});
+
+test("categories don't bleed into each other", () => {
+  const store = openStore(":memory:");
+  store.sessions.observe({
+    category: "music", name: "Spotify", startedAt: "2026-07-17T10:00:00.000Z",
+    seenAt: "2026-07-17T12:00:00.000Z", startedExact: true,
+  });
+  assert.deepEqual(store.sessions.playtime("game", "2026-07-17T00:00:00.000Z"), []);
+  assert.equal(store.sessions.playtime("music", "2026-07-17T00:00:00.000Z")[0]?.minutes, 120);
+});
+
+// ── playtime shape queries (features 02 & 03) ────────────────────────────────
+
+test("heatmap buckets sessions by weekday and hour", () => {
+  const store = openStore(":memory:");
+  // Two sessions Fri 21:00, one Sat 14:00.
+  const iso = (y: number, mo: number, d: number, h: number, mi = 0) =>
+    new Date(Date.UTC(y, mo, d, h, mi)).toISOString();
+  // 2026-07-17 is a Friday.
+  store.sessions.observe({ category: "game", name: "A", startedAt: iso(2026, 6, 17, 21, 0), seenAt: iso(2026, 6, 17, 21, 30), startedExact: true });
+  store.sessions.observe({ category: "game", name: "B", startedAt: iso(2026, 6, 17, 21, 10), seenAt: iso(2026, 6, 17, 22, 10), startedExact: true });
+  store.sessions.observe({ category: "game", name: "C", startedAt: iso(2026, 6, 18, 14, 0), seenAt: iso(2026, 6, 18, 14, 45), startedExact: true });
+
+  const grid = store.sessions.heatmap("game", iso(2026, 6, 1, 0));
+  const fri21 = grid.find((c) => c.weekday === 5 && c.hour === 21);
+  const sat14 = grid.find((c) => c.weekday === 6 && c.hour === 14);
+  assert.equal(fri21?.minutes, 90, "30 + 60 in the Fri 21:00 bucket");
+  assert.equal(sat14?.minutes, 45);
+});
+
+test("dailyTotals is one row per day that has play, ordered", () => {
+  const store = openStore(":memory:");
+  const iso = (d: number, h: number) => new Date(Date.UTC(2026, 6, d, h)).toISOString();
+  store.sessions.observe({ category: "game", name: "A", startedAt: iso(17, 20), seenAt: iso(17, 21), startedExact: true });
+  store.sessions.observe({ category: "game", name: "B", startedAt: iso(17, 22), seenAt: iso(17, 22) + "", startedExact: true });
+  store.sessions.observe({ category: "game", name: "A", startedAt: iso(19, 10), seenAt: iso(19, 11), startedExact: true });
+  // note: 2026-07-18 has nothing — must be absent, not a zero row
+  const days = store.sessions.dailyTotals("game", iso(1, 0));
+  assert.deepEqual(days.map((d) => d.day), ["2026-07-17", "2026-07-19"]);
+  assert.equal(days[0]?.minutes, 60);
+});
+
+test("dayBreakdown is the fortnight query scoped to one date", () => {
+  const store = openStore(":memory:");
+  const iso = (d: number, h: number) => new Date(Date.UTC(2026, 6, d, h)).toISOString();
+  store.sessions.observe({ category: "game", name: "Factorio", startedAt: iso(17, 20), seenAt: iso(17, 22), startedExact: true }); // 120
+  store.sessions.observe({ category: "game", name: "Hades II", startedAt: iso(17, 22), seenAt: iso(17, 23), startedExact: true }); // 60
+  store.sessions.observe({ category: "game", name: "Factorio", startedAt: iso(19, 10), seenAt: iso(19, 11), startedExact: true }); // other day
+  const day = store.sessions.dayBreakdown("game", "2026-07-17");
+  assert.deepEqual(day.map((g) => [g.name, g.minutes]), [["Factorio", 120], ["Hades II", 60]]);
+});

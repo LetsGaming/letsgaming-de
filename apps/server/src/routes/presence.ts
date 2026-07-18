@@ -11,7 +11,13 @@
  * regardless of how many visitors are watching.
  */
 
-import { isLivePresenceCategory, normalizePresence, type LanyardData, type PresenceView } from "@lg/core";
+import {
+  isLivePresenceCategory,
+  normalizePresence,
+  type LanyardData,
+  type PlaytimeDayResponse,
+  type PresenceView,
+} from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
@@ -53,4 +59,24 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
       return cache?.view ?? OFFLINE;
     }
   });
+
+  /**
+   * What was played on one day — the drill-in behind a clicked ledger column.
+   *
+   * Fetched on demand rather than shipped with the module, because the strip is
+   * ~365 days and nobody wants 365 breakdowns they didn't ask for. Games only:
+   * the played chart is games, and exposing music/watching here would leak
+   * categories the module doesn't show. `day` is validated to `YYYY-MM-DD` so it
+   * can't be anything but a date going into the query.
+   */
+  app.get<{ Querystring: { day?: string }; Reply: PlaytimeDayResponse | { error: string } }>(
+    "/api/playtime/day",
+    async (req, reply) => {
+    const day = req.query.day ?? "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
+      }
+      return { day, games: store.sessions.dayBreakdown("game", day) };
+    },
+  );
 }

@@ -151,17 +151,23 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
 
 <template>
   <!--
-    Teleported out of `<div class="cms">`, which is the whole reason this can be a
-    component rather than a document: outside that div, `app.css` styles it exactly
-    as it styles the site, and `.cms .card` has nothing to match.
+    Inside `.cms`, deliberately. `position: fixed` covers the screen from anywhere
+    (`.cms` sets no transform/filter/contain), and staying a descendant keeps the
+    34 custom properties `.cms` defines and the `.cms .modlist`/`.cms .grip` rules
+    the rail is built from.
+
+    A `<Teleport to="body">` did escape `.cms .card` — and took the token layer and
+    the rail's styling with it, so every `var()` here resolved to nothing and the
+    editor rendered with no background at all. `.cms` carries three things and only
+    one of them was in the way; the fix is `:not(.lgedit-page *)` on that one, in
+    cms.css, four rules.
   -->
-  <Teleport to="body">
-    <div ref="root" class="lgedit" @click.capture="onClick">
+  <div ref="root" class="lgedit" @click.capture="onClick">
       <header class="lgedit-bar" @click.stop>
         <strong>Editing {{ areaLabel }}</strong>
         <span v-if="loading" class="lgedit-dim">rendering…</span>
         <span class="lgedit-hint">
-          Drag a handle to reorder · click a module to edit it · <b>+</b> adds one
+          Drag a handle to reorder · click a module to edit it here · <b>+</b> adds one
         </span>
         <span class="lgedit-actions"><slot name="actions" /></span>
         <button class="lgedit-close" title="Close (Esc)" @click="emit('close')">✕ Close</button>
@@ -215,6 +221,5 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
 
         <aside class="lgedit-rail" @click.stop><slot name="rail" /></aside>
       </div>
-    </div>
-  </Teleport>
+  </div>
 </template>

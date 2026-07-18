@@ -7,7 +7,7 @@
  * Runs only in the CMS, never on the public site.
  */
 
-import { MODERATION_ACTION, STORAGE_KEY, type ModerationAction } from "@lg/core";
+import { STORAGE_KEY, type ModerationAction } from "@lg/core";
 // The response contracts. Both ends import these — the server's routes are typed
 // to return them, so a route that drifts is a compile error over there.
 import type {

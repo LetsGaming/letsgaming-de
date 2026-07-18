@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isModuleKind, type ModuleKind } from "@lg/core";
+import { isModuleKind } from "@lg/core";
 import fallback from "../src/data/fallback-site.json";
 
 /**

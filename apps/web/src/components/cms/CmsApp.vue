@@ -15,13 +15,11 @@ import GalleryPanel from "./panels/GalleryPanel.vue";
 import GuestbookPanel from "./panels/GuestbookPanel.vue";
 import HobbiesPanel from "./panels/HobbiesPanel.vue";
 import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
-import LayoutPanel from "./panels/LayoutPanel.vue";
 import PostsPanel from "./panels/PostsPanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
 import LinksPanel from "./panels/LinksPanel.vue";
 import NowPanel from "./panels/NowPanel.vue";
 import PresencePanel from "./panels/PresencePanel.vue";
-import PreviewPanel from "./panels/PreviewPanel.vue";
 import SiteIdentityPanel from "./panels/SiteIdentityPanel.vue";
 
 const context = useCms();
@@ -54,9 +52,6 @@ const {
 	signOut,
 	pick,
 	previewArea,
-	previewKey,
-	showDock,
-	previewSrc,
 	areaLabel,
 	viewSite,
 	cms,
@@ -64,7 +59,7 @@ const {
 </script>
 
 <template>
-  <div class="cms" :class="{ wide: showDock && authed && tab !== 'preview' }">
+  <div class="cms">
     <div v-if="loading" class="center muted">Loading…</div>
 
     <!-- LOGIN GATE -->
@@ -109,15 +104,10 @@ const {
         <div class="topbar">
           <h2>{{ VIEW_TITLES[tab] }}</h2>
           <div class="topact">
-            <button v-if="tab !== 'preview'" class="link" @click="showDock = !showDock">
-              {{ showDock ? "Hide preview" : "Show preview" }}
-            </button>
             <button class="btn ghost" @click="viewSite">View site ↗</button>
           </div>
         </div>
 
-        <div class="worksplit">
-          <div class="editor">
 
         <!-- DASHBOARD -->
         <DashboardPanel v-show="tab === 'dashboard'" />
@@ -136,9 +126,6 @@ const {
 
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />
-
-      <!-- LAYOUT (module order per area) -->
-      <LayoutPanel v-show="tab === 'layout'" />
 
       <EditorPanel v-if="tab === 'editor'" />
       <PostsPanel v-if="tab === 'posts'" />
@@ -161,30 +148,7 @@ const {
       <!-- ANALYTICS -->
       <AnalyticsPanel v-show="tab === 'analytics'" />
 
-        <!-- PREVIEW -->
-        <PreviewPanel v-show="tab === 'preview'" />
-          </div><!-- /.editor -->
 
-          <!-- DOCKED LIVE PREVIEW (side-by-side while editing) -->
-          <aside v-if="showDock && tab !== 'preview'" class="dock">
-            <div class="dockbar">
-              <span class="muted">Live preview · <b>{{ areaLabel(previewArea) }}</b></span>
-              <span class="dockact">
-                <select v-model="previewArea" title="Area to preview">
-                  <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
-                </select>
-                <button class="link" title="Reload" @click="previewKey++">⟳</button>
-                <button class="link" title="Open in new tab" @click="viewSite">↗</button>
-              </span>
-            </div>
-            <iframe
-              :key="'dock-' + previewKey + '-' + previewArea"
-              class="dockframe"
-              :src="previewSrc"
-              title="Live preview"
-            />
-          </aside>
-        </div><!-- /.worksplit -->
       </main>
 
       <div v-if="toast" class="toast">{{ toast }}</div>

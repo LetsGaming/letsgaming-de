@@ -3,6 +3,7 @@ import { analyticsRepo, type AnalyticsRepo } from "./analytics-repo.js";
 import { assetsRepo, type AssetsRepo } from "./assets-repo.js";
 import { contentRepo, type ContentRepo } from "./content-repo.js";
 import { guestbookRepo, type GuestbookRepo } from "./guestbook-repo.js";
+import { sessionsRepo } from "./sessions-repo.js";
 import { iaRepo, type IaRepo } from "./ia-repo.js";
 import { sourceRepo, type SourceRepo } from "./source-repo.js";
 import { seedIfEmpty, reconcileIa } from "./seed.js";
@@ -18,6 +19,8 @@ export * from "./assets-repo.js";
 export * from "./guestbook-repo.js";
 export * from "./seed.js";
 
+export type SessionsRepo = ReturnType<typeof sessionsRepo>;
+
 export interface Store {
   content: ContentRepo;
   source: SourceRepo;
@@ -25,6 +28,7 @@ export interface Store {
   analytics: AnalyticsRepo;
   assets: AssetsRepo;
   guestbook: GuestbookRepo;
+  sessions: SessionsRepo;
   close(): void;
 }
 
@@ -43,6 +47,7 @@ export function openStore(path: string): Store {
     analytics: analyticsRepo(db),
     assets: assetsRepo(db),
     guestbook: guestbookRepo(db),
+    sessions: sessionsRepo(db),
     close: () => db.close(),
   };
 }

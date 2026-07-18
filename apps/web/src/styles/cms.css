@@ -245,50 +245,10 @@
 .cms.wide {
   max-width: 1680px;
 }
-.cms .worksplit {
-  display: flex;
-  gap: var(--sp-20);
-  align-items: flex-start;
-}
-.cms .editor {
-  flex: 1;
-  min-width: 0;
-}
-.cms .dock {
-  flex: 0 0 660px;
-  position: sticky;
-  top: 16px;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 120px);
-}
-.cms .dockbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-8);
-  margin-bottom: var(--sp-8);
-}
-.cms .dockact {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-8);
-}
-.cms .dockact select {
-  font-size: 12px;
-  padding: 3px var(--sp-6);
-  border-radius: var(--r-xs);
-  border: 1px solid var(--line);
-  background: var(--card-2);
-  color: var(--ink);
-}
-.cms .dockframe {
-  flex: 1;
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: var(--r-m);
-  background: var(--card);
-}
+/* `.worksplit`, `.editor`, `.dock*` are gone with the side-by-side preview iframe.
+   The editor is a preview, and a better one: it renders the pending layout at the
+   full viewport instead of the saved one in a 660px column. Its `.cms .editor` also
+   collided with the launcher's — one class name, two components, one stylesheet. */
 @media (max-width: 1080px) {
   .cms.wide {
     max-width: 1120px;
@@ -329,7 +289,15 @@
   line-height: 1.5;
   color: var(--ink);
 }
-.cms .card {
+/* `:not(.lgedit-page *)` — the canvas, and only the canvas.
+   The editor renders the site's real sections, and `.cms .card` (0,2,0) would
+   out-specify the site's `.card` (0,1,0) and dress every one of them as an admin
+   card. Excluding the canvas leaves app.css to style it exactly as it styles the
+   site — which is what a document boundary was buying, and what a Teleport to
+   <body> also bought, except the Teleport took the CMS's 34-token layer and the
+   rail's own `.cms .*` rules out with it. The editor IS the CMS chrome; only the
+   page inside it isn't. */
+.cms .card:not(.lgedit-page *) {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-l);
@@ -384,7 +352,7 @@
   align-items: center;
   margin-top: var(--sp-4);
 }
-.cms .btn {
+.cms .btn:not(.lgedit-page *) {
   font-family: var(--f-d);
   font-weight: 600;
   font-size: 14px;
@@ -395,13 +363,13 @@
   color: var(--on-accent);
   cursor: pointer;
 }
-.cms .btn.ghost {
+.cms .btn.ghost:not(.lgedit-page *) {
   background: var(--card-2);
   color: var(--ink);
   border: 1px solid var(--line);
   align-self: flex-start;
 }
-.cms .btn.primary {
+.cms .btn.primary:not(.lgedit-page *) {
   background: var(--purple);
 }
 .cms .link {
@@ -1088,7 +1056,7 @@ body.is-dragging .cms .glist .gthumb {
 
    Everything here is prefixed, for the same reason: this file may not squat on a
    class name the site uses. */
-.lgedit {
+.cms .lgedit {
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -1097,7 +1065,7 @@ body.is-dragging .cms .glist .gthumb {
   background: var(--bg-base);
   color: var(--ink);
 }
-.lgedit-bar {
+.cms .lgedit-bar {
   display: flex;
   align-items: center;
   gap: var(--sp-12);
@@ -1106,21 +1074,21 @@ body.is-dragging .cms .glist .gthumb {
   background: var(--card);
   flex: none;
 }
-.lgedit-hint {
+.cms .lgedit-hint {
   font-size: 12px;
   color: var(--muted);
 }
-.lgedit-actions {
+.cms .lgedit-actions {
   display: flex;
   align-items: center;
   gap: var(--sp-8);
   margin-left: auto;
 }
-.lgedit-dim {
+.cms .lgedit-dim {
   color: var(--muted);
   font-size: 12px;
 }
-.lgedit-page-pick,
+.cms .lgedit-page-pick,
 .lgedit-save,
 .lgedit-close {
   font: inherit;
@@ -1132,14 +1100,14 @@ body.is-dragging .cms .glist .gthumb {
   color: var(--ink);
   cursor: pointer;
 }
-.lgedit-save {
+.cms .lgedit-save {
   border-color: var(--ink);
 }
-.lgedit-close:hover,
-.lgedit-save:hover {
+.cms .lgedit-close:hover,
+.cms .lgedit-save:hover {
   border-color: var(--ink);
 }
-.lgedit-body {
+.cms .lgedit-body {
   flex: 1;
   min-height: 0;
   display: grid;
@@ -1149,15 +1117,15 @@ body.is-dragging .cms .glist .gthumb {
   grid-template-columns: minmax(0, 1fr) 260px;
   overflow: hidden;
 }
-.lgedit-page {
+.cms .lgedit-page {
   position: relative;
   overflow: auto;
   padding: var(--sp-20) var(--sp-24) 40vh;
 }
-.lgedit-wait {
+.cms .lgedit-wait {
   padding: var(--sp-24);
 }
-.lgedit-rail {
+.cms .lgedit-rail {
   border-left: 1px solid var(--line);
   background: var(--card);
   overflow: auto;
@@ -1166,18 +1134,18 @@ body.is-dragging .cms .glist .gthumb {
   flex-direction: column;
   gap: var(--sp-8);
 }
-.lgedit-rail h4 {
+.cms .lgedit-rail h4 {
   margin: var(--sp-8) 0 0;
   font-size: 12px;
   color: var(--muted);
   font-weight: 600;
 }
-.lgedit-overlay {
+.cms .lgedit-overlay {
   position: absolute;
   inset: var(--sp-20) var(--sp-24) 40vh;
   pointer-events: none;
 }
-.lgedit-mod {
+.cms .lgedit-mod {
   position: absolute;
   left: 0;
   right: 0;
@@ -1186,17 +1154,17 @@ body.is-dragging .cms .glist .gthumb {
   border: 1px dashed transparent;
   border-radius: var(--r-s);
 }
-.lgedit-mod:hover {
+.cms .lgedit-mod:hover {
   border-color: var(--line-2);
   background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
-.lgedit-mod.sel {
+.cms .lgedit-mod.sel {
   border-color: var(--ink);
   border-style: solid;
 }
 /* Where a dragged module will land. A line, not a fill: the section underneath is
    what you're reading, and a wash over it hides the answer. */
-.lgedit-mod.over::before {
+.cms .lgedit-mod.over::before {
   content: "";
   position: absolute;
   left: 0;
@@ -1208,13 +1176,13 @@ body.is-dragging .cms .glist .gthumb {
 }
 /* A module that rendered to nothing still has to be grabbable, or the only way to
    fix an empty module is to already know it's there. */
-.lgedit-mod.empty {
+.cms .lgedit-mod.empty {
   border-color: var(--line-2);
   background: color-mix(in srgb, var(--ink) 5%, transparent);
 }
-.lgedit-grip,
+.cms .lgedit-grip,
 .lgedit-tag,
-.lgedit-add {
+.cms .lgedit-add {
   position: absolute;
   font: 500 11px/1 var(--f-m, monospace);
   color: var(--muted);
@@ -1229,23 +1197,23 @@ body.is-dragging .cms .glist .gthumb {
    way to learn what was draggable was to sweep the whole page with the mouse. An
    editor's handles are the interface, not a reveal. */
 .lgedit-grip,
-.lgedit-tag {
+.cms .lgedit-tag {
   opacity: 0.55;
 }
 .lgedit-add {
   opacity: 0;
 }
-.lgedit-mod:hover .lgedit-grip,
-.lgedit-mod:hover .lgedit-tag,
-.lgedit-mod:hover .lgedit-add,
-.lgedit-mod.sel .lgedit-grip,
-.lgedit-mod.sel .lgedit-tag,
-.lgedit-mod.sel .lgedit-add {
+.cms .lgedit-mod:hover .lgedit-grip,
+.cms .lgedit-mod:hover .lgedit-tag,
+.cms .lgedit-mod:hover .lgedit-add,
+.cms .lgedit-mod.sel .lgedit-grip,
+.cms .lgedit-mod.sel .lgedit-tag,
+.cms .lgedit-mod.sel .lgedit-add {
   opacity: 1;
 }
 /* A grab target you can hit. The drag only starts on the handle, so the handle has
    to be findable and hittable or the feature isn't there. */
-.lgedit-grip {
+.cms .lgedit-grip {
   left: 2px;
   top: 4px;
   cursor: grab;
@@ -1253,10 +1221,10 @@ body.is-dragging .cms .glist .gthumb {
   padding: 6px 8px;
   line-height: 1;
 }
-.lgedit-grip:active {
+.cms .lgedit-grip:active {
   cursor: grabbing;
 }
-.lgedit-mod:hover .lgedit-grip {
+.cms .lgedit-mod:hover .lgedit-grip {
   color: var(--ink);
   border-color: var(--ink);
 }
@@ -1273,26 +1241,26 @@ body.is-dragging .cms .glist .gthumb {
   line-height: 1;
   padding: 2px 7px;
 }
-.lgedit-add:hover {
+.cms .lgedit-add:hover {
   color: var(--ink);
   border-color: var(--ink);
 }
-.lgedit-add.end {
+.cms .lgedit-add.end {
   opacity: 1;
 }
 
 @media (max-width: 900px) {
-  .lgedit-body {
+  .cms .lgedit-body {
     grid-template-columns: 1fr;
   }
-  .lgedit-rail {
+  .cms .lgedit-rail {
     display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lgedit-grip,
-  .lgedit-tag,
-  .lgedit-add {
+  .cms .lgedit-grip,
+  .cms .lgedit-tag,
+  .cms .lgedit-add {
     transition: none;
   }
 }
@@ -1319,4 +1287,67 @@ body.is-dragging .cms .glist .gthumb {
   font-size: 12px;
   margin: 0;
   max-width: 62ch;
+}
+
+/* The rail's groups. `.modlist` and `.grip` already carry the CMS's list styling —
+   these are the box around each area, which the old side-by-side editor had as
+   `.cms .rail .railbox` and which moved here with the rail. */
+.cms .railbox {
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--card-2);
+  padding: var(--sp-6);
+  margin: 0 0 var(--sp-8);
+  list-style: none;
+}
+.cms .railhead {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px var(--sp-4) var(--sp-6);
+}
+.cms .railhead .dim {
+  font-weight: 400;
+  opacity: 0.6;
+}
+/* An empty area still needs to be a drop target, or the only way to fill it is to
+   already have something in it. */
+.cms .dropzone {
+  padding: var(--sp-10);
+  text-align: center;
+  font-size: 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-xs);
+}
+
+/* ── the rail, when a module is selected ───────────────────────────────────── */
+/* Wider than the move-lists need, because a whole edit panel goes in here now.
+   Clicking a module used to switch the CMS's tab behind the editor: the only
+   thing selecting did was leave. */
+.cms .lgedit-body:has(.railpanel) {
+  grid-template-columns: minmax(0, 1fr) 420px;
+}
+.cms .railsel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  padding: var(--sp-6) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-4);
+}
+/* The panel is the CMS's own component, unchanged — it just isn't in a page-sized
+   column any more, so its own padding would double up with the rail's. */
+.cms .railpanel {
+  padding: 0;
+  gap: var(--sp-10);
+}
+.cms .railpanel .pane,
+.cms .railpanel > section {
+  padding: 0;
+}
+.cms .railnote {
+  font-size: 12px;
+  padding: var(--sp-8) var(--sp-4);
+  line-height: 1.5;
 }

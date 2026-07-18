@@ -15,10 +15,42 @@
  * beside the page you're looking at. The Widgets screen folded into one column,
  * which is also why the Layout panel still exists for seeing every area at once.
  */
-import { computed } from "vue";
+import { computed, type Component } from "vue";
+import type { View } from "../../../composables/useCms";
 import { vSortable } from "../../../composables/sortable";
 import { useCmsContext } from "../../../composables/cmsContext";
 import CanvasHost from "../CanvasHost.vue";
+import AboutPanel from "./AboutPanel.vue";
+import GalleryPanel from "./GalleryPanel.vue";
+import GuestbookPanel from "./GuestbookPanel.vue";
+import HobbiesPanel from "./HobbiesPanel.vue";
+import HomeIntroPanel from "./HomeIntroPanel.vue";
+import LinksPanel from "./LinksPanel.vue";
+import NowPanel from "./NowPanel.vue";
+import PostsPanel from "./PostsPanel.vue";
+import PresencePanel from "./PresencePanel.vue";
+import SiteIdentityPanel from "./SiteIdentityPanel.vue";
+
+/**
+ * The panel that edits each kind of module.
+ *
+ * The same components the CMS's own nav mounts — they take everything from
+ * `cmsContext`, so rendering one here beside the page it changes costs nothing and
+ * shares no state. That's what makes "edit content in the editor" a map rather
+ * than a rewrite.
+ */
+const PANEL: Partial<Record<View, Component>> = {
+	site: SiteIdentityPanel,
+	home: HomeIntroPanel,
+	about: AboutPanel,
+	hobbies: HobbiesPanel,
+	links: LinksPanel,
+	now: NowPanel,
+	posts: PostsPanel,
+	gallery: GalleryPanel,
+	guestbook: GuestbookPanel,
+	presence: PresencePanel,
+};
 
 const {
 	areaLabel,
@@ -38,8 +70,12 @@ const {
 	previewArea,
 	refreshCanvas,
 	saveLayout,
+	selectedPanel,
 	viewSite,
 } = useCmsContext();
+
+/** The panel for whatever's selected, or nothing — synced modules have no panel. */
+const editing = computed(() => (selectedPanel.value ? PANEL[selectedPanel.value] : undefined));
 
 /** Areas other than the one on the canvas, plus Unplaced — the drop targets for
  *  "put this somewhere else". */
@@ -67,9 +103,9 @@ function open() {
 
     <p class="muted editnote">
       The editor takes the screen so the page renders at a real width. Drag a handle to
-      reorder, click a module to edit it, <b>+</b> to add an unplaced one, or drag onto the
-      rail to move it to another page. Nothing is live until <b>Save layout</b>.
-      <b>Esc</b> closes it.
+      reorder, click a module to <b>edit its content right there</b>, <b>+</b> to add an
+      unplaced one, or drag onto the rail to move it to another page. Content saves as you
+      go; layout isn't live until <b>Save layout</b>. <b>Esc</b> closes it.
     </p>
 
     <CanvasHost
@@ -92,7 +128,23 @@ function open() {
       </template>
 
       <template #rail>
-        <h4>Move to another page</h4>
+        <!-- A module is selected: edit it here, beside the page it changes. Clicking
+             one used to switch the CMS's tab behind the editor, so the only thing
+             selecting a module did was leave. -->
+        <template v-if="canvasSelected">
+          <div class="railsel">
+            <b>{{ moduleHeading(canvasSelected) }}</b>
+            <button class="link" title="Deselect" @click="canvasSelect(canvasSelected)">✕</button>
+          </div>
+          <component :is="editing" v-if="editing" class="railpanel" />
+          <p v-else class="dim railnote">
+            This module renders synced data — there's nothing to edit by hand. It'll
+            update itself on the next sync.
+          </p>
+        </template>
+
+        <template v-else>
+          <h4>Move to another page</h4>
         <ol
           v-for="a in otherAreas"
           :key="a.id"
@@ -118,6 +170,7 @@ function open() {
           </li>
           <li v-if="!hiddenModules.length" class="dropzone dim">nothing unplaced</li>
         </ol>
+        </template>
       </template>
     </CanvasHost>
 

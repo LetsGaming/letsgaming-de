@@ -9,9 +9,9 @@ import type { Source, SteamData } from "@lg/core";
 
 const DEMO: SteamData = {
   recent: [
-    { name: "Counter-Strike 2", appId: 730, minutes2Weeks: 620 },
-    { name: "Factorio", appId: 427520, minutes2Weeks: 310 },
-    { name: "Hades II", appId: 1145350, minutes2Weeks: 145 },
+    { name: "Counter-Strike 2", appId: 730, minutes2Weeks: 620, minutesForever: 74_300 },
+    { name: "Factorio", appId: 427520, minutes2Weeks: 310, minutesForever: 12_800 },
+    { name: "Hades II", appId: 1145350, minutes2Weeks: 145, minutesForever: 3_120 },
   ],
 };
 
