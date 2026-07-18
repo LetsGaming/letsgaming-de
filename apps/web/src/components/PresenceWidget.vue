@@ -189,7 +189,10 @@ onBeforeUnmount(() => {
     </div>
   </div>
 
-  <p v-else class="pw-muted pw-np">Presence isn't configured.</p>
+  <p v-else class="pw-muted pw-np">
+    Presence isn't live yet — set <code>DISCORD_USER_ID</code> and enable a live
+    category in the CMS (Presence), then join discord.gg/lanyard so it's exposed.
+  </p>
 </template>
 
 <style scoped>

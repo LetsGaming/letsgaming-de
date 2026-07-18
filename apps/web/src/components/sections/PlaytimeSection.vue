@@ -129,20 +129,23 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
         <div class="pt-recent">
           <component
             :is="storeUrl(g.appId) ? 'a' : 'div'"
-            v-for="g in recent"
+            v-for="(g, i) in recent"
             :key="g.name"
-            class="pt-rgame"
+            class="pt-rrow"
+            :class="{ 'pt-r1': i === 0 }"
             v-bind="storeUrl(g.appId) ? { href: storeUrl(g.appId), target: '_blank', rel: 'noreferrer noopener' } : {}"
           >
-            <img v-if="gameIcon(g.iconUrl)" :src="gameIcon(g.iconUrl)" alt="" class="pt-rg-art" loading="lazy" />
-            <span v-else class="pt-rg-art pt-rg-mono" :style="{ background: gameAccent(g.accent) }">{{ g.name.slice(0, 1) }}</span>
-            <span class="pt-rg-body">
-              <span class="pt-rg-name">{{ g.name }}</span>
-              <span class="pt-rg-meta">
+            <span class="pt-rrank">{{ i + 1 }}</span>
+            <img v-if="gameIcon(g.iconUrl)" :src="gameIcon(g.iconUrl)" alt="" class="pt-rart" loading="lazy" />
+            <span v-else class="pt-rart pt-rmono" :style="{ background: gameAccent(g.accent) }">{{ g.name.slice(0, 1) }}</span>
+            <span class="pt-rbody">
+              <span class="pt-rname">{{ g.name }}</span>
+              <span class="pt-rsrc">
                 <span class="pt-src" :class="g.source === 'steam' ? 'pt-src-steam' : 'pt-src-obs'"></span>
-                {{ fmtGameHrs(g.minutes) }}<template v-if="!g.exact"> +</template>
+                {{ g.source === "steam" ? "Steam" : "observed" }}
               </span>
             </span>
+            <span class="pt-rval">{{ fmtGameHrs(g.minutes) }}<small v-if="!g.exact"> +</small></span>
           </component>
         </div>
       </div>
@@ -238,7 +241,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
   gap: var(--sp-16);
 }
 
-/* ── recently played shelf ── */
+/* ── recently played: a stacked ranking, matching the Listening rows ── */
 .pt-recent-wrap {
   background: var(--surf-1);
   border: 1px solid var(--line-1);
@@ -246,56 +249,60 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
   padding: var(--sp-18);
 }
 .pt-recent {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
-  gap: var(--sp-10);
-  overflow-x: auto;
-  padding-bottom: var(--sp-4);
-  margin-top: var(--sp-12);
+  margin-top: var(--sp-8);
 }
-.pt-rgame {
+.pt-rrow {
   display: grid;
-  grid-template-columns: 40px 1fr;
+  grid-template-columns: 18px 34px 1fr auto;
   gap: var(--sp-10);
   align-items: center;
-  background: var(--surf-2);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-control);
-  padding: var(--sp-10);
+  padding: var(--sp-6) 0;
+  border-top: 1px solid var(--line-1);
   text-decoration: none;
   color: inherit;
-  transition: background var(--dur-fast) var(--ease-out);
 }
-a.pt-rgame:hover {
-  background: var(--surf-3);
+.pt-rrow:first-child {
+  border-top: none;
 }
-.pt-rg-art {
-  width: 40px;
-  height: 40px;
+a.pt-rrow:hover .pt-rname {
+  color: var(--live-ink);
+}
+.pt-rrank {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  color: var(--muted);
+  text-align: right;
+}
+.pt-r1 .pt-rrank {
+  color: var(--live-ink);
+}
+.pt-rart {
+  width: 34px;
+  height: 34px;
   border-radius: var(--r-chip);
   object-fit: cover;
   display: block;
 }
-.pt-rg-mono {
+.pt-rmono {
   display: grid;
   place-items: center;
   font-family: var(--f-d);
-  font-size: 16px;
+  font-size: 15px;
   color: var(--ink-strong);
 }
-.pt-rg-body {
+.pt-rbody {
   min-width: 0;
 }
-.pt-rg-name {
+.pt-rname {
   display: block;
-  font-size: var(--fs-meta);
+  font-size: var(--fs-body);
   color: var(--ink-strong);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color var(--dur-fast) var(--ease-out);
 }
-.pt-rg-meta {
+.pt-rsrc {
   display: flex;
   align-items: center;
   gap: var(--sp-4);
@@ -314,6 +321,16 @@ a.pt-rgame:hover {
 }
 .pt-src-obs {
   background: var(--muted);
+}
+.pt-rval {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+}
+.pt-rval small {
+  color: var(--muted);
 }
 .pt-head {
   display: flex;

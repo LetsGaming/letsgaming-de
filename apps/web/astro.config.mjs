@@ -36,6 +36,11 @@ export default defineConfig({
   adapter: node({ mode: "standalone" }),
   integrations: [vue()],
   site: "https://letsgaming.de",
+  // Load .env from the monorepo root, not apps/web — dev config (DB_PATH,
+  // DISCORD_USER_ID, PUBLIC_API_URL) lives in one root .env shared with the
+  // server, so `pnpm dev` sees it without a per-app copy. No effect in the
+  // built image, which gets its config from real environment variables.
+  envDir: "../../",
   markdown: {
     rehypePlugins: [rehypeDocLinks],
   },

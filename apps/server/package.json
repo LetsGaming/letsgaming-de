@@ -9,7 +9,7 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "sync": "tsx src/sync/cli.ts",

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Fix — Recently played is a ranking, not a shelf; presence config made legible
+
+Two follow-ups after the /life split landed:
+
+- **Recently played was a horizontal scroll shelf; it's now a stacked ranking**,
+  matching the Listening top-lists exactly (rank · icon · name · hours, source dot
+  and a `+` when the number is a floor). One row style for both "what I've played"
+  and "what I've heard", so the two read as siblings down the page.
+- **"Presence isn't configured" was a dead end.** It fires purely on the SSR
+  `live` flag, which is false whenever `DISCORD_USER_ID` isn't in the process
+  building the view — so a running site with real playtime could still show a blank
+  presence card with no hint why. The message now names what's missing
+  (`DISCORD_USER_ID` + a live category in the CMS + the Lanyard join), and dev now
+  actually loads it: the server dev script reads the monorepo-root `.env`
+  (`--env-file-if-exists`), and `astro.config` points `envDir` at the root, so
+  `pnpm dev` picks up `DISCORD_USER_ID`/`DB_PATH`/`PUBLIC_API_URL` from one shared
+  file instead of relying on the shell exporting each. No effect on the built
+  images, which get config from real environment variables.
+
 ### /life — "Right now" is the live moment; history moved to "Time played"
 
 The presence card had drifted into two jobs: the live moment *and* a fortnight of
