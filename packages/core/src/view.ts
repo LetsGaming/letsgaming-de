@@ -237,6 +237,7 @@ export type ResolvedModule =
   | { id: string; kind: "guestbook"; data: SectionMeta & { entries: GuestbookEntryView[] } }
   | { id: string; kind: "presence"; data: SectionMeta & PresenceModuleView }
   | { id: string; kind: "playtime"; data: SectionMeta & PlaytimeModuleView }
+  | { id: string; kind: "music"; data: SectionMeta & MusicModuleView }
   | { id: string; kind: "gallery"; data: SectionMeta & { images: GalleryImageView[] } }
   | { id: string; kind: "bio"; data: SectionMeta & { blocks: BioBlock[] } }
   | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
@@ -264,6 +265,45 @@ export interface PlaytimeModuleView {
    *  with play are present; the view fills the 7×24 grid. */
   heat: { weekday: number; hour: number; minutes: number }[];
   /** How many days the ledger covers, for "since <date>" copy. */
+  since?: string;
+}
+
+/** One row of a music "top" list, ready to render. */
+export interface MusicRankView {
+  name: string;
+  minutes: number;
+  plays: number;
+  /** Artist(s), for a song/album row. */
+  by?: string;
+  /** Album cover URL; absent → the row shows a monogram. */
+  artUrl?: string;
+}
+
+/**
+ * The music module — a fortnight of Spotify listening, sliced three ways plus a
+ * timeline. Sibling to `PlaytimeModuleView`: same "accumulated past" shape (top
+ * lists + a per-day strip), driven by `music_plays` instead of Steam counters.
+ *
+ * Like playtime, the per-day breakdown isn't shipped here — it's fetched on demand
+ * when a timeline column is clicked (`/api/music/day`), so the module carries one
+ * strip and three short lists, not fourteen days of tracks.
+ *
+ * Genre and podcast-vs-music are absent by construction: Discord's Spotify
+ * presence exposes neither, so the module doesn't pretend to.
+ */
+export interface MusicModuleView {
+  /** Total listening hours over the window, for the headline figure. */
+  totalHours: number;
+  /** Distinct tracks played over the window (the "tracks played" stat). */
+  trackCount: number;
+  /** Distinct artists over the window (the "different artists" stat). */
+  artistCount: number;
+  topSongs: MusicRankView[];
+  topArtists: MusicRankView[];
+  topAlbums: MusicRankView[];
+  /** Minutes listened per day, oldest first — the clickable timeline. */
+  ledger: { day: string; minutes: number }[];
+  /** First day in the ledger, for "since <date>" copy. */
   since?: string;
 }
 

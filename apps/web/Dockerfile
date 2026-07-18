@@ -13,7 +13,13 @@ ARG PUBLIC_API_URL=""
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @lg/core build && pnpm --filter @lg/web build
+# @lg/db before @lg/web: SSR now reads the store directly (no HTTP hop to the
+# API), so the web build imports @lg/db, whose exports point at dist/ — it has to
+# be built first or vite can't resolve the package. @lg/db itself imports @lg/core,
+# hence the order core → db → web.
+RUN pnpm --filter @lg/core build \
+ && pnpm --filter @lg/db build \
+ && pnpm --filter @lg/web build
 # Prune to a prod-only tree: built dist + prod deps, no dev tooling (vitest,
 # happy-dom, @vitejs/plugin-vue, @astrojs/check, typescript). CI=1 keeps pnpm
 # non-interactive; --legacy copies node_modules. Needs `files: ["dist"]` on the

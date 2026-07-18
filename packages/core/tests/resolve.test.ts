@@ -424,3 +424,43 @@ test("hidden games are dropped from the recently-played chart but not from the d
   assert.ok(names.includes("Minecraft"), "shown observed game survives");
   assert.ok(!names.some((n) => n.toLowerCase() === "doom"), "Doom is hidden, both the Steam and observed row");
 });
+
+test("music module: shapes history into the view, passing art through and empty-safe", () => {
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("Germany"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"), status: { verb: en("x"), now: en("y") },
+    bio: [], links: [], projects: [], hobbies: [], now: [],
+  };
+  const nav: NavNode[] = [{ id: "life", label: en("Life"), modules: ["music"] }];
+  const modules: ModuleDescriptor[] = [{ id: "music", kind: "music", heading: en("Listening") }];
+
+  // with data
+  const view = resolveSiteView({
+    content, source: {}, nav, modules, locale: "en",
+    musicHistory: {
+      topSongs: [{ name: "Von Dutch", by: "Charli xcx", minutes: 214, plays: 47, artUrl: "https://i.scdn.co/image/x" }],
+      topArtists: [{ name: "Charli xcx", minutes: 612, plays: 133 }],
+      topAlbums: [{ name: "Brat", by: "Charli xcx", minutes: 588, plays: 128, artUrl: "https://i.scdn.co/image/b" }],
+      ledger: [{ day: "2026-07-10", minutes: 60 }, { day: "2026-07-11", minutes: 120 }],
+      trackCount: 173, artistCount: 42, since: "2026-07-10",
+    },
+  });
+  const m = view.modules["music"];
+  if (!m || m.kind !== "music") throw new Error("expected a music module");
+  assert.equal(m.data.totalHours, 3, "180 min ledger → 3h");
+  assert.equal(m.data.trackCount, 173);
+  assert.equal(m.data.artistCount, 42);
+  assert.equal(m.data.topSongs[0]?.artUrl, "https://i.scdn.co/image/x", "song art survives resolve");
+  assert.equal(m.data.topArtists[0]?.artUrl, undefined, "artist without art stays undefined");
+  assert.equal(m.data.since, "2026-07-10");
+
+  // absent history → empty module, not an error
+  const empty = resolveSiteView({ content, source: {}, nav, modules, locale: "en" });
+  const em = empty.modules["music"];
+  if (!em || em.kind !== "music") throw new Error("expected a music module");
+  assert.equal(em.data.totalHours, 0);
+  assert.equal(em.data.trackCount, 0);
+  assert.deepEqual(em.data.topSongs, []);
+  assert.deepEqual(em.data.ledger, []);
+});

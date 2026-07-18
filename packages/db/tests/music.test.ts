@@ -87,3 +87,101 @@ test("pruning a play cascades to its artist rows", () => {
   // artist rows gone too (cascade) → top artists is empty
   assert.deepEqual(store.music.topArtists(daysAgo(700), 10), []);
 });
+
+// ── album art (feature: serve covers like game icons) ────────────────────────
+
+test("top songs carry the album art url when a play recorded one", () => {
+  const store = openStore(":memory:");
+  store.music.observe({
+    trackId: "t1", song: "Von Dutch", artist: "Charli xcx", album: "Brat",
+    albumArtUrl: "https://i.scdn.co/image/abc", startedAt: iso(20, 0), seenAt: iso(20, 5),
+  });
+  const songs = store.music.topSongs(iso(0), 10);
+  assert.equal(songs[0]?.artUrl, "https://i.scdn.co/image/abc");
+});
+
+test("a play with no art leaves artUrl undefined (row falls back to a monogram)", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(20, 0), seenAt: iso(20, 5) });
+  const songs = store.music.topSongs(iso(0), 10);
+  assert.equal(songs[0]?.artUrl, undefined, "no art column value → no artUrl key");
+});
+
+test("art backfills: an earlier play with no art gets it from a later poll", () => {
+  const store = openStore(":memory:");
+  const base = { trackId: "t1", song: "A", artist: "X", startedAt: iso(20, 0) };
+  store.music.observe({ ...base, seenAt: iso(20, 2) }); // no art yet
+  store.music.observe({ ...base, albumArtUrl: "https://i.scdn.co/image/late", seenAt: iso(20, 4) });
+  const songs = store.music.topSongs(iso(0), 10);
+  assert.equal(songs[0]?.artUrl, "https://i.scdn.co/image/late", "COALESCE backfilled the art");
+});
+
+test("an artist borrows the cover of their most-played track", () => {
+  const store = openStore(":memory:");
+  // Charli's short track has art A; her long track has art B. B should win.
+  store.music.observe({
+    trackId: "short", song: "Short", artist: "Charli xcx", albumArtUrl: "https://i.scdn.co/image/A",
+    startedAt: iso(20, 0), seenAt: iso(20, 2),
+  });
+  store.music.observe({
+    trackId: "long", song: "Long", artist: "Charli xcx", albumArtUrl: "https://i.scdn.co/image/B",
+    startedAt: iso(21, 0), seenAt: iso(21, 9),
+  });
+  const artists = store.music.topArtists(iso(0), 10);
+  const charli = artists.find((a) => a.name.toLowerCase() === "charli xcx");
+  assert.equal(charli?.artUrl, "https://i.scdn.co/image/B", "most-listened track's cover, not the first");
+});
+
+// ── the clickable stats ──────────────────────────────────────────────────────
+
+test("distinctTracks counts tracks, not plays", () => {
+  const store = openStore(":memory:");
+  const t1 = { trackId: "t1", song: "A", artist: "X", startedAt: iso(20, 0) };
+  store.music.observe({ ...t1, seenAt: iso(20, 3) });
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(22, 0), seenAt: iso(22, 3) }); // replay of same track
+  store.music.observe({ trackId: "t2", song: "B", artist: "Y", startedAt: iso(21, 0), seenAt: iso(21, 3) });
+  assert.equal(store.music.distinctTracks(iso(0)), 2, "two distinct tracks despite three plays");
+});
+
+test("distinctArtists counts split artist keys", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "t1", song: "A", artist: "Icona Pop; Charli xcx", startedAt: iso(20, 0), seenAt: iso(20, 5) });
+  store.music.observe({ trackId: "t2", song: "B", artist: "Charli XCX", startedAt: iso(21, 0), seenAt: iso(21, 5) });
+  // Icona Pop + Charli xcx (merged across casing) = 2
+  assert.equal(store.music.distinctArtists(iso(0)), 2);
+});
+
+// ── the day drill-in ─────────────────────────────────────────────────────────
+
+test("dayBreakdown returns a date's tracks, most-listened first, with art", () => {
+  const store = openStore(":memory:");
+  store.music.observe({
+    trackId: "t1", song: "Short", artist: "X", albumArtUrl: "https://i.scdn.co/image/s",
+    startedAt: iso(9, 0), seenAt: iso(9, 2),
+  });
+  store.music.observe({
+    trackId: "t2", song: "Long", artist: "Y", albumArtUrl: "https://i.scdn.co/image/l",
+    startedAt: iso(10, 0), seenAt: iso(10, 8),
+  });
+  const day = store.music.dayBreakdown("2026-07-17");
+  assert.equal(day.length, 2);
+  assert.equal(day[0]?.song, "Long", "longer listen ranks first");
+  assert.equal(day[0]?.artUrl, "https://i.scdn.co/image/l");
+  assert.equal(day[1]?.song, "Short");
+});
+
+test("dayBreakdown groups replays of one track within the day", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(9, 0), seenAt: iso(9, 3) });
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(14, 0), seenAt: iso(14, 2) }); // replay
+  const day = store.music.dayBreakdown("2026-07-17");
+  assert.equal(day.length, 1, "one row for the track");
+  assert.equal(day[0]?.plays, 2, "two plays summed");
+  assert.equal(day[0]?.minutes, 5, "3 + 2 minutes");
+});
+
+test("dayBreakdown for a silent day is empty", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(9, 0), seenAt: iso(9, 3) });
+  assert.deepEqual(store.music.dayBreakdown("2020-01-01"), []);
+});

@@ -16,6 +16,7 @@ import {
   isLivePresenceCategory,
   normalizePresence,
   type LanyardData,
+  type MusicDayResponse,
   type PlaytimeDayResponse,
   type PresenceView,
 } from "@lg/core";
@@ -85,6 +86,24 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
         .dayBreakdown("game", day)
         .filter((g) => !isHiddenGame(g.name, hidden));
       return { day, games };
+    },
+  );
+
+  /**
+   * One day's tracks — the music module's drill-in, fetched when a timeline
+   * column is clicked (parallel to `/api/playtime/day`). `day` is validated to
+   * `YYYY-MM-DD` so nothing but a date reaches the query. No hidden-name filter:
+   * music has no per-track hide list, and the tracks are Spotify's, not the
+   * owner's own games.
+   */
+  app.get<{ Querystring: { day?: string }; Reply: MusicDayResponse | { error: string } }>(
+    "/api/music/day",
+    async (req, reply) => {
+      const day = req.query.day ?? "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
+      }
+      return { day, tracks: store.music.dayBreakdown(day) };
     },
   );
 }

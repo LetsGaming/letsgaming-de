@@ -2,6 +2,66 @@
 
 ## Unreleased
 
+### Feature — Listening, a fortnight of Spotify
+
+A new `music` module on `/life`, sibling to `playtime`: where that asks "when and
+how much do I play", this asks "what have I been listening to". Same "accumulated
+past" shape — top lists plus a clickable per-day strip — but driven by
+`music_plays` (the Discord Spotify presence the sampler already records) instead of
+Steam counters.
+
+The interaction earns the module its own component rather than reusing playtime's.
+The three headline stats **double as the navigation**: "tracks played" reveals the
+top songs, "different artists" the top artists — one content region taking turns,
+driven by what you click. "time listening" isn't clickable; there's no list behind
+a duration. The timeline below drills in the same way playtime's ledger does —
+clicking a day fetches that day's tracks on demand (`GET /api/music/day`) rather
+than shipping fourteen days of breakdowns up front. Each list caps at five with a
+show-more toggle, the same control the activity feed uses.
+
+- **Album art**, served through the existing `/api/presence/media` proxy — the same
+  path the game icons take, and `i.scdn.co` was already on its allow-list. A new
+  `spotifyAlbumArtUrl` in `@lg/core` derives the cover from the Spotify activity's
+  `assets.large_image` (`spotify:<id>` → the CDN URL); the sampler captures it into
+  a new nullable `music_plays.album_art_url` column (migration `0006`). Nullable and
+  backfilled via `COALESCE`: plays recorded before the column existed, and the odd
+  art-less track, render a **lettered monogram** instead — the same fallback the
+  proxy already does for games. No backfill migration; history degrades to monograms
+  and new plays show covers.
+- **Artists borrow a cover.** The presence exposes album art, not artist images, so
+  an artist row shows the art of that artist's single **most-listened** track (a
+  correlated subquery ordering by summed duration). Every row gets a thumbnail
+  without inventing an image the data doesn't have.
+- **The stats are distinct counts, not play sums.** `distinctTracks` counts tracks
+  (a song replayed is one track); `distinctArtists` counts the split artist keys, so
+  a collaboration's members each count once and Charli xcx's solo and featured plays
+  merge.
+
+**Honest about what Discord's Spotify presence can't tell us.** Genre and
+podcast-vs-music aren't in the payload — they'd need the Spotify Web API — so the
+module doesn't pretend to them: no genre breakdown, no "music vs podcasts" split.
+The types carry no columns for data that doesn't exist.
+
+**Touch points**, all mirroring playtime so the pattern stays one pattern: the
+`music` kind in `MODULE_KIND`, a `MusicModuleView` variant on `ResolvedModule`, the
+resolver's `case "music"` (empty-safe — a fresh install with no plays is an empty
+module, not an error), `buildMusicHistory` pre-computing the window server-side, the
+IA descriptor placed after `playtime` on `/life`, and the CMS layout editor mapping
+`music → presence` (it shares the presence sampler's settings, as playtime does).
+Sixteen repo tests and a resolver test, each proven to bite by mutation.
+
+### Fix — the web image built without `@lg/db`
+
+Collapsing the playtime/music day-fetch onto a direct store read (above, and in the
+boundary rework) made `apps/web` import `@lg/db`, whose `package.json` resolves to
+`./dist/index.js`. But `apps/web/Dockerfile` built only `@lg/core → @lg/web`, so at
+`astro build` time `@lg/db`'s `dist` didn't exist and Vite's resolver failed with
+`Failed to resolve entry for package "@lg/db"` — breaking `docker compose --profile
+web up --build`. The Dockerfile now builds `@lg/core → @lg/db → @lg/web`, matching
+the server image's `core → db → sources → server` order. `@lg/db` already declares
+`files: ["dist", "src/migrations"]` and is a listed web dependency, so `pnpm deploy`
+carries it; only the build order was wrong.
+
 ### Boundary rework — the things that were asserted get checked
 
 Four habits, each replicated across the tree, each producing live bugs. A

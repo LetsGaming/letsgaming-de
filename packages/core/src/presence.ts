@@ -258,6 +258,23 @@ function assetUrl(a: LanyardActivity): string | undefined {
 }
 
 /**
+ * The album-art URL for a Spotify activity, if it carries one.
+ *
+ * Discord ships the cover in `assets.large_image` as `spotify:<id>`, which maps
+ * to Spotify's CDN — the same `i.scdn.co` host the media proxy already allow-lists.
+ * A rare listen has a full `https://` image instead (handled), or none (undefined,
+ * so the row falls back to a monogram). Pure and dependency-free, so the sampler
+ * can call it when persisting a play and the resolver stays out of it.
+ */
+export function spotifyAlbumArtUrl(a: LanyardActivity): string | undefined {
+  const img = a.assets?.large_image;
+  if (!img) return undefined;
+  if (img.startsWith("spotify:")) return `https://i.scdn.co/image/${img.slice("spotify:".length)}`;
+  if (/^https?:\/\//.test(img)) return img;
+  return undefined;
+}
+
+/**
  * Map Lanyard data to a filtered PresenceView. `show` is the owner's allow-list
  * of categories; anything not in it is dropped. Spotify is surfaced as a single
  * `music` card (Lanyard duplicates it as an activity, so we de-dupe). Pure.
@@ -328,6 +345,11 @@ export const PLAYTIME_MIN_SECONDS = 60;
  * to prevent.
  */
 export const PLAYTIME_WINDOW_DAYS = 14;
+
+/** How many rows each music "top" list fetches. The module shows 5 with a
+ *  show-more toggle, so a handful past that is enough to make the toggle real
+ *  without shipping a long tail nobody expands. */
+export const MUSIC_TOP_LIMIT = 12;
 
 /**
  * How often to ask Discord what's running.
@@ -494,6 +516,8 @@ export interface MusicPlay {
   /** Raw artist string, verbatim from Discord. */
   artist: string;
   album?: string;
+  /** Album cover URL (Spotify CDN), when the play exposed one. */
+  albumArtUrl?: string;
   startedAt: string;
   seenAt: string;
 }
@@ -507,6 +531,25 @@ export interface MusicRankEntry {
   plays: number;
   /** Artist(s), for a song/album row — lets the UI show "Song — Artist". */
   by?: string;
+  /** Album cover URL, when known. Songs/albums carry their own; an artist row
+   *  borrows its most-played track's cover. Absent → the UI shows a monogram. */
+  artUrl?: string;
+}
+
+/** One track played on a given day — the music drill-in, parallel to the
+ *  playtime day breakdown. */
+export interface MusicDayTrack {
+  song: string;
+  artist: string;
+  minutes: number;
+  plays: number;
+  artUrl?: string;
+}
+
+/** `/api/music/day` reply: the tracks played on one date. */
+export interface MusicDayResponse {
+  day: string;
+  tracks: MusicDayTrack[];
 }
 
 /** The music module's data: top songs / artists / albums plus a listening

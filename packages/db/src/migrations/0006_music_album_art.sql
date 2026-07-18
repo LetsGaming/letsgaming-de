@@ -1,0 +1,18 @@
+-- Album art for recorded plays.
+--
+-- The music module renders a cover thumbnail per row, served through the same
+-- /api/presence/media proxy the game icons use (i.scdn.co is already on its
+-- allow-list). The art URL rides in on the same Spotify activity the sampler
+-- already reads — `spotify.album_art_url`, derived from `assets.large_image` —
+-- so capturing it costs one column and no new upstream call.
+--
+-- NULLABLE, and deliberately so: plays recorded before this column existed have
+-- no art, and the odd track exposes none. A NULL row renders a lettered monogram
+-- instead, the same fallback the proxy already does for art-less games. So the
+-- module degrades to monograms for old history and shows covers going forward,
+-- with no backfill needed.
+--
+-- Stored as the CDN URL, not the bytes: the proxy fetches and caches on demand,
+-- and the URL is stable per album, so persisting it is enough to reconstruct the
+-- thumbnail without re-reading the presence.
+ALTER TABLE music_plays ADD COLUMN album_art_url TEXT;

@@ -1,6 +1,7 @@
 import {
   ASSET_WIDTHS,
   differenceLedger,
+  MUSIC_TOP_LIMIT,
   PLAYTIME_WINDOW_DAYS,
   resolveSiteView,
   SOURCE_TTL,
@@ -60,6 +61,7 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     // asking the store for a different span would put two spans on one axis.
     playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
     playHistory: buildPlayHistory(store),
+    musicHistory: buildMusicHistory(store),
     presence: {
       ...(opts.discordUserId ? { discordId: opts.discordUserId } : {}),
     },
@@ -96,6 +98,40 @@ function buildPlayHistory(store: Store): {
   const ledger = differenceLedger(snaps);
   const heat = store.sessions.heatmap("game", EPOCH_ISO);
   return { ledger, heat, ...(ledger[0] ? { since: ledger[0].day } : {}) };
+}
+
+/**
+ * The music module's data (top songs/artists/albums + a per-day listening strip).
+ *
+ * The same 14-day window Steam reports and the playtime chart uses, so "listening"
+ * and "playing" cover the same fortnight. Five reads over `music_plays`, joined
+ * only in the view; the per-day drill-in isn't here — it's fetched on click from
+ * `/api/music/day`, so the module ships three short lists and one strip, not two
+ * weeks of track breakdowns.
+ *
+ * `trackCount`/`artistCount` are the headline stats the module makes clickable, so
+ * they're the *distinct* counts over the window, not the sum of plays.
+ */
+function buildMusicHistory(store: Store): {
+  topSongs: ReturnType<Store["music"]["topSongs"]>;
+  topArtists: ReturnType<Store["music"]["topArtists"]>;
+  topAlbums: ReturnType<Store["music"]["topAlbums"]>;
+  ledger: { day: string; minutes: number }[];
+  trackCount: number;
+  artistCount: number;
+  since?: string;
+} {
+  const since = isoDaysAgo(PLAYTIME_WINDOW_DAYS);
+  const ledger = store.music.dailyTotals(since);
+  return {
+    topSongs: store.music.topSongs(since, MUSIC_TOP_LIMIT),
+    topArtists: store.music.topArtists(since, MUSIC_TOP_LIMIT),
+    topAlbums: store.music.topAlbums(since, MUSIC_TOP_LIMIT),
+    ledger,
+    trackCount: store.music.distinctTracks(since),
+    artistCount: store.music.distinctArtists(since),
+    ...(ledger[0] ? { since: ledger[0].day } : {}),
+  };
 }
 
 /**

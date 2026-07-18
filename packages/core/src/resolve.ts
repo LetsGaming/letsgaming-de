@@ -29,6 +29,7 @@ import {
   STEAM_CATEGORY,
   type LedgerDay,
   type PlaytimeEntry,
+  type MusicRankEntry,
   type PlaytimeHeatCell,
 } from "./presence.js";
 import {
@@ -43,6 +44,7 @@ import type {
   GuestbookEntryView,
   HighlightView,
   LinkView,
+  MusicRankView,
   NavView,
   PresenceModuleView,
   ProjectView,
@@ -76,6 +78,18 @@ export interface ResolveInput {
    *  and weekday×hour heatmap. Pre-computed by the server — the ledger differences
    *  archived snapshots, the heatmap groups sessions — so the resolver stays pure. */
   playHistory?: { ledger: LedgerDay[]; heat: PlaytimeHeatCell[]; since?: string };
+  /** The music module's data: top songs/artists/albums plus a per-day listening
+   *  strip, over the window. Pre-computed by the server from `music_plays` (the
+   *  resolver stays pure), same as `playHistory`. Absent → an empty module. */
+  musicHistory?: {
+    topSongs: MusicRankEntry[];
+    topArtists: MusicRankEntry[];
+    topAlbums: MusicRankEntry[];
+    ledger: { day: string; minutes: number }[];
+    trackCount: number;
+    artistCount: number;
+    since?: string;
+  };
   /** Library assets referenced by content, keyed by id (built by the read route). */
   assets?: Map<string, ResolvableAsset>;
   /** Injectable clock for deterministic relative times (tests). */
@@ -550,6 +564,36 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             ledger: hist.ledger,
             heat: hist.heat,
             ...(hist.since ? { since: hist.since } : {}),
+          },
+        };
+      }
+      case "music": {
+        // Same shape as playtime: pre-computed by the server, shaped here. Absent
+        // history is an empty module — a fresh install has recorded no plays yet.
+        const m = input.musicHistory;
+        const ledger = m?.ledger ?? [];
+        const totalMinutes = ledger.reduce((sum, d) => sum + d.minutes, 0);
+        const rank = (e: MusicRankEntry): MusicRankView => ({
+          name: e.name,
+          minutes: e.minutes,
+          plays: e.plays,
+          ...(e.by ? { by: e.by } : {}),
+          ...(e.artUrl ? { artUrl: e.artUrl } : {}),
+        });
+        return {
+          id: descriptor.id,
+          kind: "music",
+          data: {
+            heading,
+            note,
+            totalHours: Math.round(totalMinutes / 60),
+            trackCount: m?.trackCount ?? 0,
+            artistCount: m?.artistCount ?? 0,
+            topSongs: (m?.topSongs ?? []).map(rank),
+            topArtists: (m?.topArtists ?? []).map(rank),
+            topAlbums: (m?.topAlbums ?? []).map(rank),
+            ledger,
+            ...(m?.since ? { since: m.since } : {}),
           },
         };
       }

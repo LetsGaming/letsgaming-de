@@ -17,10 +17,12 @@ import { asNumber, asText, mapRows, type Row } from "./row-mapper.js";
  */
 export function musicRepo(db: DatabaseSync) {
   const upsertPlay = db.prepare(`
-    INSERT INTO music_plays (track_id, song, artist, album, started_at, last_seen_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO music_plays (track_id, song, artist, album, album_art_url, started_at, last_seen_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (track_id, started_at) DO UPDATE SET
-      last_seen_at = MAX(last_seen_at, excluded.last_seen_at)
+      last_seen_at = MAX(last_seen_at, excluded.last_seen_at),
+      -- Backfill art if an earlier poll of this play didn't have it yet.
+      album_art_url = COALESCE(music_plays.album_art_url, excluded.album_art_url)
     RETURNING id
   `);
   const insertArtist = db.prepare(`
@@ -48,6 +50,7 @@ export function musicRepo(db: DatabaseSync) {
         play.song,
         play.artist,
         play.album ?? null,
+        play.albumArtUrl ?? null,
         play.startedAt,
         play.seenAt,
       ) as { id: number } | undefined;
@@ -71,6 +74,7 @@ export function musicRepo(db: DatabaseSync) {
             track_id,
             MAX(song) AS song,
             MAX(artist) AS artist,
+            MAX(album_art_url) AS art,
             SUM(${DURATION}) AS seconds,
             COUNT(*) AS plays
           FROM music_plays
@@ -85,6 +89,7 @@ export function musicRepo(db: DatabaseSync) {
           by: asText(r.artist),
           minutes: Math.round(asNumber(r.seconds) / 60),
           plays: asNumber(r.plays),
+          ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
         PLAYTIME_MIN_SECONDS,
@@ -111,7 +116,22 @@ export function musicRepo(db: DatabaseSync) {
             -- key means an artist appears at most once per play, so the join can't
             -- multiply a play into several rows for one artist. Distinct would be
             -- defending against a duplicate the schema already forbids.
-            COUNT(*) AS plays
+            COUNT(*) AS plays,
+            -- An artist has no cover of its own in the presence data, so borrow the
+            -- art of this artist's single most-listened track. The correlated
+            -- subquery picks the track with the most seconds among plays crediting
+            -- this artist; a monogram fills in when even that has none.
+            (
+              SELECT p2.album_art_url
+              FROM music_play_artists a2
+              JOIN music_plays p2 ON p2.id = a2.play_id
+              WHERE a2.artist_key = a.artist_key
+                AND p2.last_seen_at >= ?
+                AND p2.album_art_url IS NOT NULL
+              GROUP BY p2.track_id
+              ORDER BY SUM(strftime('%s', p2.last_seen_at) - strftime('%s', p2.started_at)) DESC
+              LIMIT 1
+            ) AS art
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
           WHERE p.last_seen_at >= ?
@@ -124,7 +144,9 @@ export function musicRepo(db: DatabaseSync) {
           name: asText(r.artist),
           minutes: Math.round(asNumber(r.seconds) / 60),
           plays: asNumber(r.plays),
+          ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
+        sinceIso,
         sinceIso,
         PLAYTIME_MIN_SECONDS,
         limit,
@@ -139,6 +161,7 @@ export function musicRepo(db: DatabaseSync) {
           SELECT
             album,
             MAX(artist) AS artist,
+            MAX(album_art_url) AS art,
             SUM(${DURATION}) AS seconds,
             COUNT(*) AS plays
           FROM music_plays
@@ -153,11 +176,35 @@ export function musicRepo(db: DatabaseSync) {
           by: asText(r.artist),
           minutes: Math.round(asNumber(r.seconds) / 60),
           plays: asNumber(r.plays),
+          ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
         PLAYTIME_MIN_SECONDS,
         limit,
       );
+    },
+
+    /** Distinct tracks played since a cutoff — the "tracks played" headline. A
+     *  count of tracks, not plays: two listens of one song is one track. */
+    distinctTracks(sinceIso: string): number {
+      const row = db
+        .prepare("SELECT COUNT(DISTINCT track_id) AS n FROM music_plays WHERE last_seen_at >= ?")
+        .get(sinceIso) as { n: number } | undefined;
+      return row ? Number(row.n) : 0;
+    },
+
+    /** Distinct artists since a cutoff — the "different artists" headline. Counts
+     *  the split artist keys, so a collaboration's members each count once. */
+    distinctArtists(sinceIso: string): number {
+      const row = db
+        .prepare(`
+          SELECT COUNT(DISTINCT a.artist_key) AS n
+          FROM music_play_artists a
+          JOIN music_plays p ON p.id = a.play_id
+          WHERE p.last_seen_at >= ?
+        `)
+        .get(sinceIso) as { n: number } | undefined;
+      return row ? Number(row.n) : 0;
     },
 
     /** Minutes listened per day, oldest first — the timeline, same shape as the
@@ -173,6 +220,39 @@ export function musicRepo(db: DatabaseSync) {
         `),
         (r: Row) => ({ day: asText(r.day), minutes: Math.round(asNumber(r.seconds) / 60) }),
         sinceIso,
+      );
+    },
+
+    /**
+     * The tracks played on one date — the drill-in, fetched when a timeline column
+     * is clicked (parallel to `sessions.dayBreakdown`). Grouped by track so a song
+     * played twice in a day is one row with two plays; ordered most-listened first.
+     * No sub-minute floor here: the day view is a faithful account of that date, and
+     * a short listen is still part of it.
+     */
+    dayBreakdown(day: string): { song: string; artist: string; minutes: number; plays: number; artUrl?: string }[] {
+      return mapRows(
+        db.prepare(`
+          SELECT
+            track_id,
+            MAX(song) AS song,
+            MAX(artist) AS artist,
+            MAX(album_art_url) AS art,
+            SUM(${DURATION}) AS seconds,
+            COUNT(*) AS plays
+          FROM music_plays
+          WHERE date(started_at) = ?
+          GROUP BY track_id
+          ORDER BY seconds DESC, song ASC
+        `),
+        (r: Row) => ({
+          song: asText(r.song),
+          artist: asText(r.artist),
+          minutes: Math.round(asNumber(r.seconds) / 60),
+          plays: asNumber(r.plays),
+          ...(r.art ? { artUrl: asText(r.art) } : {}),
+        }),
+        day,
       );
     },
 

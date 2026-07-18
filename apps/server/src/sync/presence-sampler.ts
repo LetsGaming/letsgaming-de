@@ -2,6 +2,7 @@ import cron, { type ScheduledTask } from "node-cron";
 import {
   LANYARD_ACTIVITY_TYPE,
   isPresenceCategory,
+  spotifyAlbumArtUrl,
   type LanyardActivity,
   type LanyardData,
   type PresenceCategory,
@@ -89,11 +90,13 @@ export class PresenceSampler {
       // idempotently, so it's dropped rather than risk double-scrobbling.
       if (category === "music") {
         if (!activity.sync_id || !activity.details) continue;
+        const albumArtUrl = spotifyAlbumArtUrl(activity);
         this.store.music.observe({
           trackId: activity.sync_id,
           song: activity.details,
           artist: activity.state?.trim() ?? "",
           ...(activity.assets?.large_text ? { album: activity.assets.large_text } : {}),
+          ...(albumArtUrl ? { albumArtUrl } : {}),
           startedAt,
           seenAt,
         });
