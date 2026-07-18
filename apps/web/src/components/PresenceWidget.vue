@@ -2,8 +2,6 @@
 import type {
   GifAssetView,
   ImageAssetView,
-  PlaytimeSource,
-  PlaytimeView,
   PresenceView,
 } from "@lg/core";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
@@ -11,27 +9,15 @@ import AssetPicture from "./AssetPicture.vue";
 import { apiUrl, presenceMediaUrl } from "../lib/api";
 
 // The client only ever knows whether to poll, the owner identity for the profile
-// header, and the (already-gated) Steam data. It never receives the Discord id,
-// the category list, or any disabled activity — the server filters before this.
+// header, and (optionally) the game Steam says is being played right now. It never
+// receives the Discord id, the category list, any disabled activity, or the
+// playtime history — the server filters before this, and history lives in the
+// playtime module now.
 const props = defineProps<{
   live: boolean;
   name: string;
   handle: string;
   avatar?: ImageAssetView | GifAssetView;
-  steam?: {
-    playing?: { name: string; appId: number };
-    recent: {
-      name: string;
-      appId: number;
-      minutes2Weeks: number;
-      iconUrl?: string;
-      accent?: string;
-    }[];
-  };
-  /** The merged chart: Steam's fortnight plus everything Discord watched. `steam`
-   *  above is still the raw feed — `playing` comes from it, and it stays the
-   *  source of the "Playing now" crown. */
-  playtime?: PlaytimeView[];
 }>();
 
 const POLL_MS = 25_000;
@@ -102,76 +88,6 @@ const initials = computed(() => {
   return (props.name || h).slice(0, 2).toUpperCase();
 });
 
-// ── Steam half ──────────────────────────────────────────────────────────────
-// The section exists if anything was played, from either half. It used to key off
-// `steam.recent`, which is why a fortnight of non-Steam games rendered as nothing
-// at all rather than as a list without Steam in it.
-const hasSteam = computed(() => !!props.playtime?.length);
-const playingAppId = computed(() => props.steam?.playing?.appId ?? null);
-
-interface Game {
-  name: string;
-  /** Steam only. Absent means no store link — Discord gives a name and nothing else. */
-  appId?: number;
-  hours: number;
-  label: string;
-  pct: number;
-  iconUrl?: string;
-  iconSrc?: string;
-  accent: string;
-  playing: boolean;
-  source: PlaytimeSource;
-  /** False when the total is a floor rather than a measurement. */
-  exact: boolean;
-}
-/**
- * Every game played, not just the Steam ones.
- *
- * `playtime` is the resolver's merge: Steam's fortnight where Steam has a number
- * (it counts hours Discord was closed), and hours observed from Discord presence
- * for everything else — which is the only place a non-Steam game was ever going to
- * come from, because nothing was watching them.
- *
- * The two aren't summed. Discord reports Steam games too, so adding them would
- * double-count every hour Steam already knows about.
- */
-const steamGames = computed<Game[]>(() => {
-  const played = props.playtime ?? [];
-  const hoursOf = (m: number) => Math.round((m / 60) * 10) / 10;
-  const total = played.reduce((s, g) => s + g.minutes / 60, 0) || 1;
-  return played.map((g) => {
-    const hours = hoursOf(g.minutes);
-    return {
-      name: g.name,
-      ...(g.appId != null ? { appId: g.appId } : {}),
-      hours,
-      label: (hours % 1 === 0 ? hours : hours.toFixed(1)) + "h",
-      pct: Math.max(2, Math.round((g.minutes / 60 / total) * 100)),
-      ...(g.iconUrl ? { iconUrl: g.iconUrl, iconSrc: presenceMediaUrl({ url: g.iconUrl }) } : {}),
-      // Sampled from the game's own icon at sync — imported, not assigned.
-      // Neutral when the icon didn't load, or when there's no icon to sample
-      // because Discord doesn't hand one over: a fallback, never a guess.
-      accent: g.accent ?? "var(--surf-3)",
-      playing: playingAppId.value != null && g.appId === playingAppId.value,
-      source: g.source,
-      exact: g.exact,
-    };
-  });
-});
-const featured = computed(() => steamGames.value[0] ?? null);
-const others = computed(() => steamGames.value.slice(1));
-const totalHours = computed(
-  () => Math.round((props.playtime ?? []).reduce((s, g) => s + g.minutes / 60, 0) * 10) / 10,
-);
-
-/** True when any of it is a floor — an undated session we timed from first sight,
- *  or any observed game at all, since Discord only sees what it's running for. */
-const anyObserved = computed(() => (props.playtime ?? []).some((g) => g.source === "observed"));
-const iconGrad = (accent: string) =>
-  `linear-gradient(135deg, ${accent}, var(--surf-3))`;
-const storeUrl = (appId: number) =>
-  `https://store.steampowered.com/app/${appId}`;
-
 // ── polling ─────────────────────────────────────────────────────────────────
 async function refresh() {
   try {
@@ -206,7 +122,7 @@ onBeforeUnmount(() => {
 <template>
   <!-- Every class is pw-namespaced so the site's global .tile/.stat/.grid/.meta
        rules can't leak into the widget. -->
-  <div v-if="live || hasSteam" class="pw">
+  <div v-if="live" class="pw">
     <!-- Discord profile (live; already filtered by the server) -->
     <div v-if="live" class="pw-unit">
       <div class="pw-who">
@@ -269,91 +185,6 @@ onBeforeUnmount(() => {
       </div>
       <div v-else-if="loaded && status !== 'offline'" class="pw-act pw-off">
         No activity to display right now
-      </div>
-    </div>
-
-    <!-- Steam: what I actually play (server-synced) -->
-    <div v-if="hasSteam" class="pw-steam">
-      <div class="pw-steam-h"><span class="pw-t">Recently played</span></div>
-      <p class="pw-steam-cap">
-        Share of {{ totalHours }} h in the last 2 weeks<template v-if="anyObserved">
-          · non-Steam hours are what Discord saw, so they're a floor</template>
-      </p>
-
-      <component
-        :is="featured?.appId != null ? 'a' : 'div'"
-        v-if="featured"
-        class="pw-feat"
-        v-bind="
-          featured.appId != null
-            ? { href: storeUrl(featured.appId), target: '_blank', rel: 'noreferrer noopener' }
-            : {}
-        "
-      >
-        <span class="pw-crown">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 8l4 4 5-7 5 7 4-4-2 11H5L3 8z" />
-          </svg>
-          <template v-if="featured.playing">Playing now</template>
-          <template v-else>Most played</template>
-        </span>
-        <div class="pw-frow">
-          <img
-            v-if="featured.iconSrc"
-            :src="featured.iconSrc"
-            alt=""
-            class="pw-ico"
-          />
-          <span
-            v-else
-            class="pw-ico"
-            :style="{ background: iconGrad(featured.accent) }"
-            >{{ featured.name.slice(0, 1) }}</span
-          >
-          <div>
-            <div class="pw-fname">{{ featured.name }}</div>
-            <div class="pw-fhrs">
-              {{ featured.label }}<span class="pw-sh">{{ featured.pct }}%</span>
-            </div>
-          </div>
-        </div>
-        <div class="pw-lane">
-          <span class="pw-fill" :style="{ width: featured.pct + '%', '--bar': featured.accent }" />
-        </div>
-      </component>
-
-      <div class="pw-grid">
-        <component
-          :is="g.appId != null ? 'a' : 'div'"
-          v-for="g in others"
-          :key="g.name"
-          class="pw-tile"
-          v-bind="
-            g.appId != null
-              ? { href: storeUrl(g.appId), target: '_blank', rel: 'noreferrer noopener' }
-              : {}
-          "
-        >
-          <img v-if="g.iconSrc" :src="g.iconSrc" alt="" class="pw-ico" />
-          <span
-            v-else
-            class="pw-ico"
-            :style="{ background: iconGrad(g.accent) }"
-            >{{ g.name.slice(0, 1) }}</span
-          >
-          <div class="pw-meta">
-            <div class="pw-tn">
-              {{ g.name
-              }}<span v-if="g.playing" class="pw-playing" title="Playing now" />
-            </div>
-            <div class="pw-row">
-              <span class="pw-lane"
-                ><span class="pw-fill" :style="{ width: g.pct + '%', '--bar': g.accent }"
-              /></span>
-              <span class="pw-hrs">{{ g.label }}</span>
-            </div>
-          </div>
-        </component>
       </div>
     </div>
   </div>
@@ -751,188 +582,6 @@ onBeforeUnmount(() => {
   }
 }
 
-/* steam */
-.pw-steam {
-  margin-top: var(--sp-16);
-}
-.pw-steam-h {
-  margin: var(--sp-2) var(--sp-2) 3px;
-}
-.pw-t {
-  font-family: var(--f-m);
-  font-size: 11px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.pw-steam-cap {
-  font-size: 10.5px;
-  color: var(--muted);
-  margin: 0 var(--sp-2) var(--sp-12);
-}
-.pw-ico {
-  flex: none;
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  object-fit: cover;
-  font-family: var(--f-d);
-  font-weight: 600;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.5);
-}
-
-.pw-feat {
-  display: block;
-  position: relative;
-  padding: var(--sp-14);
-  border-radius: var(--r-card);
-  margin-bottom: 11px;
-  border: 1px solid var(--line-1);
-  text-decoration: none;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--surf-2), var(--surf-1));
-  transition: transform 0.16s ease;
-}
-.pw-feat:hover {
-  transform: translateY(-2px);
-}
-.pw-crown {
-  position: absolute;
-  top: 12px;
-  right: 13px;
-  font-family: var(--f-m);
-  font-size: 9.5px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.pw-crown svg {
-  width: 12px;
-  height: 12px;
-}
-.pw-frow {
-  display: flex;
-  gap: var(--sp-12);
-  align-items: center;
-}
-.pw-fname {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-strong);
-}
-.pw-fhrs {
-  font-family: var(--f-d);
-  font-weight: 600;
-  font-size: 24px;
-  color: var(--ink-strong);
-  line-height: 1;
-  margin-top: 3px;
-}
-.pw-sh {
-  font-family: var(--f-m);
-  font-size: 11px;
-  color: var(--muted);
-  margin-left: 7px;
-}
-.pw-feat .pw-lane {
-  height: 6px;
-  border-radius: 6px;
-  background: color-mix(in srgb, #000 26%, transparent);
-  margin-top: var(--sp-12);
-  overflow: hidden;
-}
-.pw-feat .pw-fill {
-  background: linear-gradient(
-    90deg,
-    var(--ink),
-    color-mix(in srgb, var(--ink) 45%, #fff)
-  );
-}
-
-.pw-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-10);
-}
-.pw-tile {
-  display: flex;
-  gap: var(--sp-10);
-  align-items: center;
-  min-width: 0;
-  padding: var(--sp-10);
-  border-radius: 14px;
-  background: var(--surf-2);
-  border: 1px solid var(--line-1);
-  text-decoration: none;
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
-}
-.pw-tile:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 26px -16px rgba(0, 0, 0, 0.6);
-}
-.pw-tile .pw-ico {
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
-}
-.pw-meta {
-  min-width: 0;
-  flex: 1;
-}
-.pw-tn {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pw-playing {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ink);
-  margin-left: var(--sp-6);
-  animation: pw-breathe 1.8s ease-in-out infinite;
-}
-.pw-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: var(--sp-6);
-}
-.pw-lane {
-  height: 4px;
-  flex: 1;
-  border-radius: 4px;
-  background: var(--track);
-  overflow: hidden;
-}
-.pw-fill {
-  display: block;
-  height: 100%;
-  border-radius: 4px;
-  background: var(--bar, var(--live));
-}
-.pw-hrs {
-  font-family: var(--f-m);
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .pw-muted {
   color: var(--muted);
 }
@@ -944,18 +593,8 @@ onBeforeUnmount(() => {
   .pw-anim i,
   .pw-anim b,
   .pw-pip::after,
-  .pw-pip,
-  .pw-playing {
+  .pw-pip {
     animation: none !important;
-  }
-  .pw-feat,
-  .pw-tile {
-    transition: none !important;
-  }
-}
-@media (max-width: 380px) {
-  .pw-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

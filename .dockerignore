@@ -1,9 +1,31 @@
+# Keep the build context small and stop host artifacts leaking into the image.
+.git
+.github
+.gitlab
+.vscode
+.idea
+.DS_Store
+
+# Reinstalled inside the image from the lockfile
 **/node_modules
+.pnpm-store
+
+# Rebuilt inside the image
 **/dist
 **/.astro
-# root runtime data only (see .gitignore note) — keep apps/web/src/data
-/data
-*.sqlite
-*.sqlite-*
-.env
-.git
+**/.vite
+**/.turbo
+**/.cache
+**/coverage
+**/*.log
+
+# Never bake secrets in
+**/.env
+**/.env.*
+!**/.env.example
+
+# Mounted at runtime as /data, not baked
+data
+
+# Not needed in the image (Dockerfile is read out-of-band anyway)
+**/docker-compose*.yml

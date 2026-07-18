@@ -28,6 +28,9 @@
       "id": "life",
       "label": "Life",
       "modules": [
+        "presence",
+        "playtime",
+        "music",
         "hobbies",
         "now"
       ]
@@ -46,9 +49,9 @@
       "id": "hero",
       "kind": "hero",
       "data": {
-        "eyebrow": "DOMENIC · WEB DEVELOPER · GERMANY",
+        "eyebrow": "DOMENIC \u00b7 WEB DEVELOPER \u00b7 GERMANY",
         "headline": {
-          "before": "I build for the web — and ",
+          "before": "I build for the web \u2014 and ",
           "highlight": "tinker",
           "after": " after hours."
         },
@@ -84,9 +87,9 @@
           "id": "plantcare-tracker",
           "name": "plantcare-tracker",
           "tag": "TypeScript",
-          "description": "A companion app that keeps my houseplants alive — tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
+          "description": "A companion app that keeps my houseplants alive \u2014 tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
           "meta": [
-            "★ 3",
+            "\u2605 3",
             "updated 2d ago"
           ],
           "href": "https://github.com/LetsGaming/plantcare-tracker",
@@ -399,9 +402,9 @@
             "id": "plantcare-tracker",
             "name": "plantcare-tracker",
             "tag": "TypeScript",
-            "description": "A companion app that keeps my houseplants alive — tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
+            "description": "A companion app that keeps my houseplants alive \u2014 tracks watering, light and health, and reminds me before things wilt. My main focus right now.",
             "meta": [
-              "★ 3",
+              "\u2605 3",
               "updated 2d ago"
             ],
             "href": "https://github.com/LetsGaming/plantcare-tracker",
@@ -413,7 +416,7 @@
             "tag": "Python",
             "description": "Drives LED strips live over a websocket bridge, running on a Raspberry Pi.",
             "meta": [
-              "★ 1",
+              "\u2605 1",
               "updated 6d ago"
             ],
             "href": "https://github.com/LetsGaming/LED-Controller-Websocket",
@@ -425,7 +428,7 @@
             "tag": "Shell",
             "description": "My terminal and editor setup, versioned so a fresh machine feels like home fast.",
             "meta": [
-              "★ 0",
+              "\u2605 0",
               "updated 2w ago"
             ],
             "href": "https://github.com/LetsGaming/dotfiles",
@@ -482,7 +485,7 @@
           {
             "id": "building",
             "key": "building",
-            "value": "**plantcare-tracker** — watering schedules"
+            "value": "**plantcare-tracker** \u2014 watering schedules"
           },
           {
             "id": "playing",
@@ -510,7 +513,7 @@
         "note": "the longer version",
         "paragraphs": [
           "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into making interfaces that are genuinely pleasant to use.",
-          "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby — usually attached to a plant, an LED strip, or some corner of my home lab that didn't strictly need automating.",
+          "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby \u2014 usually attached to a plant, an LED strip, or some corner of my home lab that didn't strictly need automating.",
           "This site is its own little project: a small custom CMS feeds the content, and a backend quietly accumulates data from GitHub (and whatever I plug in next) so it stays current on its own."
         ]
       }
@@ -536,6 +539,41 @@
             "primary": true
           }
         ]
+      }
+    },
+    "presence": {
+      "id": "presence",
+      "kind": "presence",
+      "data": {
+        "heading": "Right now",
+        "live": true,
+        "name": "Domenic",
+        "handle": "LetsGaming"
+      }
+    },
+    "playtime": {
+      "id": "playtime",
+      "kind": "playtime",
+      "data": {
+        "heading": "Time played",
+        "totalHours": 0,
+        "recent": [],
+        "ledger": [],
+        "heat": []
+      }
+    },
+    "music": {
+      "id": "music",
+      "kind": "music",
+      "data": {
+        "heading": "Listening",
+        "totalHours": 0,
+        "trackCount": 0,
+        "artistCount": 0,
+        "topSongs": [],
+        "topArtists": [],
+        "topAlbums": [],
+        "ledger": []
       }
     }
   },

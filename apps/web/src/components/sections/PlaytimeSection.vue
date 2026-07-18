@@ -15,10 +15,26 @@
  */
 import { computed, ref } from "vue";
 import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
-import { apiUrl } from "../../lib/api";
+import { apiUrl, presenceMediaUrl } from "../../lib/api";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
 const d = computed(() => props.module.data);
+
+// ── recently played ──────────────────────────────────────────────────────────
+// The shelf that used to sit in the presence card. Each row is a game with its
+// fortnight hours; `source` says whether the number is Steam's (a true total) or
+// observed from Discord (a floor — Discord only sees what it's running for). The
+// icon is proxied like everywhere else; a lettered tile stands in when there's no
+// icon, which is every non-Steam game (Discord hands over a name and nothing more).
+const recent = computed(() => d.value.recent ?? []);
+const gameIcon = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
+const gameAccent = (accent?: string) => accent ?? "var(--surf-3)";
+const storeUrl = (appId?: number) =>
+  appId != null ? `https://store.steampowered.com/app/${appId}` : undefined;
+const fmtGameHrs = (min: number) => {
+  const h = min / 60;
+  return (h >= 10 || h % 1 === 0 ? Math.round(h) : h.toFixed(1)) + "h";
+};
 
 // ── the ledger strip ─────────────────────────────────────────────────────────
 
@@ -86,7 +102,7 @@ const now = new Date();
 const nowHour = now.getHours();
 const nowMonFirst = (now.getDay() + 6) % 7;
 
-const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length > 0);
+const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length > 0 || recent.value.length > 0);
 </script>
 
 <template>
@@ -104,6 +120,33 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
     </p>
 
     <template v-else>
+      <!-- ── recently played (moved here from "Right now") ── -->
+      <div v-if="recent.length" class="pt-recent-wrap">
+        <div class="pt-card-h">
+          <span class="pt-t">Recently played</span>
+          <span class="pt-scope">last 2 weeks</span>
+        </div>
+        <div class="pt-recent">
+          <component
+            :is="storeUrl(g.appId) ? 'a' : 'div'"
+            v-for="g in recent"
+            :key="g.name"
+            class="pt-rgame"
+            v-bind="storeUrl(g.appId) ? { href: storeUrl(g.appId), target: '_blank', rel: 'noreferrer noopener' } : {}"
+          >
+            <img v-if="gameIcon(g.iconUrl)" :src="gameIcon(g.iconUrl)" alt="" class="pt-rg-art" loading="lazy" />
+            <span v-else class="pt-rg-art pt-rg-mono" :style="{ background: gameAccent(g.accent) }">{{ g.name.slice(0, 1) }}</span>
+            <span class="pt-rg-body">
+              <span class="pt-rg-name">{{ g.name }}</span>
+              <span class="pt-rg-meta">
+                <span class="pt-src" :class="g.source === 'steam' ? 'pt-src-steam' : 'pt-src-obs'"></span>
+                {{ fmtGameHrs(g.minutes) }}<template v-if="!g.exact"> +</template>
+              </span>
+            </span>
+          </component>
+        </div>
+      </div>
+
       <!-- ── the ledger ── -->
       <div v-if="d.ledger.length" class="pt-card">
         <div class="pt-card-h">
@@ -193,6 +236,84 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
+}
+
+/* ── recently played shelf ── */
+.pt-recent-wrap {
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
+  padding: var(--sp-18);
+}
+.pt-recent {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 1fr);
+  gap: var(--sp-10);
+  overflow-x: auto;
+  padding-bottom: var(--sp-4);
+  margin-top: var(--sp-12);
+}
+.pt-rgame {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: var(--sp-10);
+  align-items: center;
+  background: var(--surf-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-control);
+  padding: var(--sp-10);
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+a.pt-rgame:hover {
+  background: var(--surf-3);
+}
+.pt-rg-art {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-chip);
+  object-fit: cover;
+  display: block;
+}
+.pt-rg-mono {
+  display: grid;
+  place-items: center;
+  font-family: var(--f-d);
+  font-size: 16px;
+  color: var(--ink-strong);
+}
+.pt-rg-body {
+  min-width: 0;
+}
+.pt-rg-name {
+  display: block;
+  font-size: var(--fs-meta);
+  color: var(--ink-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pt-rg-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+.pt-src {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.pt-src-steam {
+  background: var(--live-ink);
+}
+.pt-src-obs {
+  background: var(--muted);
 }
 .pt-head {
   display: flex;

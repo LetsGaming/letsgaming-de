@@ -161,23 +161,16 @@ export interface PresenceModuleView {
   handle: string;
   /** Optional portrait, resolved from meta.avatar (shared with the hero). */
   avatar?: ImageAssetView | GifAssetView;
+  /**
+   * The game being played *right now*, if Steam reports one. Present-tense only —
+   * the fortnight list and the merged playtime history moved to the playtime
+   * module ("Time played"), because "Right now" is the live moment and a list of
+   * past games is history. The live Discord half (current game/track) is fetched
+   * client-side by the widget; this is the one synced fact the card still carries.
+   */
   steam?: {
     playing?: { name: string; appId: number };
-    recent: { name: string; appId: number; minutes2Weeks: number; iconUrl?: string }[];
   };
-  /**
-   * Playtime per game, Steam and non-Steam together, each saying where it came
-   * from.
-   *
-   * `steam` above is the raw fortnight and stays — the widget's "recently on
-   * Steam" list is a different claim than "what I've played". This is the merged
-   * one: Steam's minutes where Steam has them (it counts hours Discord was closed),
-   * observed minutes for everything else (Steam never saw them at all).
-   *
-   * `source` is on every entry because the two aren't interchangeable and a chart
-   * that hides which is which is a chart that invites the wrong conclusion.
-   */
-  playtime?: PlaytimeView[];
 }
 
 /** One resolved gallery image: a client-ready picture spec plus its caption. */
@@ -258,6 +251,11 @@ export type ResolvedModule =
 export interface PlaytimeModuleView {
   /** All-time hours, rounded, for the headline figure. */
   totalHours: number;
+  /** Recently played, newest/most-played first — the shelf that used to live in
+   *  the presence card. Steam's fortnight merged with observed non-Steam games,
+   *  each row saying which half it came from (`source`). This is history, which is
+   *  why it belongs here and not in "Right now". */
+  recent: PlaytimeView[];
   /** The day strip: exact minutes played per day, differenced from lifetime
    *  counters. Oldest first. */
   ledger: { day: string; minutes: number }[];

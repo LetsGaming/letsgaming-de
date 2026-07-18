@@ -2,6 +2,66 @@
 
 ## Unreleased
 
+### /life — "Right now" is the live moment; history moved to "Time played"
+
+The presence card had drifted into two jobs: the live moment *and* a fortnight of
+gaming history (a "recently played" list and a per-game playtime chart). Those are
+different tenses on one card. Split by tense:
+
+- **Right now** (`presence`) is present-tense only. It keeps the live dot, the
+  identity header, the current activity (fetched client-side), and — the one synced
+  fact it still carries — the game Steam says is being played *this second*. The
+  fortnight list and the merged playtime chart are gone from it.
+- **Time played** (`playtime`) gains a **Recently played** shelf: the last games
+  over the fortnight, Steam's totals merged with observed non-Steam games, each row
+  flagged with which half it came from (`source`) and whether the number is a true
+  total or a floor. This is history, so it belongs here next to the ledger and the
+  heatmap.
+
+Mechanically: `PresenceModuleView` lost `steam.recent` and `playtime`; `steam` is
+now just `{ playing }`. `PlaytimeModuleView` gained `recent`. The `mergePlaytime`
+call moved from the presence resolver case to the playtime one, still gated on the
+same `game` category and hidden-games filter, so nothing the owner hid surfaces.
+`PresenceWidget.vue` shed its whole Steam section (template, script, ~190 lines of
+now-dead CSS: 792 → 600 lines); `PlaytimeSection.vue` grew the shelf. The resolver
+tests that asserted the old presence shape were rewritten to the new contract, plus
+new tests that the shelf lands in playtime, is merged and flagged correctly, and is
+category-gated — each proven to bite by mutation.
+
+### Fix — the public site rendered no presence, playtime, or music
+
+The three store-backed `/life` modules showed nothing on the public site while the
+CMS showed them fine — because they reach the data by different paths. The CMS
+talks to the running read API directly; the public site's SSR (`loadSite`) resolves
+the SiteView by reading the store, and only *falls back* to the HTTP API, then to a
+committed fixture. Two faults compounded:
+
+- **`pnpm dev` fell straight to the fixture.** `astro dev` runs with no `DB_PATH`,
+  so the direct read was skipped — and there was no dev default for `API_URL`, so
+  the HTTP fallback was skipped too, landing on the fixture every time. `loadSite`
+  now defaults the HTTP fallback to the server's dev port (`http://localhost:8787`)
+  when nothing else is set; production still sets `API_URL` explicitly, so this
+  only bites in dev.
+- **The fixture was missing those exact three modules.** `fallback-site.json`
+  defined `hero … contact` but not `presence`, `playtime`, or `music`, so even a
+  correct fallback dropped them. They're added now (generated from a resolve over an
+  empty store, so each matches its module's real shape), and the fixture's `/life`
+  nav places them, matching the live IA. So the degraded path renders the right
+  page structure instead of silently skipping modules.
+
+### Build — Dockerfiles rebuilt around `pnpm fetch` + prune-to-`/prod`
+
+Both images (`apps/server`, `apps/web`) rebuilt as multi-stage: a lockfile-only
+`pnpm fetch` layer (cached until `pnpm-lock.yaml` changes, so source edits never
+re-download), an offline `--frozen-lockfile` install, the workspace build in
+dependency order, then `pnpm --prod deploy --legacy /prod` to a self-contained,
+dev-dependency-free runtime tree. The web build keeps the `core → db → web` order
+the SSR direct-read requires (`@lg/db` built before Vite resolves it). A new root
+`.dockerignore` keeps the build context small and blocks `.env`/secrets from being
+baked in. Depends on the `files:` fields already present on each package (notably
+`@lg/db` shipping `src/migrations`, so migrations reach both images). Supersedes the
+earlier one-line Dockerfile fix below.
+
 ### Feature — Listening, a fortnight of Spotify
 
 A new `music` module on `/life`, sibling to `playtime`: where that asks "when and

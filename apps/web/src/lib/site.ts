@@ -71,8 +71,13 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
     }
   }
 
-  // 2. HTTP API — for a deployment where web can't open the store file.
-  const base = envVar("API_URL");
+  // 2. HTTP API — for a deployment where web can't open the store file, and for
+  //    `pnpm dev`, where `astro dev` runs with no DB_PATH: without a default here
+  //    the dev site would fall straight to the fixture and show none of the
+  //    store-backed modules (presence, playtime, music). The default matches the
+  //    server's dev port; production sets API_URL explicitly (e.g. the compose
+  //    internal `http://server:8787`), so this only bites when nothing else is set.
+  const base = envVar("API_URL") ?? (import.meta.env.DEV ? "http://localhost:8787" : undefined);
   if (base) {
     try {
       const res = await fetch(`${base}/api/site?locale=${encodeURIComponent(locale)}`);

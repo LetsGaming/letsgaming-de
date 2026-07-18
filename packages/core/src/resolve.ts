@@ -513,29 +513,17 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const steam = source.steam;
         const includeSteam = show.includes(STEAM_CATEGORY) && steam;
         const avatar = resolveAsset(content.meta.avatar, assets);
-        // Steam's fortnight and Discord's observations are different measurements
-        // of the same hours: Discord reports Steam games too, so summing them
-        // double-counts everything Steam already knows. `mergePlaytime` takes
-        // Steam's number where Steam has one — it counts hours Discord wasn't
-        // watching — and the observed one everywhere else, which is the only place
-        // a non-Steam game was ever going to come from.
-        const playtime = show.includes("game")
-          ? mergePlaytime(includeSteam ? steam.recent : [], input.playtime ?? []).filter(
-              // Recorded but not published: the owner marked these hidden. They
-              // still accumulate — this only drops them from what the page shows.
-              (g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []),
-            )
-          : [];
 
+        // "Right now" is present-tense only. The current game (steam.playing) stays;
+        // the fortnight list and the merged playtime history moved to the playtime
+        // module, where history belongs. The live Discord half is fetched by the
+        // widget client-side.
         const data: PresenceModuleView = {
           live,
           name: content.meta.name,
           handle: content.meta.handle,
           ...(avatar && (avatar.kind === "image" || avatar.kind === "gif") ? { avatar } : {}),
-          ...(includeSteam
-            ? { steam: { ...(steam.playing ? { playing: steam.playing } : {}), recent: steam.recent } }
-            : {}),
-          ...(playtime.length ? { playtime: playtime.slice(0, FEED.playtime) } : {}),
+          ...(includeSteam && steam.playing ? { steam: { playing: steam.playing } } : {}),
         };
         return {
           id: descriptor.id,
@@ -554,6 +542,27 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // snapshots to difference and no sessions to bucket yet.
         const hist = input.playHistory ?? { ledger: [], heat: [] };
         const totalMinutes = hist.ledger.reduce((sum, d) => sum + d.minutes, 0);
+
+        // "Recently played" — moved here from the presence card, because it's
+        // history. Steam's fortnight and Discord's observations are different
+        // measurements of the same hours: Discord reports Steam games too, so
+        // summing them double-counts. `mergePlaytime` takes Steam's number where
+        // Steam has one (it counts hours Discord wasn't watching) and the observed
+        // one everywhere else — the only place a non-Steam game comes from. Gated
+        // on the same `game` allow-list and hidden-games filter the presence card
+        // used, so nothing the owner hid surfaces here either.
+        const pShow = content.presence?.show ?? defaultPresenceSettings().show;
+        const pSteam = source.steam;
+        const recent =
+          pShow.includes("game")
+            ? mergePlaytime(
+                pShow.includes(STEAM_CATEGORY) && pSteam ? pSteam.recent : [],
+                input.playtime ?? [],
+              )
+                .filter((g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []))
+                .slice(0, FEED.playtime)
+            : [];
+
         return {
           id: descriptor.id,
           kind: "playtime",
@@ -561,6 +570,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             heading,
             note,
             totalHours: Math.round(totalMinutes / 60),
+            recent,
             ledger: hist.ledger,
             heat: hist.heat,
             ...(hist.since ? { since: hist.since } : {}),

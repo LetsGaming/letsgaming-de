@@ -19,8 +19,6 @@ defineProps<{
         :name="module.data.name"
         :handle="module.data.handle"
         :avatar="module.data.avatar"
-        :steam="module.data.steam"
-      :playtime="module.data.playtime"
       />
     </div>
   </section>
