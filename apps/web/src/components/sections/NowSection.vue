@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import { mdBold } from "../../lib/site";
+import { mdBold } from "../../lib/text";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "now" }>;
-  go: (id: string) => void;
 }>();
 </script>
 
@@ -23,3 +22,33 @@ defineProps<{
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Now-specific rows. `.box` stays global (Coding and Activity share it). The `b`
+ * inside `.v` comes from v-html, so it needs :deep() to be reached. */
+.nowrow {
+  display: flex;
+  gap: var(--sp-14);
+  align-items: center;
+  padding: var(--sp-12) 0;
+  border-top: 1px solid var(--line-1);
+}
+.nowrow:first-child {
+  border-top: none;
+}
+.nowrow .k {
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--muted);
+  width: 74px;
+  flex-shrink: 0;
+}
+.nowrow .v {
+  font-size: 15px;
+  color: var(--ink);
+}
+.nowrow .v :deep(b) {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+</style>

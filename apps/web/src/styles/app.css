@@ -150,59 +150,6 @@ h1 {
   margin: var(--sp-6) 0 var(--sp-16);
   color: var(--ink-strong);
 }
-h1 .pop {
-  color: var(--ink-strong);
-  position: relative;
-  white-space: nowrap;
-}
-h1 .pop::after {
-  content: "";
-  position: absolute;
-  left: -2%;
-  right: -2%;
-  bottom: 0.08em;
-  height: 0.2em;
-  background: var(--line-2);
-  opacity: 0.35;
-  border-radius: 6px;
-  z-index: -1;
-  transform: rotate(-1deg);
-}
-.lede {
-  font-size: clamp(16px, 2.3vw, 20px);
-  color: var(--muted);
-  max-width: 560px;
-}
-.lede b {
-  color: var(--ink);
-  font-weight: 600;
-}
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-10);
-  font-family: var(--f-m);
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: var(--sp-22);
-}
-.status .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--live-ink);
-  box-shadow: var(--glow-live);
-  animation: pulse 2.2s infinite;
-}
-.status b {
-  color: var(--ink);
-  font-weight: 400;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.32;
-  }
-}
 .links {
   display: flex;
   gap: var(--sp-12);
@@ -233,14 +180,6 @@ h1 .pop::after {
 .btn .lico svg {
   width: 17px;
   height: 17px;
-}
-.avatar img {
-  width: 104px;
-  height: 104px;
-  border-radius: 24px;
-  object-fit: cover;
-  margin-bottom: var(--sp-18);
-  border: 1px solid var(--line-1);
 }
 .btn-primary {
   background: var(--live);
@@ -545,67 +484,6 @@ h1 .pop::after {
   width: 34px;
   text-align: right;
 }
-.feed {
-  display: flex;
-  flex-direction: column;
-}
-.ev {
-  display: flex;
-  gap: var(--sp-12);
-  align-items: flex-start;
-  padding: 11px 0;
-  border-top: 1px solid var(--line-1);
-}
-.ev:first-child {
-  border-top: none;
-}
-.ev .ei {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--surf-2);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-.ev .ei svg {
-  width: 15px;
-  height: 15px;
-  color: var(--ink);
-}
-.ev .et {
-  font-size: 13px;
-  color: var(--ink);
-}
-.ev .et b {
-  color: var(--ink-strong);
-  font-weight: 600;
-}
-.ev .em {
-  font-family: var(--f-m);
-  font-size: 11px;
-  color: var(--muted);
-}
-.ev .tm {
-  margin-left: auto;
-  font-family: var(--f-m);
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-/* Clickable feed rows (highlights): no underline; nudge the title on hover. */
-a.ev-link {
-  text-decoration: none;
-}
-a.ev-link:hover .et {
-  color: var(--ink);
-}
-a.ev-link:hover .ei {
-  background: var(--ink);
-}
-a.ev-link:hover .ei svg {
-  color: #fff;
-}
 .src-note {
   margin-top: var(--sp-18);
   font-family: var(--f-m);
@@ -621,166 +499,12 @@ a.ev-link:hover .ei svg {
 }
 
 /* hobbies */
-.hobbies {
-  display: grid;
-  gap: var(--sp-16);
-  grid-template-columns: repeat(4, 1fr);
-}
-.tile {
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-20) var(--sp-18);
-  box-shadow: var(--sh-card);
-  transition: box-shadow 0.25s ease;
-  min-height: 142px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  will-change: transform;
-}
-.tile:hover {
-  box-shadow: var(--sh-anchor);
-}
-.tile .ic {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  margin-bottom: var(--sp-12);
-}
-.tile .ic svg {
-  width: 22px;
-  height: 22px;
-}
-.tile h3 {
-  font-family: var(--f-b);
-  font-weight: 600;
-  font-size: 18px;
-  color: var(--ink-strong);
-}
-.tile p {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 3px;
-}
 
 /* now */
-.nowrow {
-  display: flex;
-  gap: var(--sp-14);
-  align-items: center;
-  padding: var(--sp-12) 0;
-  border-top: 1px solid var(--line-1);
-}
-.nowrow:first-child {
-  border-top: none;
-}
-.nowrow .k {
-  font-family: var(--f-m);
-  font-size: 11px;
-  color: var(--muted);
-  width: 74px;
-  flex-shrink: 0;
-}
-.nowrow .v {
-  font-size: 15px;
-  color: var(--ink);
-}
-.nowrow .v b {
-  color: var(--ink-strong);
-  font-weight: 600;
-}
 
 /* gallery */
-.gal {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--sp-12);
-}
-.gal-item {
-  margin: 0;
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.gal-item img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-}
-.gal-item figcaption {
-  padding: var(--sp-8) var(--sp-12);
-  font-size: 13px;
-  color: var(--muted);
-}
-
 /* guestbook */
-.gb-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--sp-14);
-  margin-bottom: var(--sp-6);
-}
-.gb-entry {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: 14px;
-  padding: var(--sp-16) var(--sp-18);
-  margin: 0;
-}
-.gb-entry blockquote {
-  margin: 0 0 var(--sp-10);
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.gb-entry figcaption {
-  font-family: var(--f-m);
-  font-size: 12px;
-  color: var(--ink-strong);
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-8);
-}
-.gb-entry figcaption .tm {
-  color: var(--muted);
-  margin-left: auto;
-}
-.gb-empty {
-  color: var(--muted);
-  margin-bottom: var(--sp-6);
-}
 
-/* prose */
-.prose {
-  max-width: 600px;
-  font-size: 16px;
-  color: var(--ink);
-}
-.prose p {
-  margin-bottom: var(--sp-16);
-}
-.bio-img {
-  margin: var(--sp-18) 0;
-}
-.bio-img img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 14px;
-  border: 1px solid var(--line-1);
-}
-.prose p:last-child {
-  margin-bottom: 0;
-}
-.prose b {
-  color: var(--ink-strong);
-  font-weight: 600;
-}
 
 /* ── /docs renderer ──────────────────────────────────────────────────────── */
 .doc-wrap {
@@ -1094,59 +818,10 @@ footer b {
 /* At a glance: four stat cards became one muted line. They were the same four
    numbers Code already renders, so the copy on Home was decoration — and
    accumulated totals are the quietest tier by design, not the loudest. */
-.glance-latest {
-  font-size: var(--fs-body);
-  margin-bottom: var(--sp-6);
-}
-.glance-latest .m,
-.glance-stats {
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--muted);
-}
-.glance-more {
-  margin-top: var(--sp-12);
-}
 
 
 /* Blog index. Prose, not cards: a post is a title and a promise, and a grid of
    boxes would make ten of them look like a product listing. */
-.posts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--sp-20);
-}
-.post {
-  padding-bottom: var(--sp-20);
-  border-bottom: 1px solid var(--line-1);
-}
-.post:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-.post-t {
-  font-family: var(--f-d);
-  font-size: var(--fs-h3);
-  color: var(--ink-strong);
-  text-decoration: none;
-}
-.post-t:hover {
-  text-decoration: underline;
-}
-.post-x {
-  color: var(--muted);
-  margin: var(--sp-4) 0 var(--sp-6);
-}
-.post-m {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-8);
-}
 
 
 /* Draft banner. --danger, not --live: a preview reader needs to know this isn't
@@ -1165,18 +840,6 @@ footer b {
 /* Hobby tones. Authored per hobby in the CMS, not assigned by a palette — which
    is the distinction the "imported, never invented" rule was always about. These
    are the tiles' resting state; a photo replaces the gradient when there is one. */
-.tile.t-purple {
-  background: var(--tile-purple);
-}
-.tile.t-mint {
-  background: var(--tile-mint);
-}
-.tile.t-coral {
-  background: var(--tile-coral);
-}
-.tile.t-sun {
-  background: var(--tile-sun);
-}
 
 
 /* Areas are <a> now. Anchors underline by default and buttons don't — the nav
@@ -1196,7 +859,3 @@ footer a:hover {
 
 
 /* Recent: five, then the rest on request. */
-.ev-more {
-  margin-top: var(--sp-8);
-  align-self: flex-start;
-}

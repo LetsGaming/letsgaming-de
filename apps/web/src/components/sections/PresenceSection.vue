@@ -4,7 +4,6 @@ import PresenceWidget from "../PresenceWidget.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "presence" }>;
-  go: (id: string) => void;
 }>();
 </script>
 

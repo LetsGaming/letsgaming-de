@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { AREA } from "@lg/core";
 import type { ResolvedModule } from "@lg/core";
 import { trackClick } from "../../lib/track";
 import Freshness from "../Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "glance" }>;
-  go: (id: string) => void;
 }>();
 </script>
 
@@ -26,8 +24,26 @@ defineProps<{
         <span class="l">{{ s.label }}</span>
       </div>
     </div>
-    <button class="more glance-more" @click="() => { trackClick('more'); go(AREA.code); }">
+    <a class="more glance-more" :href="module.data.moreHref" @click="() => trackClick('more')">
       full activity →
-    </button>
+    </a>
   </section>
 </template>
+
+<style scoped>
+/* Glance's unique bits. The dashboard primitives (.dash, .stat, .n, .l, .more)
+ * stay global — Activity shares them. `.glance-stats` was a dead half of a
+ * combined selector (no element uses it) and is dropped. */
+.glance-latest {
+  font-size: var(--fs-body);
+  margin-bottom: var(--sp-6);
+}
+.glance-latest .m {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
+.glance-more {
+  margin-top: var(--sp-12);
+}
+</style>

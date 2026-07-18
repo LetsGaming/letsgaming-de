@@ -8,12 +8,16 @@ import { DEFAULT_LOCALE, isLocale, type Locale } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
-import { buildSiteView } from "../site-view.js";
+import { buildSiteView } from "@lg/db";
 
 export function registerReadRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   app.get<{ Querystring: { locale?: string } }>("/api/site", async (req) => {
     const requested = req.query.locale;
     const locale: Locale = requested && isLocale(requested) ? requested : DEFAULT_LOCALE;
-    return buildSiteView(store, env, locale);
+    return buildSiteView(store, {
+      locale,
+      mediaDir: env.mediaDir,
+      ...(env.discordUserId ? { discordUserId: env.discordUserId } : {}),
+    });
   });
 }

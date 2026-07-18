@@ -94,7 +94,7 @@ export const PREVIEW_PARAM = "preview";
 export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
   { id: "home", label: en("Home"), modules: ["hero", "glance", "featured", "guestbook"] },
   { id: "code", label: en("Code"), modules: ["activity", "coding", "projects"] },
-  { id: "life", label: en("Life"), modules: ["presence", "hobbies", "gallery", "now"] },
+  { id: "life", label: en("Life"), modules: ["presence", "playtime", "hobbies", "gallery", "now"] },
   { id: "about", label: en("About"), modules: ["bio", "contact"] },
   { id: "blog", label: en("Blog"), modules: ["posts"], hidden: true },
 ];
@@ -118,6 +118,7 @@ export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "coding", kind: "coding", heading: en("This week") },
   { id: "projects", kind: "projects", heading: en("Stuff I make") },
   { id: "presence", kind: "presence", heading: en("Right now") },
+  { id: "playtime", kind: "playtime", heading: en("Time played") },
   { id: "hobbies", kind: "hobbies", heading: en("Off the clock") },
   { id: "gallery", kind: "gallery", heading: en("Snapshots") },
   { id: "now", kind: "now", heading: en("Lately") },

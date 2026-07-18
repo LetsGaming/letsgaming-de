@@ -222,11 +222,11 @@ export interface SectionMeta {
 /** Discriminated by `kind`; the frontend maps kind -> component. */
 export type ResolvedModule =
   | { id: string; kind: "hero"; data: HeroView }
-  | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null } }
+  | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null; moreHref: string } }
   | {
       id: string;
       kind: "glance";
-      data: SectionMeta & { stats: StatView[]; latest?: EventView };
+      data: SectionMeta & { stats: StatView[]; latest?: EventView; moreHref: string };
     }
   | { id: string; kind: "activity"; data: ActivityView }
   | { id: string; kind: "posts"; data: SectionMeta & { posts: PostView[] } }

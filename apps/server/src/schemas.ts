@@ -133,6 +133,18 @@ export const schemas = {
         items: { enum: PRESENCE_CATEGORIES },
         uniqueItems: true,
       },
+      sample: {
+        type: "array",
+        items: { enum: PRESENCE_CATEGORIES },
+        uniqueItems: true,
+      },
+      // null = keep forever; the numbers are the RETENTION_OPTIONS days.
+      retentionDays: { type: ["integer", "null"], enum: [null, 365, 730] },
+      hiddenGames: {
+        type: "array",
+        items: { type: "string", minLength: 1, maxLength: 200 },
+        maxItems: 200,
+      },
     },
     additionalProperties: false,
   },

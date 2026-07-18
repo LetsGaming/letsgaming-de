@@ -1,0 +1,89 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { openStore } from "../src/index.js";
+
+const iso = (h: number, m = 0, s = 0) => new Date(Date.UTC(2026, 6, 17, h, m, s)).toISOString();
+
+test("a track scrobbles once no matter how many polls catch it", () => {
+  const store = openStore(":memory:");
+  const play = {
+    trackId: "12zpU2S4lMdrK9dvsOoL1m",
+    song: "I Love It (feat. Charli XCX)",
+    artist: "Icona Pop; Charli xcx",
+    album: "THIS IS... ICONA POP",
+    startedAt: iso(20, 0),
+  };
+  store.music.observe({ ...play, seenAt: iso(20, 1) });
+  store.music.observe({ ...play, seenAt: iso(20, 2) }); // same track, later poll
+  store.music.observe({ ...play, seenAt: iso(20, 3) });
+
+  const songs = store.music.topSongs(iso(0), 10);
+  assert.equal(songs.length, 1, "one play, not three");
+  assert.equal(songs[0]?.plays, 1);
+  assert.equal(songs[0]?.minutes, 3, "20:00 → 20:03");
+});
+
+test("a collaboration counts toward every artist", () => {
+  // The real payload: "Icona Pop; Charli xcx" is TWO artists in one field.
+  const store = openStore(":memory:");
+  store.music.observe({
+    trackId: "t1", song: "I Love It", artist: "Icona Pop; Charli xcx",
+    album: "THIS IS... ICONA POP", startedAt: iso(20, 0), seenAt: iso(20, 4),
+  });
+  const artists = store.music.topArtists(iso(0), 10);
+  const names = artists.map((a) => a.name).sort();
+  assert.deepEqual(names, ["Charli xcx", "Icona Pop"], "split into two, not one joined string");
+  assert.ok(artists.every((a) => a.minutes === 4), "each artist gets the full play duration");
+  // one play with two artists: each artist gets one play (the composite PK on
+  // music_play_artists guarantees an artist can't appear twice on a play).
+  assert.ok(artists.every((a) => a.plays === 1), "one play, counted once per artist");
+});
+
+test("Charli XCX's solo plays merge with her collaborations, case-insensitively", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "t1", song: "I Love It", artist: "Icona Pop; Charli xcx", startedAt: iso(20, 0), seenAt: iso(20, 3) });
+  store.music.observe({ trackId: "t2", song: "Von Dutch", artist: "Charli XCX", startedAt: iso(21, 0), seenAt: iso(21, 5) });
+  const artists = store.music.topArtists(iso(0), 10);
+  const charli = artists.find((a) => a.name.toLowerCase() === "charli xcx");
+  assert.equal(charli?.minutes, 8, "3 (feat) + 5 (solo), merged despite 'xcx' vs 'XCX'");
+  assert.equal(charli?.plays, 2);
+});
+
+test("top albums exclude plays with no album", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", album: "Real Album", startedAt: iso(20, 0), seenAt: iso(20, 5) });
+  store.music.observe({ trackId: "t2", song: "B", artist: "Y", startedAt: iso(21, 0), seenAt: iso(21, 5) }); // no album
+  const albums = store.music.topAlbums(iso(0), 10);
+  assert.deepEqual(albums.map((a) => a.name), ["Real Album"]);
+});
+
+test("a replay later is a new play and they sum", () => {
+  const store = openStore(":memory:");
+  const base = { trackId: "t1", song: "Von Dutch", artist: "Charli XCX", startedAt: iso(20, 0) };
+  store.music.observe({ ...base, seenAt: iso(20, 3) });
+  // same track, DIFFERENT start (played again at 22:00)
+  store.music.observe({ trackId: "t1", song: "Von Dutch", artist: "Charli XCX", startedAt: iso(22, 0), seenAt: iso(22, 3) });
+  const songs = store.music.topSongs(iso(0), 10);
+  assert.equal(songs[0]?.plays, 2, "two plays of one track");
+  assert.equal(songs[0]?.minutes, 6);
+});
+
+test("music ledger is daily minutes, oldest first", () => {
+  const store = openStore(":memory:");
+  const day = (d: number, h: number) => new Date(Date.UTC(2026, 6, d, h)).toISOString();
+  store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: day(17, 20), seenAt: day(17, 20) + "" });
+  store.music.observe({ trackId: "t2", song: "B", artist: "X", startedAt: day(17, 21), seenAt: new Date(Date.UTC(2026,6,17,21,10)).toISOString() });
+  store.music.observe({ trackId: "t3", song: "C", artist: "X", startedAt: day(19, 10), seenAt: new Date(Date.UTC(2026,6,19,10,5)).toISOString() });
+  const days = store.music.dailyTotals(day(1, 0));
+  assert.deepEqual(days.map((d) => d.day), ["2026-07-17", "2026-07-19"]);
+});
+
+test("pruning a play cascades to its artist rows", () => {
+  const store = openStore(":memory:");
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
+  store.music.observe({ trackId: "old", song: "A", artist: "Icona Pop; Charli xcx", startedAt: daysAgo(400), seenAt: daysAgo(400) });
+  const removed = store.music.prune(daysAgo(365));
+  assert.equal(removed, 1);
+  // artist rows gone too (cascade) → top artists is empty
+  assert.deepEqual(store.music.topArtists(daysAgo(700), 10), []);
+});

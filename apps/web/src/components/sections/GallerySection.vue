@@ -4,7 +4,6 @@ import AssetPicture from "../AssetPicture.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "gallery" }>;
-  go: (id: string) => void;
 }>();
 </script>
 
@@ -23,3 +22,32 @@ defineProps<{
     <p v-else class="sub">No pictures yet.</p>
   </section>
 </template>
+
+<style scoped>
+/* Gallery-specific rules, scoped so they can't leak or be out-specified. The
+ * shared primitives (.sec, .sec-head, .sub) stay global — they're layout the
+ * whole site shares, not this section's. */
+.gal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-12);
+}
+.gal-item {
+  margin: 0;
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.gal-item :deep(img) {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.gal-item figcaption {
+  padding: var(--sp-8) var(--sp-12);
+  font-size: 13px;
+  color: var(--muted);
+}
+</style>

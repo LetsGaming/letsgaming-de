@@ -74,8 +74,9 @@ const {
 	viewSite,
 } = useCmsContext();
 
-/** The panel for whatever's selected, or nothing — synced modules have no panel. */
-const editing = computed(() => (selectedPanel.value ? PANEL[selectedPanel.value] : undefined));
+/** The panel for whatever's selected, or nothing — synced modules have no panel.
+ *  `selectedPanel` holds a View or null (its values come from PANEL_FOR_KIND). */
+const editing = computed(() => (selectedPanel.value ? PANEL[selectedPanel.value as View] : undefined));
 
 /** Areas other than the one on the canvas, plus Unplaced — the drop targets for
  *  "put this somewhere else". */

@@ -61,14 +61,43 @@ export const LIVE_PRESENCE_CATEGORIES: readonly LivePresenceCategory[] =
 
 /** CMS-owned presence config: which categories the widget may reveal. */
 export interface PresenceSettings {
+  /** DISPLAY axis: which categories the live widget reveals. Gates
+   *  `/api/presence` — the browser never sees a category not in here. */
   show: PresenceCategory[];
+  /**
+   * RECORD axis: which categories the sampler writes to the database.
+   *
+   * Independent of `show`, on purpose. A category can be sampled-but-hidden
+   * (accumulate history quietly) or shown-but-not-sampled (live only, no trail).
+   * Before this existed the sampler recorded everything regardless of the
+   * allow-list, so disabling music hid it from the widget while the table kept
+   * filling — the two axes are now separate settings because they were always
+   * separate questions.
+   */
+  sample: PresenceCategory[];
+  /** Prune observed sessions older than this many days. `null` = keep forever.
+   *  Steam's own data is a fortnight; this table is the only long memory, so the
+   *  default is to keep it. */
+  retentionDays: number | null;
+  /** Game names that are recorded but never shown on the public playtime chart.
+   *  Matched case-insensitively. "Accumulate it" and "publish it" are separate
+   *  decisions; this is the second one. */
+  hiddenGames: string[];
 }
 
 /** Sensible starting allow-list; used to seed the store and as a fallback.
  *  Everything except `watching` — a YouTube title is a stronger claim about a
  *  person than "playing something", so it's opt-in. */
 export function defaultPresenceSettings(): PresenceSettings {
-  return { show: PRESENCE_CATEGORIES.filter((c) => c !== "watching") };
+  const live = PRESENCE_CATEGORIES.filter((c) => c !== "watching");
+  return {
+    show: live,
+    // Sample by default whatever we'd display — the common case is "record what
+    // you show". Watching is off in both: it records the app, not the video.
+    sample: live,
+    retentionDays: null, // keep forever; the table is one row per session
+    hiddenGames: [],
+  };
 }
 
 /** Keep only valid, de-duplicated categories (guards CMS input + stored rows). */
@@ -77,6 +106,60 @@ export function sanitizePresenceShow(input: unknown): PresenceCategory[] {
   // The predicate narrows, so nothing here asserts. `includes` + `as` was the
   // same check written as a claim the compiler couldn't verify.
   return [...new Set(input.filter(isPresenceCategory))];
+}
+
+/** The retention values the CMS offers. A free-form number could prune the whole
+ *  table on a fat-fingered `1`; constraining to a known set makes that impossible. */
+export const RETENTION_OPTIONS = [
+  { label: "Forever", days: null },
+  { label: "2 years", days: 730 },
+  { label: "1 year", days: 365 },
+] as const;
+
+/** Coerce arbitrary input to one of the allowed retention values, or forever. */
+export function sanitizeRetentionDays(input: unknown): number | null {
+  if (input === null) return null;
+  return RETENTION_OPTIONS.find((o) => o.days === input)?.days ?? null;
+}
+
+/** Clean the hidden-games list: strings only, trimmed, de-duped case-insensitively,
+ *  capped so a runaway client can't write an unbounded blob. */
+export function sanitizeHiddenGames(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "string") continue;
+    const name = raw.trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+    if (out.length >= 200) break;
+  }
+  return out;
+}
+
+/** Sanitize a whole settings object from untrusted input — every field falls back
+ *  to its default rather than trusting the shape. */
+export function sanitizePresenceSettings(input: unknown): PresenceSettings {
+  const obj = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
+  const d = defaultPresenceSettings();
+  const show = "show" in obj ? sanitizePresenceShow(obj.show) : d.show;
+  const sample = "sample" in obj ? sanitizePresenceShow(obj.sample) : d.sample;
+  return {
+    show,
+    sample,
+    retentionDays: "retentionDays" in obj ? sanitizeRetentionDays(obj.retentionDays) : d.retentionDays,
+    hiddenGames: "hiddenGames" in obj ? sanitizeHiddenGames(obj.hiddenGames) : d.hiddenGames,
+  };
+}
+
+/** True when a game name is on the hidden list (case-insensitive), for the
+ *  resolver to drop it from the public chart. */
+export function isHiddenGame(name: string, hidden: string[]): boolean {
+  const key = name.trim().toLowerCase();
+  return hidden.some((h) => h.trim().toLowerCase() === key);
 }
 
 /**
@@ -115,6 +198,9 @@ export interface LanyardActivity {
   state?: string;
   details?: string;
   application_id?: string;
+  /** Spotify track id on a listening activity — stable across plays of one track,
+   *  so it's the identity for "top songs". */
+  sync_id?: string;
   emoji?: { name?: string };
   timestamps?: { start?: number; end?: number };
   assets?: { large_image?: string; large_text?: string };
@@ -384,6 +470,57 @@ export function mergePlaytime(
   return merged.sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
 }
 
+
+// ── music (Spotify plays, for a Wrapped-style view) ──────────────────────────
+
+/**
+ * Split Discord's artist string into individual artists.
+ *
+ * Discord joins collaborators with "; " — `"Icona Pop; Charli xcx"`. "Top
+ * artists" has to count each separately (Charli XCX's solo plays should merge
+ * with her features), so this splits on the separator, trims, and drops empties.
+ * Over-splitting a name that genuinely contains a semicolon is the acceptable
+ * error; under-merging two artists into one would silently corrupt the count.
+ */
+export function splitArtists(state: string | undefined): string[] {
+  if (!state) return [];
+  return [...new Set(state.split(/;\s*/).map((a) => a.trim()).filter(Boolean))];
+}
+
+/** A single track play, as captured from presence. */
+export interface MusicPlay {
+  trackId: string;
+  song: string;
+  /** Raw artist string, verbatim from Discord. */
+  artist: string;
+  album?: string;
+  startedAt: string;
+  seenAt: string;
+}
+
+/** One row of a "top" list (songs, artists, or albums). */
+export interface MusicRankEntry {
+  /** Display name — song title, artist, or album. */
+  name: string;
+  minutes: number;
+  /** How many distinct plays this is summed from. */
+  plays: number;
+  /** Artist(s), for a song/album row — lets the UI show "Song — Artist". */
+  by?: string;
+}
+
+/** The music module's data: top songs / artists / albums plus a listening
+ *  timeline, over a window. Genre and podcasts are absent — Discord's Spotify
+ *  presence doesn't expose them; they'd need the Spotify Web API. */
+export interface MusicModuleData {
+  totalHours: number;
+  topSongs: MusicRankEntry[];
+  topArtists: MusicRankEntry[];
+  topAlbums: MusicRankEntry[];
+  /** Minutes listened per day, oldest first — same shape as the playtime ledger. */
+  ledger: { day: string; minutes: number }[];
+  since?: string;
+}
 
 // ── the all-time ledger (feature 02) ─────────────────────────────────────────
 

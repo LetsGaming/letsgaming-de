@@ -3,7 +3,6 @@ import type { ResolvedModule } from "@lg/core";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "posts" }>;
-  go: (id: string) => void;
 }>();
 </script>
 
@@ -27,3 +26,43 @@ defineProps<{
     <p v-else class="sub">Nothing published yet.</p>
   </section>
 </template>
+
+<style scoped>
+/* Post list, scoped. `.tag` and `.sub` stay global — shared chips/typography. */
+.posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-20);
+}
+.post {
+  padding-bottom: var(--sp-20);
+  border-bottom: 1px solid var(--line-1);
+}
+.post:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.post-t {
+  font-family: var(--f-d);
+  font-size: var(--fs-h3);
+  color: var(--ink-strong);
+  text-decoration: none;
+}
+.post-t:hover {
+  text-decoration: underline;
+}
+.post-x {
+  color: var(--muted);
+  margin: var(--sp-4) 0 var(--sp-6);
+}
+.post-m {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+</style>

@@ -1,0 +1,146 @@
+import {
+  ASSET_WIDTHS,
+  differenceLedger,
+  PLAYTIME_WINDOW_DAYS,
+  resolveSiteView,
+  SOURCE_TTL,
+  type LedgerDay,
+  type Locale,
+  type NavNode,
+  type PlaytimeHeatCell,
+  type ResolvableAsset,
+  type SiteView,
+  type SteamData,
+} from "@lg/core";
+import { readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import type { Store } from "./index.js";
+
+/**
+ * Building the SiteView, in one place both processes share.
+ *
+ * This used to live in `apps/server`, and the web app reached it over HTTP —
+ * `fetch(${API_URL}/api/site)` on every SSR render, a network round-trip between
+ * two processes on the same box reading the same SQLite file. It's here now so the
+ * web app can build the view by reading the store directly (see
+ * `openStoreReadonly`), with the HTTP fetch kept only as a fallback for when web
+ * can't open the file.
+ *
+ * It takes plain params rather than a server env object, because it's no longer a
+ * server thing — it's "read this store, resolve this view", which is exactly what
+ * the data layer is for.
+ */
+
+/** Options the view builder needs beyond the store itself. */
+export interface BuildSiteViewOptions {
+  locale: Locale;
+  /** Root media directory; assets live under `<mediaDir>/assets`. */
+  mediaDir: string;
+  /** Lanyard id, if presence is configured. */
+  discordUserId?: string;
+  /** Pending nav, for the CMS editor canvas. Omit for the site's saved nav. */
+  nav?: NavNode[];
+}
+
+export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): Promise<SiteView> {
+  return resolveSiteView({
+    content: store.content.getContent(),
+    source: store.source.getAllCurrent(),
+    nav: opts.nav ?? store.ia.getNav(),
+    modules: store.ia.getModules(),
+    locale: opts.locale,
+    syncedAt: store.source.latestSyncedAt(),
+    freshness: {
+      syncedAt: store.source.syncedAtBySource(),
+      ttl: SOURCE_TTL,
+    },
+    guestbook: store.guestbook.listApproved(),
+    // Observed playtime over the same window Steam reports, so the two halves of
+    // the chart are the same question. Steam's `minutes2Weeks` is a fortnight;
+    // asking the store for a different span would put two spans on one axis.
+    playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
+    playHistory: buildPlayHistory(store),
+    presence: {
+      ...(opts.discordUserId ? { discordId: opts.discordUserId } : {}),
+    },
+    assets: await buildAssetLookup(store, opts.mediaDir),
+  });
+}
+
+/**
+ * The historical playtime module's data (features 02 + 03).
+ *
+ * - **The ledger** differences the lifetime counters archived in every Steam
+ *   snapshot. `source.history` is the reader written for exactly this; history
+ *   comes back newest-first, so it's reversed — the differ needs chronological
+ *   order to read the counters as rising.
+ * - **The heatmap** buckets observed sessions by weekday and hour. All-time.
+ */
+function buildPlayHistory(store: Store): {
+  ledger: LedgerDay[];
+  heat: PlaytimeHeatCell[];
+  since?: string;
+} {
+  const snaps = store.source
+    .history<SteamData>("steam", PLAY_HISTORY_SNAPSHOTS)
+    .reverse()
+    .map((row) => ({
+      syncedAt: row.syncedAt,
+      games: row.data.recent.map((g) => ({
+        name: g.name,
+        appId: g.appId,
+        minutesForever: g.minutesForever,
+      })),
+    }));
+
+  const ledger = differenceLedger(snaps);
+  const heat = store.sessions.heatmap("game", EPOCH_ISO);
+  return { ledger, heat, ...(ledger[0] ? { since: ledger[0].day } : {}) };
+}
+
+/**
+ * Build the `Map<id, ResolvableAsset>` the resolver needs to expand `asset:<id>`
+ * references. Metadata comes from the store; SVG/markdown markup is read from disk
+ * so the resolver can inline it, and raster images carry a width menu capped to
+ * the intrinsic size.
+ */
+export async function buildAssetLookup(
+  store: Store,
+  mediaDir: string,
+): Promise<Map<string, ResolvableAsset>> {
+  const assetsDir = join(resolve(mediaDir), "assets");
+  const map = new Map<string, ResolvableAsset>();
+  for (const a of store.assets.list()) {
+    const r: ResolvableAsset = {
+      id: a.id,
+      kind: a.kind,
+      ...(a.slug ? { slug: a.slug } : {}),
+      ...(a.alt ? { alt: a.alt } : {}),
+      ...(a.title ? { title: a.title } : {}),
+      ...(a.caption ? { caption: a.caption } : {}),
+      filename: a.filename,
+      ...(a.width ? { width: a.width } : {}),
+      ...(a.height ? { height: a.height } : {}),
+    };
+    if (a.kind === "image" || a.kind === "gif") {
+      r.variantWidths = ASSET_WIDTHS.filter((w) => !a.width || w <= a.width);
+    } else if (a.kind === "markdown") {
+      // Same shape as the SVG branch: the resolver needs the contents, not the
+      // path, because frontmatter is what makes a post a post.
+      r.markdown = await readFile(join(assetsDir, `${a.hash}.${a.ext}`), "utf8").catch(() => "");
+    } else if (a.kind === "svg") {
+      r.svg = await readFile(join(assetsDir, `${a.hash}.${a.ext}`), "utf8").catch(() => "");
+    }
+    map.set(a.id, r);
+  }
+  return map;
+}
+
+/** How many Steam snapshots to difference. At a 15-min sync that's ~1 year. */
+const PLAY_HISTORY_SNAPSHOTS = 35_000;
+
+/** "All time" for the heatmap. Before any possible session. */
+const EPOCH_ISO = "1970-01-01T00:00:00.000Z";
+
+const isoDaysAgo = (days: number): string =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();

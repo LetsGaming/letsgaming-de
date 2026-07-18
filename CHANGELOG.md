@@ -327,6 +327,240 @@ work without it, and a new column plus a scheduled prune is a separate concern w
 its own tranche rather than folding in silently. `sessions.prune()` still exists,
 still uncalled.
 
+**The CMS management layer for playtime — and a correctness fix it exposed.**
+
+The sampler recorded *every* category regardless of the presence allow-list, so
+disabling "music" hid it from the live widget while the database kept filling. That
+was always two questions written as one setting. Now `PresenceSettings` has two
+independent axes: `show` (what the live widget reveals — unchanged) and `sample`
+(what the sampler writes). A category can be recorded-but-hidden or shown-but-not-
+recorded; neither implies the other. The sampler reads the record list per poll, so
+a toggle takes effect without a restart.
+
+`0004` adds three nullable columns (`sample`, `retention_days`, `hidden_games`), so
+the pre-migration row reads cleanly — a NULL `sample` falls back to "record what you
+show", the behaviour that row was created under, which is why there's no data
+migration.
+
+Three controls, the three the mockup drew:
+
+- **Record to history** — the `sample` axis above. Steam is excluded: its history
+  comes from its own sync, not the sampler.
+- **Retention** — forever (default) / 2 years / 1 year, constrained to that set so a
+  fat-fingered `1` can't prune the table. A daily sweep at 03:17 calls the
+  `sessions.prune()` that had been sitting uncalled since it was written; retention
+  is read per-run, so changing it doesn't need a restart.
+- **Hidden games** — recorded like everything else, never *named* on the public
+  page. Dropped from the recently-played chart and the day-breakdown (the two places
+  a game's name surfaces); the aggregate ledger and heatmap stay honest totals,
+  because they're shape, not identity. Matched case-insensitively, so "doom" hides
+  "DOOM".
+
+Every field sanitizes from untrusted input with a per-field fallback to its default,
+so a client that sends only `show` (older UI) still writes a valid row. The sampler's
+allow-list gate, the retention read, and the hidden-games filter each cost a test
+proven to bite by reverting it.
+
+**Not done, and named as such:** `streaming` and `watching` still record the app,
+not the subject — nothing reads them, and neither has a clean structured field like
+Spotify's `state`. The `playtime` module is still unplaced in the nav, and the
+`music` module still held, both awaiting your call.
+
+**Music data collection for a Wrapped-style view — and the payload settled what
+Lanyard can actually give.**
+
+A real Lanyard payload made the model concrete. A Spotify listen carries the song
+(`details`), the album (`assets.large_text`), the track id (`sync_id`), and the
+artist in `state` — but as `"Icona Pop; Charli xcx"`, *multiple* artists joined
+with "; ". My earlier fix keyed music sessions on that whole string, so "top
+artists" would have shown the collaboration as one artist and never merged Charli
+XCX's solo plays with her features.
+
+So music gets its own shape. `presence_sessions` has one `name` column because a
+game is one subject; a track is three (song, artist, album), and cramming them into
+one name makes two unrecoverable. `0005` adds `music_plays` (keyed `(track_id,
+started_at)` — idempotent, one scrobble per song no matter how many polls catch it)
+and `music_play_artists` (one row per collaborator, so a feature counts toward each
+artist, grouped case-insensitively so "xcx" and "XCX" are one). The sampler routes
+music there and everything else stays a session; `sessionSubject` no longer handles
+music at all.
+
+That gives the data behind top songs, top artists, top albums, and a listening
+timeline — the same shape as the playtime ledger. Verified against the exact
+payload: "I Love It (feat. Charli XCX)" lands once, "Icona Pop; Charli xcx" splits
+into two rankable artists, "THIS IS... ICONA POP" is the album.
+
+**What Lanyard can't give, stated plainly:** genre and podcast-vs-music. Discord's
+Spotify presence exposes neither — a podcast episode arrives as a type-2 activity
+indistinguishable from a track. Both would need the Spotify Web API (OAuth, refresh,
+rate limits), a separate source. No empty columns pretending that data is coming.
+
+**The playtime module is placed.** On `/life`, right after "Right now" — present
+tense flows into history. Verified rendering live alongside presence.
+
+**The `go` prop-hack is gone (roadmap b).** Two "see all" buttons called
+`window.location.assign()` via a `go` prop threaded through `SitePanels` → `Module`
+→ section — a JS-only navigation with no middle-click, no crawlability. The resolver
+now computes a `moreHref` (the same `targetHref` the hero's links use) and the
+buttons are real `<a href="/code">` anchors. The `go` function, its prop chain, and
+the now-unused `areaHref` import are deleted. Verified: the rendered button is an
+anchor, zero `href="#"` on the page.
+
+**The SSR HTTP hop is gone — the web app reads the store directly.**
+
+`loadSite()` ran `fetch(${API_URL}/api/site)` on every server render: a network
+round-trip to a second process on the same box, reading the same SQLite file, to
+produce a page. It now opens the store **read-only** and builds the view in-process
+with the same `buildSiteView` the API uses. An SSR render is a local read.
+
+The safety turns on read-only. The API is the writer — migrations, seed, sync, CMS
+edits — and a second process opening the same file to *write* would race it. A
+read-only handle (`openStoreReadonly`, `readOnly: true`) makes that impossible at
+the SQLite level: it physically cannot write, so there's nothing to race, verified
+by watching a write attempt throw "attempt to write a readonly database". WAL means
+the reader still sees the writer's committed changes without blocking it, so SSR
+stays live as the sync worker updates the store.
+
+`buildSiteView` and `buildAssetLookup` moved into `@lg/db` (which already depends on
+core and is the data layer), taking plain options instead of a server env, so both
+the API and the web app compose the identical view — the duplicate in `apps/server`
+is deleted. One resolver, not two that drift.
+
+The sharp edge was the client bundle. Three `.vue` components import `mdBold` from
+`site.ts`; adding a `@lg/db` import there would have dragged node:sqlite into the
+browser. `mdBold` and `pickLocale` moved to a new client-safe `text.ts`, so `site.ts`
+is imported only by `.astro` (SSR) files now. Confirmed against the built output: no
+`DatabaseSync`/node:sqlite/`buildSiteView` in any client `.js`, correctly present in
+the server bundle.
+
+Deployment: web mounts the store volume `:ro` and gets `DB_PATH`/`MEDIA_DIR`.
+`API_URL` stays as a fallback (a container where the file isn't reachable falls back
+to HTTP, then to the committed fixture — a page always renders), and the browser
+still reaches the API cross-origin for presence/CMS/media, unchanged. Verified live:
+web renders `/` and `/life` with `API_URL` unset entirely, reading the store
+directly, real content not the fixture.
+
+**Scoped section styles — the pattern, proven on Gallery (roadmap d, begun).**
+
+The 14 section components draw their styles from the 1200-line global `app.css`,
+which is what created the specificity war the (now-deleted) editor iframe once
+existed to escape. `app.css` mixes shared primitives (`.sec`, `.card`, `.grid` —
+every section uses them) with section-specific rules (`.gal`, `.gb-entry`, `.ev` —
+one section each). The extraction moves only the section-specific rules into
+`<style scoped>`, leaving the shared primitives global.
+
+Gallery goes first, as the reference. Its `.gal*` rules moved into the component;
+the shared `.sec`/`.sub` stayed global. The one gotcha this surfaced — and the
+reason the other 12 need the same care rather than a blind move — is that scoped
+styles do not reach into child components: `.gal-item img` had to become
+`.gal-item :deep(img)` because the `<img>` is rendered by `AssetPicture`, a child.
+Verified in the built CSS: the rules are scoped (`.gal[data-v-…]`), the deep
+selector compiled through to the child image, and the gate is green. (The stale
+`go` prop left on this section from before the moreHref fix is gone too.)
+
+**Scoped section styles, finished — all 14 sections (roadmap d).**
+
+The remaining 12 sections joined Gallery and Playtime: section-specific rules moved
+into each component's `<style scoped>`, shared primitives (`.sec`, `.card`, `.grid`,
+`.btn`, `.bar`, `.stat`, `.heat`, feed/dash rows) left global. `app.css` went from
+1202 lines to 861. The specificity war that the deleted editor iframe once existed
+to escape is structurally over — a section's styles can no longer be out-specified
+or leak, because they carry a scope attribute.
+
+The extraction was per-section and careful because scoped styles have two traps
+that a blind move would hit silently. Scoped CSS does not reach into child
+components, so any rule targeting an element a child renders needs `:deep()` —
+`.gal-item img`, `.bio-img img`, and `.avatar img` all target images inside
+`AssetPicture`, and `.tile .ic svg` / `.ev .ei svg` target icons the icon helper
+injects. And `v-html` content is never stamped with the scope attribute, so
+`.prose p`, `.prose b`, `.lede b`, and `.nowrow .v b` — all styling v-html'd markup
+— became `:deep()` too. 24 such selectors, all verified compiled in the built CSS.
+Five sections (Coding, Contact, Presence, Featured, Projects) needed no scoped block
+at all: every class they use is a genuinely shared primitive. Two dead rules
+surfaced and were dropped (`.glance-stats`, a stale `/* prose */` marker), and the
+`go` prop left on several sections from before the moreHref fix is now gone
+everywhere. Verified live: every area renders, scope attributes present, shared
+primitives still shared.
+
+**Splitting `useCms` — begun, two slices out (roadmap c).**
+
+The 1264-line CMS composable started to come apart along its natural seams. Presence
+settings (`usePresenceSettings`) and guestbook moderation (`useGuestbookMod`) are now
+their own files — each a cohesive group that only needs the shared write helpers
+(`guarded`, `cms`) and, for guestbook, the auth flag passed in. `useCms` calls them
+and spreads the result into its return, so the panels that `inject()` the context
+see exactly the same members: this changes where the code lives, not how it's
+consumed. Verified live: the CMS content endpoint loads and a presence save
+round-trips (`hidden_games`, `retention_days` persist) with the extracted composables
+in place.
+
+The larger remaining blocks — analytics (with its visibility-based poll lifecycle
+tied to the tab watcher) and the gallery/canvas state (deeply shared) — are left for
+a dedicated pass rather than rushed here, because a subtle mistake in the poll wiring
+would break the live dashboard silently.
+
+**Splitting `useCms`, continued — analytics out, and the poll lifecycle came with
+it (roadmap c).**
+
+The analytics dashboard was the biggest and most tangled block in `useCms`, and the
+one with real lifecycle: a poll that runs only while the analytics panel is open
+*and* the tab is in front, wired through a `tab` watcher, a `visibilitychange`
+listener, and the mount/unmount hooks. All of that now lives in `useAnalytics` — the
+composable registers its own `onMounted`/`onUnmounted` and `watch`, so the parent no
+longer threads the poll through its lifecycle. `useCms` went from 1264 lines to 939;
+the three extracted slices (`usePresenceSettings`, `useGuestbookMod`, `useAnalytics`)
+are 96, 60, and 347 lines.
+
+The extraction also traded a `ref<any>` for the real `AnalyticsResponse` type from
+core, so the panel is now type-checked against the actual response shape instead of
+`any` — the chart geometry and the metric totals get proper types.
+
+The reason this was safe to do in one pass, despite the lifecycle risk: the existing
+`useCms` test suite already covers the poll behaviour thoroughly — it asserts that
+opening the panel polls, leaving it stops, a backgrounded tab doesn't poll, a 401
+stops the loop instead of hammering it, and a read never invalidates the preview.
+All of those pass **unchanged** after the extraction, which is a stronger proof that
+behaviour was preserved than any manual check: the tests exercise the poll through
+`useCms`'s public surface, so they validate the new wiring end-to-end. 59 web tests
+green, and the admin page mounts live with no SSR errors.
+
+Consumption is unchanged throughout — `useCms` spreads each composable into its
+return, so every panel that `inject()`s the context sees the same members it always
+did. What's left of the monolith is the gallery/canvas state, which is genuinely
+interwoven with the layout editor and is the honest next slice.
+
+**`useCms` split finished — the layout/gallery/canvas tangle is out (roadmap c
+complete).**
+
+The last and most coupled slice: layout, gallery, and the editor canvas all read
+and write the same placement state — which modules exist, how they're ordered per
+area, which are unplaced, and the gallery image rows — so they came out together as
+`useLayoutEditor` rather than as three composables fighting over one set of refs.
+The visual editor rearranges the same lists the ↑/↓ buttons and the area dropdown
+do, through one `moveModuleTo` primitive; the gallery editor is a second view onto
+the same rows. That shared state, and every operation that touches it, now lives in
+one place. `useCms` hydrates it from the content it loads (`hydrateLayout`) and
+spreads the result into its return, so panels see the same members.
+
+With this, `useCms` is 635 lines — down from 1264 at the start, a 50% cut — split
+into four focused composables: `usePresenceSettings` (96), `useGuestbookMod` (60),
+`useAnalytics` (347), and `useLayoutEditor` (445). Sixteen now-dead imports and an
+orphaned type were swept out of `useCms` in the process.
+
+The safety story is the same one that made the earlier slices safe, and it's the
+reason a tangle this size could move in one pass: the existing test suite already
+covers the layout operations thoroughly — reorder within an area, move between
+areas, hide/show, drop, and the keyboard ↑/↓ — and all of it passes **unchanged**
+after the extraction. The tests drive those operations through `useCms`'s public
+surface, so passing unchanged is direct evidence the behaviour is intact, stronger
+than any manual pass. 59 web tests green; live, every surface (home, /life, /code,
+/about, /admin) renders and the CMS content/layout/preview endpoints all answer, so
+the drag-drop, the gallery, and the canvas preview work against a real store.
+
+A couple of type edges got tightened rather than papered over on the way: the canvas
+now carries the real `AnalyticsResponse` and `Asset` types from core instead of the
+`any`/loose shapes the monolith had leaned on.
+
 **Removed.**
 
 - `goAnchor` from all fourteen sections — **eleven declared it and never used it**,

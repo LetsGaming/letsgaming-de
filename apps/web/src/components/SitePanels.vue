@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { NavView, SiteView } from "@lg/core";
 import { computed, nextTick, onMounted } from "vue";
-import { areaHref } from "../lib/area";
 import { initSite } from "../stores/site";
 import Module from "./Module.vue";
 
@@ -24,9 +23,6 @@ const modules = computed(() =>
  * links real URLs. Next tranche; `goAnchor` was the same shape and went first
  * because it was hiding a dead CTA.
  */
-function go(id: string) {
-  if (typeof window !== "undefined") window.location.assign(areaHref(props.site.nav, id));
-}
 
 onMounted(() => {
   initSite(props.site.nav);
@@ -43,6 +39,6 @@ onMounted(() => {
 
 <template>
   <section class="panel">
-    <Module v-for="m in modules" :key="m!.id" :module="m!" :go="go" />
+    <Module v-for="m in modules" :key="m!.id" :module="m!" />
   </section>
 </template>

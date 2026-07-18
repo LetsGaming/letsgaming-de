@@ -6,7 +6,6 @@ import { computed, ref } from "vue";
 
 const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "activity" }>;
-  go: (id: string) => void;
 }>();
 
 /** Five is enough to read at a glance; the rest is there when you want it. */
@@ -90,3 +89,75 @@ const heatVar = (level: number) => `var(--heat-${level})`;
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Activity's unique feed rules. The shared dashboard primitives (.stats, .stat,
+ * .dash, .box, .heat, .lang, .row, .bar, .tm, .more) stay global — Coding and
+ * Playtime lean on them. The event icon comes from v-html, so `.ei svg` is
+ * :deep(svg). */
+.feed {
+  display: flex;
+  flex-direction: column;
+}
+.ev {
+  display: flex;
+  gap: var(--sp-12);
+  align-items: flex-start;
+  padding: 11px 0;
+  border-top: 1px solid var(--line-1);
+}
+.ev:first-child {
+  border-top: none;
+}
+.ev .ei {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--surf-2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ev .ei :deep(svg) {
+  width: 15px;
+  height: 15px;
+  color: var(--ink);
+}
+.ev .et {
+  font-size: 13px;
+  color: var(--ink);
+}
+.ev .et b {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+.ev .em {
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--muted);
+}
+.ev .tm {
+  margin-left: auto;
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Clickable feed rows (highlights): no underline; nudge the title on hover. */
+a.ev-link {
+  text-decoration: none;
+}
+a.ev-link:hover .et {
+  color: var(--ink);
+}
+a.ev-link:hover .ei {
+  background: var(--ink);
+}
+a.ev-link:hover .ei :deep(svg) {
+  color: #fff;
+}
+.ev-more {
+  margin-top: var(--sp-8);
+  align-self: flex-start;
+}
+</style>

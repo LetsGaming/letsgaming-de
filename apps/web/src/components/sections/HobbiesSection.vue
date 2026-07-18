@@ -4,7 +4,6 @@ import { icons } from "../../lib/icons";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "hobbies" }>;
-  go: (id: string) => void;
 }>();
 </script>
 
@@ -26,3 +25,63 @@ defineProps<{
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Hobby tiles, scoped. The svg comes from v-html (h.icon), so `.tile .ic svg`
+ * becomes :deep(svg). `.sub` stays global. */
+.hobbies {
+  display: grid;
+  gap: var(--sp-16);
+  grid-template-columns: repeat(4, 1fr);
+}
+.tile {
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-card);
+  padding: var(--sp-20) var(--sp-18);
+  box-shadow: var(--sh-card);
+  transition: box-shadow 0.25s ease;
+  min-height: 142px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  will-change: transform;
+}
+.tile:hover {
+  box-shadow: var(--sh-anchor);
+}
+.tile .ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--sp-12);
+}
+.tile .ic :deep(svg) {
+  width: 22px;
+  height: 22px;
+}
+.tile h3 {
+  font-family: var(--f-b);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--ink-strong);
+}
+.tile p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.tile.t-purple {
+  background: var(--tile-purple);
+}
+.tile.t-mint {
+  background: var(--tile-mint);
+}
+.tile.t-coral {
+  background: var(--tile-coral);
+}
+.tile.t-sun {
+  background: var(--tile-sun);
+}
+</style>

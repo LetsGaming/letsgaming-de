@@ -11,7 +11,13 @@ import type {
   Status,
 } from "@lg/core";
 import type { GalleryItem } from "@lg/core";
-import { defaultPresenceSettings, sanitizePresenceShow } from "@lg/core";
+import {
+  defaultPresenceSettings,
+  sanitizeHiddenGames,
+  sanitizePresenceSettings,
+  sanitizePresenceShow,
+  sanitizeRetentionDays,
+} from "@lg/core";
 import type { DB } from "./database.js";
 import {
   asBool,
@@ -86,14 +92,25 @@ export function contentRepo(db: DB) {
   const readGallery = (): GalleryItem[] =>
     mapRows(db.prepare("SELECT * FROM gallery ORDER BY sort, id"), toGalleryItem);
 
-  /** Presence config (single row); falls back to the default if unseeded. */
+  /** Presence config (single row); every field falls back to its default if
+   *  unseeded or NULL, so a fresh install and the pre-0004 row both read cleanly. */
   const readPresence = (): PresenceSettings => {
-    const show = mapRow(
-      db.prepare("SELECT show FROM site_presence WHERE id = ?"),
-      (r) => sanitizePresenceShow(json<unknown>(r.show)),
-      SINGLETON_ID,
-    );
-    return show ? { show } : defaultPresenceSettings();
+    const row = db
+      .prepare("SELECT show, sample, retention_days, hidden_games FROM site_presence WHERE id = ?")
+      .get(SINGLETON_ID) as
+      | { show: string; sample: string | null; retention_days: number | null; hidden_games: string | null }
+      | undefined;
+    if (!row) return defaultPresenceSettings();
+    const d = defaultPresenceSettings();
+    const show = sanitizePresenceShow(json<unknown>(row.show));
+    return {
+      show,
+      // NULL sample predates 0004 — fall back to "record what you show", which is
+      // the behaviour that row was created under (the sampler ignored the list).
+      sample: row.sample === null ? show : sanitizePresenceShow(json<unknown>(row.sample)),
+      retentionDays: sanitizeRetentionDays(row.retention_days),
+      hiddenGames: row.hidden_games === null ? d.hiddenGames : sanitizeHiddenGames(json<unknown>(row.hidden_games)),
+    };
   };
 
   /**
@@ -180,14 +197,25 @@ export function contentRepo(db: DB) {
     /** Presence category allow-list (CMS-owned). */
     getPresence: readPresence,
     setPresence(settings: PresenceSettings) {
-      const show = sanitizePresenceShow(settings.show);
+      const clean = sanitizePresenceSettings(settings);
       write("presence", () =>
         db
           .prepare(
-            `INSERT INTO site_presence (id, show) VALUES (?, ?)
-             ON CONFLICT(id) DO UPDATE SET show = excluded.show`,
+            `INSERT INTO site_presence (id, show, sample, retention_days, hidden_games)
+               VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               show = excluded.show,
+               sample = excluded.sample,
+               retention_days = excluded.retention_days,
+               hidden_games = excluded.hidden_games`,
           )
-          .run(SINGLETON_ID, JSON.stringify(show)),
+          .run(
+            SINGLETON_ID,
+            JSON.stringify(clean.show),
+            JSON.stringify(clean.sample),
+            clean.retentionDays,
+            JSON.stringify(clean.hiddenGames),
+          ),
       );
     },
 

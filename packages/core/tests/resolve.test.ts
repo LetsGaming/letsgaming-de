@@ -377,3 +377,50 @@ test("a target in a draft area stays inert rather than 404ing", () => {
   const links = hero?.kind === "hero" ? hero.data.links : [];
   assert.equal(links[0]?.href, "#bio");
 });
+
+test("hidden games are dropped from the recently-played chart but not from the data", () => {
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p")],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "life", label: en("Life"), modules: ["presence"] }];
+  const modules: ModuleDescriptor[] = [{ id: "presence", kind: "presence", heading: en("P") }];
+
+  const view = resolveSiteView({
+    content: {
+      ...content,
+      // hide Doom; game + steam shown
+      presence: { show: ["game", "steam"], hiddenGames: ["doom"] },
+    },
+    nav,
+    modules,
+    source: {
+      steam: {
+        recent: [
+          { name: "Counter-Strike 2", appId: 730, minutes2Weeks: 120, minutesForever: 74000 },
+          { name: "Doom", appId: 379720, minutes2Weeks: 90, minutesForever: 5000 },
+        ],
+      },
+    },
+    // an observed non-Steam game that's also hidden
+    playtime: [
+      { name: "Minecraft", minutes: 60, sessions: 2, exact: true },
+      { name: "DOOM", minutes: 45, sessions: 1, exact: true },
+    ],
+    presence: { discordId: "1" },
+  });
+
+  const presence = view.modules["presence"];
+  if (!presence || presence.kind !== "presence") throw new Error("expected presence");
+  const names = (presence.data.playtime ?? []).map((g) => g.name);
+  assert.ok(names.includes("Counter-Strike 2"), "shown game survives");
+  assert.ok(names.includes("Minecraft"), "shown observed game survives");
+  assert.ok(!names.some((n) => n.toLowerCase() === "doom"), "Doom is hidden, both the Steam and observed row");
+});

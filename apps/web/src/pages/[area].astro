@@ -8,7 +8,8 @@
 // a flag — the router enforces it.
 import AreaPage from "../components/AreaPage.astro";
 import { areaById } from "../lib/area";
-import { loadSite, pickLocale } from "../lib/site";
+import { loadSite } from "../lib/site";
+import { pickLocale } from "../lib/text";
 
 const locale = pickLocale(
   Astro.url.searchParams.get("lang"),

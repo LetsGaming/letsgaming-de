@@ -86,8 +86,19 @@ services:
     depends_on:
       - server
     environment:
-      # SSR (server → API) over the internal network.
+      # SSR reads the store directly (read-only) — no HTTP hop to the API. Same
+      # paths as the server; the volume is mounted :ro below so web physically
+      # can't write, which is what keeps it from racing the server's migrations.
+      DB_PATH: /data/letsgaming.sqlite
+      MEDIA_DIR: /data/media
+      # Kept as a fallback for when the store file isn't reachable (buildSiteView
+      # falls back to this, then to the committed fixture). Also lets the browser
+      # find the API for presence/CMS/media, which stays cross-origin.
       API_URL: http://server:8787
+    volumes:
+      # Read-only: web reads the store the server writes. WAL lets this reader see
+      # committed writes without blocking the writer.
+      - store:/data:ro
     ports:
       - "8080:4321"
 

@@ -15,6 +15,7 @@ import type { SiteContent, Project, Link } from "./content.js";
 import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
+import { AREA } from "./ia.js";
 import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
 import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
 import type { FreshnessView, PostView } from "./view.js";
@@ -23,6 +24,7 @@ import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
   defaultPresenceSettings,
   LIVE_PRESENCE_CATEGORIES,
+  isHiddenGame,
   mergePlaytime,
   STEAM_CATEGORY,
   type LedgerDay,
@@ -331,7 +333,10 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         return {
           id: descriptor.id,
           kind: "featured",
-          data: { heading, note, project: featured },
+          // A real URL the resolver already knows, so the "see all" affordance is
+          // an <a href> — middle-clickable, crawlable — not a JS-only button that
+          // calls window.location. Same `targetHref` the hero's links use.
+          data: { heading, note, project: featured, moreHref: targetHref(navView, AREA.code) },
         };
       }
       case "glance": {
@@ -344,6 +349,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             note,
             freshness: freshnessOf("github", Boolean(gh)),
             stats: statViews(),
+            moreHref: targetHref(navView, AREA.code),
             ...(latest
               ? {
                   latest: {
@@ -500,7 +506,11 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // watching — and the observed one everywhere else, which is the only place
         // a non-Steam game was ever going to come from.
         const playtime = show.includes("game")
-          ? mergePlaytime(includeSteam ? steam.recent : [], input.playtime ?? [])
+          ? mergePlaytime(includeSteam ? steam.recent : [], input.playtime ?? []).filter(
+              // Recorded but not published: the owner marked these hidden. They
+              // still accumulate — this only drops them from what the page shows.
+              (g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []),
+            )
           : [];
 
         const data: PresenceModuleView = {

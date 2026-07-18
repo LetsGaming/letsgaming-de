@@ -33,6 +33,7 @@ import type { ServerEnv } from "../env.js";
  */
 export class PresenceSampler {
   private task: ScheduledTask | null = null;
+  private pruneTask: ScheduledTask | null = null;
 
   constructor(
     private readonly env: ServerEnv,
@@ -65,27 +66,64 @@ export class PresenceSampler {
     const seenAt = now.toISOString();
     let recorded = 0;
 
+    // The record axis — independent of what the live widget displays. A category
+    // the owner turned off here is never written, even if it's shown live.
+    const sample = new Set(this.store.content.getPresence().sample);
+
     for (const activity of data.activities ?? []) {
       const category = CATEGORY_FOR_TYPE[activity.type];
       // Custom status is a sentence, not an activity — there's no duration in
       // "brb". Everything else is something with a start and an end.
       if (!category || !isPresenceCategory(category) || category === "custom") continue;
-      const name = sessionSubject(category, activity);
-      if (!name) continue;
+      if (!sample.has(category)) continue; // not on the record list
 
       // Discord's own start when it has one. Otherwise this poll — which makes the
-      // session a floor that grows from first sight rather than a guess about when
-      // it began, and `started_exact` says which the chart is holding.
+      // record a floor that grows from first sight, and `startedExact` (for
+      // sessions) says which the chart is holding.
       const exact = typeof activity.timestamps?.start === "number";
-      const startedAt = exact
-        ? new Date(activity.timestamps!.start!).toISOString()
-        : seenAt;
+      const startedAt = exact ? new Date(activity.timestamps!.start!).toISOString() : seenAt;
 
+      // Music goes to its own table: a track is song + artist(s) + album, three
+      // subjects a single `name` column can't hold. Everything else is one
+      // subject and stays a session. A track with no id can't be de-duplicated
+      // idempotently, so it's dropped rather than risk double-scrobbling.
+      if (category === "music") {
+        if (!activity.sync_id || !activity.details) continue;
+        this.store.music.observe({
+          trackId: activity.sync_id,
+          song: activity.details,
+          artist: activity.state?.trim() ?? "",
+          ...(activity.assets?.large_text ? { album: activity.assets.large_text } : {}),
+          startedAt,
+          seenAt,
+        });
+        recorded++;
+        continue;
+      }
+
+      const name = sessionSubject(category, activity);
+      if (!name) continue;
       this.store.sessions.observe({ category, name, startedAt, seenAt, startedExact: exact });
       recorded++;
     }
 
     return recorded;
+  }
+
+  /**
+   * Drop sessions past the retention window. A no-op when retention is "forever".
+   *
+   * Reads `retentionDays` per run rather than at construction, so changing it in
+   * the CMS takes effect on the next prune without a restart — the same reason the
+   * sample list is read per poll.
+   */
+  prune(now = new Date()): number {
+    const days = this.store.content.getPresence().retentionDays;
+    if (days === null) return 0; // keep forever
+    const before = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+    const removed = this.store.sessions.prune(before) + this.store.music.prune(before);
+    if (removed > 0) this.log(`[presence] pruned ${removed} record(s) older than ${days}d`);
+    return removed;
   }
 
   start(): void {
@@ -98,14 +136,25 @@ export class PresenceSampler {
       return;
     }
     this.task = cron.schedule(this.schedule, () => void this.sample());
+    // Retention runs daily — the window is in days, so finer would just re-check
+    // the same rows. Independent of the sampler cron so neither blocks the other.
+    if (cron.validate(PRUNE_SCHEDULE)) {
+      this.pruneTask = cron.schedule(PRUNE_SCHEDULE, () => this.prune());
+    }
     this.log(`[presence] playtime sampling: ${this.schedule}`);
   }
 
   stop(): void {
     this.task?.stop();
     this.task = null;
+    this.pruneTask?.stop();
+    this.pruneTask = null;
   }
 }
+
+/** Retention is a day-scale window, so a daily sweep (03:17, off the hour to
+ *  avoid the top-of-hour cron crowd) is as fine as it needs to be. */
+const PRUNE_SCHEDULE = "17 3 * * *";
 
 /**
  * What a session for this activity is *about* — the string the chart groups by.
@@ -126,7 +175,10 @@ export function sessionSubject(
   category: PresenceCategory,
   activity: LanyardActivity,
 ): string | null {
-  if (category === "music") return activity.state?.trim() || null;
+  // Music no longer routes through here — it has its own table (music_plays),
+  // because a track is song + artist + album, not one name. Games use their name.
+  // Streaming/watching keep the raw name for now (nothing reads them, and neither
+  // has a clean structured subject the way Spotify's fields do).
   return activity.name?.trim() || null;
 }
 

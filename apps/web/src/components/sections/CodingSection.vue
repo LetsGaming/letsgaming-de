@@ -5,7 +5,6 @@ import Freshness from "../Freshness.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "coding" }>;
-  go: (id: string) => void;
 }>();
 </script>
 

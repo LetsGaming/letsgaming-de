@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { AREA } from "@lg/core";
 import type { ResolvedModule } from "@lg/core";
 import { langColor, icons } from "../../lib/icons";
 import Freshness from "../Freshness.vue";
@@ -8,7 +7,6 @@ import { trackClick, trackProject } from "../../lib/track";
 
 const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "featured" }>;
-  go: (id: string) => void;
 }>();
 
 /** Narrowed once here rather than in the template: a `v-if` on the element can't
@@ -22,7 +20,7 @@ const project = computed(() => props.module.data.project);
     <div class="sec-head">
       <h2>{{ module.data.heading }}</h2>
       <Freshness :freshness="module.data.freshness" />
-      <button class="more" @click="() => { trackClick('more'); go(AREA.code); }">see all my work →</button>
+      <a class="more" :href="module.data.moreHref" @click="() => trackClick('more')">see all my work →</a>
     </div>
     <div class="grid">
       <a

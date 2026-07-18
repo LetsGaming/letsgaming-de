@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickLocale } from "../../src/lib/site";
+import { pickLocale } from "../../src/lib/text";
 
 describe("pickLocale", () => {
   it("honours an explicit, valid ?lang param above everything", () => {

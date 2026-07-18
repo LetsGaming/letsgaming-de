@@ -29,6 +29,7 @@ import {
   lintNav,
   MODULE_KIND,
   parseAssetRef,
+  sanitizePresenceSettings,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -39,7 +40,7 @@ import type { ServerEnv } from "../env.js";
 import { requireAuth, sessionLogin } from "../auth/guard.js";
 import { schemas } from "../schemas.js";
 import { badRequest, notFound } from "../errors.js";
-import { buildSiteView } from "../site-view.js";
+import { buildSiteView } from "@lg/db";
 
 /** A fresh gallery module id. Short random suffix: unique without a lookup, and
  *  short enough to read in the Layout screen. */
@@ -146,14 +147,19 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     store.content.setBio(req.body);
     return { ok: true };
   });
-  app.put<{ Body: { show: PresenceCategory[] } }>(
-    "/api/cms/presence",
-    write(schemas.presence),
-    async (req) => {
-      store.content.setPresence({ show: req.body.show });
-      return { ok: true };
-    },
-  );
+  app.put<{
+    Body: {
+      show: PresenceCategory[];
+      sample?: PresenceCategory[];
+      retentionDays?: number | null;
+      hiddenGames?: string[];
+    };
+  }>("/api/cms/presence", write(schemas.presence), async (req) => {
+    // sanitizePresenceSettings fills any omitted field from the default, so a
+    // client that only sends `show` (older UI) still writes a valid row.
+    store.content.setPresence(sanitizePresenceSettings(req.body));
+    return { ok: true };
+  });
 
   // ── gallery (images placed on the site, chosen from the asset library) ─────
   // Recompute which assets each gallery module references, so the library's
@@ -300,7 +306,12 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       const nav = applyLayoutOrder(req.body.order);
       const requested = req.body.locale;
       const locale: Locale = requested && isLocale(requested) ? requested : DEFAULT_LOCALE;
-      return buildSiteView(store, env, locale, nav);
+      return buildSiteView(store, {
+        locale,
+        mediaDir: env.mediaDir,
+        nav,
+        ...(env.discordUserId ? { discordUserId: env.discordUserId } : {}),
+      });
     },
   );
 

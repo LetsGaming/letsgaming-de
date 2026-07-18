@@ -8,7 +8,8 @@ import SitePanels from "./SitePanels.vue";
 import Layout from "../layouts/Layout.astro";
 import { AREA } from "@lg/core";
 import { areaById, areaHref, areaMeta } from "../lib/area";
-import { loadSite, pickLocale } from "../lib/site";
+import { loadSite } from "../lib/site";
+import { pickLocale } from "../lib/text";
 
 interface Props {
   area?: string | undefined;

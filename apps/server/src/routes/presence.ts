@@ -12,6 +12,7 @@
  */
 
 import {
+  isHiddenGame,
   isLivePresenceCategory,
   normalizePresence,
   type LanyardData,
@@ -76,7 +77,14 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
         return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
       }
-      return { day, games: store.sessions.dayBreakdown("game", day) };
+      // Hidden games are dropped wherever a name would surface publicly. The
+      // aggregate ledger and heatmap are shape (when / how much), not identity, so
+      // they stay honest totals; this breakdown names games, so it filters.
+      const hidden = store.content.getPresence().hiddenGames;
+      const games = store.sessions
+        .dayBreakdown("game", day)
+        .filter((g) => !isHiddenGame(g.name, hidden));
+      return { day, games };
     },
   );
 }
