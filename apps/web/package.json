@@ -22,7 +22,7 @@
     "@fontsource/inter": "^5",
     "@fontsource/space-mono": "^5",
     "@nanostores/vue": "^1.1.0",
-    "astro": "^6.1.6",
+    "astro": "^7.1.1",
     "marked": "^18.0.5",
     "nanostores": "^1.4.0",
     "sortablejs": "^1.15.7",
