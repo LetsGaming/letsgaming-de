@@ -7,6 +7,7 @@ import {
   SOURCE_TTL,
   type Locale,
   type NavNode,
+  type PlaytimeHeatCell,
   type ResolvableAsset,
   type SiteView,
 } from "@lg/core";
@@ -65,21 +66,25 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
 }
 
 /**
- * The historical playtime module's data (feature 02).
+ * The historical playtime module's data (features 02 + 03).
  *
- * The ledger is per-day observed minutes, oldest first — `dailyTotals` over all
- * time (the strip windows it to a fortnight). It used to difference Steam's
- * lifetime counters, which were exact but Steam-only; observed minutes are a floor
- * but cover every game Discord saw.
+ * - **The ledger** is per-day observed minutes, oldest first — `dailyTotals` over
+ *   all time (the strip windows it to a fortnight). It used to difference Steam's
+ *   lifetime counters, which were exact but Steam-only; observed minutes are a
+ *   floor but cover every game Discord saw.
+ * - **The heatmap** buckets those same sessions by weekday and hour, all-time —
+ *   the "when do I play" grid the day strip can't show.
  */
 function buildPlayHistory(store: Store): {
   ledger: { day: string; minutes: number }[];
+  heat: PlaytimeHeatCell[];
   since?: string;
 } {
   const ledger = store.sessions
     .dailyTotals("game", EPOCH_ISO)
     .map((d) => ({ day: d.day, minutes: d.minutes }));
-  return { ledger, ...(ledger[0] ? { since: ledger[0].day } : {}) };
+  const heat = store.sessions.heatmap("game", EPOCH_ISO);
+  return { ledger, heat, ...(ledger[0] ? { since: ledger[0].day } : {}) };
 }
 
 /**

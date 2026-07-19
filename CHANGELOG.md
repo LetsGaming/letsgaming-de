@@ -32,10 +32,11 @@ has only the game where a listen has a song and an artist — so the stats are i
 readouts, not song/artist-style tabs. Cover art and genre (RAWG, by name) ride
 along into the day view too, so a game looks the same drilled-in as in the list.
 
-The weekday×hour "when I play" grid was dropped: Listening has no equivalent, and
-mirroring it means matching its shape. Its `heat` data went with it — the module no
-longer computes or ships a grid nothing renders, keeping to the rule that the
-frontend is handed only what it draws.
+The weekday×hour "when I play" heatmap stays as a *second* card — Listening has no
+equivalent, but "at what time of day do I play" is a real question the day strip
+(how much, per day) can't answer, so it keeps its own card below the main one.
+(Its cells are laid out hour-major now, so it reads as a true 24-hour × 7-day
+matrix rather than a wrapped timeline.)
 
 ### Change — Playtime is Lanyard-only now; Steam was dropped (and parked)
 

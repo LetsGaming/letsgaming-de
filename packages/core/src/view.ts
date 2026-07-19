@@ -237,17 +237,18 @@ export type ResolvedModule =
  *
  * Deliberately separate from `PresenceModuleView`, which is present-tense — "Right
  * now", the live dot. This is the *past*: a headline total, a contiguous-fortnight
- * day strip, and a top-games list, all built from accumulated `presence_sessions`
- * — the observed history the present-tense card never reads. Two subjects, two
- * modules.
+ * day strip, a top-games list, and a weekday×hour heatmap, all built from
+ * accumulated `presence_sessions` — the observed history the present-tense card
+ * never reads. Two subjects, two modules.
  *
- * Built to mirror `MusicModuleView`: same total + strip + top-list shape, same
- * drill-in. One list, not two — a play has only the game (a listen has both a song
- * and an artist), so there's no song/artist-style split.
+ * The main card mirrors `MusicModuleView` (total + strip + top-list + drill); one
+ * list, not two, since a play has only the game where a listen has a song and an
+ * artist. The heatmap is a second card — "when do I play", which the day strip
+ * (how much, per day) can't answer.
  *
  * `dayBreakdown` isn't here: it's fetched on demand when a column is clicked
- * (`/api/playtime/day`), so the module ships one day-strip and a list rather than a
- * fortnight of breakdowns nobody asked to see.
+ * (`/api/playtime/day`), so the module ships one day-strip, a list, and a grid
+ * rather than a fortnight of breakdowns nobody asked to see.
  */
 export interface PlaytimeModuleView {
   /** All-time hours, rounded, for the headline figure. */
@@ -258,6 +259,9 @@ export interface PlaytimeModuleView {
   recent: PlaytimeView[];
   /** The day strip: minutes observed per day, oldest first. */
   ledger: { day: string; minutes: number }[];
+  /** The heatmap: minutes per weekday×hour over all time. Sparse — only cells with
+   *  play are present; the view fills the 7×24 grid. */
+  heat: { weekday: number; hour: number; minutes: number }[];
   /** How many days the ledger covers, for "since <date>" copy. */
   since?: string;
 }

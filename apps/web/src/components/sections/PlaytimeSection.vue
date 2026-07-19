@@ -22,6 +22,7 @@ import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
+import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
 // Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data.
@@ -59,7 +60,45 @@ const dayMinutes = computed(() => dayRowsAll.value.reduce((s, g) => s + g.minute
 const dayGameCount = computed(() => dayRowsAll.value.length);
 
 const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
-const hasData = computed(() => d.value.ledger.length > 0 || games.value.length > 0);
+
+// ── the weekday×hour heatmap ("when I play") ──────────────────────────────────
+// A second card, and Playtime's own — Listening has no equivalent. The day strip
+// answers "how much, per day"; this answers "at what time of day".
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Build a 7×24 grid (Mon-first) from the sparse cells. SQLite's %w is Sun=0, so
+// rotate to Mon=0.
+const heatGrid = computed(() => {
+  const grid = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
+  for (const c of d.value.heat) grid[(c.weekday + 6) % 7]![c.hour] = c.minutes;
+  return grid;
+});
+const heatMax = computed(() => Math.max(1, ...d.value.heat.map((c) => c.minutes)));
+const heatLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / heatMax.value) * 4)));
+
+const now = new Date();
+const nowHour = now.getHours();
+const nowDay = (now.getDay() + 6) % 7;
+
+// Cells for HeatGrid, hour-major: column-flow fills each column top-to-bottom, so
+// with 7 rows a column is one hour down the week (Mon→Sun) and the 24 columns are
+// the hours. That makes it a true weekday×hour matrix rather than a wrapped
+// timeline.
+const heatCells = computed<HeatCell[]>(() => {
+  const out: HeatCell[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let day = 0; day < 7; day++) {
+      const min = heatGrid.value[day]?.[hour] ?? 0;
+      out.push({
+        level: heatLevel(min),
+        today: day === nowDay && hour === nowHour,
+        title: `${DAYS[day]} ${String(hour).padStart(2, "0")}:00 · ${min ? fmtHrs(min) : "nothing"}`,
+      });
+    }
+  }
+  return out;
+});
+
+const hasData = computed(() => d.value.ledger.length > 0 || games.value.length > 0 || d.value.heat.length > 0);
 </script>
 
 <template>
@@ -74,7 +113,8 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
       you playing — give it a day.
     </p>
 
-    <div v-else class="pt-card">
+    <template v-else>
+      <div class="pt-card">
       <div class="pt-card-h">
         <span class="pt-t">Played</span>
         <span class="pt-scope">{{ selected ? fmtDay(selected) : "last 14 days" }}</span>
@@ -147,12 +187,31 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         </template>
       </div>
     </div>
+
+      <!-- ── the weekday×hour heatmap: Playtime's own second card ── -->
+      <div v-if="d.heat.length" class="pt-card">
+        <div class="pt-card-h">
+          <span class="pt-t">When I play</span>
+          <span class="pt-scope">local time</span>
+        </div>
+        <div class="pt-heat">
+          <div class="pt-heat-days"><span v-for="dl in DAYS" :key="dl">{{ dl }}</span></div>
+          <div class="pt-heat-plot">
+            <HeatGrid :cells="heatCells" :min-cell="8" />
+            <div class="pt-heat-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
+          </div>
+        </div>
+      </div>
+    </template>
   </section>
 </template>
 
 <style scoped>
 .pt {
   container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
 }
 .pt-head {
   display: flex;
@@ -255,5 +314,38 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   font-size: var(--fs-meta);
   color: var(--muted);
   margin-bottom: var(--sp-4);
+}
+
+/* ── weekday×hour heatmap: day labels beside a 24-column grid, hour axis below.
+   The labels mirror HeatGrid's row structure (7 rows, 3px gap, 4px pad) so they
+   line up with the cell rows. ── */
+.pt-heat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-8);
+  align-items: stretch;
+}
+.pt-heat-days {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  padding: 4px 0;
+  font-family: var(--f-m);
+  font-size: 9px;
+  color: var(--muted);
+}
+.pt-heat-days span {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.pt-heat-axis {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  margin-top: var(--sp-6);
+  padding: 0 4px;
 }
 </style>
