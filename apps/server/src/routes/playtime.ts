@@ -5,11 +5,11 @@
  * wants 365 breakdowns they didn't ask for).
  *
  * Split out of the presence route on purpose: presence is "right now" (Discord),
- * playtime is accumulated history (Steam + observed sessions). Different sources,
+ * playtime is accumulated history (observed sessions). Different subjects,
  * different lifetimes, different endpoints.
  */
 
-import { isHiddenGame, type PlaytimeDayResponse } from "@lg/core";
+import { gameMetaKey, isHiddenGame, type PlaytimeDayResponse } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
@@ -27,9 +27,23 @@ export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void
       // aggregate ledger and heatmap are shape (when / how much), not identity, so
       // they stay honest totals; this breakdown names games, so it filters.
       const hidden = store.content.getPresence().hiddenGames;
+      // Cover art + genre, matched by name — same cache the top-games list uses, so
+      // a game looks the same drilled-in as it does in the list.
+      const meta = store.gameMeta.getAll();
       const games = store.sessions
         .dayBreakdown("game", day)
-        .filter((g) => !isHiddenGame(g.name, hidden));
+        .filter((g) => !isHiddenGame(g.name, hidden))
+        .map((g) => {
+          const m = meta.get(gameMetaKey(g.name));
+          return {
+            name: g.name,
+            minutes: g.minutes,
+            sessions: g.sessions,
+            exact: g.exact,
+            ...(m?.coverUrl ? { coverUrl: m.coverUrl } : {}),
+            ...(m?.genre ? { genre: m.genre } : {}),
+          };
+        });
       return { day, games };
     },
   );

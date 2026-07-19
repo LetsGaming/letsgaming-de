@@ -1,8 +1,9 @@
 /**
  * Presence media proxy.
  *
- * The presence widget shows images that originate at third-party CDNs (Discord
- * avatars/activity art, Steam game icons, Spotify album covers). Loading those
+ * The presence widget and playtime shelf show images that originate at
+ * third-party CDNs (Discord avatars/activity art, RAWG game cover art, Spotify
+ * album covers). Loading those
  * directly in the browser would leak every visitor's IP to those providers — the
  * one place the site would otherwise break its "server is the boundary" stance.
  * So the browser asks *us* for the image and the server fetches it, exactly like

@@ -314,9 +314,9 @@ const idle = computed(
   padding: 11px 13px;
   border-top: 1px solid var(--line-1);
 }
-/* One activity = an icon-left / text-right row, matching the profile row and the
-   Steam tiles above. (The art used to stack above the text because this wrapper
-   had no layout of its own.) */
+/* One activity = an icon-left / text-right row, matching the profile row above.
+   (The art used to stack above the text because this wrapper had no layout of its
+   own.) */
 .pw-actitem {
   display: flex;
   gap: 11px;

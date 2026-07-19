@@ -20,8 +20,7 @@ by how suspicious an entry looks, but a human always decides.
 Presence: the server, not the browser, calls Lanyard, applies the owner's category
 allow-list, and returns only what's permitted. The client never receives raw
 Lanyard data, never learns the Discord id, and never sees a disabled category. The
-category curation is CMS-owned; the Discord id lives in the environment. Steam data
-enriches it when configured.
+category curation is CMS-owned; the Discord id lives in the environment.
 
 ## Consequences
 
@@ -33,11 +32,15 @@ enriches it when configured.
 
 ## Amendment — presence stays whole, and unreachable is not offline
 
-**One subject, two sources.** Presence was nearly split into a Discord module and
-a gaming module. It shouldn't be: the card is *one* subject — gaming — fed by two
-sources, and it already ladders internally (live activity, then the fortnight of
-Steam). Splitting it would have made two cards that each answer half a question.
-Recorded so nobody re-splits it.
+**Presence is one present-tense subject.** Presence was nearly split into a Discord
+module and a gaming module. The live card shouldn't be split that way: "Right now"
+is *one* subject — the live moment — whether the activity is a game, a track, or a
+status, and two live cards would each answer half of it. What did legitimately move
+out is *history*: the accumulated played record is its own module ("Time played"),
+because a list of past games is a different question from the live dot. Presence
+draws only from Discord/Lanyard now — the Steam half that once laddered in (live
+activity, then a fortnight of Steam) is gone, and playtime is Lanyard-observed.
+Recorded so nobody re-splits the live card, and nobody folds history back into it.
 
 **Unreachable is not offline.** `status` falls back to `"offline"` when no
 snapshot has loaded, and the Lanyard fetch swallowed its errors — so a network

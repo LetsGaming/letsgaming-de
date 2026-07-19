@@ -8,7 +8,7 @@ on.
 ## The one seam
 
 ```
-GitHub / Steam / Wakapi          packages/sources - one adapter per source
+GitHub / Wakapi                  packages/sources - one adapter per source
         |  fetch
         v
    normalize()                   the ONLY shape anything downstream sees
@@ -26,8 +26,7 @@ GitHub / Steam / Wakapi          packages/sources - one adapter per source
 ```
 
 Everything visible is data-driven. The frontend renders a normalized `SiteView`
-and never knows whether a module's data came from GitHub, Steam, Wakapi, or the
-CMS. That single rule, normalized data only and never a raw API shape, is what
+and never knows whether a module's data came from GitHub, Wakapi, or the CMS. That single rule, normalized data only and never a raw API shape, is what
 makes "add a source cheaply" and "the site never goes stale" true at the same
 time. It's recorded as [ADR-0005](./adr/0005-source-contract.md).
 
@@ -36,8 +35,8 @@ time. It's recorded as [ADR-0005](./adr/0005-source-contract.md).
 | Package | Role |
 |---|---|
 | `@lg/core` | Contracts and pure logic, no runtime deps: `Localized` and locale helpers, the `NavNode` tree plus the nav lint, the content model, the `Source` contract and normalized source shapes, the engagement/guestbook/presence/asset types, the render-ready `SiteView`, and `resolveSiteView()`. |
-| `@lg/db` | The SQLite store on `node:sqlite`: `schema.sql` plus repositories (content, source, IA, analytics, assets, guestbook) and the idempotent seed. The snapshot archive lives here. |
-| `@lg/sources` | Pluggable adapters, each real plus a deterministic mock: `github` (GraphQL), `steam` (Web API), `wakapi` (self-hosted WakaTime), and the registry that selects them by config. |
+| `@lg/db` | The SQLite store on `node:sqlite`: migrations plus repositories (content, source, IA, analytics, assets, guestbook, observed sessions, music, and the RAWG game-metadata cache) and the idempotent seed. The snapshot archive lives here. |
+| `@lg/sources` | Pluggable source adapters, each real plus a deterministic mock: `github` (GraphQL) and `wakapi` (self-hosted WakaTime), and the registry that selects them by config. Also the RAWG adapter for game metadata (not a `Source` — a by-name lookup) and the parked Steam client. |
 | `@lg/server` | Fastify: the read API, the CMS API and auth, contact, guestbook, presence, the engagement beacon, asset serving, the analytics dashboard, the in-process sync worker, and the in-process access-log ingest. |
 | `@lg/web` | Astro SSR shell plus Vue islands: the public site, the `/admin` CMS, the on-site `/docs` renderer, and `/md/<slug>` pages for Markdown assets. |
 
@@ -54,8 +53,8 @@ The server is one process (`apps/server/src/index.ts`). On start:
 3. `buildApp()` registers every route and the security headers, cookie signing,
    multipart, and CORS.
 4. The sync worker starts. It runs each registered source once immediately, then
-   on that source's own schedule. GitHub polls every 6 hours, Steam every 15
-   minutes, Wakapi every 30. Each run is fetch, normalize, persist (append a
+   on that source's own schedule. GitHub polls every 6 hours, Wakapi every 30
+   minutes. Each run is fetch, normalize, persist (append a
    snapshot, upsert "current"). A maintenance pass rolls old hourly analytics
    into daily rows.
 5. If an access log is configured, an ingest runs once at boot and then every 5

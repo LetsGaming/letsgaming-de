@@ -7,7 +7,6 @@ import {
   SOURCE_TTL,
   type Locale,
   type NavNode,
-  type PlaytimeHeatCell,
   type ResolvableAsset,
   type SiteView,
 } from "@lg/core";
@@ -53,9 +52,8 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
       ttl: SOURCE_TTL,
     },
     guestbook: store.guestbook.listApproved(),
-    // Observed playtime over the same window Steam reports, so the two halves of
-    // the chart are the same question. Steam's `minutes2Weeks` is a fortnight;
-    // asking the store for a different span would put two spans on one axis.
+    // The recently-played list over the fortnight — the same window the strip
+    // shows, so the list and the timeline answer the same span.
     playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
     gameMeta: store.gameMeta.getAll(),
     playHistory: buildPlayHistory(store),
@@ -67,33 +65,28 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
 }
 
 /**
- * The historical playtime module's data (features 02 + 03).
+ * The historical playtime module's data (feature 02).
  *
- * Both halves come from observed sessions now (`presence_sessions`), so the module
- * is entirely Lanyard-driven:
- * - **The ledger** is per-day observed minutes, oldest first — `dailyTotals` over
- *   all time (the strip windows it). It used to difference Steam's lifetime
- *   counters, which were exact but Steam-only; observed minutes are a floor but
- *   cover every game Discord saw.
- * - **The heatmap** buckets those same sessions by weekday and hour. All-time.
+ * The ledger is per-day observed minutes, oldest first — `dailyTotals` over all
+ * time (the strip windows it to a fortnight). It used to difference Steam's
+ * lifetime counters, which were exact but Steam-only; observed minutes are a floor
+ * but cover every game Discord saw.
  */
 function buildPlayHistory(store: Store): {
   ledger: { day: string; minutes: number }[];
-  heat: PlaytimeHeatCell[];
   since?: string;
 } {
   const ledger = store.sessions
     .dailyTotals("game", EPOCH_ISO)
     .map((d) => ({ day: d.day, minutes: d.minutes }));
-  const heat = store.sessions.heatmap("game", EPOCH_ISO);
-  return { ledger, heat, ...(ledger[0] ? { since: ledger[0].day } : {}) };
+  return { ledger, ...(ledger[0] ? { since: ledger[0].day } : {}) };
 }
 
 /**
  * The music module's data (top songs/artists/albums + a per-day listening strip).
  *
- * The same 14-day window Steam reports and the playtime chart uses, so "listening"
- * and "playing" cover the same fortnight. Five reads over `music_plays`, joined
+ * The same 14-day window the playtime chart uses, so "listening" and "playing"
+ * cover the same fortnight. Five reads over `music_plays`, joined
  * only in the view; the per-day drill-in isn't here — it's fetched on click from
  * `/api/music/day`, so the module ships three short lists and one strip, not two
  * weeks of track breakdowns.

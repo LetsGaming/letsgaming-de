@@ -8,8 +8,10 @@ environment variable; the full list of those is in
 
 No `GITHUB_TOKEN` is set, so the deterministic mock GitHub source is running. Set
 a real classic PAT with `read:user`, then re-sync (`docker compose exec server
-node dist/sync/cli.js`). Steam and Wakapi are similar but have no mock in
-production: if their variables aren't set, those modules simply show nothing.
+node dist/sync/cli.js`). Wakapi is similar but has no mock in production: if its
+variables aren't set, its module simply shows nothing. Game covers and genres on
+the playtime shelf are the same kind of thing — without `RAWG_API_KEY` the games
+show as lettered tiles with no genre, which is expected, not a failure.
 
 ## CMS login redirects to GitHub, comes back, still logged out
 

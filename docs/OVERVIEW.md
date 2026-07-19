@@ -56,7 +56,7 @@ bounded call rather than a slide toward Typo3 or WordPress. The reasoning is in
 | Store | SQLite via `node:sqlite` | one file to back up, no native build step ([ADR-0009](./adr/0009-sqlite-node-sqlite.md)) |
 | Repo | pnpm monorepo | shared contracts edited in one place ([ADR-0001](./adr/0001-monorepo-typescript-pnpm.md)) |
 | Sync | in-process scheduled worker | polls each source on a cron; one container runs it beside the API |
-| Sources | GitHub, Steam, Wakapi | pluggable adapters behind one contract ([ADR-0005](./adr/0005-source-contract.md), [ADR-0010](./adr/0010-multi-source.md)) |
+| Sources | GitHub, Wakapi | pluggable adapters behind one contract ([ADR-0005](./adr/0005-source-contract.md), [ADR-0010](./adr/0010-multi-source.md)); game metadata from RAWG sits beside it |
 | CMS auth | GitHub OAuth (single user) or a bearer token | fails closed when neither is set |
 | Hosting | homelab, Docker | Compose-orchestrated behind a reverse proxy |
 | Analytics | log-based aggregates + a cookieless engagement beacon | no cookies, no identifiers ([ADR-0007](./adr/0007-privacy-by-omission.md), [ADR-0012](./adr/0012-engagement-analytics.md)) |
@@ -108,8 +108,8 @@ setting, not a hover, not a chart series. Selected states use ink vs muted, neve
 hue. It previously did nine jobs at once, which is the same as doing none.
 
 **Colour is imported, never invented.** Purple is the only colour the palette
-owns. Language colours come from GitHub linguist; a Steam game's bar is sampled
-from that game's own icon at sync. The consequence is the point: the page gets
+owns. Language colours come from GitHub linguist; a game's cover art comes
+straight from RAWG. The consequence is the point: the page gets
 more colourful the more real data it holds, which a house palette can't fake.
 
 **A card is one subject.** Not a section, not prose, not a stream. Prose lives on
@@ -164,12 +164,11 @@ mind but not built, is in
 
 ## What ships today
 
-All four public areas are live, wired to GitHub, Steam, and Wakapi plus CMS
-content, in both dark and light themes. Blog exists as a hidden node — its posts
+All four public areas are live, wired to GitHub and Wakapi plus CMS content, in both dark and light themes. Blog exists as a hidden node — its posts
 are markdown assets namespaced under `blog/` in the library, rendered at
 `/md/blog/<post>`, with drafts reachable only via a derived preview link. Content is a mix of real
-(the bio direction, real projects, actual GitHub and Steam data) and CMS-editable
-copy. The CMS covers everything on the site that isn't pulled from an API:
+(the bio direction, real projects, actual GitHub and Wakapi data, live Discord
+presence and observed playtime) and CMS-editable copy. The CMS covers everything on the site that isn't pulled from an API:
 identity, the home intro, bio, hobbies, links, "right now", the asset library and
 galleries, presence curation, guestbook moderation, layout, and an analytics
 dashboard. See [guides/using-the-cms](./guides/using-the-cms.md).

@@ -81,6 +81,24 @@ can't be re-fetched, so it's the thing you back up (see
 [operations/backups](../operations/backups.md)). The normalized shapes per source
 are in [sources-and-sync](./sources-and-sync.md).
 
+## Observed activity and game metadata
+
+Distinct from source-owned data: these aren't synced from an external API on a
+schedule, they *accumulate* — the presence sampler polls Lanyard and records what
+it sees — plus a small metadata cache. They're the "past" behind the playtime and
+listening modules.
+
+| Table | Holds |
+|---|---|
+| `presence_sessions` | one row per observed activity session: `category` (game / streaming / music / watching / custom), the `name` Discord reported, `started_at` / `last_seen_at`, and whether the start was exact. The playtime charts — per-game totals, the day ledger, the weekday×hour heatmap — are all queries over this. |
+| `music_plays` | one row per Spotify listen: `track_id`, `song`, `artist` (raw), `album`, and when it played. Drives the Listening module's top songs/artists and its day strip; split artists live in `music_play_artists` for counting. |
+| `game_metadata` | cover art + genre per game, resolved by name from RAWG and cached (`name` normalized, `cover_url`, `genre`, `resolved_at`). Decoration only — a per-name lookup, not a source — attached to the playtime shelf by name. |
+
+Like the source archive, `presence_sessions` and `music_plays` can't be re-fetched
+— a missed sample is activity that never gets counted — so they're part of what you
+back up. `game_metadata` is a rebuildable cache: delete it and the next RAWG sweep
+refills it.
+
 ## Analytics aggregates
 
 | Table | Holds |

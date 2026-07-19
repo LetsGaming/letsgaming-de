@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+### Refactor — Extracted the shared Listening/Playtime UI into reusable pieces
+
+The two modules had converged to near-identical templates and wiring; the overlap
+is shared now. A `useLedgerStrip` composable owns the clickable fortnight timeline
+— the contiguous strip, the heat cells, the selected-cell index, and the day
+drill-in (composing `useDayDrill`) — taking each module's per-day fetcher and
+cell-title formatter. Three UI-kit components carry the rest: `RankedRow` (rank ·
+art or monogram · name/subtitle · a value slot), `StatTile` (a stat that renders
+inert or as a tab), and `HeatStrip` (the labeled timeline wrapping HeatGrid).
+`MusicSection` dropped from 520 to 287 lines and `PlaytimeSection` from 454 to 259,
+the duplicated logic and CSS now living in one place each.
+
+Separately, the identical language-bar markup in the coding and activity modules
+became a `LanguageBars` component, and its styling moved out of the global
+stylesheet into the component (scoped) where it belongs.
+
+No behavioural change — the resolver, the API, and what renders are untouched; this
+is structure only.
+
+### Change — Playtime now mirrors Listening (one module, 14-day strip, drill-in)
+
+"Time played" was two cards — a "Recently played" shelf and a separate "Played"
+heatmap — plus a weekday×hour grid. It's one module now, built to mirror the
+Listening module exactly: a headline total, a contiguous-fortnight heat strip in
+the same calendar HeatGrid, a top-games list, and a per-day drill-in that fetches
+that day's games on click (`/api/playtime/day`). One list rather than two — a play
+has only the game where a listen has a song and an artist — so the stats are inert
+readouts, not song/artist-style tabs. Cover art and genre (RAWG, by name) ride
+along into the day view too, so a game looks the same drilled-in as in the list.
+
+The weekday×hour "when I play" grid was dropped: Listening has no equivalent, and
+mirroring it means matching its shape. Its `heat` data went with it — the module no
+longer computes or ships a grid nothing renders, keeping to the rule that the
+frontend is handed only what it draws.
+
 ### Change — Playtime is Lanyard-only now; Steam was dropped (and parked)
 
 The playtime module used to be half Steam: the recently-played shelf came from

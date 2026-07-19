@@ -17,7 +17,7 @@ export const apiUrl = (path: string): string => `${apiBase}${path}`;
 
 /**
  * URL for a presence image, routed through our own server so the browser never
- * contacts Discord/Steam/Spotify directly (their CDNs would otherwise see the
+ * contacts Discord/RAWG/Spotify directly (their CDNs would otherwise see the
  * visitor's IP). Pass the upstream `url` when the API gave one; pass `game` so
  * the server can fall back to a labelled tile when there's no usable image.
  * Returns `undefined` when there's nothing to show.

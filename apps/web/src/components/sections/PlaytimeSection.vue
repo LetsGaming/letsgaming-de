@@ -1,124 +1,65 @@
 <script setup lang="ts">
 /**
- * The historical playtime module (features 02 + 03).
+ * The playtime module — a fortnight of what I've been playing, from observed
+ * `presence_sessions`. Built to mirror `MusicSection`: both are the accumulated
+ * past, not the live "Right now" card. Header + total, a top-games list, and a
+ * per-day drill-in over a contiguous-fortnight heat strip.
  *
- * Two views of the past, which is why this is its own module and not more of
- * `presence`: that card is "Right now" — the live dot. This is accumulated
- * history, drawn from observed sessions the present-tense card never reads.
- *
- * - **The ledger** — minutes observed per day. Clicking a column fetches that
- *   day's breakdown and pins it against the all-time figures, so a day is always
- *   read against the whole.
- * - **The heatmap** — weekday×hour, the same `.heat` component as the contribution
- *   graph, so "when do I play" reads the way "did he commit today" does.
+ * The mirror is literal now: the strip + drill wiring is `useLedgerStrip`, the row
+ * is `RankedRow`, the stat tile `StatTile`, the timeline `HeatStrip` — all shared
+ * with Listening. One list rather than two (a play has only the game where a
+ * listen has a song and an artist), so the stats are inert tiles, not tabs. Cover
+ * art and genre come from RAWG, matched by name, served through the shared media
+ * proxy; a monogram stands in where there's no cover.
  */
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
-import { useDayDrill } from "../../composables/useDayDrill";
-import { useLiveModule } from "../../composables/useLiveModule";
+import { fmtDay } from "../../lib/calendar";
 import { fetchPlaytimeDay } from "../../lib/playtime-api";
-import { contiguousDays } from "../../lib/calendar";
-import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
+import { useLiveModule } from "../../composables/useLiveModule";
+import { useLedgerStrip } from "../../composables/useLedgerStrip";
+import RankedRow from "../ui/RankedRow.vue";
+import StatTile from "../ui/StatTile.vue";
+import HeatStrip from "../ui/HeatStrip.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
-// Polls `/api/module/:id` so playtime refreshes in place (like presence), starting
-// from the SSR-rendered data.
+// Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data.
 const { data: liveData } = useLiveModule(props.module.id, "playtime", props.module.data);
 const d = computed(() => liveData.value);
 
-// ── recently played ──────────────────────────────────────────────────────────
-// Every game Discord observed over the fortnight, most-played first. Minutes are a
-// floor — Discord only sees what it's running for, so "+" marks an inexact total.
-// Cover art and genre come from the metadata cache (RAWG, matched by name) when
-// known; a lettered tile stands in when there's no cover.
-const recent = computed(() => d.value.recent ?? []);
-const gameCover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
-const fmtGameHrs = (min: number) => {
+const TOP_SHOWN = 5;
+const fmtHrs = (min: number) => {
   const h = min / 60;
   return (h >= 10 || h % 1 === 0 ? Math.round(h) : h.toFixed(1)) + "h";
 };
 
-// ── the ledger strip ─────────────────────────────────────────────────────────
+// The clickable fortnight timeline + day drill-in — shared with Listening.
+const { selected, dayData: dayGames, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
+  useLedgerStrip<PlaytimeDayResponse["games"]>({
+    ledger: () => d.value.ledger,
+    fetchDay: fetchPlaytimeDay,
+    emptyDay: [],
+    title: (day, min) => `${fmtDay(day)} · ${min ? fmtHrs(min) : "nothing"}`,
+  });
+const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
 
-const maxDay = computed(() => Math.max(1, ...d.value.ledger.map((x) => x.minutes)));
-const fmtHrs = (min: number) => (min % 60 === 0 ? `${min / 60}h` : `${(min / 60).toFixed(1)}h`);
-const fmtDay = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+// The top-games list.
+const games = computed(() => d.value.recent ?? []);
+const expanded = ref(false);
+const shownGames = computed(() => (expanded.value ? games.value : games.value.slice(0, TOP_SHOWN)));
+const hiddenCount = computed(() => Math.max(0, games.value.length - TOP_SHOWN));
+const gameCount = computed(() => games.value.length);
 
-const todayIso = new Date().toISOString().slice(0, 10);
+// The day panel rows.
+const dayRowsAll = computed(() => dayGames.value ?? []);
+const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN)));
+const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN));
+const dayMinutes = computed(() => dayRowsAll.value.reduce((s, g) => s + g.minutes, 0));
+const dayGameCount = computed(() => dayRowsAll.value.length);
 
-// The selected day: null = all-time. When set, the drill panel splits and pins
-// all-time beside the day. The state machine (select/close/loading/error) is the
-// shared drill composable; only the loader differs from Music.
-const drill = useDayDrill<PlaytimeDayResponse["games"]>();
-const { selected, data: dayGames, loading: dayLoading, error: dayError, clear } = drill;
-
-// A day with no play is a real answer — resolve [] without a fetch; otherwise ask
-// the server for that day's per-game breakdown.
-const selectDay = (iso: string, minutes: number) =>
-  drill.select(iso, () => (minutes === 0 ? Promise.resolve([]) : fetchPlaytimeDay(iso)));
-
-// The ledger as a single-row heat strip — the same HeatGrid the weekday×hour map
-// uses, replacing the old height-bars so the site draws "activity over days" one
-// way. The strip is contiguous over the ledger's span (first day → today), empty
-// days zero-filled so gaps show instead of collapsing; `ledgerLevel` buckets by
-// the day-max (distinct from the weekday×hour `heatLevel`, which buckets by its own).
-const strip = computed(() =>
-  contiguousDays(d.value.ledger, d.value.ledger[0]?.day ?? todayIso, todayIso),
-);
-const ledgerLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / maxDay.value) * 4)));
-const ledgerCells = computed<HeatCell[]>(() =>
-  strip.value.map((row) => ({
-    level: ledgerLevel(row.minutes),
-    today: row.day === todayIso,
-    title: `${fmtDay(row.day)} · ${row.minutes ? fmtHrs(row.minutes) : "nothing"}`,
-  })),
-);
-const selectedLedgerIndex = computed(() => {
-  if (!selected.value) return null;
-  const i = strip.value.findIndex((r) => r.day === selected.value);
-  return i >= 0 ? i : null;
-});
-function onLedgerSelect(i: number) {
-  const row = strip.value[i];
-  if (row) selectDay(row.day, row.minutes);
-}
-
-// ── the heatmap ──────────────────────────────────────────────────────────────
-
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sun"]; // 6 shown; Sat folds visually
-// Build a 7×24 grid (Mon-first) from the sparse cells. SQLite %w is Sun=0, so
-// rotate to Mon=0.
-const HEAT = computed(() => {
-  const grid: number[][] = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
-  for (const c of d.value.heat) {
-    const monFirst = (c.weekday + 6) % 7; // Sun=0 → 6, Mon=1 → 0
-    grid[monFirst]![c.hour] = c.minutes;
-  }
-  return grid;
-});
-const heatMax = computed(() => Math.max(1, ...d.value.heat.map((c) => c.minutes)));
-const heatLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / heatMax.value) * 4)));
-
-const now = new Date();
-const nowHour = now.getHours();
-const nowMonFirst = (now.getDay() + 6) % 7;
-
-// Flatten the 7×24 grid into the shared HeatGrid's cells, column-major (a day per
-// column, matching the day labels beside it). Level bucketing stays local — the
-// linear quartile above is playtime's own, not the contribution graph's.
-const heatCells = computed<HeatCell[]>(() =>
-  HEAT.value.flatMap((row, day) =>
-    row.map((min, hour) => ({
-      level: heatLevel(min),
-      today: day === nowMonFirst && hour === nowHour,
-      title: `${DAY_LABELS[day] ?? ""} ${String(hour).padStart(2, "0")}:00 · ${min ? fmtHrs(min) : "nothing"}`,
-    })),
-  ),
-);
-
-const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length > 0 || recent.value.length > 0);
+const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
+const hasData = computed(() => d.value.ledger.length > 0 || games.value.length > 0);
 </script>
 
 <template>
@@ -128,221 +69,110 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
       <span v-if="d.note" class="pt-note">{{ d.note }}</span>
     </header>
 
-    <!-- Empty state: a fresh install has no snapshots to difference and no
-         sessions yet. Say so plainly rather than drawing an empty grid. -->
     <p v-if="!hasData" class="pt-empty">
-      No playtime recorded yet. Games get tracked as they're played; this fills in
-      over the coming days.
+      Nothing recorded yet. Games show up here after the presence sampler catches
+      you playing — give it a day.
     </p>
 
-    <template v-else>
-      <!-- ── recently played (moved here from "Right now") ── -->
-      <div v-if="recent.length" class="pt-recent-wrap">
-        <div class="pt-card-h">
-          <span class="pt-t">Recently played</span>
-          <span class="pt-scope">last 2 weeks</span>
+    <div v-else class="pt-card">
+      <div class="pt-card-h">
+        <span class="pt-t">Played</span>
+        <span class="pt-scope">{{ selected ? fmtDay(selected) : "last 14 days" }}</span>
+      </div>
+
+      <!-- Two inert stats — a play has one dimension (the game), so unlike
+           Listening's song/artist tabs there's nothing to switch between. -->
+      <div class="pt-stats">
+        <StatTile :value="d.totalHours" unit="h" label="time played" />
+        <StatTile :value="gameCount" :label="gameCount === 1 ? 'game' : 'games'" />
+      </div>
+
+      <HeatStrip
+        v-if="d.ledger.length"
+        :cells="cells"
+        :selected-index="selectedIndex"
+        :start-label="stripStart"
+        @select="onSelect"
+      />
+
+      <!-- One content region: the top-games list, or a day's games. -->
+      <div class="pt-panel">
+        <div class="pt-panel-h">
+          <h3>{{ selected ? fmtDay(selected) : "Top games" }}</h3>
+          <button v-if="selected" class="pt-back" @click="clear">← back to top games</button>
         </div>
-        <div class="pt-recent">
-          <div
-            v-for="(g, i) in recent"
+
+        <!-- a day's games -->
+        <template v-if="selected">
+          <p v-if="dayLoading" class="pt-dim">Loading…</p>
+          <p v-else-if="dayError" class="pt-dim">Couldn't load that day.</p>
+          <p v-else-if="!dayGameCount" class="pt-dim pt-day-empty">Nothing played this day.</p>
+          <template v-else>
+            <p class="pt-day-sum">{{ fmtHrs(dayMinutes) }} · {{ dayGameCount }} game{{ dayGameCount > 1 ? "s" : "" }}</p>
+            <RankedRow
+              v-for="(g, i) in shownDayRows"
+              :key="g.name"
+              :rank="i + 1"
+              :name="g.name"
+              :subtitle="g.genre"
+              :art="cover(g.coverUrl)"
+              :highlight="i === 0"
+              fallback="🎮"
+            >
+              {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
+            </RankedRow>
+            <button v-if="dayHidden > 0" class="pt-more" @click="dayExpanded = !dayExpanded">
+              {{ dayExpanded ? "show less" : `show ${dayHidden} more` }}
+            </button>
+          </template>
+        </template>
+
+        <!-- the top-games list -->
+        <template v-else>
+          <RankedRow
+            v-for="(g, i) in shownGames"
             :key="g.name"
-            class="pt-rrow"
-            :class="{ 'pt-r1': i === 0 }"
+            :rank="i + 1"
+            :name="g.name"
+            :subtitle="g.genre"
+            :art="cover(g.coverUrl)"
+            :highlight="i === 0"
+            fallback="🎮"
           >
-            <span class="pt-rrank">{{ i + 1 }}</span>
-            <img v-if="gameCover(g.coverUrl)" :src="gameCover(g.coverUrl)" alt="" class="pt-rart" loading="lazy" />
-            <span v-else class="pt-rart pt-rmono">{{ g.name.slice(0, 1) }}</span>
-            <span class="pt-rbody">
-              <span class="pt-rname">{{ g.name }}</span>
-              <span v-if="g.genre" class="pt-rsrc">{{ g.genre }}</span>
-            </span>
-            <span class="pt-rval">{{ fmtGameHrs(g.minutes) }}<small v-if="!g.exact"> +</small></span>
-          </div>
-        </div>
+            {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
+          </RankedRow>
+          <button v-if="hiddenCount > 0" class="pt-more" @click="expanded = !expanded">
+            {{ expanded ? "show less" : `show ${hiddenCount} more` }}
+          </button>
+        </template>
       </div>
-
-      <!-- ── the ledger ── -->
-      <div v-if="d.ledger.length" class="pt-card">
-        <div class="pt-card-h">
-          <span class="pt-t">Played</span>
-          <span class="pt-scope">
-            {{ selected ? fmtDay(selected) : `all-time${d.since ? ` · since ${fmtDay(d.since)}` : ""}` }}
-          </span>
-        </div>
-
-        <HeatGrid
-          :cells="ledgerCells"
-          :rows="1"
-          :min-cell="8"
-          :cell-height="30"
-          legend
-          selectable
-          :selected-index="selectedLedgerIndex"
-          @select="onLedgerSelect"
-        />
-        <div class="pt-axis">
-          <span class="pt-m">{{ strip[0] ? fmtDay(strip[0].day) : "" }}</span>
-          <span class="pt-m">today</span>
-        </div>
-
-        <!-- drill: the day (or all-time) on the left, all-time pinned when a day is up -->
-        <div class="pt-drill" :class="{ split: selected }">
-          <div class="pt-dcol">
-            <div class="pt-dh">{{ selected ? fmtDay(selected) : "All time" }}</div>
-            <div class="pt-stats">
-              <div class="pt-stat"><b>{{ d.totalHours }} h</b><span>all-time, tracked</span></div>
-            </div>
-            <div v-if="selected">
-              <p v-if="dayLoading" class="pt-dim">Loading…</p>
-              <p v-else-if="dayError" class="pt-dim">Couldn't load that day.</p>
-              <p v-else-if="dayGames && !dayGames.length" class="pt-dim">Nothing recorded this day.</p>
-              <div v-else-if="dayGames" class="pt-dgames">
-                <div v-for="g in dayGames" :key="g.name" class="pt-dg">
-                  <span class="pt-dg-name">{{ g.name }}</span>
-                  <span class="pt-dg-hrs">{{ fmtHrs(g.minutes) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="selected" class="pt-dcol pt-pin">
-            <div class="pt-dh">All time <span class="pt-m">(for comparison)</span></div>
-            <div class="pt-stats">
-              <div class="pt-stat"><b>{{ d.totalHours }} h</b><span>tracked</span></div>
-            </div>
-            <button class="pt-clear" @click="clear">← back to all-time</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── the heatmap ── -->
-      <div v-if="d.heat.length" class="pt-card">
-        <div class="pt-card-h">
-          <span class="pt-t">When I play</span>
-          <span class="pt-scope">local time</span>
-        </div>
-        <div class="pt-heatwrap">
-          <div class="pt-days">
-            <span v-for="lbl in DAY_LABELS" :key="lbl" class="pt-m">{{ lbl }}</span>
-          </div>
-          <HeatGrid :cells="heatCells" :min-cell="8" />
-        </div>
-        <div class="pt-axis">
-          <span class="pt-m">00:00</span><span class="pt-m">12:00</span><span class="pt-m">23:00</span>
-        </div>
-      </div>
-    </template>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .pt {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-16);
-}
-
-/* ── recently played: a stacked ranking, matching the Listening rows ── */
-.pt-recent-wrap {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-}
-.pt-recent {
-  margin-top: var(--sp-8);
-}
-.pt-rrow {
-  display: grid;
-  grid-template-columns: 18px 34px 1fr auto;
-  gap: var(--sp-10);
-  align-items: center;
-  padding: var(--sp-6) 0;
-  border-top: 1px solid var(--line-1);
-  text-decoration: none;
-  color: inherit;
-}
-.pt-rrow:first-child {
-  border-top: none;
-}
-a.pt-rrow:hover .pt-rname {
-  color: var(--live-ink);
-}
-.pt-rrank {
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--muted);
-  text-align: right;
-}
-.pt-r1 .pt-rrank {
-  color: var(--live-ink);
-}
-.pt-rart {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--r-chip);
-  object-fit: cover;
-  display: block;
-}
-.pt-rmono {
-  display: grid;
-  place-items: center;
-  background: var(--surf-3);
-  font-family: var(--f-d);
-  font-size: 15px;
-  color: var(--ink-strong);
-}
-.pt-rbody {
-  min-width: 0;
-}
-.pt-rname {
-  display: block;
-  font-size: var(--fs-body);
-  color: var(--ink-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color var(--dur-fast) var(--ease-out);
-}
-.pt-rsrc {
-  display: block;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pt-rval {
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--ink);
-  text-align: right;
-  white-space: nowrap;
-}
-.pt-rval small {
-  color: var(--muted);
+  container-type: inline-size;
 }
 .pt-head {
   display: flex;
   align-items: baseline;
   gap: var(--sp-10);
+  margin-bottom: var(--sp-14);
 }
 .pt-title {
   font-family: var(--f-d);
-  font-weight: 600;
   font-size: var(--fs-h2);
   color: var(--ink-strong);
 }
 .pt-note {
-  font-size: var(--fs-meta);
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 .pt-empty {
   color: var(--muted);
   font-size: var(--fs-body);
-  padding: var(--sp-16);
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r-card);
 }
 .pt-card {
   background: var(--surf-1);
@@ -354,144 +184,76 @@ a.pt-rrow:hover .pt-rname {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: var(--sp-12);
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-14);
 }
 .pt-t {
-  font-family: var(--f-m);
-  font-size: 11px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-family: var(--f-d);
+  font-size: var(--fs-h3);
+  color: var(--ink-strong);
 }
 .pt-scope {
   font-family: var(--f-m);
   font-size: var(--fs-micro);
-  color: var(--muted);
-}
-.pt-m {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-}
-
-.pt-axis {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--sp-6);
-}
-
-/* the drill panel */
-.pt-drill {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--sp-14);
-  margin-top: var(--sp-14);
-}
-.pt-drill.split {
-  grid-template-columns: 1fr 1fr;
-}
-.pt-dh {
-  font-family: var(--f-d);
-  font-weight: 600;
-  font-size: var(--fs-h3);
-  color: var(--ink-strong);
-  margin-bottom: var(--sp-8);
-}
-.pt-pin {
-  border-left: 1px solid var(--line-1);
-  padding-left: var(--sp-14);
+  color: var(--live-ink);
 }
 .pt-stats {
   display: grid;
-  grid-auto-flow: column;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-10);
-  justify-content: start;
+  margin-bottom: var(--sp-16);
 }
-.pt-stat {
-  background: var(--surf-2);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-control);
-  padding: var(--sp-8) var(--sp-12);
-}
-.pt-stat b {
-  font-family: var(--f-m);
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--ink-strong);
-  display: block;
-}
-.pt-stat span {
-  font-size: var(--fs-micro);
-  color: var(--muted);
-}
-.pt-dgames {
-  margin-top: var(--sp-10);
-}
-.pt-dg {
+.pt-panel-h {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: var(--sp-8);
-  padding: var(--sp-4) 0;
-  font-size: var(--fs-meta);
+  gap: var(--sp-10);
+  margin-bottom: var(--sp-8);
 }
-.pt-dg-hrs {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
+.pt-panel-h h3 {
+  font-family: var(--f-d);
+  font-size: var(--fs-h3);
+  color: var(--ink-strong);
 }
-.pt-dim {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  margin-top: var(--sp-10);
-}
-.pt-clear {
-  margin-top: var(--sp-12);
+.pt-back {
   font: inherit;
-  font-size: var(--fs-meta);
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
   background: none;
   border: 0;
-  color: var(--live-ink);
   cursor: pointer;
   padding: 0;
 }
-
-/* heatmap — the .heat component's shape */
-.pt-heatwrap {
-  display: flex;
-  gap: var(--sp-8);
+.pt-back:hover {
+  color: var(--ink);
 }
-.pt-days {
-  display: grid;
-  grid-template-rows: repeat(6, 1fr);
-  gap: 3px;
-  flex: none;
-  padding-top: 1px;
+.pt-more {
+  font: inherit;
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--live-ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: var(--sp-8) 0 0;
 }
-.pt-days span {
-  line-height: 1;
+.pt-more:hover {
+  text-decoration: underline;
 }
-/* The grid itself is HeatGrid now; it just needs to fill the row beside the day
-   labels (the old .pt-heat carried `flex: 1` for the same reason). */
-.pt-heatwrap > :deep(.hg) {
-  flex: 1;
-  min-width: 0;
+.pt-dim {
+  color: var(--muted);
+  font-size: var(--fs-meta);
+  padding: var(--sp-8) 0;
 }
-
-@media (max-width: 560px) {
-  .pt-drill.split {
-    grid-template-columns: 1fr;
-  }
-  .pt-pin {
-    border-left: 0;
-    border-top: 1px solid var(--line-1);
-    padding-left: 0;
-    padding-top: var(--sp-12);
-  }
+.pt-day-empty {
+  text-align: center;
+  padding: var(--sp-16) 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .pt-col {
-    transition: none;
-  }
+.pt-day-sum {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  color: var(--muted);
+  margin-bottom: var(--sp-4);
 }
 </style>

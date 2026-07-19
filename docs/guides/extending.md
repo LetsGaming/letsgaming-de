@@ -24,8 +24,11 @@ only ever speak the normalized shape.
    section). The sync worker picks the source up from the registry with no
    further wiring.
 
-Follow the existing adapters (`github`, `steam`, `wakapi`) as templates, and add
-a `normalize` test next to the code.
+Follow the existing adapters (`github`, `wakapi`) as templates, and add a
+`normalize` test next to the code. Not every external API is a source, though:
+game metadata uses RAWG as a by-name lookup kept *beside* the contract, not inside
+it — see
+[sources-and-sync](../concepts/sources-and-sync.md#game-metadata-not-a-source).
 
 ## Add a module
 

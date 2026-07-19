@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import { icons, langColor } from "../../lib/icons";
+import { icons } from "../../lib/icons";
 import Freshness from "../ui/Freshness.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
+import LanguageBars from "../ui/LanguageBars.vue";
 import { computed, ref } from "vue";
 
 const props = defineProps<{
@@ -44,13 +45,7 @@ const contributionCells = computed<HeatCell[]>(() =>
       <div class="box">
         <h3>Languages</h3>
         <div class="sub">across all public repos</div>
-        <div class="lang">
-          <div v-for="l in module.data.languages" :key="l.name" class="row">
-            <span class="nm">{{ l.name }}</span>
-            <div class="bar"><b :style="{ width: l.pct + '%', background: langColor(l.name) }" /></div>
-            <span class="pc">{{ l.pct }}%</span>
-          </div>
-        </div>
+        <LanguageBars :languages="module.data.languages" />
       </div>
     </div>
     <div class="box" style="margin-top: 18px">
@@ -85,9 +80,9 @@ const contributionCells = computed<HeatCell[]>(() =>
 
 <style scoped>
 /* Activity's unique feed rules. The shared dashboard primitives (.stats, .stat,
- * .dash, .box, .heat, .lang, .row, .bar, .tm, .more) stay global — Coding and
- * Playtime lean on them. The event icon comes from v-html, so `.ei svg` is
- * :deep(svg). */
+ * .dash, .box, .heat, .tm, .more) stay global — Coding leans on them too. The
+ * language bars moved to the LanguageBars component (scoped, no longer global).
+ * The event icon comes from v-html, so `.ei svg` is :deep(svg). */
 .feed {
   display: flex;
   flex-direction: column;

@@ -236,13 +236,18 @@ export type ResolvedModule =
  * The historical playtime module (features 02 + 03).
  *
  * Deliberately separate from `PresenceModuleView`, which is present-tense — "Right
- * now", the live dot. This is the *past*: an all-time day strip and a weekday×hour
- * heatmap, both built from accumulated `presence_sessions` — the observed history
- * the present-tense card never reads. Two subjects, two modules.
+ * now", the live dot. This is the *past*: a headline total, a contiguous-fortnight
+ * day strip, and a top-games list, all built from accumulated `presence_sessions`
+ * — the observed history the present-tense card never reads. Two subjects, two
+ * modules.
  *
- * `dayBreakdown` isn't here: it's fetched on demand when a column is clicked, so
- * the module ships one day-strip and one grid rather than 30 days of breakdowns
- * nobody asked to see.
+ * Built to mirror `MusicModuleView`: same total + strip + top-list shape, same
+ * drill-in. One list, not two — a play has only the game (a listen has both a song
+ * and an artist), so there's no song/artist-style split.
+ *
+ * `dayBreakdown` isn't here: it's fetched on demand when a column is clicked
+ * (`/api/playtime/day`), so the module ships one day-strip and a list rather than a
+ * fortnight of breakdowns nobody asked to see.
  */
 export interface PlaytimeModuleView {
   /** All-time hours, rounded, for the headline figure. */
@@ -253,9 +258,6 @@ export interface PlaytimeModuleView {
   recent: PlaytimeView[];
   /** The day strip: minutes observed per day, oldest first. */
   ledger: { day: string; minutes: number }[];
-  /** The heatmap: minutes per weekday×hour over the window. Sparse — only cells
-   *  with play are present; the view fills the 7×24 grid. */
-  heat: { weekday: number; hour: number; minutes: number }[];
   /** How many days the ledger covers, for "since <date>" copy. */
   since?: string;
 }

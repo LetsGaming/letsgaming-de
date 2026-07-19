@@ -29,7 +29,6 @@ import {
   type GameMeta,
   type PlaytimeEntry,
   type MusicRankEntry,
-  type PlaytimeHeatCell,
 } from "./presence.js";
 import {
   resolveAsset,
@@ -75,11 +74,10 @@ export interface ResolveInput {
    *  RAWG by the server. The resolver attaches it to the recently-played rows so a
    *  Discord-observed name gets a cover and a genre it never carried itself. */
   gameMeta?: ReadonlyMap<string, GameMeta>;
-  /** The historical playtime module's data (features 02 + 03): all-time day strip
-   *  and weekday×hour heatmap, both built server-side from observed sessions (the
-   *  ledger is per-day totals, the heatmap groups by weekday×hour) so the resolver
+  /** The historical playtime module's data (feature 02): the all-time day strip,
+   *  built server-side from observed sessions (per-day totals) so the resolver
    *  stays pure. */
-  playHistory?: { ledger: { day: string; minutes: number }[]; heat: PlaytimeHeatCell[]; since?: string };
+  playHistory?: { ledger: { day: string; minutes: number }[]; since?: string };
   /** The music module's data: top songs/artists/albums plus a per-day listening
    *  strip, over the window. Pre-computed by the server from `music_plays` (the
    *  resolver stays pure), same as `playHistory`. Absent → an empty module. */
@@ -538,7 +536,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // Shaped from the server's pre-computed observed history; the resolver
         // stays pure. Absent history is an empty module, not an error — a fresh
         // install has recorded no sessions yet.
-        const hist = input.playHistory ?? { ledger: [], heat: [] };
+        const hist = input.playHistory ?? { ledger: [] };
         const totalMinutes = hist.ledger.reduce((sum, d) => sum + d.minutes, 0);
 
         // "Recently played" — every game Discord observed over the window,
@@ -560,7 +558,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             totalHours: Math.round(totalMinutes / 60),
             recent,
             ledger: hist.ledger,
-            heat: hist.heat,
             ...(hist.since ? { since: hist.since } : {}),
           },
         };

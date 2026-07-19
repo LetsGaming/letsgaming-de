@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
-import { langColor } from "../../lib/icons";
 import Freshness from "../ui/Freshness.vue";
+import LanguageBars from "../ui/LanguageBars.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "coding" }>;
@@ -16,13 +16,7 @@ defineProps<{
     </div>
     <div v-if="module.data.coding" class="box">
       <div class="sub">{{ module.data.coding.range }} · {{ module.data.coding.totalHours }}h tracked</div>
-      <div class="lang">
-        <div v-for="l in module.data.coding.languages" :key="l.name" class="row">
-          <span class="nm">{{ l.name }}</span>
-          <div class="bar"><b :style="{ width: l.pct + '%', background: langColor(l.name) }" /></div>
-          <span class="pc">{{ l.pct }}%</span>
-        </div>
-      </div>
+      <LanguageBars :languages="module.data.coding.languages" />
     </div>
     <p v-else class="sub">No coding time synced yet.</p>
   </section>

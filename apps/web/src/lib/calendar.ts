@@ -42,3 +42,13 @@ export function daysBefore(toIso: string, n: number): string {
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString().slice(0, 10);
 }
+
+/** Format an ISO day as a short human label, e.g. `Mon 3 Mar`. The heat strips,
+ *  their axes, and the day-drill headings all render days this way. */
+export function fmtDay(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}

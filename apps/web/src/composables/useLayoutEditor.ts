@@ -98,7 +98,7 @@ const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   guestbook: "guestbook",
   gallery: "gallery",
   presence: "presence",
-  // Playtime shares presence's Discord/Steam settings — one set of knobs.
+  // Playtime shares presence's Discord settings — one set of knobs.
   playtime: "presence",
   // Music too: it's driven by the same presence sampler (the Spotify category is
   // toggled in the same allow-list), so it lands on the presence panel.

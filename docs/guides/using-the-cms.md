@@ -38,7 +38,7 @@ it like this:
 | Structure & media | Layout | Reorder modules within an area, move them between areas, or hide them. |
 | Structure & media | Asset library | Your central store of reusable files: images, SVGs, GIFs, PDFs, Markdown. Upload, organise (folders and tags), edit metadata, see where each is used. |
 | Structure & media | Gallery | Curate the image galleries on the site, picked from the library. |
-| Widgets | Presence | Which Discord and Steam categories the "right now" widget may show. |
+| Widgets | Presence | Which Discord categories the "right now" widget may show. |
 | Community | Guestbook | Approve, reject, or delete visitor entries (nothing is public until you approve it). |
 | Insights | Analytics | Anonymous traffic and engagement. No cookies, no IPs, nothing personal. |
 

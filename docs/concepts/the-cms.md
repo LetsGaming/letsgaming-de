@@ -28,7 +28,7 @@ groups it:
 - Identity, the home intro (headline, lede, status), and the bio.
 - Hobbies, links, and "right now" rows.
 - The asset library and the galleries (see below).
-- Presence curation: which Discord and Steam categories the widget may reveal.
+- Presence curation: which Discord categories the widget may reveal.
 - Guestbook moderation: approve, reject, or delete visitor entries.
 - Layout: reorder modules within an area, move them between areas, or hide them,
   all still checked against the nav lint.
@@ -98,4 +98,4 @@ Lanyard. The server, not the browser, talks to Lanyard, applies the owner's
 category allow-list, and returns only what's permitted. The client never receives
 raw Lanyard data, never learns the Discord id, and never sees a category the owner
 disabled. Which categories show is edited in the CMS; the Discord id lives in the
-environment. Steam data enriches it when configured.
+environment.

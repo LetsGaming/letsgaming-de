@@ -1,8 +1,10 @@
 # Sources and sync
 
-A source is any external integration that feeds the site. There are three today:
-GitHub, Steam, and Wakapi. They all sit behind one interface, so adding a fourth
-is an adapter plus one line in the registry, and nothing downstream changes.
+A source is any external integration that feeds the site through one contract.
+There are two today: GitHub and Wakapi. They sit behind one interface, so adding a
+third is an adapter plus one line in the registry, and nothing downstream changes.
+(Game metadata also comes from an external API, RAWG, but it isn't a source — see
+[Game metadata](#game-metadata-not-a-source) below.)
 
 ## The contract
 
@@ -43,15 +45,15 @@ shape, so the rest of the system can't tell them apart.
 - GitHub registers the real GraphQL adapter when `GITHUB_TOKEN` is set, and the
   deterministic mock otherwise, so the site renders end to end offline with zero
   config.
-- Steam and Wakapi register the real adapter only when their credentials are set.
-  In development (`NODE_ENV` is not `production`) an unconfigured source falls
-  back to its mock; in production an unconfigured source is simply absent, and its
-  module shows nothing.
+- Wakapi registers the real adapter only when its credentials are set. In
+  development (`NODE_ENV` is not `production`) an unconfigured source falls back to
+  its mock; in production an unconfigured source is simply absent, and its module
+  shows nothing.
 
 Which variables activate which source is in
 [reference/configuration](../reference/configuration.md).
 
-## The three normalized shapes
+## The normalized shapes
 
 These are the only shapes anything downstream sees. Fields are described here;
 the exact types are in `packages/core/src/source.ts`.
@@ -69,9 +71,22 @@ range, and coding time by `language` as seconds plus percentages. Wakapi is
 LAN-only; the worker reaches it over the local network, so nothing is exposed to
 the internet.
 
-Steam (`SteamData`): an optional `playing` game if the public profile exposes it,
-and a `recent` list (last two weeks, most played first). It powers the "recently
-on Steam" part of the presence widget.
+## Game metadata (not a source)
+
+The playtime module's recently-played games show cover art and a genre, resolved
+by name from RAWG (a cross-platform game database). RAWG is deliberately **not** a
+`Source`: a source produces one whole-integration snapshot per poll, but game
+metadata is a per-name lookup — resolve "Palworld" once, cache it, reuse it. So it
+sits beside the contract rather than inside it: a small adapter
+(`packages/sources/src/rawg/`), a cache keyed by normalized game name
+(`game_metadata`), and an hourly server-side sweep that resolves the shelf's names
+it hasn't seen yet. Cover art is re-served through the media proxy, so the browser
+never talks to RAWG directly. It's optional — `RAWG_API_KEY` turns it on; without
+it the shelf shows monograms and no genre.
+
+Playtime itself needs no key: the games, their minutes, the day-by-day ledger, and
+the heatmap all come from Lanyard-observed sessions (the presence sampler), not
+from any source. RAWG only supplies the decoration.
 
 ## The sync worker
 
@@ -82,7 +97,6 @@ own interval:
 | Source | Interval |
 |---|---|
 | GitHub | every 6 hours |
-| Steam | every 15 minutes |
 | Wakapi | every 30 minutes |
 
 Each run is fetch, normalize, persist: append a snapshot to `source_snapshots`

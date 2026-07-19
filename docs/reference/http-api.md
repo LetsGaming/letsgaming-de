@@ -72,6 +72,26 @@ owner's category allow-list, and returns only the permitted result, cached about
 `{ "status": "offline", "cards": [] }`. The browser never talks to Lanyard and
 never learns the Discord id.
 
+## Playtime and listening
+
+Day drill-ins behind the playtime and listening charts — one day's breakdown,
+fetched when a column is clicked rather than shipped with the module (the strips
+run to hundreds of days and nobody wants every breakdown up front).
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games }`; hidden games are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
+| `GET /api/music/day?day=YYYY-MM-DD` | none | That day's tracks. Returns `{ day, tracks }`. `400` on a malformed date. |
+
+## Media proxy
+
+`GET /api/presence/media?u=<encoded-url>` re-serves an image from a small
+allow-list of CDNs (Discord, RAWG, Spotify), so the browser never talks to those
+hosts directly and the endpoint can't be turned into an open proxy — a URL off the
+allow-list is refused. Presence avatars/art and playtime cover art both load
+through it. An optional `&game=<name>` supplies a lettered-tile fallback rendered
+server-side when the image is missing.
+
 ## Assets
 
 | Endpoint | Auth | Purpose |

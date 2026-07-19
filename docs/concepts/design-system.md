@@ -32,13 +32,13 @@ before, and the caption on that photo says so in public.
 
 **Colour is imported, never invented.** Purple is the only colour the palette
 owns. Everything else comes from something real: language colours from GitHub
-linguist, dominant colour sampled from Steam capsule art at sync time, plants
-being green because they are. Consequence: the page gets more colourful the more
-real data it holds, and no palette decision can fake that.
+linguist, a game's cover art straight from RAWG, plants being green because they
+are. Consequence: the page gets more colourful the more real data it holds, and no
+palette decision can fake that.
 
 **A card is one subject.** Not a section, not prose, not a stream. A project, a
-guestbook note, a photo, the presence unit (gaming, from Discord *and* Steam —
-two sources, one subject). Section headings, the hero, the bio and `now` live on
+guestbook note, a photo, the presence unit ("right now", live from Discord).
+Section headings, the hero, the bio and `now` live on
 `surf-0` with no frame. That's why About has always read as human: it was already
 following this rule by accident.
 
@@ -159,12 +159,11 @@ this is what it's for.
 ### TTL belongs to the source
 
 Staleness isn't global. Discord presence is worthless after two minutes; a
-fortnight of Steam playtime is fine six hours old.
+fortnight of coding time is fine an hour old.
 
 | Source | TTL | Why |
 |---|---|---|
 | Discord | 2 min | It's "right now" or it's "last seen". |
-| Steam | 6 h | A two-week window doesn't move fast. |
 | GitHub | 1 h | Events, repos, contributions. |
 | Wakapi | 1 h | Tracked time. |
 | CMS | — | Local. Can't be stale. |
@@ -186,7 +185,8 @@ one adapter + one registry line + one `SourceData` field."
 | `hobbies` | CMS | No photo yet · caption without photo |
 | `now` | CMS | `empty` |
 | `guestbook` | DB | `empty` ✓ exists · unapproved-only · submitting · submit failed · 200-char note |
-| `presence` | Discord + Steam | Offline · online, not playing · Steam profile private · no playtime · Discord up, Steam down · both down |
+| `presence` | Discord | Offline · online, not playing · listening · can't reach Discord · live |
+| `playtime` | Sessions + RAWG | `empty` no plays yet · game without a cover (monogram) · no `RAWG_API_KEY` (covers/genres absent) · a played day |
 | `gallery` | Assets | `empty` · image fails to load |
 | `bio` | CMS | — |
 | `contact` | Form | Idle · submitting · sent · failed · validation error |
