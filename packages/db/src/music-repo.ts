@@ -1,5 +1,4 @@
 import {
-  PLAYTIME_MIN_SECONDS,
   splitArtists,
   type MusicPlay,
   type MusicRankEntry,
@@ -61,13 +60,17 @@ export function musicRepo(db: DatabaseSync) {
     },
 
     /**
-     * Top songs over a window — grouped by track, most-listened first.
+     * Songs over a window — grouped by track, most-listened first.
      *
-     * Sub-minute plays are dropped (a track skipped after seconds isn't a listen),
-     * the same floor `presence_sessions` uses. `song`/`artist` come from the most
-     * recent play of the track, so a re-titled release shows its latest name.
+     * Every distinct track that was seen playing is returned (no cap), and there's
+     * no sub-minute floor: this list is meant to reconcile exactly with the
+     * "tracks played" count and with each day's breakdown, so a track that shows up
+     * when you drill into a day also shows up here. A brief play sorts to the
+     * bottom (ordered by seconds) rather than being hidden. `song`/`artist` come
+     * from the most recent play of the track, so a re-titled release shows its
+     * latest name.
      */
-    topSongs(sinceIso: string, limit: number): MusicRankEntry[] {
+    topSongs(sinceIso: string): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -80,9 +83,7 @@ export function musicRepo(db: DatabaseSync) {
           FROM music_plays
           WHERE last_seen_at >= ?
           GROUP BY track_id
-          HAVING seconds >= ?
           ORDER BY seconds DESC, song ASC
-          LIMIT ?
         `),
         (r: Row): MusicRankEntry => ({
           name: asText(r.song),
@@ -92,20 +93,19 @@ export function musicRepo(db: DatabaseSync) {
           ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
-        PLAYTIME_MIN_SECONDS,
-        limit,
       );
     },
 
     /**
-     * Top artists over a window.
+     * Artists over a window.
      *
      * Joins through `music_play_artists`, so a collaboration counts toward every
      * artist on it. Grouped by the lower-cased key but displayed with the casing
-     * Discord sent. `COUNT(DISTINCT play_id)` because one play with three artists
-     * mustn't count as three plays for one of them.
+     * Discord sent. No cap and no sub-minute floor, for the same reason as
+     * `topSongs`: this must reconcile with the "different artists" count and with
+     * what a day's tracks add up to.
      */
-    topArtists(sinceIso: string, limit: number): MusicRankEntry[] {
+    topArtists(sinceIso: string): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -136,9 +136,7 @@ export function musicRepo(db: DatabaseSync) {
           JOIN music_plays p ON p.id = a.play_id
           WHERE p.last_seen_at >= ?
           GROUP BY a.artist_key
-          HAVING seconds >= ?
           ORDER BY seconds DESC, artist ASC
-          LIMIT ?
         `),
         (r: Row): MusicRankEntry => ({
           name: asText(r.artist),
@@ -148,13 +146,12 @@ export function musicRepo(db: DatabaseSync) {
         }),
         sinceIso,
         sinceIso,
-        PLAYTIME_MIN_SECONDS,
-        limit,
       );
     },
 
     /** Top albums over a window. Plays with no album are excluded rather than
-     *  bucketed under an empty name. */
+     *  bucketed under an empty name. Capped (this list isn't a headline figure).
+     *  No sub-minute floor, to stay consistent with the songs/artists lists. */
     topAlbums(sinceIso: string, limit: number): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
@@ -167,7 +164,6 @@ export function musicRepo(db: DatabaseSync) {
           FROM music_plays
           WHERE last_seen_at >= ? AND album IS NOT NULL AND album <> ''
           GROUP BY album
-          HAVING seconds >= ?
           ORDER BY seconds DESC, album ASC
           LIMIT ?
         `),
@@ -179,7 +175,6 @@ export function musicRepo(db: DatabaseSync) {
           ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
-        PLAYTIME_MIN_SECONDS,
         limit,
       );
     },

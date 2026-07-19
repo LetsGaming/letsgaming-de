@@ -4,14 +4,20 @@
  *
  * Sibling to `PlaytimeSection`: both are the *accumulated past*, not the live
  * card. Where playtime asks "when / how much do I play", this asks "what have I
- * been listening to". Same drill-in shape — a clickable per-day strip that fetches
- * that day's detail on demand (`/api/music/day`) rather than shipping fourteen days
- * of tracks up front.
+ * been listening to". Same drill-in shape — a per-day heat strip that fetches
+ * that day's detail on demand (`/api/music/day`) rather than shipping fourteen
+ * days of tracks up front.
  *
- * The twist over playtime: the three headline stats double as the navigation.
- * "tracks played" reveals the top songs, "different artists" the top artists —
- * one content region taking turns, driven by what you click. "time listening"
- * isn't clickable: there's no list behind a duration.
+ * The three headline stats double as navigation. "tracks played" reveals the
+ * songs, "different artists" the artists — one content region taking turns,
+ * driven by what you click. "time listening" isn't clickable: there's no list
+ * behind a duration. The day drill respects that choice: click a day while on
+ * "different artists" and you get *that day's artists*, not its raw tracks.
+ *
+ * The timeline is the shared calendar HeatGrid rendered as a single row — the
+ * same visual language as the contribution and playtime heatmaps, so the site has
+ * one way of drawing "activity over days", not a bar strip here and a heatmap
+ * there.
  *
  * Genre and podcast-vs-music are absent by construction — Discord's Spotify
  * presence exposes neither. Album art is served through the same
@@ -19,13 +25,18 @@
  * where a play has no stored cover.
  */
 import { computed, ref } from "vue";
-import type { MusicDayResponse, MusicRankView, ResolvedModule } from "@lg/core";
+import { splitArtists, type MusicDayResponse, type MusicRankView, type ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
 import { useDayDrill } from "../../composables/useDayDrill";
+import { useLiveModule } from "../../composables/useLiveModule";
 import { fetchMusicDay } from "../../lib/music-api";
+import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
-const d = computed(() => props.module.data);
+// Polls `/api/module/:id` so the module refreshes in place (like presence), rather
+// than only reflecting what was rendered at page load. Starts from the SSR data.
+const { data: liveData } = useLiveModule(props.module.id, "music", props.module.data);
+const d = computed(() => liveData.value);
 
 const TOP_SHOWN = 5; // top 5, then a show-more toggle — the activity feed's control
 
@@ -33,6 +44,24 @@ const todayIso = new Date().toISOString().slice(0, 10);
 const maxDay = computed(() => Math.max(1, ...d.value.ledger.map((x) => x.minutes)));
 const fmtDay = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+
+// ── the day drill-in: fetch that day's tracks on click ────────────────────────
+// Shared state machine (same as Playtime); `dayExpanded` is Music's own "show
+// more" toggle, so it's local and reset alongside the drill.
+const drill = useDayDrill<MusicDayResponse["tracks"]>();
+const { selected, data: dayTracks, loading: dayLoading, error: dayError } = drill;
+const dayExpanded = ref(false);
+
+// A silent day is a real answer — resolve [] without a fetch; otherwise fetch the
+// day's tracks. Collapse "show more" whenever the selection changes.
+const selectDay = (iso: string, minutes: number) => {
+  dayExpanded.value = false;
+  return drill.select(iso, () => (minutes === 0 ? Promise.resolve([]) : fetchMusicDay(iso)));
+};
+function clearDay() {
+  dayExpanded.value = false;
+  drill.clear();
+}
 
 // ── which list backs the panel, and whether it's expanded past the top 5 ──────
 type ListKind = "songs" | "artists";
@@ -48,32 +77,83 @@ function showList(which: ListKind) {
   clearDay();
 }
 
-// ── the day drill-in: fetch that day's tracks on click ────────────────────────
-// Same state machine as Playtime, from the shared composable; `dayExpanded` is
-// Music's own (the "show more tracks" toggle), so it stays local and is reset
-// alongside the drill.
-const drill = useDayDrill<MusicDayResponse["tracks"]>();
-const { selected, data: dayTracks, loading: dayLoading, error: dayError } = drill;
-const dayExpanded = ref(false);
-
-// A silent day is a real answer — resolve [] without a fetch; otherwise fetch the
-// day's tracks. Collapse "show more" whenever the selection changes.
-const selectDay = (iso: string, minutes: number) => {
-  dayExpanded.value = false;
-  return drill.select(iso, () => (minutes === 0 ? Promise.resolve([]) : fetchMusicDay(iso)));
-};
-
-function clearDay() {
-  dayExpanded.value = false;
-  drill.clear();
+// ── the timeline, as a single-row heat strip ──────────────────────────────────
+// One cell per ledger day, coloured by minutes, clickable to drill in. Level
+// bucketing is linear (playtime's), local to this caller. `today` gets the accent
+// tint; the axis names it too. The cell index maps straight back to the ledger.
+const heatLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / maxDay.value) * 4)));
+const ledgerCells = computed<HeatCell[]>(() =>
+  d.value.ledger.map((row) => ({
+    level: heatLevel(row.minutes),
+    today: row.day === todayIso,
+    title: `${fmtDay(row.day)} · ${row.minutes} min`,
+  })),
+);
+const selectedLedgerIndex = computed(() => {
+  if (!selected.value) return null;
+  const i = d.value.ledger.findIndex((r) => r.day === selected.value);
+  return i >= 0 ? i : null;
+});
+function onLedgerSelect(i: number) {
+  const row = d.value.ledger[i];
+  if (row) selectDay(row.day, row.minutes);
 }
 
-const shownDayTracks = computed(() => {
-  const t = dayTracks.value ?? [];
-  return dayExpanded.value ? t : t.slice(0, TOP_SHOWN);
+// ── the day panel rows, following the active tab ──────────────────────────────
+// songs → the day's tracks; artists → the day's artists, aggregated from those
+// tracks (splitting collaborations the same way the top-artists list does). This
+// is the fix for "click a day on 'different artists' and it showed tracks".
+interface DayRow {
+  key: string;
+  primary: string;
+  secondary?: string;
+  art?: string;
+  minutes: number;
+  plays: number;
+}
+const dayRowsAll = computed<DayRow[]>(() => {
+  const tracks = dayTracks.value ?? [];
+  if (list.value === "artists") {
+    const byArtist = new Map<string, DayRow>();
+    for (const t of tracks) {
+      for (const name of splitArtists(t.artist)) {
+        const key = name.toLowerCase();
+        const cur = byArtist.get(key);
+        if (cur) {
+          cur.minutes += t.minutes;
+          cur.plays += t.plays;
+          if (!cur.art && t.artUrl) cur.art = t.artUrl;
+        } else {
+          byArtist.set(key, {
+            key,
+            primary: name,
+            minutes: t.minutes,
+            plays: t.plays,
+            ...(t.artUrl ? { art: t.artUrl } : {}),
+          });
+        }
+      }
+    }
+    return [...byArtist.values()].sort((a, b) => b.minutes - a.minutes);
+  }
+  return tracks.map((t, i) => ({
+    key: `${t.song}-${i}`,
+    primary: t.song,
+    secondary: t.artist,
+    ...(t.artUrl ? { art: t.artUrl } : {}),
+    minutes: t.minutes,
+    plays: t.plays,
+  }));
 });
-const dayHidden = computed(() => Math.max(0, (dayTracks.value?.length ?? 0) - TOP_SHOWN));
-const dayArtists = computed(() => new Set((dayTracks.value ?? []).map((t) => t.artist)).size);
+const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN)));
+const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN));
+
+// Day summary counts (tracks + split artists), independent of the active tab.
+const dayTrackCount = computed(() => dayTracks.value?.length ?? 0);
+const dayMinutes = computed(() => (dayTracks.value ?? []).reduce((s, t) => s + t.minutes, 0));
+const dayArtistCount = computed(
+  () => new Set((dayTracks.value ?? []).flatMap((t) => splitArtists(t.artist).map((a) => a.toLowerCase()))).size,
+);
 
 // Album art through the proxy; undefined → the template shows a monogram.
 const artSrc = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
@@ -125,28 +205,25 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         </button>
       </div>
 
-      <!-- Timeline: click a column for that day. Today isn't tinted — it read as
-           "already selected"; it's marked in the axis label instead. -->
+      <!-- Timeline: one heat cell per day, click to drill in. Today isn't tinted
+           as selected — the accent tint marks it, and the axis label names it. -->
       <div v-if="d.ledger.length" class="mu-tl-wrap">
-        <div class="mu-tl-lbl"><span>minutes per day</span><span>click a bar for that day</span></div>
-        <div class="mu-tl" :class="{ sel: selected }">
-          <button
-            v-for="row in d.ledger"
-            :key="row.day"
-            class="mu-bar"
-            :class="{ on: selected === row.day }"
-            :style="{ height: Math.max(3, (row.minutes / maxDay) * 100) + '%' }"
-            :title="`${fmtDay(row.day)} · ${row.minutes} min`"
-            @click="selectDay(row.day, row.minutes)"
-          />
-        </div>
+        <div class="mu-tl-lbl"><span>minutes per day</span><span>click a day to drill in</span></div>
+        <HeatGrid
+          :cells="ledgerCells"
+          :rows="1"
+          :min-cell="8"
+          selectable
+          :selected-index="selectedLedgerIndex"
+          @select="onLedgerSelect"
+        />
         <div class="mu-axis">
           <span>{{ d.ledger[0] ? fmtDay(d.ledger[0].day) : "" }}</span>
           <span class="now">today</span>
         </div>
       </div>
 
-      <!-- One content region: a top list, or a day's tracks. -->
+      <!-- One content region: a top list, or a day's rows (tracks or artists). -->
       <div class="mu-panel">
         <div class="mu-panel-h">
           <h3>{{ selected ? fmtDay(selected) : list === "songs" ? "Top songs" : "Top artists" }}</h3>
@@ -155,25 +232,25 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           </button>
         </div>
 
-        <!-- a day's tracks -->
+        <!-- a day's rows -->
         <template v-if="selected">
           <p v-if="dayLoading" class="mu-dim">Loading…</p>
           <p v-else-if="dayError" class="mu-dim">Couldn't load that day.</p>
-          <p v-else-if="!dayTracks || !dayTracks.length" class="mu-dim mu-day-empty">Nothing played this day.</p>
+          <p v-else-if="!dayTrackCount" class="mu-dim mu-day-empty">Nothing played this day.</p>
           <template v-else>
             <p class="mu-day-sum">
-              {{ dayTracks.reduce((s, t) => s + t.minutes, 0) }} min · {{ dayTracks.length }}
-              track{{ dayTracks.length > 1 ? "s" : "" }} · {{ dayArtists }} artist{{ dayArtists > 1 ? "s" : "" }}
+              {{ dayMinutes }} min · {{ dayTrackCount }} track{{ dayTrackCount > 1 ? "s" : "" }} ·
+              {{ dayArtistCount }} artist{{ dayArtistCount > 1 ? "s" : "" }}
             </p>
-            <div v-for="(t, i) in shownDayTracks" :key="`${t.song}-${i}`" class="mu-row" :class="{ 'mu-1': i === 0 }">
+            <div v-for="(row, i) in shownDayRows" :key="row.key" class="mu-row" :class="{ 'mu-1': i === 0 }">
               <span class="mu-rank">{{ i + 1 }}</span>
-              <img v-if="artSrc(t.artUrl)" class="mu-art" :src="artSrc(t.artUrl)" alt="" loading="lazy" />
-              <span v-else class="mu-art mu-mono">{{ monogram(t.song) }}</span>
+              <img v-if="artSrc(row.art)" class="mu-art" :src="artSrc(row.art)" alt="" loading="lazy" />
+              <span v-else class="mu-art mu-mono">{{ monogram(row.primary) }}</span>
               <span class="mu-body">
-                <span class="mu-name">{{ t.song }}</span>
-                <span class="mu-by">{{ t.artist }}</span>
+                <span class="mu-name">{{ row.primary }}</span>
+                <span v-if="row.secondary" class="mu-by">{{ row.secondary }}</span>
               </span>
-              <span class="mu-val">{{ t.minutes }}<small> min · {{ t.plays }}×</small></span>
+              <span class="mu-val">{{ row.minutes }}<small> min · {{ row.plays }}×</small></span>
             </div>
             <button v-if="dayHidden > 0" class="mu-more" @click="dayExpanded = !dayExpanded">
               {{ dayExpanded ? "show less" : `show ${dayHidden} more` }}
@@ -313,8 +390,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   transform: rotate(90deg);
 }
 
-/* Timeline — one column per day, click to drill in. Bars end-aligned; only the
-   bar you actually click is highlighted. */
+/* Timeline — the heat strip is HeatGrid's; this wraps it with its labels. */
 .mu-tl-wrap {
   margin-bottom: var(--sp-16);
 }
@@ -326,33 +402,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   font-size: var(--fs-micro);
   color: var(--muted);
   margin-bottom: var(--sp-8);
-}
-.mu-tl {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 2px;
-  align-items: end;
-  height: 60px;
-}
-.mu-bar {
-  background: var(--surf-3);
-  border: 0;
-  border-radius: 2px 2px 0 0;
-  min-height: 3px;
-  padding: 0;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out);
-}
-.mu-bar:hover {
-  background: var(--heat-3);
-}
-.mu-tl.sel .mu-bar {
-  opacity: 0.45;
-}
-.mu-tl.sel .mu-bar.on {
-  opacity: 1;
-  background: var(--heat-4);
 }
 .mu-axis {
   display: flex;

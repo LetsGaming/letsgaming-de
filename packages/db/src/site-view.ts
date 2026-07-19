@@ -119,8 +119,8 @@ function buildMusicHistory(store: Store): {
   const since = isoDaysAgo(PLAYTIME_WINDOW_DAYS);
   const ledger = store.music.dailyTotals(since);
   return {
-    topSongs: store.music.topSongs(since, MUSIC_TOP_LIMIT),
-    topArtists: store.music.topArtists(since, MUSIC_TOP_LIMIT),
+    topSongs: store.music.topSongs(since),
+    topArtists: store.music.topArtists(since),
     topAlbums: store.music.topAlbums(since, MUSIC_TOP_LIMIT),
     ledger,
     trackCount: store.music.distinctTracks(since),

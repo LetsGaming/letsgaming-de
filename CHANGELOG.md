@@ -2,6 +2,104 @@
 
 ## Unreleased
 
+### Feature — Playtime and Listening update in place; area tabs stop reloading
+
+Two ends of the same complaint: nothing but presence refreshed without a reload,
+and every tab switch reloaded the whole site.
+
+- **Client-side navigation.** `Layout.astro` gained Astro's `<ClientRouter />`, so
+  switching areas (and any same-origin link) is a soft swap, not a full document
+  reload — the shell, CSS, and self-hosted fonts aren't refetched, and `<html>`
+  persists so `data-theme` doesn't flash. Islands re-hydrate on swap, which is
+  exactly where the polling below restarts for the new page and tears down for the
+  old. The one casualty was the docs mobile drawer: its per-page inline script
+  bound handlers on parse, which silently dies under view transitions
+  (soft-navigating *into* a docs page swaps the markup in without re-running its
+  scripts). Replaced both copies with one **delegated** controller in the layout —
+  binds once on `document`, resolves the current elements at click time, no-ops off
+  the docs pages.
+- **Modules that refresh themselves.** `playtime` and `music` now poll the way
+  presence does. A new `GET /api/module/:id` resolves the *same* SiteView the SSR
+  page builds and hands back one module — one resolver, one shape, no parallel
+  "just this slice" path to drift out of sync. `useLiveModule` mirrors
+  `usePresence`: start from the SSR data, swap in a fresh copy every 60 s, keep the
+  last good copy on a hiccup, and stop when the island unmounts so nothing runs for
+  a page you've navigated away from. A runtime `kind` check keeps a wrong id from
+  rendering another module's data. Wiring any other module for live refresh is now
+  two lines.
+
+### Change — The per-day strips are heatmaps now; the columns are gone
+
+`HeatGrid` (the contribution / weekday-hour grid) gained an optional **selectable**
+mode — same cells, but `<button>` instead of `<i>`, a `select` event, and a
+highlighted `selectedIndex`. Static callers are untouched. With that, the two
+remaining column-bar strips — Listening's daily timeline and Playtime's ledger —
+became single-row `HeatGrid`s: one cell per day, coloured by minutes, clickable to
+drill in. So the site draws "activity over days" exactly one way instead of a bar
+strip here and a heatmap there, and the bespoke `.mu-bar` / `.pt-col` layout and
+selection CSS went out with the columns.
+
+### Fix — Listening's lists reconcile with its counts, and the day drill follows the tab
+
+Two things were off in the `music` module:
+
+- **"Tracks played" hid tracks the day view showed.** The top-songs and top-artists
+  lists applied a sub-minute floor *and* a hard cap of twelve, while the "tracks
+  played" / "different artists" headline counts and each day's breakdown applied
+  neither — so a short or lower-ranked track appeared when you drilled into its day
+  but was missing from the list, and the count never matched what was listed.
+  Dropped the floor and the cap from all three aggregate lists (a brief play now
+  sorts to the bottom instead of vanishing), so the list, the count, and the day
+  breakdown finally agree. Two tests pin it, each proven to bite by mutation.
+- **Clicking a day while on "different artists" showed tracks.** The day drill
+  always rendered the raw tracks from `/api/music/day`, ignoring which stat you'd
+  opened. It now follows the active tab: on *songs* it shows that day's tracks, on
+  *artists* it aggregates them into that day's artists — splitting collaborations
+  the same way the top-artists list does.
+
+### Docs — A self-documenting `openapi.yml`, rendered as an API tab in /docs
+
+The backend had no machine-readable contract. Added a hand-authored OpenAPI 3.1
+spec at the repo root (`openapi.yml`) covering the whole surface — the public
+read/relay endpoints, the auth flow, and the CMS — with prose descriptions that
+carry the *why* (the server-is-the-boundary posture, the privacy stance), and
+either concrete schemas for the stable public shapes or references by name to the
+`@lg/core` contract types for the larger CMS ones. A new `/docs/api` page renders
+it in the site's own design — grouped operations with method badges, parameter and
+response tables, a schemas section — with no Swagger CDN and no client-side spec
+fetch: the spec is parsed at build (a `yaml` dev-dependency) and the page
+prerenders. It shows up as a "Reference → API reference" entry on every docs page.
+
+### Refactor — Presence enablement decoupled from `DISCORD_USER_ID`; read API split; shared heatmap and drill-in extracted; web components regrouped
+
+A cluster of structural cleanups, each verified green:
+
+- **Presence enablement is a CMS decision, not an env one.** `PresenceModuleView.live`
+  became `enabled`, computed purely from the CMS allow-list
+  (`show.some(isLivePresenceCategory)`) with zero `DISCORD_USER_ID` involvement —
+  the `discordId` pass-through is gone from `ResolveInput`, `buildSiteView`, the
+  read/CMS routes, and the web SSR loader, and neither the compose file nor
+  `.env.example` hand the secret to the web process any more. The widget always
+  polls (its fetch loop moved out to `usePresence` + a `presence-api` service) and
+  renders a plain offline or "nothing to show" state; whether Discord is wired up
+  stays the server's business. Supersedes the earlier "name what's missing" config
+  message — enablement no longer depends on the id at all.
+- **One read route per concern.** `presence.ts` is the Discord relay only now;
+  `playtime.ts` (`/api/playtime/day`) and `music.ts` (`/api/music/day`) are their
+  own modules. Presence is "right now"; the day breakdowns are accumulated history
+  — different jobs, different files.
+- **The duplicated bits became components.** `HeatGrid.vue` is the one
+  level-coloured cell grid the contribution graph and the weekday-hour map both
+  draw (each keeps its own bucketing — threshold vs. linear quartile — because
+  those are genuinely different questions, not one abstraction). `useDayDrill.ts` is
+  the one drill-in state machine behind both the playtime and music day views, with
+  per-concern `playtime-api` / `music-api` fetchers. The dead global `.heat` and
+  scoped `.pt-heat` CSS went with the duplication.
+- **The flat `components/` pile is grouped** into `shell/`, `forms/`, `ui/`, and
+  `presence/` (with `sections/` and `cms/` as they were); every relative import
+  across sections, cms, pages, and tests was repointed, and the typecheck confirms
+  it.
+
 ### Fix — Recently played is a ranking, not a shelf; presence config made legible
 
 Two follow-ups after the /life split landed:

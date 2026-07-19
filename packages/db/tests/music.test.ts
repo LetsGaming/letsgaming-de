@@ -17,7 +17,7 @@ test("a track scrobbles once no matter how many polls catch it", () => {
   store.music.observe({ ...play, seenAt: iso(20, 2) }); // same track, later poll
   store.music.observe({ ...play, seenAt: iso(20, 3) });
 
-  const songs = store.music.topSongs(iso(0), 10);
+  const songs = store.music.topSongs(iso(0));
   assert.equal(songs.length, 1, "one play, not three");
   assert.equal(songs[0]?.plays, 1);
   assert.equal(songs[0]?.minutes, 3, "20:00 → 20:03");
@@ -30,7 +30,7 @@ test("a collaboration counts toward every artist", () => {
     trackId: "t1", song: "I Love It", artist: "Icona Pop; Charli xcx",
     album: "THIS IS... ICONA POP", startedAt: iso(20, 0), seenAt: iso(20, 4),
   });
-  const artists = store.music.topArtists(iso(0), 10);
+  const artists = store.music.topArtists(iso(0));
   const names = artists.map((a) => a.name).sort();
   assert.deepEqual(names, ["Charli xcx", "Icona Pop"], "split into two, not one joined string");
   assert.ok(artists.every((a) => a.minutes === 4), "each artist gets the full play duration");
@@ -43,7 +43,7 @@ test("Charli XCX's solo plays merge with her collaborations, case-insensitively"
   const store = openStore(":memory:");
   store.music.observe({ trackId: "t1", song: "I Love It", artist: "Icona Pop; Charli xcx", startedAt: iso(20, 0), seenAt: iso(20, 3) });
   store.music.observe({ trackId: "t2", song: "Von Dutch", artist: "Charli XCX", startedAt: iso(21, 0), seenAt: iso(21, 5) });
-  const artists = store.music.topArtists(iso(0), 10);
+  const artists = store.music.topArtists(iso(0));
   const charli = artists.find((a) => a.name.toLowerCase() === "charli xcx");
   assert.equal(charli?.minutes, 8, "3 (feat) + 5 (solo), merged despite 'xcx' vs 'XCX'");
   assert.equal(charli?.plays, 2);
@@ -63,7 +63,7 @@ test("a replay later is a new play and they sum", () => {
   store.music.observe({ ...base, seenAt: iso(20, 3) });
   // same track, DIFFERENT start (played again at 22:00)
   store.music.observe({ trackId: "t1", song: "Von Dutch", artist: "Charli XCX", startedAt: iso(22, 0), seenAt: iso(22, 3) });
-  const songs = store.music.topSongs(iso(0), 10);
+  const songs = store.music.topSongs(iso(0));
   assert.equal(songs[0]?.plays, 2, "two plays of one track");
   assert.equal(songs[0]?.minutes, 6);
 });
@@ -85,7 +85,7 @@ test("pruning a play cascades to its artist rows", () => {
   const removed = store.music.prune(daysAgo(365));
   assert.equal(removed, 1);
   // artist rows gone too (cascade) → top artists is empty
-  assert.deepEqual(store.music.topArtists(daysAgo(700), 10), []);
+  assert.deepEqual(store.music.topArtists(daysAgo(700)), []);
 });
 
 // ── album art (feature: serve covers like game icons) ────────────────────────
@@ -96,14 +96,14 @@ test("top songs carry the album art url when a play recorded one", () => {
     trackId: "t1", song: "Von Dutch", artist: "Charli xcx", album: "Brat",
     albumArtUrl: "https://i.scdn.co/image/abc", startedAt: iso(20, 0), seenAt: iso(20, 5),
   });
-  const songs = store.music.topSongs(iso(0), 10);
+  const songs = store.music.topSongs(iso(0));
   assert.equal(songs[0]?.artUrl, "https://i.scdn.co/image/abc");
 });
 
 test("a play with no art leaves artUrl undefined (row falls back to a monogram)", () => {
   const store = openStore(":memory:");
   store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(20, 0), seenAt: iso(20, 5) });
-  const songs = store.music.topSongs(iso(0), 10);
+  const songs = store.music.topSongs(iso(0));
   assert.equal(songs[0]?.artUrl, undefined, "no art column value → no artUrl key");
 });
 
@@ -112,7 +112,7 @@ test("art backfills: an earlier play with no art gets it from a later poll", () 
   const base = { trackId: "t1", song: "A", artist: "X", startedAt: iso(20, 0) };
   store.music.observe({ ...base, seenAt: iso(20, 2) }); // no art yet
   store.music.observe({ ...base, albumArtUrl: "https://i.scdn.co/image/late", seenAt: iso(20, 4) });
-  const songs = store.music.topSongs(iso(0), 10);
+  const songs = store.music.topSongs(iso(0));
   assert.equal(songs[0]?.artUrl, "https://i.scdn.co/image/late", "COALESCE backfilled the art");
 });
 
@@ -127,7 +127,7 @@ test("an artist borrows the cover of their most-played track", () => {
     trackId: "long", song: "Long", artist: "Charli xcx", albumArtUrl: "https://i.scdn.co/image/B",
     startedAt: iso(21, 0), seenAt: iso(21, 9),
   });
-  const artists = store.music.topArtists(iso(0), 10);
+  const artists = store.music.topArtists(iso(0));
   const charli = artists.find((a) => a.name.toLowerCase() === "charli xcx");
   assert.equal(charli?.artUrl, "https://i.scdn.co/image/B", "most-listened track's cover, not the first");
 });
@@ -184,4 +184,32 @@ test("dayBreakdown for a silent day is empty", () => {
   const store = openStore(":memory:");
   store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(9, 0), seenAt: iso(9, 3) });
   assert.deepEqual(store.music.dayBreakdown("2020-01-01"), []);
+});
+
+// ── list ↔ count consistency (no sub-minute floor, no cap) ────────────────────
+
+test("a sub-minute play still appears in topSongs and matches distinctTracks", () => {
+  // The bug this guards: the aggregate list used to drop plays under a minute
+  // while the day breakdown kept them, so a track you clearly played was missing
+  // from "tracks played" but present when you drilled into its day. Now the list
+  // reconciles with the count and with the day view.
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "brief", song: "Skipped", artist: "X", startedAt: iso(9, 0, 0), seenAt: iso(9, 0, 30) }); // 30s
+  store.music.observe({ trackId: "full", song: "Played", artist: "Y", startedAt: iso(10, 0), seenAt: iso(10, 5) }); // 5m
+
+  const songs = store.music.topSongs(iso(0));
+  assert.equal(songs.length, 2, "the 30-second play is not filtered out");
+  assert.equal(songs.length, store.music.distinctTracks(iso(0)), "list length matches the 'tracks played' count");
+  // The brief play sorts last (ordered by duration), not hidden.
+  assert.equal(songs[0]?.name, "Played");
+  assert.equal(songs[1]?.name, "Skipped");
+  // And it's exactly the same track set the day breakdown shows.
+  assert.equal(store.music.dayBreakdown("2026-07-17").length, 2);
+});
+
+test("topArtists reconciles with distinctArtists (no floor drops a brief artist)", () => {
+  const store = openStore(":memory:");
+  store.music.observe({ trackId: "b", song: "Brief", artist: "Fleeting", startedAt: iso(9, 0, 0), seenAt: iso(9, 0, 20) }); // 20s
+  store.music.observe({ trackId: "f", song: "Full", artist: "Regular", startedAt: iso(10, 0), seenAt: iso(10, 6) });
+  assert.equal(store.music.topArtists(iso(0)).length, store.music.distinctArtists(iso(0)));
 });

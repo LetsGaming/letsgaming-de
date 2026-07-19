@@ -10,6 +10,7 @@ import "@fontsource/space-mono/400.css";
 import "@fontsource/space-mono/700.css";
 import "../styles/tokens.css";
 import "../styles/app.css";
+import { ClientRouter } from "astro:transitions";
 
 interface Props {
   title?: string;
@@ -78,6 +79,43 @@ const {
         </script>
       )
     }
+
+    <!-- Client-side navigation: soft-swap same-origin pages instead of a full
+         document reload, so switching area tabs no longer refetches and repaints
+         the whole site. Islands re-hydrate on swap; the <html> element (and its
+         data-theme) persists, so the theme doesn't flash. -->
+    <ClientRouter />
+
+    <!-- Docs drawer, delegated on `document` so it keeps working across view
+         transitions. A per-page inline script wouldn't: soft-navigating *into* a
+         docs page swaps the markup in without re-running its inline scripts, so
+         the buttons would have no handlers. Delegation binds once, here, and
+         resolves the current elements at click time. No-ops off the docs pages. -->
+    <script is:inline>
+      (function () {
+        function el(sel) {
+          return document.querySelector(sel);
+        }
+        function setOpen(open) {
+          var nav = document.getElementById("doc-nav");
+          var scrim = el("[data-doc-scrim]");
+          if (nav) nav.classList.toggle("open", open);
+          if (scrim) scrim.classList.toggle("show", open);
+          document.body.classList.toggle("nav-locked", open);
+        }
+        document.addEventListener("click", function (e) {
+          var t = e.target;
+          if (!t || !t.closest) return;
+          if (t.closest("[data-doc-open]")) return setOpen(true);
+          if (t.closest("[data-doc-close]") || t.closest("[data-doc-scrim]")) return setOpen(false);
+          var nav = document.getElementById("doc-nav");
+          if (nav && nav.contains(t) && t.closest("a")) setOpen(false);
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") setOpen(false);
+        });
+      })();
+    </script>
   </head>
   <body>
     <slot />

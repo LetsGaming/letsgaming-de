@@ -16,6 +16,7 @@ import { registerPresenceMediaRoutes } from "./routes/presence-media.js";
 import { registerPresenceRoutes } from "./routes/presence.js";
 import { registerPlaytimeRoutes } from "./routes/playtime.js";
 import { registerMusicRoutes } from "./routes/music.js";
+import { registerModuleRoutes } from "./routes/module.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
 
@@ -82,6 +83,7 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   registerPresenceRoutes(app, env, store);
   registerPlaytimeRoutes(app, store);
   registerMusicRoutes(app, store);
+  registerModuleRoutes(app, store, env);
   registerPresenceMediaRoutes(app);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);

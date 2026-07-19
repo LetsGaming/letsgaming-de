@@ -1,0 +1,1364 @@
+openapi: 3.1.0
+
+info:
+  title: letsgaming.de backend API
+  version: 1.1.0
+  license:
+    name: MIT
+  summary: The Fastify API behind letsgaming.de — a public read/relay surface and an authenticated CMS.
+  description: |
+    The backend for [letsgaming.de](https://letsgaming.de): a small Fastify service that
+    accumulates data from GitHub/Steam/Wakapi/Lanyard into a local SQLite store and exposes
+    it to the site.
+
+    ## The one architectural rule: the server is the boundary
+    The browser never talks to a third party directly. Discord, Steam and Spotify images,
+    Lanyard presence, and every other upstream are fetched **server-side** and returned
+    already filtered, so a visitor only ever contacts this origin. This is why endpoints like
+    `/api/presence` and `/api/presence/media` exist at all — they are relays, not passthroughs.
+
+    ## Two surfaces, two threat models
+    - **Public** (`/api/*`, `/assets/*`, `/media/*`, `/health`) — unauthenticated reads and a
+      few write **relays** (contact, guestbook, engagement). Writes here persist only counters
+      or nothing at all, are rate-limited per-IP in memory, and never set a cookie.
+    - **CMS** (`/api/cms/*`) — authenticated content editing. A different threat model, kept on
+      its own path; session/auth concerns never leak into the public surface.
+
+    The site's own pages do **not** call `/api/site` at runtime — SSR reads the SQLite store
+    directly. `/api/site` is the same resolved view over HTTP, kept for tooling and as the web
+    app's fallback when it can't open the store file.
+
+    ## Privacy by construction
+    Analytics ingest (`POST /api/pulse`) writes only bucketed aggregate counters — no cookie,
+    no identifier, no raw event rows, no client timestamps. The contact relay persists nothing.
+    Client IPs are used only for transient in-memory rate limiting and are never stored.
+
+  contact:
+    name: LetsGaming
+    url: https://letsgaming.de
+
+servers:
+  - url: https://letsgaming.de
+    description: Production. The API shares the site origin behind the reverse proxy.
+  - url: http://localhost:8787
+    description: Local Fastify server (`pnpm dev:server`). The site dev server runs separately on :4321.
+
+tags:
+  - name: Site
+    description: The resolved site view (SSR reads the store directly; this is the HTTP mirror).
+  - name: Presence
+    description: Live Discord presence, relayed and filtered server-side from Lanyard.
+  - name: Activity
+    description: Accumulated history — playtime and music day drill-ins. Separate concern from presence.
+  - name: Media
+    description: Image relays and stored media, served from this origin so no visitor IP leaks upstream.
+  - name: Guestbook
+    description: Public, pre-moderated guestbook submissions.
+  - name: Contact
+    description: Contact relay to email. Stores nothing.
+  - name: Engagement
+    description: Cookieless, aggregate-only engagement beacons.
+  - name: Health
+    description: Liveness and last-sync probe.
+  - name: Auth
+    description: GitHub OAuth session for the CMS.
+  - name: CMS · Content
+    description: Authenticated. Edit the site's content (identity, prose, presence toggles, entities).
+  - name: CMS · Layout & Gallery
+    description: Authenticated. Module placement and gallery composition.
+  - name: CMS · Assets
+    description: Authenticated. The asset library (upload, edit, organize).
+  - name: CMS · Guestbook
+    description: Authenticated. Moderate the pending guestbook queue.
+  - name: CMS · Analytics
+    description: Authenticated. Read and clear aggregate analytics.
+  - name: CMS · Revisions
+    description: Authenticated. Content history and restore.
+
+paths:
+  # ─────────────────────────────── Public: read ───────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Returns `ok`, the last successful sync timestamp (or `null`), and server time.
+      security: []
+      responses:
+        "200":
+          description: The service is up.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/site:
+    get:
+      tags: [Site]
+      summary: The whole resolved site view
+      description: |
+        The entire site as normalized, localized, render-ready JSON — the same view the SSR
+        pages build from the store. Nothing is fetched from an upstream on this path; it reflects
+        whatever the last sync wrote. The site itself reads the store directly and only falls back
+        to this endpoint when it can't open the store file.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Locale"
+      responses:
+        "200":
+          description: The resolved site view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteView"
+
+  /api/module/{id}:
+    get:
+      tags: [Site]
+      summary: One resolved module, by id
+      description: |
+        A single resolved module (`{ id, kind, data }`) from the same view `/api/site`
+        builds — the live-refresh endpoint the polling modules (playtime, music) use
+        to update their slice in place without reloading. Reflects whatever the last
+        sync/sample wrote; nothing is fetched from an upstream on this path.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The module id (as it appears under `modules` in the site view).
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Locale"
+      responses:
+        "200":
+          description: The resolved module.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A resolved module — `{ id, kind, data }`. `data` varies by `kind`.
+                properties:
+                  id: { type: string }
+                  kind: { type: string }
+                  data: { type: object }
+        "404":
+          description: No module with that id in the current view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/presence:
+    get:
+      tags: [Presence]
+      summary: Live Discord presence (server-filtered)
+      description: |
+        The current Discord presence, fetched server-side from Lanyard and filtered to the
+        owner's CMS allow-list before it leaves the server. The browser never receives the
+        Discord id, the category list, or any category the owner disabled.
+
+        Returns a plain **offline** view (`status: offline`, empty `cards`) when Discord isn't
+        configured (`DISCORD_USER_ID` unset), the owner has hidden every live category, or
+        Lanyard is unreachable. This is intentional: the widget polls regardless and renders
+        whatever comes back, so enablement (a CMS display decision) is fully decoupled from
+        whether the server is wired up.
+
+        Responses are shared-cached briefly (keyed on the allow-list, so a CMS toggle is never
+        masked), which bounds how often Lanyard is polled no matter how many visitors watch.
+      security: []
+      responses:
+        "200":
+          description: The filtered presence snapshot (possibly offline).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceView"
+
+  /api/playtime/day:
+    get:
+      tags: [Activity]
+      summary: One day's game breakdown
+      description: |
+        The per-game playtime for a single day — the drill-in behind a clicked column in the
+        playtime ledger. Fetched on demand rather than shipped with the module (the strip spans
+        ~365 days). Games only; games the owner hid in the CMS are dropped.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Day"
+      responses:
+        "200":
+          description: The day's per-game minutes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaytimeDayResponse"
+        "400":
+          $ref: "#/components/responses/BadDay"
+
+  /api/music/day:
+    get:
+      tags: [Activity]
+      summary: One day's tracks
+      description: |
+        The tracks played on a single day — the drill-in behind a clicked column in the
+        listening timeline (parallel to `/api/playtime/day`). Fetched on demand. Tracks come
+        from Discord's Spotify presence; there is no per-track hide list.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Day"
+      responses:
+        "200":
+          description: The day's tracks.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MusicDayResponse"
+        "400":
+          $ref: "#/components/responses/BadDay"
+
+  /api/presence/media:
+    get:
+      tags: [Media]
+      summary: Presence image relay (with a labelled fallback tile)
+      description: |
+        Relays a presence image (Discord avatar/art, Steam icon, Spotify cover) through this
+        origin so the visitor's IP never reaches the third-party CDN. `u` is fetched **only**
+        when its host is on a fixed allow-list, over https, with redirects refused — so a crafted
+        `u` can't be used for SSRF.
+
+        When there is no usable upstream image, pass `game=<name>` to get a deterministic,
+        labelled SVG tile instead, so the widget always has something tidy to show.
+      security: []
+      parameters:
+        - name: u
+          in: query
+          required: false
+          description: Upstream image URL. Fetched only if its host is allow-listed (Discord/Steam/Spotify CDNs).
+          schema:
+            type: string
+            format: uri
+        - name: game
+          in: query
+          required: false
+          description: Game name — yields a generated labelled tile when `u` is missing or blocked.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The relayed image, or a generated SVG fallback tile.
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema:
+                type: string
+        "404":
+          description: Neither a usable `u` nor a `game` fallback was available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /assets/{id}:
+    get:
+      tags: [Media]
+      summary: A library asset (original)
+      description: A stored library asset by id — image, gif, svg, or markdown source.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: The asset bytes.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /assets/{id}/{variant}:
+    get:
+      tags: [Media]
+      summary: A resized/encoded asset variant
+      description: |
+        A generated variant of an image asset, e.g. `w320.webp`. Variants are produced from the
+        original and capped to its intrinsic width.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+        - name: variant
+          in: path
+          required: true
+          description: Variant name, e.g. `w320.webp`, `w640.avif`.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The variant bytes.
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/assets/md/{slug}:
+    get:
+      tags: [Media]
+      summary: A markdown asset's source
+      description: |
+        The raw source of a markdown asset (used by the CMS editor and for on-site rendering).
+        Public because the editor needs the raw file; drafts are gated by a preview token.
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The markdown asset with its source.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: An `Asset` plus its `markdown` source (contract `MarkdownAssetResponse` in `@lg/core`).
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /media/{file}:
+    get:
+      tags: [Media]
+      summary: A stored media file
+      security: []
+      parameters:
+        - name: file
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The media bytes.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─────────────────────────────── Public: relays ─────────────────────────────
+  /api/guestbook:
+    post:
+      tags: [Guestbook]
+      summary: Submit a guestbook entry (pre-moderated)
+      description: |
+        Stores a new entry as **pending** — it is never shown until the owner approves it in the
+        CMS queue. Only name + message + a server-assigned timestamp are stored (no IP, no
+        identifier). A honeypot field and a coarse per-IP rate limit keep casual spam down; a
+        honeypot hit is silently accepted so bots don't learn. No id is returned, because the
+        entry isn't public yet.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuestbookSubmission"
+      responses:
+        "200":
+          description: Accepted into the moderation queue (or a silently-swallowed honeypot hit).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { const: true }
+                  pending: { const: true }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/contact:
+    post:
+      tags: [Contact]
+      summary: Send a contact message (relayed to email)
+      description: |
+        Relays a message to the owner's email and stores **nothing**. Requires SMTP to be
+        configured, else `503`. A honeypot field and a per-IP rate limit apply; CR/LF is stripped
+        from name/email to prevent header injection.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactMessage"
+      responses:
+        "200":
+          description: Relayed (or a silently-swallowed honeypot hit).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { const: true }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          description: Contact is not configured (no SMTP).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/pulse:
+    post:
+      tags: [Engagement]
+      summary: Cookieless engagement beacon
+      description: |
+        Accepts a small batch of **anonymous, already-bucketed** engagement events
+        (`navigator.sendBeacon`, usually `text/plain` to avoid a CORS preflight). Each event is
+        validated against the shared vocabulary and the live nav, then folded into aggregate
+        hourly counters. No cookie, no identifier, no raw rows, no client timestamps — the day is
+        assigned server-side. Returns `204` with no body.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PulseBatch"
+          text/plain:
+            schema:
+              type: string
+              description: A JSON `PulseBatch` sent as text/plain by `sendBeacon`.
+      responses:
+        "204":
+          description: Accepted (valid events folded into counters). No body.
+        "400":
+          description: Unparseable body or missing `events` array.
+        "429":
+          description: Per-IP beacon rate limit exceeded.
+
+  # ─────────────────────────────────── Auth ───────────────────────────────────
+  /auth/github/login:
+    get:
+      tags: [Auth]
+      summary: Begin GitHub OAuth
+      description: Redirects to GitHub with a signed, single-use `state` cookie for CSRF protection.
+      security: []
+      responses:
+        "302":
+          description: Redirect to GitHub's authorization page.
+
+  /auth/github/callback:
+    get:
+      tags: [Auth]
+      summary: GitHub OAuth callback
+      description: |
+        Verifies `state`, exchanges the code, and — only if the GitHub login matches the allowed
+        login — issues a signed, http-only `lg_session` cookie the CMS uses. Then redirects back
+        to the app.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema: { type: string }
+        - name: state
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "302":
+          description: Redirect back to the app (session cookie set on success).
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Clear the CMS session
+      security: []
+      responses:
+        "302":
+          description: Session cookie cleared; redirect.
+
+  # ────────────────────────────── CMS · Content ───────────────────────────────
+  /api/cms/me:
+    get:
+      tags: [CMS · Content]
+      summary: Who am I
+      description: The authenticated login, or `null`. Used by the CMS to gate the UI.
+      responses:
+        "200":
+          description: The current session's login.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  login: { type: [string, "null"] }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/cms/content:
+    get:
+      tags: [CMS · Content]
+      summary: The whole editable world
+      description: The full editable content model in one request (contract `CmsContentResponse` in `@lg/core`).
+      responses:
+        "200":
+          description: The editable content.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: See `CmsContentResponse` in `@lg/core` — content, nav, modules, presence settings.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/cms/meta:
+    put:
+      tags: [CMS · Content]
+      summary: Update site identity (name, handle, location, role, avatar)
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/headline:
+    put:
+      tags: [CMS · Content]
+      summary: Update the hero headline (before / highlight / after)
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/lede:
+    put:
+      tags: [CMS · Content]
+      summary: Update the lede (a localized string)
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/status:
+    put:
+      tags: [CMS · Content]
+      summary: Update the "currently building" status (verb + now)
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/bio:
+    put:
+      tags: [CMS · Content]
+      summary: Update the bio (an array of localized paragraphs)
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/presence:
+    put:
+      tags: [CMS · Content]
+      summary: Update presence display settings
+      description: |
+        The presence allow-list and related toggles: which categories are **shown** (this is what
+        drives module enablement on the site), which are **sampled** into history, retention, and
+        the hidden-games list. These are read per-request by `/api/presence`, so a change takes
+        effect immediately.
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/projects/{id}:
+    put:
+      tags: [CMS · Content]
+      summary: Upsert a project (fallback for when no GitHub data is synced)
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [CMS · Content]
+      summary: Delete a project
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/hobbies/{id}:
+    put:
+      tags: [CMS · Content]
+      summary: Upsert a hobby
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [CMS · Content]
+      summary: Delete a hobby
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/links/{id}:
+    put:
+      tags: [CMS · Content]
+      summary: Upsert a contact/social link
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [CMS · Content]
+      summary: Delete a link
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/now/{id}:
+    put:
+      tags: [CMS · Content]
+      summary: Upsert a "now" item
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [CMS · Content]
+      summary: Delete a "now" item
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ────────────────────────── CMS · Layout & Gallery ──────────────────────────
+  /api/cms/layout:
+    put:
+      tags: [CMS · Layout & Gallery]
+      summary: Save module placement
+      description: The whole per-area module order in one request — atomic, so a half-applied order can't be left behind.
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/preview:
+    post:
+      tags: [CMS · Layout & Gallery]
+      summary: Resolve a pending layout (writes nothing)
+      description: Returns the `SiteView` the site *would* render with the given pending order. Used by the editor canvas; persists nothing.
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200":
+          description: The resolved preview view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/gallery/{id}:
+    put:
+      tags: [CMS · Layout & Gallery]
+      summary: Upsert a gallery image placement
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [CMS · Layout & Gallery]
+      summary: Remove a gallery image placement
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/gallery-order:
+    put:
+      tags: [CMS · Layout & Gallery]
+      summary: Reorder a whole gallery
+      description: Sends the full ordered id list for one gallery module; the server renumbers `sort` to 0..n-1.
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/gallery-module:
+    post:
+      tags: [CMS · Layout & Gallery]
+      summary: Create a new gallery module
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200":
+          description: Created; returns the new module id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkId" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/gallery-module/{id}:
+    delete:
+      tags: [CMS · Layout & Gallery]
+      summary: Delete a gallery module (and its placements)
+      description: Removes the gallery module and its image placements. Library assets are untouched.
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ──────────────────────────────── CMS · Assets ──────────────────────────────
+  /api/cms/assets:
+    get:
+      tags: [CMS · Assets]
+      summary: List assets
+      description: The asset library, optionally filtered by folder, tag, kind, or a text query.
+      parameters:
+        - { name: folder, in: query, required: false, schema: { type: string } }
+        - { name: tag, in: query, required: false, schema: { type: string } }
+        - { name: kind, in: query, required: false, schema: { type: string, enum: [image, gif, svg, markdown] } }
+        - { name: q, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: The matching assets (contract `AssetListResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `AssetListResponse` in `@lg/core`." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [CMS · Assets]
+      summary: Upload an asset
+      description: |
+        Multipart upload. Raster images are re-encoded, SVGs are run through a parser-based
+        sanitizer before storing, and size is capped — active content never lands unsanitized.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: The created asset (contract `Asset` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `Asset` in `@lg/core`." }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/assets/{id}:
+    get:
+      tags: [CMS · Assets]
+      summary: Asset detail
+      parameters: [{ $ref: "#/components/parameters/AssetId" }]
+      responses:
+        "200":
+          description: The asset detail (contract `AssetDetail` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `AssetDetail` in `@lg/core`." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [CMS · Assets]
+      summary: Edit asset metadata (alt, caption, title, slug, tags, folder)
+      parameters: [{ $ref: "#/components/parameters/AssetId" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [CMS · Assets]
+      summary: Delete an asset
+      parameters: [{ $ref: "#/components/parameters/AssetId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/assets/{id}/content:
+    put:
+      tags: [CMS · Assets]
+      summary: Rewrite a markdown asset's source
+      description: Replaces a markdown asset's bytes, keeping its id stable.
+      parameters: [{ $ref: "#/components/parameters/AssetId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [markdown]
+              properties:
+                markdown: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/assets/folders:
+    post:
+      tags: [CMS · Assets]
+      summary: Create an asset folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                parentId: { type: [string, "null"] }
+      responses:
+        "200":
+          description: The folder (contract `AssetFolderResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `AssetFolderResponse` in `@lg/core`." }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/assets/folders/{id}:
+    delete:
+      tags: [CMS · Assets]
+      summary: Delete an asset folder
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/media:
+    get:
+      tags: [CMS · Assets]
+      summary: List stored media files
+      responses:
+        "200":
+          description: The media file list.
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [CMS · Assets]
+      summary: Upload a media file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/media/{file}:
+    delete:
+      tags: [CMS · Assets]
+      summary: Delete a media file
+      parameters:
+        - { name: file, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ─────────────────────────────── CMS · Guestbook ────────────────────────────
+  /api/cms/guestbook:
+    get:
+      tags: [CMS · Guestbook]
+      summary: The moderation queue
+      description: All guestbook entries with their auto-flag score (which only sorts the queue).
+      responses:
+        "200":
+          description: Pending and moderated entries (contract `GuestbookListResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `GuestbookListResponse` in `@lg/core`." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/guestbook/{id}/{action}:
+    post:
+      tags: [CMS · Guestbook]
+      summary: Moderate an entry
+      description: Approve (make public) or reject a pending entry.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [approve, reject] }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/guestbook/{id}:
+    delete:
+      tags: [CMS · Guestbook]
+      summary: Delete an entry
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ─────────────────────────────── CMS · Analytics ────────────────────────────
+  /api/cms/analytics:
+    get:
+      tags: [CMS · Analytics]
+      summary: Aggregate analytics
+      description: Engagement and (if a proxy access log is wired up) traffic aggregates over a window.
+      parameters:
+        - name: hours
+          in: query
+          required: false
+          description: Window size in hours.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The analytics response (contract `AnalyticsResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `AnalyticsResponse` in `@lg/core`." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/analytics/clear:
+    post:
+      tags: [CMS · Analytics]
+      summary: Clear analytics
+      description: Deletes aggregate analytics for a named range.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [range]
+              properties:
+                range: { type: string }
+      responses:
+        "200":
+          description: Cleared (contract `ClearAnalyticsResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ─────────────────────────────── CMS · Revisions ────────────────────────────
+  /api/cms/revisions:
+    get:
+      tags: [CMS · Revisions]
+      summary: Content history (newest first)
+      responses:
+        "200":
+          description: The revision summaries (contract `RevisionListResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `RevisionListResponse` in `@lg/core`." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/revisions/{id}:
+    get:
+      tags: [CMS · Revisions]
+      summary: A single revision
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: The revision (contract `RevisionResponse` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `RevisionResponse` in `@lg/core`." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/cms/revisions/{id}/restore:
+    post:
+      tags: [CMS · Revisions]
+      summary: Restore a revision (writes forward)
+      description: Puts a past revision back. The restore is itself archived, so history stays append-only.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Restored; reports whether the module lists differ (contract `RestoreResponse`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { const: true }
+                  listsDiffer: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+# ═══════════════════════════════ Components ═══════════════════════════════════
+components:
+  securitySchemes:
+    cmsSession:
+      type: apiKey
+      in: cookie
+      name: lg_session
+      description: |
+        Signed, http-only session cookie issued by the GitHub OAuth flow. This is the primary
+        credential the CMS UI uses; requests are sent with credentials (cross-origin CORS is
+        locked to the configured web origin).
+    cmsBearer:
+      type: http
+      scheme: bearer
+      description: |
+        `Authorization: Bearer <CMS_TOKEN>` — a fallback for scripts and first-time setup. Prefer
+        the OAuth session for interactive use.
+
+  # The whole `/api/cms/*` surface accepts either credential.
+  security:
+    - cmsSession: []
+    - cmsBearer: []
+
+  parameters:
+    Locale:
+      name: locale
+      in: query
+      required: false
+      description: Content locale. Defaults to `en`.
+      schema:
+        type: string
+        enum: [en, de]
+        default: en
+    Day:
+      name: day
+      in: query
+      required: true
+      description: A calendar day, `YYYY-MM-DD`.
+      schema:
+        type: string
+        format: date
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+    AssetId:
+      name: id
+      in: path
+      required: true
+      description: Asset id.
+      schema:
+        type: string
+    EntityId:
+      name: id
+      in: path
+      required: true
+      description: Entity id (the caller assigns stable ids).
+      schema:
+        type: string
+
+  requestBodies:
+    JsonBody:
+      description: |
+        A JSON body validated at the boundary against the route's schema. Shared field limits
+        (name/message/etc.) live once in `@lg/core` (`FIELD_LIMITS`) and are enforced on both the
+        client and here. See `@lg/core` for the exact shape of each content type.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+
+  responses:
+    Ok:
+      description: Success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Ok"
+    BadRequest:
+      description: The body, params, or query failed boundary validation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadDay:
+      description: '`day` was not a `YYYY-MM-DD` date.'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid CMS credential (session cookie or bearer token).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Too many requests from this client in the current window.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Ok:
+      type: object
+      description: A bare success acknowledgement.
+      required: [ok]
+      properties:
+        ok:
+          const: true
+      additionalProperties: false
+
+    OkId:
+      type: object
+      description: A success that created something the caller must address by id.
+      required: [ok, id]
+      properties:
+        ok:
+          const: true
+        id:
+          type: string
+      additionalProperties: false
+
+    Error:
+      type: object
+      description: |
+        The uniform error body. Every failure is mapped to this shape by one server-side error
+        handler; internals and stack traces are never leaked.
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: A human-readable message safe to show a client.
+      additionalProperties: false
+
+    Health:
+      type: object
+      required: [status, lastSync, time]
+      properties:
+        status:
+          const: ok
+        lastSync:
+          type: [string, "null"]
+          format: date-time
+          description: When the sync worker last succeeded, or `null` if it never has.
+        time:
+          type: string
+          format: date-time
+
+    PresenceView:
+      type: object
+      description: |
+        The filtered presence the client is allowed to see. Deliberately minimal — no Discord id,
+        no category list. `status: offline` with empty `cards` is a valid, common state.
+      required: [status, cards]
+      properties:
+        status:
+          type: string
+          enum: [online, idle, dnd, offline]
+        avatar:
+          type: string
+          format: uri
+          description: Discord avatar URL, when the account exposes one.
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/PresenceCard"
+
+    PresenceCard:
+      type: object
+      description: One curated, render-ready presence activity.
+      required: [category, title]
+      properties:
+        category:
+          type: string
+          enum: [game, streaming, music, watching, custom]
+        title:
+          type: string
+        subtitle:
+          type: string
+        image:
+          type: string
+          format: uri
+          description: Art URL — the client routes this through `/api/presence/media`, never fetching it directly.
+        since:
+          type: integer
+          description: Activity start time, epoch milliseconds, when known.
+
+    PlaytimeDayResponse:
+      type: object
+      required: [day, games]
+      properties:
+        day:
+          type: string
+          format: date
+        games:
+          type: array
+          items:
+            type: object
+            required: [name, minutes, sessions, exact]
+            properties:
+              name:
+                type: string
+              minutes:
+                type: integer
+              sessions:
+                type: integer
+                description: How many observed sessions made up the day.
+              exact:
+                type: boolean
+                description: True when the minutes are a Steam total; false when observed (a floor).
+
+    MusicDayResponse:
+      type: object
+      required: [day, tracks]
+      properties:
+        day:
+          type: string
+          format: date
+        tracks:
+          type: array
+          items:
+            type: object
+            required: [song, artist, minutes, plays]
+            properties:
+              song:
+                type: string
+              artist:
+                type: string
+              minutes:
+                type: integer
+              plays:
+                type: integer
+              artUrl:
+                type: string
+                format: uri
+
+    GuestbookSubmission:
+      type: object
+      description: A public guestbook submission. Limits come from `FIELD_LIMITS` in `@lg/core`.
+      required: [name, message]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        website:
+          type: string
+          description: Honeypot — real submissions leave this empty.
+
+    ContactMessage:
+      type: object
+      description: A contact message. Relayed to email; nothing is stored. Limits from `FIELD_LIMITS`.
+      required: [name, email, message]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        message:
+          type: string
+          minLength: 1
+        website:
+          type: string
+          description: Honeypot — real submissions leave this empty.
+
+    PulseBatch:
+      type: object
+      description: A batch of already-bucketed engagement events (validated against the live nav + vocabulary).
+      required: [events]
+      properties:
+        events:
+          type: array
+          maxItems: 40
+          items:
+            type: object
+            description: One engagement event.
+            required: [d, k]
+            properties:
+              d:
+                type: string
+                description: Dimension (section, scroll depth, named click, movement, …).
+              k:
+                type: string
+                description: Key within the dimension (e.g. a section id).
+
+    SiteView:
+      type: object
+      description: |
+        The fully resolved, localized site view: `meta`, `nav`, a `modules` map keyed by id, and
+        `syncedAt`. It's large and its exact shape is defined once in TypeScript as `SiteView` in
+        `@lg/core` (the single source of truth) — treated as an opaque render-ready object here
+        rather than duplicated field-for-field.
+      additionalProperties: true
+      properties:
+        locale:
+          type: string
+          enum: [en, de]
+        meta:
+          type: object
+          description: Owner identity (name, handle, location, role).
+        nav:
+          type: array
+          description: The visible navigation tree (drafts stripped).
+          items:
+            type: object
+        modules:
+          type: object
+          description: Resolved modules keyed by id (hero, presence, playtime, music, activity, …).
+        syncedAt:
+          type: [string, "null"]
+          format: date-time

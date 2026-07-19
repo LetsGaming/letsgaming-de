@@ -17,11 +17,15 @@ import { computed } from "vue";
 import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
 import { useDayDrill } from "../../composables/useDayDrill";
+import { useLiveModule } from "../../composables/useLiveModule";
 import { fetchPlaytimeDay } from "../../lib/playtime-api";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
-const d = computed(() => props.module.data);
+// Polls `/api/module/:id` so playtime refreshes in place (like presence), starting
+// from the SSR-rendered data.
+const { data: liveData } = useLiveModule(props.module.id, "playtime", props.module.data);
+const d = computed(() => liveData.value);
 
 // ── recently played ──────────────────────────────────────────────────────────
 // The shelf that used to sit in the presence card. Each row is a game with its
@@ -58,6 +62,28 @@ const { selected, data: dayGames, loading: dayLoading, error: dayError, clear } 
 // the server for that day's per-game breakdown.
 const selectDay = (iso: string, minutes: number) =>
   drill.select(iso, () => (minutes === 0 ? Promise.resolve([]) : fetchPlaytimeDay(iso)));
+
+// The ledger as a single-row heat strip — the same HeatGrid the weekday×hour map
+// uses, replacing the old height-bars so the site draws "activity over days" one
+// way. One cell per day, clickable to drill in; `ledgerLevel` buckets by the
+// day-max (distinct from the weekday×hour `heatLevel`, which buckets by its own).
+const ledgerLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / maxDay.value) * 4)));
+const ledgerCells = computed<HeatCell[]>(() =>
+  d.value.ledger.map((row) => ({
+    level: ledgerLevel(row.minutes),
+    today: row.day === todayIso,
+    title: `${fmtDay(row.day)} · ${row.minutes ? fmtHrs(row.minutes) : "nothing"}`,
+  })),
+);
+const selectedLedgerIndex = computed(() => {
+  if (!selected.value) return null;
+  const i = d.value.ledger.findIndex((r) => r.day === selected.value);
+  return i >= 0 ? i : null;
+});
+function onLedgerSelect(i: number) {
+  const row = d.value.ledger[i];
+  if (row) selectDay(row.day, row.minutes);
+}
 
 // ── the heatmap ──────────────────────────────────────────────────────────────
 
@@ -149,17 +175,14 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
           </span>
         </div>
 
-        <div class="pt-ledger" :class="{ sel: selected }">
-          <button
-            v-for="row in d.ledger"
-            :key="row.day"
-            class="pt-col"
-            :class="{ on: selected === row.day, today: row.day === todayIso }"
-            :style="{ height: Math.max(2, (row.minutes / maxDay) * 100) + '%' }"
-            :title="`${fmtDay(row.day)} · ${row.minutes ? fmtHrs(row.minutes) : 'nothing'}`"
-            @click="selectDay(row.day, row.minutes)"
-          />
-        </div>
+        <HeatGrid
+          :cells="ledgerCells"
+          :rows="1"
+          :min-cell="8"
+          selectable
+          :selected-index="selectedLedgerIndex"
+          @select="onLedgerSelect"
+        />
         <div class="pt-axis">
           <span class="pt-m">{{ d.ledger[0] ? fmtDay(d.ledger[0].day) : "" }}</span>
           <span class="pt-m">today</span>
@@ -364,34 +387,6 @@ a.pt-rrow:hover .pt-rname {
   color: var(--muted);
 }
 
-/* ledger strip */
-.pt-ledger {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 2px;
-  align-items: end;
-  height: 72px;
-}
-.pt-col {
-  background: var(--surf-3);
-  border: 0;
-  border-radius: 2px 2px 0 0;
-  padding: 0;
-  min-height: 2px;
-  cursor: pointer;
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-.pt-col.today {
-  background: var(--live);
-}
-.pt-ledger.sel .pt-col:not(.on) {
-  opacity: 0.4;
-}
-.pt-col.on {
-  outline: 1px solid var(--live);
-  outline-offset: 1px;
-}
 .pt-axis {
   display: flex;
   justify-content: space-between;

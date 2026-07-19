@@ -4,11 +4,14 @@ export const prerender = true;
 import { getCollection, render } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
 import { buildDocTree, docTitle, type DocGroup } from "../../lib/docs";
+import { withApiNav } from "../../lib/openapi";
 
 // Build-time: one static page per doc, each with the full sidebar tree.
 export async function getStaticPaths() {
   const entries = await getCollection("docs");
-  const tree = buildDocTree(entries.map((e) => ({ slug: e.id, title: docTitle(e.body ?? "", e.id) })));
+  const tree = withApiNav(
+    buildDocTree(entries.map((e) => ({ slug: e.id, title: docTitle(e.body ?? "", e.id) }))),
+  );
   return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry, tree } }));
 }
 
@@ -60,35 +63,4 @@ const active = entry.id;
       <Content />
     </article>
   </div>
-
-  <script is:inline>
-    (function () {
-      var nav = document.getElementById("doc-nav");
-      var scrim = document.querySelector("[data-doc-scrim]");
-      if (!nav || !scrim) return;
-      function open() {
-        nav.classList.add("open");
-        scrim.classList.add("show");
-        document.body.classList.add("nav-locked");
-      }
-      function close() {
-        nav.classList.remove("open");
-        scrim.classList.remove("show");
-        document.body.classList.remove("nav-locked");
-      }
-      document.querySelectorAll("[data-doc-open]").forEach(function (b) {
-        b.addEventListener("click", open);
-      });
-      document.querySelectorAll("[data-doc-close]").forEach(function (b) {
-        b.addEventListener("click", close);
-      });
-      scrim.addEventListener("click", close);
-      nav.addEventListener("click", function (e) {
-        if (e.target && e.target.tagName === "A") close();
-      });
-      document.addEventListener("keydown", function (e) {
-        if (e.key === "Escape") close();
-      });
-    })();
-  </script>
 </Layout>
