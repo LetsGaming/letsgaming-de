@@ -61,7 +61,7 @@
   --heat-2: #46318a;
   --heat-3: #6544c4;
   --heat-4: #8b5cf6;
-  --heat-today: var(--live-ink);
+  --heat-today: var(--muted);
 
   --track: #221d3c;
 

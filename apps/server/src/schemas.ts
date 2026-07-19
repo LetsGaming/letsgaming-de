@@ -17,6 +17,7 @@ import {
   HREF_PATTERN,
   OPTIONAL_ASSET_REF_PATTERN,
   PRESENCE_CATEGORIES,
+  MUSIC_LIST_BOUNDS,
   TONES,
 } from "@lg/core";
 
@@ -145,6 +146,17 @@ export const schemas = {
         items: { type: "string", minLength: 1, maxLength: 200 },
         maxItems: 200,
       },
+    },
+    additionalProperties: false,
+  },
+  music: {
+    type: "object",
+    // No required fields: the sanitizer fills any omitted count from the default,
+    // so a partial body still writes a valid row. Bounds come from @lg/core so the
+    // schema and the sanitizer can't drift.
+    properties: {
+      initialCount: { type: "integer", minimum: MUSIC_LIST_BOUNDS.min, maximum: MUSIC_LIST_BOUNDS.max },
+      maxCount: { type: "integer", minimum: MUSIC_LIST_BOUNDS.min, maximum: MUSIC_LIST_BOUNDS.max },
     },
     additionalProperties: false,
   },

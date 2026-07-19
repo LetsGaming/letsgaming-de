@@ -29,6 +29,7 @@ import LinksPanel from "./LinksPanel.vue";
 import NowPanel from "./NowPanel.vue";
 import PostsPanel from "./PostsPanel.vue";
 import PresencePanel from "./PresencePanel.vue";
+import MusicPanel from "./MusicPanel.vue";
 import SiteIdentityPanel from "./SiteIdentityPanel.vue";
 
 /**
@@ -50,6 +51,7 @@ const PANEL: Partial<Record<View, Component>> = {
 	gallery: GalleryPanel,
 	guestbook: GuestbookPanel,
 	presence: PresencePanel,
+	music: MusicPanel,
 };
 
 const {

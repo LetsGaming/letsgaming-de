@@ -15,6 +15,7 @@ import type { SiteContent, Project, Link } from "./content.js";
 import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
+import { defaultMusicSettings } from "./music.js";
 import { AREA } from "./ia.js";
 import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
 import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
@@ -585,6 +586,10 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const m = input.musicHistory;
         const ledger = m?.ledger ?? [];
         const totalMinutes = ledger.reduce((sum, d) => sum + d.minutes, 0);
+        // Display counts are CMS-owned; the lists themselves are already capped to
+        // maxCount server-side (the query LIMIT), so this only carries the numbers
+        // the frontend needs to collapse/expand — never uncapped data.
+        const musicSettings = content.music ?? defaultMusicSettings();
         const rank = (e: MusicRankEntry): MusicRankView => ({
           name: e.name,
           minutes: e.minutes,
@@ -606,6 +611,8 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             topAlbums: (m?.topAlbums ?? []).map(rank),
             ledger,
             ...(m?.since ? { since: m.since } : {}),
+            initialCount: musicSettings.initialCount,
+            maxCount: musicSettings.maxCount,
           },
         };
       }

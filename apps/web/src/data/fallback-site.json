@@ -573,7 +573,9 @@
         "topSongs": [],
         "topArtists": [],
         "topAlbums": [],
-        "ledger": []
+        "ledger": [],
+        "initialCount": 5,
+        "maxCount": 15
       }
     }
   },

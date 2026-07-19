@@ -311,6 +311,11 @@ export interface MusicModuleView {
   ledger: { day: string; minutes: number }[];
   /** First day in the ledger, for "since <date>" copy. */
   since?: string;
+  /** Rows to show before "show more" (CMS-configured display count). */
+  initialCount: number;
+  /** The most list rows shown — the lists are already capped to this server-side,
+   *  so this is the expand target, not a client-side filter. */
+  maxCount: number;
 }
 
 /** A nav node with its label already localized (children/modules preserved). */

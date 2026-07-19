@@ -419,22 +419,6 @@ h1 {
   color: var(--muted);
   margin-bottom: var(--sp-16);
 }
-.heat-legend {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-6);
-  justify-content: flex-end;
-  margin-top: var(--sp-12);
-  font-family: var(--f-m);
-  font-size: 10px;
-  color: var(--muted);
-}
-.heat-legend i {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  display: block;
-}
 .lang {
   display: flex;
   flex-direction: column;

@@ -20,6 +20,7 @@ import LibraryPanel from "./panels/LibraryPanel.vue";
 import LinksPanel from "./panels/LinksPanel.vue";
 import NowPanel from "./panels/NowPanel.vue";
 import PresencePanel from "./panels/PresencePanel.vue";
+import MusicPanel from "./panels/MusicPanel.vue";
 import SiteIdentityPanel from "./panels/SiteIdentityPanel.vue";
 
 const context = useCms();
@@ -123,6 +124,7 @@ const {
 
         <!-- PRESENCE -->
         <PresencePanel v-show="tab === 'presence'" />
+        <MusicPanel v-show="tab === 'music'" />
 
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />

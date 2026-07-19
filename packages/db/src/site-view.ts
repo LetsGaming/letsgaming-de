@@ -2,6 +2,7 @@ import {
   ASSET_WIDTHS,
   differenceLedger,
   MUSIC_TOP_LIMIT,
+  defaultMusicSettings,
   PLAYTIME_WINDOW_DAYS,
   resolveSiteView,
   SOURCE_TTL,
@@ -42,8 +43,9 @@ export interface BuildSiteViewOptions {
 }
 
 export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): Promise<SiteView> {
+  const content = store.content.getContent();
   return resolveSiteView({
-    content: store.content.getContent(),
+    content,
     source: store.source.getAllCurrent(),
     nav: opts.nav ?? store.ia.getNav(),
     modules: store.ia.getModules(),
@@ -59,7 +61,9 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     // asking the store for a different span would put two spans on one axis.
     playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
     playHistory: buildPlayHistory(store),
-    musicHistory: buildMusicHistory(store),
+    // The list cap is the CMS-owned maxCount, applied here as the query LIMIT so
+    // the resolved view (and the frontend) never sees more than the top N.
+    musicHistory: buildMusicHistory(store, content.music?.maxCount ?? defaultMusicSettings().maxCount),
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
 }
@@ -105,9 +109,11 @@ function buildPlayHistory(store: Store): {
  * weeks of track breakdowns.
  *
  * `trackCount`/`artistCount` are the headline stats the module makes clickable, so
- * they're the *distinct* counts over the window, not the sum of plays.
+ * they're the *distinct* counts over the window, not the sum of plays — and they're
+ * uncapped on purpose: `listLimit` (the CMS maxCount) trims only the top-N lists,
+ * never the counts, so the headline stays true even when the list is a top N.
  */
-function buildMusicHistory(store: Store): {
+function buildMusicHistory(store: Store, listLimit: number): {
   topSongs: ReturnType<Store["music"]["topSongs"]>;
   topArtists: ReturnType<Store["music"]["topArtists"]>;
   topAlbums: ReturnType<Store["music"]["topAlbums"]>;
@@ -119,8 +125,8 @@ function buildMusicHistory(store: Store): {
   const since = isoDaysAgo(PLAYTIME_WINDOW_DAYS);
   const ledger = store.music.dailyTotals(since);
   return {
-    topSongs: store.music.topSongs(since),
-    topArtists: store.music.topArtists(since),
+    topSongs: store.music.topSongs(since, listLimit),
+    topArtists: store.music.topArtists(since, listLimit),
     topAlbums: store.music.topAlbums(since, MUSIC_TOP_LIMIT),
     ledger,
     trackCount: store.music.distinctTracks(since),

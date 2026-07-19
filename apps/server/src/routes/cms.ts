@@ -30,6 +30,7 @@ import {
   MODULE_KIND,
   parseAssetRef,
   sanitizePresenceSettings,
+  sanitizeMusicSettings,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -160,6 +161,17 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     store.content.setPresence(sanitizePresenceSettings(req.body));
     return { ok: true };
   });
+
+  app.put<{ Body: { initialCount?: number; maxCount?: number } }>(
+    "/api/cms/music",
+    write(schemas.music),
+    async (req) => {
+      // sanitizeMusicSettings clamps both counts and keeps initialCount ≤ maxCount,
+      // filling any omitted field — a partial body still writes a coherent row.
+      store.content.setMusic(sanitizeMusicSettings(req.body));
+      return { ok: true };
+    },
+  );
 
   // ── gallery (images placed on the site, chosen from the asset library) ─────
   // Recompute which assets each gallery module references, so the library's

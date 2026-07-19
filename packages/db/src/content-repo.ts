@@ -3,6 +3,7 @@ import type {
   Hobby,
   Link,
   Localized,
+  MusicSettings,
   NowItem,
   PresenceSettings,
   Project,
@@ -13,7 +14,9 @@ import type {
 import type { GalleryItem } from "@lg/core";
 import {
   defaultPresenceSettings,
+  defaultMusicSettings,
   sanitizeHiddenGames,
+  sanitizeMusicSettings,
   sanitizePresenceSettings,
   sanitizePresenceShow,
   sanitizeRetentionDays,
@@ -113,6 +116,16 @@ export function contentRepo(db: DB) {
     };
   };
 
+  /** Listening list-display config, one JSON column on the singleton content row;
+   *  a NULL — a fresh install or the pre-0007 row — reads back as the default. */
+  const readMusic = (): MusicSettings => {
+    const row = db
+      .prepare("SELECT music FROM site_content WHERE id = ?")
+      .get(SINGLETON_ID) as { music: string | null } | undefined;
+    if (!row || row.music === null) return defaultMusicSettings();
+    return sanitizeMusicSettings(json<unknown>(row.music));
+  };
+
   /**
    * Snapshot the whole document into the revision archive.
    *
@@ -155,7 +168,7 @@ export function contentRepo(db: DB) {
       return result;
     });
 
-  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio", value: unknown): void =>
+  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music", value: unknown): void =>
     write(col, () => {
       db.prepare(`UPDATE site_content SET ${col} = ? WHERE id = ?`).run(
         JSON.stringify(value),
@@ -179,6 +192,7 @@ export function contentRepo(db: DB) {
           links: readLinks(),
           now: readNow(),
           presence: readPresence(),
+          music: readMusic(),
           gallery: readGallery(),
         }),
         SINGLETON_ID,
@@ -193,6 +207,12 @@ export function contentRepo(db: DB) {
     setLede: (lede: Localized) => setScalar("lede", lede),
     setStatus: (status: Status) => setScalar("status", status),
     setBio: (bio: Localized[]) => setScalar("bio", bio),
+
+    /** Listening list-display config (CMS-owned). */
+    getMusic: readMusic,
+    setMusic(settings: MusicSettings) {
+      setScalar("music", sanitizeMusicSettings(settings));
+    },
 
     /** Presence category allow-list (CMS-owned). */
     getPresence: readPresence,

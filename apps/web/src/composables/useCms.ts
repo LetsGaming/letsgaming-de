@@ -17,6 +17,7 @@ import type {
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
 import { usePresenceSettings } from "./usePresenceSettings";
+import { useMusicSettings } from "./useMusicSettings";
 import { useGuestbookMod } from "./useGuestbookMod";
 import { useAnalytics } from "./useAnalytics";
 import { useLayoutEditor } from "./useLayoutEditor";
@@ -61,6 +62,7 @@ const VIEWS = [
   "gallery",
   "library",
   "presence",
+  "music",
   "guestbook",
   "analytics",
 ] as const;
@@ -93,7 +95,13 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
       { id: "gallery", label: "Gallery" },
     ],
   },
-  { label: "Widgets", items: [{ id: "presence", label: "Presence" }] },
+  {
+    label: "Widgets",
+    items: [
+      { id: "presence", label: "Presence" },
+      { id: "music", label: "Listening" },
+    ],
+  },
   { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
   { label: "Insights", items: [{ id: "analytics", label: "Analytics" }] },
 ];
@@ -110,6 +118,7 @@ const VIEW_TITLES: Record<View, string> = {
   library: "Asset library",
   gallery: "Gallery",
   presence: "Presence widget",
+  music: "Listening list",
   guestbook: "Guestbook",
   analytics: "Analytics",
 };
@@ -166,6 +175,10 @@ const now = nowList.items;
     savePresence,
     hydratePresence,
   } = presence;
+
+  // Listening list-display settings — extracted composable (see useMusicSettings).
+  const music = useMusicSettings({ guarded, cms });
+  const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, saveMusic, hydrateMusic } = music;
 
   // Guestbook moderation — extracted composable (see useGuestbookMod).
   const { guestbook, loadingG, loadGuestbook, moderate, removeEntry } = useGuestbookMod({
@@ -240,6 +253,7 @@ async function loadAll() {
   links.value = data.content.links.map((l: Link, i: number) => ({ ...l, sort: i }));
   now.value = data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i }));
   hydratePresence(data.content.presence);
+  hydrateMusic(data.content.music);
   hydrateLayout(data);
 }
 
@@ -400,6 +414,7 @@ const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
   now: AREA.life,
   gallery: AREA.life,
   presence: AREA.life,
+  music: AREA.life,
 };
 const previewArea = ref<AreaId>(AREA.home);
 const previewKey = ref(0);
@@ -543,6 +558,10 @@ onUnmounted(() => {
     togglePresence,
     toggleSample,
     savePresence,
+    MUSIC_LIST_BOUNDS,
+    musicInitialCount,
+    musicMaxCount,
+    saveMusic,
     guestbook,
     loadingG,
     loadGuestbook,

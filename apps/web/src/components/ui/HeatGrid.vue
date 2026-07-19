@@ -6,7 +6,7 @@
 export interface HeatCell {
   /** Intensity bucket 0–4; 0 is the empty base and gets no `data-l`. */
   level: number;
-  /** Tint this cell as "today/now" (`--heat-today`). */
+  /** Mark this cell as "today/now" — a subtle ring, never the selection accent. */
   today?: boolean;
   /** Native tooltip for the cell. */
   title?: string;
@@ -17,24 +17,36 @@ export interface HeatCell {
 /**
  * A column-flow grid of intensity-bucketed cells — the shape GitHub's
  * contribution graph, the weekday×hour playtime heatmap, and (as a single row)
- * the per-day listening/playtime strips all draw. One visual language: 7 rows by
- * default, `--heat-0..4` buckets, a "today" tint.
+ * the per-day listening/playtime strips all draw. One visual language: `--heat-0..4`
+ * buckets, an optional legend, a "today" ring.
  *
  * Two modes:
- *  - **static** (default): renders `<i>` cells — a read-only heatmap.
- *  - **selectable**: renders `<button>` cells that emit `select` with the cell
- *    index and highlight `selectedIndex`. This is how the day strips drill in —
- *    the same grid the calendars use, so the columns-vs-heat split is gone.
+ *  - **static** (default): `<i>` cells — a read-only heatmap.
+ *  - **selectable**: `<button>` cells that emit `select` with the cell index and
+ *    highlight `selectedIndex`. This is how the day strips drill in.
  *
- * Deliberately dumb about meaning: it takes finished cells (level + optional
- * today/title) and renders them. *How* a level is computed, and what a cell maps
- * back to, stays with each caller. Colour is entirely from `--heat-*` tokens, so
- * light/dark follow the theme with no per-cell style.
+ * "Today" and "selected" are deliberately different marks. Today keeps its level
+ * colour and gets a faint inset ring (like GitHub's border on the current day);
+ * selection is a bold accent outline with the rest dimmed. Filling today with the
+ * accent — as this used to — made it read as permanently selected, which is the
+ * bug this fixes.
+ *
+ * Sizing: cells are square and fill the width by default (good when there are many
+ * columns). Pass `cellHeight` to fix a short height instead — the right call for a
+ * single row of a handful of days, where square-and-fill would blow the cells up.
+ *
+ * Deliberately dumb about meaning: it takes finished cells and renders them. *How*
+ * a level is computed, and what a cell maps back to, stays with each caller. Colour
+ * is entirely from `--heat-*` tokens, so light/dark follow the theme.
  */
+import { computed } from "vue";
+
 const {
   cells,
   rows = 7,
   minCell = 10,
+  cellHeight = null,
+  legend = false,
   selectable = false,
   selectedIndex = null,
 } = defineProps<{
@@ -43,6 +55,11 @@ const {
   rows?: number;
   /** Minimum cell edge in px (columns grow to fill past this). */
   minCell?: number;
+  /** Fixed cell height in px. When set, cells fill width at this height instead of
+   *  being square — keeps a short strip from ballooning when there are few cells. */
+  cellHeight?: number | null;
+  /** Show the "less ▢▢▢▢▢ more" scale below the grid. */
+  legend?: boolean;
   /** Render cells as clickable buttons that emit `select`. */
   selectable?: boolean;
   /** Index of the highlighted cell, or null when nothing is drilled in. */
@@ -51,13 +68,22 @@ const {
 
 const emit = defineEmits<{ select: [index: number] }>();
 
-// When a cell is picked, the rest dim so the selection reads clearly (the pattern
-// the old bar strips used). Only in selectable mode, only once something is picked.
-const dimmed = () => selectable && selectedIndex !== null;
+// When a cell is picked, the rest dim so the selection reads clearly. Only in
+// selectable mode, only once something is picked.
+const dimmed = computed(() => selectable && selectedIndex !== null);
+const gridStyle = computed(() => ({
+  "--hg-rows": rows,
+  "--hg-min": `${minCell}px`,
+  ...(cellHeight != null ? { "--hg-ch": `${cellHeight}px` } : {}),
+}));
 </script>
 
 <template>
-  <div class="hg" :class="{ dim: dimmed() }" :style="{ '--hg-rows': rows, '--hg-min': `${minCell}px` }">
+  <div
+    class="hg"
+    :class="{ dim: dimmed, 'fixed-h': cellHeight != null }"
+    :style="gridStyle"
+  >
     <component
       :is="selectable ? 'button' : 'i'"
       v-for="(c, i) in cells"
@@ -71,6 +97,11 @@ const dimmed = () => selectable && selectedIndex !== null;
       :aria-pressed="selectable ? i === selectedIndex : undefined"
       @click="selectable ? emit('select', i) : undefined"
     />
+  </div>
+  <div v-if="legend" class="hg-legend">
+    <span>less</span>
+    <i v-for="n in 5" :key="n" :data-l="(n - 1) || null" />
+    <span>more</span>
   </div>
 </template>
 
@@ -93,6 +124,11 @@ const dimmed = () => selectable && selectedIndex !== null;
   display: block;
   padding: 0;
 }
+/* Fixed-height mode: fill width, short cells, no square constraint. */
+.hg.fixed-h .hg-c {
+  aspect-ratio: auto;
+  height: var(--hg-ch);
+}
 .hg-c[data-l="1"] {
   background: var(--heat-1);
 }
@@ -105,8 +141,11 @@ const dimmed = () => selectable && selectedIndex !== null;
 .hg-c[data-l="4"] {
   background: var(--heat-4);
 }
+/* Today: keep the level colour, add a faint inset ring — never the accent, so it
+   can't be mistaken for the selection. */
 .hg-c[data-now] {
-  background: var(--heat-today);
+  outline: 1.5px solid var(--heat-today);
+  outline-offset: -1.5px;
 }
 
 /* Interactive cells. */
@@ -122,6 +161,8 @@ button.hg-c:hover {
 .hg.dim button.hg-c {
   opacity: 0.4;
 }
+/* Selection: bold accent ring, full opacity, sitting above the dimmed rest. It
+   wins over the today ring when you select today. */
 .hg.dim button.hg-c.on,
 button.hg-c.on {
   opacity: 1;
@@ -131,5 +172,36 @@ button.hg-c.on {
 button.hg-c:focus-visible {
   outline: 2px solid var(--live-ink);
   outline-offset: 1px;
+}
+
+/* Legend — the scale that used to live in the Activity section, now shared. */
+.hg-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  justify-content: flex-end;
+  margin-top: var(--sp-12);
+  font-family: var(--f-m);
+  font-size: 10px;
+  color: var(--muted);
+}
+.hg-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: block;
+  background: var(--heat-0);
+}
+.hg-legend i[data-l="1"] {
+  background: var(--heat-1);
+}
+.hg-legend i[data-l="2"] {
+  background: var(--heat-2);
+}
+.hg-legend i[data-l="3"] {
+  background: var(--heat-3);
+}
+.hg-legend i[data-l="4"] {
+  background: var(--heat-4);
 }
 </style>

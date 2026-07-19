@@ -70,7 +70,7 @@ export function musicRepo(db: DatabaseSync) {
      * from the most recent play of the track, so a re-titled release shows its
      * latest name.
      */
-    topSongs(sinceIso: string): MusicRankEntry[] {
+    topSongs(sinceIso: string, limit: number): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -84,6 +84,7 @@ export function musicRepo(db: DatabaseSync) {
           WHERE last_seen_at >= ?
           GROUP BY track_id
           ORDER BY seconds DESC, song ASC
+          LIMIT ?
         `),
         (r: Row): MusicRankEntry => ({
           name: asText(r.song),
@@ -93,6 +94,7 @@ export function musicRepo(db: DatabaseSync) {
           ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
+        limit,
       );
     },
 
@@ -101,11 +103,13 @@ export function musicRepo(db: DatabaseSync) {
      *
      * Joins through `music_play_artists`, so a collaboration counts toward every
      * artist on it. Grouped by the lower-cased key but displayed with the casing
-     * Discord sent. No cap and no sub-minute floor, for the same reason as
-     * `topSongs`: this must reconcile with the "different artists" count and with
-     * what a day's tracks add up to.
+     * Discord sent. `limit` is the CMS display cap (maxCount) applied as a query
+     * LIMIT — the frontend never receives more than this. No sub-minute floor: the
+     * rows that do come back must still reconcile with what a day's tracks add up
+     * to. The "different artists" headline is a separate COUNT (`distinctArtists`)
+     * and is deliberately *not* capped, so a count larger than the list is expected.
      */
-    topArtists(sinceIso: string): MusicRankEntry[] {
+    topArtists(sinceIso: string, limit: number): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -137,6 +141,7 @@ export function musicRepo(db: DatabaseSync) {
           WHERE p.last_seen_at >= ?
           GROUP BY a.artist_key
           ORDER BY seconds DESC, artist ASC
+          LIMIT ?
         `),
         (r: Row): MusicRankEntry => ({
           name: asText(r.artist),
@@ -146,6 +151,7 @@ export function musicRepo(db: DatabaseSync) {
         }),
         sinceIso,
         sinceIso,
+        limit,
       );
     },
 

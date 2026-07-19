@@ -1,0 +1,12 @@
+-- CMS-owned display config for the Listening module's top-songs/top-artists
+-- lists: how many rows show before "show more" (initialCount) and the hard cap on
+-- rows the list ever shows (maxCount). maxCount is applied as a query LIMIT, so
+-- the frontend never receives more than the top N — it can't count or leak past
+-- the cap. The distinct "tracks played" / "different artists" totals are separate
+-- COUNT queries and stay uncapped, so the headline remains the true total.
+--
+-- Stored as one JSON object on the singleton content row (two ints — a scalar,
+-- not its own table). Nullable, no data migration: a NULL reads back as the
+-- default (5 / 15), so the existing row and a fresh install both work untouched.
+-- Absence already has the right meaning, same as the presence columns in 0004.
+ALTER TABLE site_content ADD COLUMN music TEXT;  -- JSON MusicSettings; NULL → default

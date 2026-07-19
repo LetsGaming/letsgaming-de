@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Feature — Listening's list length is a CMS setting (a top N; the counts stay whole)
+
+The top-songs and top-artists lists were a fixed top five expanding to everything;
+two CMS numbers govern them now — "always show" (collapsed rows, default 5) and
+"show at most" (the cap, default 15). The cap is enforced where the data is
+*selected*, not where it's shown: it's a `LIMIT` on the top-N query, so the
+resolved view — and the browser — never receives more than the top N. The frontend
+can't count or leak past a cap it was never handed (the "knows nothing it wasn't
+given" rule). The "tracks played" / "different artists" figures are separate
+`COUNT`s and are deliberately left uncapped, so the headline stays the true total
+even when the list is a top N — a count larger than the list is expected, not a
+bug. Stored as `MusicSettings { initialCount, maxCount }` (bounds and sanitizer in
+`@lg/core`, so the input, the write schema, and the server clamp can't drift;
+`initialCount` is pinned ≤ `maxCount` on save), persisted as one JSON column on the
+content row (migration `0007`, NULL → default), edited from a new `MusicPanel` in
+the CMS. `topSongs`/`topArtists` take a `limit` again — this time from the setting,
+server-side, not the old hardcoded 12.
+
+### Fix — The Listening heatmap: today isn't "selected", empty days show, it's not enormous
+
+Four corrections after the day strips became heatmaps:
+
+- **Today stopped looking selected.** Its cell was *filled* with the accent
+  colour, indistinguishable from a picked one. It now keeps its own heat-level
+  colour with a faint inset ring (GitHub's approach); a *selected* cell gets a bold
+  accent outline with the rest dimmed. Two different marks — nothing reads as
+  selected until you click. (`--heat-today` moved from the accent to `--muted`.)
+- **Empty days show.** The store only returns days with listening, so the strip
+  collapsed the gaps and looked lopsided. A `contiguousDays` helper zero-fills the
+  run — Listening draws a solid fortnight (empty days included), Playtime fills the
+  gaps across its span, GitHub-style.
+- **It isn't enormous.** With only a couple of days, square-and-fill-width blew the
+  cells up to fill the card. `HeatGrid` got a `cellHeight` mode: the Listening
+  strip is a short fixed-height row across the full 14 days.
+- **The legend is a HeatGrid feature.** The "less ▢▢▢▢▢ more" scale moved out of
+  the Activity section into `HeatGrid` behind a `legend` prop — shared by
+  contributions and both day strips; the bespoke copy and its dead CSS are gone.
+
 ### Feature — Playtime and Listening update in place; area tabs stop reloading
 
 Two ends of the same complaint: nothing but presence refreshed without a reload,

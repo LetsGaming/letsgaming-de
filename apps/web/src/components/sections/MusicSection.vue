@@ -30,6 +30,7 @@ import { presenceMediaUrl } from "../../lib/api";
 import { useDayDrill } from "../../composables/useDayDrill";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { fetchMusicDay } from "../../lib/music-api";
+import { contiguousDays, daysBefore } from "../../lib/calendar";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
@@ -38,7 +39,10 @@ const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }
 const { data: liveData } = useLiveModule(props.module.id, "music", props.module.data);
 const d = computed(() => liveData.value);
 
-const TOP_SHOWN = 5; // top 5, then a show-more toggle — the activity feed's control
+// How many rows show before "show more" — CMS-configured (initialCount). The
+// lists themselves are already capped to maxCount server-side, so expanding never
+// reveals more than the backend chose to send; this is purely the collapse point.
+const TOP_SHOWN = computed(() => d.value.initialCount);
 
 const todayIso = new Date().toISOString().slice(0, 10);
 const maxDay = computed(() => Math.max(1, ...d.value.ledger.map((x) => x.minutes)));
@@ -68,8 +72,8 @@ type ListKind = "songs" | "artists";
 const list = ref<ListKind>("songs");
 const expanded = ref(false);
 const activeRows = computed<MusicRankView[]>(() => (list.value === "songs" ? d.value.topSongs : d.value.topArtists));
-const shownRows = computed(() => (expanded.value ? activeRows.value : activeRows.value.slice(0, TOP_SHOWN)));
-const hiddenCount = computed(() => Math.max(0, activeRows.value.length - TOP_SHOWN));
+const shownRows = computed(() => (expanded.value ? activeRows.value : activeRows.value.slice(0, TOP_SHOWN.value)));
+const hiddenCount = computed(() => Math.max(0, activeRows.value.length - TOP_SHOWN.value));
 
 function showList(which: ListKind) {
   list.value = which;
@@ -79,11 +83,14 @@ function showList(which: ListKind) {
 
 // ── the timeline, as a single-row heat strip ──────────────────────────────────
 // One cell per ledger day, coloured by minutes, clickable to drill in. Level
-// bucketing is linear (playtime's), local to this caller. `today` gets the accent
-// tint; the axis names it too. The cell index maps straight back to the ledger.
+// bucketing is linear (playtime's), local to this caller. The strip is a
+// contiguous last-14-days run (empty days zero-filled), so it reads like a
+// calendar instead of collapsing days with no listening.
+const STRIP_DAYS = 14;
+const strip = computed(() => contiguousDays(d.value.ledger, daysBefore(todayIso, STRIP_DAYS - 1), todayIso));
 const heatLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / maxDay.value) * 4)));
 const ledgerCells = computed<HeatCell[]>(() =>
-  d.value.ledger.map((row) => ({
+  strip.value.map((row) => ({
     level: heatLevel(row.minutes),
     today: row.day === todayIso,
     title: `${fmtDay(row.day)} · ${row.minutes} min`,
@@ -91,11 +98,11 @@ const ledgerCells = computed<HeatCell[]>(() =>
 );
 const selectedLedgerIndex = computed(() => {
   if (!selected.value) return null;
-  const i = d.value.ledger.findIndex((r) => r.day === selected.value);
+  const i = strip.value.findIndex((r) => r.day === selected.value);
   return i >= 0 ? i : null;
 });
 function onLedgerSelect(i: number) {
-  const row = d.value.ledger[i];
+  const row = strip.value[i];
   if (row) selectDay(row.day, row.minutes);
 }
 
@@ -145,8 +152,8 @@ const dayRowsAll = computed<DayRow[]>(() => {
     plays: t.plays,
   }));
 });
-const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN)));
-const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN));
+const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN.value)));
+const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN.value));
 
 // Day summary counts (tracks + split artists), independent of the active tab.
 const dayTrackCount = computed(() => dayTracks.value?.length ?? 0);
@@ -205,20 +212,24 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         </button>
       </div>
 
-      <!-- Timeline: one heat cell per day, click to drill in. Today isn't tinted
-           as selected — the accent tint marks it, and the axis label names it. -->
+      <!-- Timeline: one heat cell per day over a contiguous fortnight, click to
+           drill in. Today wears a faint ring (not the selection accent); the axis
+           labels the window ends. A short fixed height keeps 14 cells from
+           blowing up to fill the card. -->
       <div v-if="d.ledger.length" class="mu-tl-wrap">
         <div class="mu-tl-lbl"><span>minutes per day</span><span>click a day to drill in</span></div>
         <HeatGrid
           :cells="ledgerCells"
           :rows="1"
           :min-cell="8"
+          :cell-height="30"
+          legend
           selectable
           :selected-index="selectedLedgerIndex"
           @select="onLedgerSelect"
         />
         <div class="mu-axis">
-          <span>{{ d.ledger[0] ? fmtDay(d.ledger[0].day) : "" }}</span>
+          <span>{{ strip[0] ? fmtDay(strip[0].day) : "" }}</span>
           <span class="now">today</span>
         </div>
       </div>

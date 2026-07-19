@@ -462,6 +462,21 @@ test("music module: shapes history into the view, passing art through and empty-
   assert.equal(m.data.topSongs[0]?.artUrl, "https://i.scdn.co/image/x", "song art survives resolve");
   assert.equal(m.data.topArtists[0]?.artUrl, undefined, "artist without art stays undefined");
   assert.equal(m.data.since, "2026-07-10");
+  assert.equal(m.data.initialCount, 5, "default initial count when content has no music setting");
+  assert.equal(m.data.maxCount, 15, "default max count when content has no music setting");
+
+  // CMS-configured display counts flow through to the view. (The lists are capped
+  // to maxCount server-side in the db query; the resolver just carries the numbers
+  // the frontend needs to collapse/expand.)
+  const configured = resolveSiteView({
+    content: { ...content, music: { initialCount: 3, maxCount: 8 } },
+    source: {}, nav, modules, locale: "en",
+    musicHistory: { topSongs: [], topArtists: [], topAlbums: [], ledger: [], trackCount: 0, artistCount: 0 },
+  });
+  const cm = configured.modules["music"];
+  if (!cm || cm.kind !== "music") throw new Error("expected a music module");
+  assert.equal(cm.data.initialCount, 3, "CMS initial count reaches the view");
+  assert.equal(cm.data.maxCount, 8, "CMS max count reaches the view");
 
   // absent history → empty module, not an error
   const empty = resolveSiteView({ content, source: {}, nav, modules, locale: "en" });

@@ -19,6 +19,7 @@ import { presenceMediaUrl } from "../../lib/api";
 import { useDayDrill } from "../../composables/useDayDrill";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { fetchPlaytimeDay } from "../../lib/playtime-api";
+import { contiguousDays } from "../../lib/calendar";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
@@ -65,11 +66,15 @@ const selectDay = (iso: string, minutes: number) =>
 
 // The ledger as a single-row heat strip — the same HeatGrid the weekday×hour map
 // uses, replacing the old height-bars so the site draws "activity over days" one
-// way. One cell per day, clickable to drill in; `ledgerLevel` buckets by the
-// day-max (distinct from the weekday×hour `heatLevel`, which buckets by its own).
+// way. The strip is contiguous over the ledger's span (first day → today), empty
+// days zero-filled so gaps show instead of collapsing; `ledgerLevel` buckets by
+// the day-max (distinct from the weekday×hour `heatLevel`, which buckets by its own).
+const strip = computed(() =>
+  contiguousDays(d.value.ledger, d.value.ledger[0]?.day ?? todayIso, todayIso),
+);
 const ledgerLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / maxDay.value) * 4)));
 const ledgerCells = computed<HeatCell[]>(() =>
-  d.value.ledger.map((row) => ({
+  strip.value.map((row) => ({
     level: ledgerLevel(row.minutes),
     today: row.day === todayIso,
     title: `${fmtDay(row.day)} · ${row.minutes ? fmtHrs(row.minutes) : "nothing"}`,
@@ -77,11 +82,11 @@ const ledgerCells = computed<HeatCell[]>(() =>
 );
 const selectedLedgerIndex = computed(() => {
   if (!selected.value) return null;
-  const i = d.value.ledger.findIndex((r) => r.day === selected.value);
+  const i = strip.value.findIndex((r) => r.day === selected.value);
   return i >= 0 ? i : null;
 });
 function onLedgerSelect(i: number) {
-  const row = d.value.ledger[i];
+  const row = strip.value[i];
   if (row) selectDay(row.day, row.minutes);
 }
 
@@ -179,12 +184,13 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
           :cells="ledgerCells"
           :rows="1"
           :min-cell="8"
+          legend
           selectable
           :selected-index="selectedLedgerIndex"
           @select="onLedgerSelect"
         />
         <div class="pt-axis">
-          <span class="pt-m">{{ d.ledger[0] ? fmtDay(d.ledger[0].day) : "" }}</span>
+          <span class="pt-m">{{ strip[0] ? fmtDay(strip[0].day) : "" }}</span>
           <span class="pt-m">today</span>
         </div>
 

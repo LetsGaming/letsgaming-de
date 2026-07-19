@@ -21,9 +21,6 @@ const hidden = computed(() => props.module.data.events.length - EVENTS_SHOWN);
 const contributionCells = computed<HeatCell[]>(() =>
   props.module.data.contributions.levels.map((level) => ({ level })),
 );
-
-// Legend swatches only (the grid owns its own cell colours now).
-const heatVar = (level: number) => `var(--heat-${level})`;
 </script>
 
 <template>
@@ -42,12 +39,7 @@ const heatVar = (level: number) => `var(--heat-${level})`;
       <div class="box">
         <h3>Contributions</h3>
         <div class="sub">last 26 weeks · {{ module.data.contributions.total }} in the window</div>
-        <HeatGrid :cells="contributionCells" />
-        <div class="heat-legend">
-          less
-          <i v-for="n in [0, 1, 2, 3, 4]" :key="n" :style="{ background: heatVar(n) }" />
-          more
-        </div>
+        <HeatGrid :cells="contributionCells" legend />
       </div>
       <div class="box">
         <h3>Languages</h3>
