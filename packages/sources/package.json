@@ -1,6 +1,6 @@
 {
   "name": "@lg/sources",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Pluggable data-source adapters. Each implements the Source contract; adding a source is one adapter + one registration. GitHub only at launch.",

@@ -1,6 +1,6 @@
 {
   "name": "@lg/core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Shared contracts: Localized i18n, the recursive NavNode tree + build-time lint, the content model, and the Source adapter contract. No runtime deps \u2014 pure TypeScript.",

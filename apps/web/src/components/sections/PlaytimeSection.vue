@@ -197,7 +197,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         <div class="pt-heat">
           <div class="pt-heat-days"><span v-for="dl in DAYS" :key="dl">{{ dl }}</span></div>
           <div class="pt-heat-plot">
-            <HeatGrid :cells="heatCells" :min-cell="8" />
+            <HeatGrid :cells="heatCells" :min-cell="8" legend />
             <div class="pt-heat-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
           </div>
         </div>

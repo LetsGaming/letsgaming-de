@@ -1,6 +1,6 @@
 {
   "name": "@lg/web",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Astro + Vue-islands public site. Renders the normalized SiteView from the read API; near-zero JS shell with tactile Vue islands.",
