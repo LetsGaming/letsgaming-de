@@ -49,9 +49,9 @@ services:
       # network, so no ports are published and nothing is exposed to the internet.
       WAKAPI_URL: ${WAKAPI_URL:-}
       WAKAPI_KEY: ${WAKAPI_KEY:-}
-      # Steam (public Web API), powers "Recently on Steam".
-      STEAM_API_KEY: ${STEAM_API_KEY:-}
-      STEAM_ID: ${STEAM_ID:-}
+      # RAWG (game database), resolves game names to cover art + genre for the
+      # playtime module. Optional.
+      RAWG_API_KEY: ${RAWG_API_KEY:-}
     volumes:
       # The store + media are the archive; this volume is what you back up.
       - store:/data

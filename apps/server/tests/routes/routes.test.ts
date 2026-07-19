@@ -138,13 +138,13 @@ test("cms presence: the category allow-list validates and persists", async () =>
     method: "PUT",
     url: "/api/cms/presence",
     headers: auth,
-    payload: { show: ["game", "steam"] },
+    payload: { show: ["game", "music"] },
   });
   assert.equal(ok.statusCode, 200);
 
   // Read back through the CMS content endpoint.
   const content = await app.inject({ method: "GET", url: "/api/cms/content", headers: auth });
-  assert.deepEqual(content.json().content.presence.show, ["game", "steam"]);
+  assert.deepEqual(content.json().content.presence.show, ["game", "music"]);
   await app.close();
 });
 

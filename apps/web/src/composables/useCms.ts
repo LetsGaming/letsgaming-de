@@ -8,11 +8,14 @@ import {
 import type {
   AreaId,
   GuestbookEntry,
+  Headline,
   Hobby,
   Link,
   Locale,
   Localized,
   NowItem,
+  SiteMeta,
+  Status,
 } from "@lg/core";
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
@@ -134,10 +137,10 @@ const tokenInput = ref("");
 const toast = ref("");
 
 // Editable state (loaded from the API).
-const meta = reactive<any>({ name: "", handle: "", location: emptyL(), role: emptyL() });
-const headline = reactive<any>({ before: emptyL(), highlight: emptyL(), after: emptyL() });
+const meta = reactive<SiteMeta>({ name: "", handle: "", location: emptyL(), role: emptyL() });
+const headline = reactive<Headline>({ before: emptyL(), highlight: emptyL(), after: emptyL() });
 const lede = reactive<Localized>(emptyL());
-const status = reactive<any>({ verb: emptyL(), now: emptyL() });
+const status = reactive<Status>({ verb: emptyL(), now: emptyL() });
 const bio = ref<Localized[]>([]);
 const hobbiesList = useEntityList<Hobby & { sort?: number }>({
   kind: "hobbies",

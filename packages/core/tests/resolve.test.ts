@@ -38,7 +38,7 @@ test("resolver localizes to the requested locale and falls back to English per-f
   assert.equal(first?.kind === "text" ? first.text : "", "Deutsche Bio");
 });
 
-test("resolver folds Wakapi into coding and presence config + Steam into presence", () => {
+test("resolver folds Wakapi into coding and presence config", () => {
   const content: SiteContent = {
     meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
     headline: { before: en("a "), highlight: en("b"), after: en(" c") },
@@ -57,12 +57,11 @@ test("resolver folds Wakapi into coding and presence config + Steam into presenc
   ];
 
   const view = resolveSiteView({
-    content: { ...content, presence: { show: ["game", "steam"] } },
+    content: { ...content, presence: { show: ["game"] } },
     nav,
     modules,
     source: {
       wakapi: { range: "last 7 days", totalSeconds: 7200, languages: [{ name: "TS", pct: 100, seconds: 7200 }] },
-      steam: { recent: [{ name: "CS2", appId: 730, minutes2Weeks: 120 }], playing: { name: "CS2", appId: 730 } },
     },
   });
 
@@ -73,15 +72,14 @@ test("resolver folds Wakapi into coding and presence config + Steam into presenc
 
   const presence = view.modules["presence"];
   if (!presence || presence.kind !== "presence") throw new Error("expected presence module");
-  // "game" is a live category → the widget is told to poll. No Discord id is
-  // involved here: enablement is a CMS display decision, decoupled from whether
-  // the server is configured to reach Lanyard.
+  // "game" is shown → the widget is told to poll. No Discord id is involved
+  // here: enablement is a CMS display decision, decoupled from whether the server
+  // is configured to reach Lanyard.
   assert.equal(presence.data.enabled, true);
-  // Presence is present-tense: the CURRENT game reaches the client, but the
-  // fortnight list does not — that history moved to the playtime module.
-  assert.equal(presence.data.steam?.playing?.name, "CS2");
-  assert.ok(!("recent" in (presence.data.steam ?? {})), "no fortnight list in the presence card");
-  assert.ok(!("playtime" in presence.data), "no merged playtime in the presence card");
+  // Presence is present-tense and entirely live — no history reaches it. The
+  // recently-played shelf and the ledger live in the playtime module.
+  assert.ok(!("recent" in presence.data), "no history in the presence card");
+  assert.ok(!("playtime" in presence.data), "no playtime in the presence card");
   // The client is NOT given the Discord id or the category list.
   assert.ok(!("discordId" in presence.data) && !("show" in presence.data));
 });
@@ -101,32 +99,18 @@ test("presence enablement: driven by the allow-list, not by any Discord id", () 
     } as SiteContent,
     nav: [{ id: "life", label: en("Life"), modules: ["presence"] }] as NavNode[],
     modules: [{ id: "presence", kind: "presence", heading: en("P") }] as ModuleDescriptor[],
-    source: { steam: { recent: [{ name: "CS2", appId: 730, minutes2Weeks: 60 }], playing: { name: "CS2", appId: 730 } } },
+    source: {},
   };
 
-  // A live category is shown → enabled. Steam configured but NOT in the allow-list
-  // → withheld from the client. No presence input at all: the resolver takes no
-  // Discord id, so enablement can't depend on one.
+  // A category is shown → enabled. No presence input at all: the resolver takes
+  // no Discord id, so enablement can't depend on one.
   const gameOnly = resolveSiteView({
     ...base,
     content: { ...base.content, presence: { show: ["game"] } },
   });
   const m1 = gameOnly.modules["presence"];
   if (!m1 || m1.kind !== "presence") throw new Error("expected presence");
-  assert.equal(m1.data.steam, undefined);
   assert.equal(m1.data.enabled, true);
-
-  // Only "steam" enabled (no live category) → NOT enabled, but the current game
-  // still shows. The fortnight list is gone from presence — only `playing` remains.
-  const steamOnly = resolveSiteView({
-    ...base,
-    content: { ...base.content, presence: { show: ["steam"] } },
-  });
-  const m2 = steamOnly.modules["presence"];
-  if (!m2 || m2.kind !== "presence") throw new Error("expected presence");
-  assert.equal(m2.data.enabled, false);
-  assert.equal(m2.data.steam?.playing?.name, "CS2");
-  assert.ok(!("recent" in (m2.data.steam ?? {})), "presence carries the current game, not the fortnight list");
 
   // The decoupling, stated as a test: a live category is enough, with no Discord
   // id anywhere in the resolve. (Under the old design this same input resolved to
@@ -404,22 +388,16 @@ test("hidden games are dropped from the recently-played chart but not from the d
   const view = resolveSiteView({
     content: {
       ...content,
-      // hide Doom; game + steam shown. The hidden-games filter now guards the
-      // playtime module's recently-played shelf (the merge moved there).
-      presence: { show: ["game", "steam"], hiddenGames: ["doom"] },
+      // hide Doom; games shown. The hidden-games filter guards the playtime
+      // module's recently-played shelf.
+      presence: { show: ["game"], hiddenGames: ["doom"] },
     },
     nav,
     modules,
-    source: {
-      steam: {
-        recent: [
-          { name: "Counter-Strike 2", appId: 730, minutes2Weeks: 120, minutesForever: 74000 },
-          { name: "Doom", appId: 379720, minutes2Weeks: 90, minutesForever: 5000 },
-        ],
-      },
-    },
-    // an observed non-Steam game that's also hidden
+    source: {},
+    // observed games — one of them hidden, matched case-insensitively.
     playtime: [
+      { name: "Counter-Strike 2", minutes: 120, sessions: 4, exact: true },
       { name: "Minecraft", minutes: 60, sessions: 2, exact: true },
       { name: "DOOM", minutes: 45, sessions: 1, exact: true },
     ],
@@ -429,8 +407,8 @@ test("hidden games are dropped from the recently-played chart but not from the d
   if (!playtime || playtime.kind !== "playtime") throw new Error("expected playtime");
   const names = playtime.data.recent.map((g) => g.name);
   assert.ok(names.includes("Counter-Strike 2"), "shown game survives");
-  assert.ok(names.includes("Minecraft"), "shown observed game survives");
-  assert.ok(!names.some((n) => n.toLowerCase() === "doom"), "Doom is hidden, both the Steam and observed row");
+  assert.ok(names.includes("Minecraft"), "shown game survives");
+  assert.ok(!names.some((n) => n.toLowerCase() === "doom"), "Doom is hidden regardless of casing");
 });
 
 test("music module: shapes history into the view, passing art through and empty-safe", () => {
@@ -488,7 +466,7 @@ test("music module: shapes history into the view, passing art through and empty-
   assert.deepEqual(em.data.ledger, []);
 });
 
-test("playtime module carries the recently-played shelf: Steam merged with observed, each flagged", () => {
+test("playtime module carries the recently-played shelf from observed sessions", () => {
   const content: SiteContent = {
     meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
     headline: { before: en("a "), highlight: en("b"), after: en(" c") },
@@ -499,21 +477,24 @@ test("playtime module carries the recently-played shelf: Steam merged with obser
   const modules: ModuleDescriptor[] = [{ id: "playtime", kind: "playtime", heading: en("Time played") }];
 
   const view = resolveSiteView({
-    content: { ...content, presence: { show: ["game", "steam"] } },
+    content: { ...content, presence: { show: ["game"] } },
     nav, modules,
-    source: { steam: { recent: [{ name: "Counter-Strike 2", appId: 730, minutes2Weeks: 120 }] } },
-    // an observed non-Steam game — the only place these ever come from
-    playtime: [{ name: "Minecraft", minutes: 60, sessions: 2, exact: true }],
+    source: {},
+    // every game the shelf shows comes from observed sessions now
+    playtime: [
+      { name: "Counter-Strike 2", minutes: 120, sessions: 4, exact: true },
+      { name: "Minecraft", minutes: 60, sessions: 2, exact: false },
+    ],
   });
 
   const pt = view.modules["playtime"];
   if (!pt || pt.kind !== "playtime") throw new Error("expected playtime");
   const byName = Object.fromEntries(pt.data.recent.map((g) => [g.name, g]));
-  assert.ok(byName["Counter-Strike 2"], "Steam game present");
-  assert.equal(byName["Counter-Strike 2"]?.source, "steam");
-  assert.equal(byName["Counter-Strike 2"]?.appId, 730, "Steam identity travels with the row");
-  assert.ok(byName["Minecraft"], "observed non-Steam game present");
-  assert.equal(byName["Minecraft"]?.source, "observed");
+  assert.ok(byName["Counter-Strike 2"], "game present");
+  assert.equal(byName["Counter-Strike 2"]?.minutes, 120);
+  assert.ok(byName["Minecraft"], "second game present");
+  // an inexact total (Discord-undated sessions) stays flagged
+  assert.equal(byName["Minecraft"]?.exact, false);
 });
 
 test("playtime recently-played is gated on the game category, like the old presence chart", () => {
@@ -528,9 +509,9 @@ test("playtime recently-played is gated on the game category, like the old prese
 
   // "game" NOT in the allow-list → no recently-played shelf, even with data.
   const view = resolveSiteView({
-    content: { ...content, presence: { show: ["steam"] } }, // steam alone, no "game"
+    content: { ...content, presence: { show: ["music"] } }, // no "game"
     nav, modules,
-    source: { steam: { recent: [{ name: "CS2", appId: 730, minutes2Weeks: 60 }] } },
+    source: {},
     playtime: [{ name: "Minecraft", minutes: 60, sessions: 1, exact: true }],
   });
   const pt = view.modules["playtime"];

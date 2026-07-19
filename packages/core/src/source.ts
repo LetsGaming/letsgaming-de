@@ -24,8 +24,8 @@ export interface Source<Raw = unknown, Normalized = unknown> {
   /**
    * How long this source's data stays *true*, in milliseconds. Distinct from
    * `schedule`: that's how often we ask, this is how long the answer holds.
-   * Discord presence is worthless after a minute; a fortnight of Steam playtime
-   * is fine an hour old.
+   * Discord presence is worthless after a minute; a fortnight of coding stats is
+   * fine an hour old.
    *
    * Past it the module renders `stale` — the data plus its age — rather than
    * pretending to be current. The site's entire claim is that it updates itself,
@@ -166,7 +166,6 @@ export interface GitHubEvent {
 export interface SourceData {
   github?: GitHubData;
   wakapi?: WakapiData;
-  steam?: SteamData;
 }
 
 /** Wakapi (self-hosted WakaTime): coding time by language over a range. */
@@ -179,38 +178,10 @@ export interface WakapiData {
   languages: { name: string; pct: number; seconds: number }[];
 }
 
-/** Steam (public Web API): what I actually play. Enriches the Discord widget. */
-export interface SteamData {
-  /** Currently in-game, if the public profile exposes it. */
-  playing?: { name: string; appId: number };
-  /** Recently played (last 2 weeks), most-played first. */
-  recent: {
-    name: string;
-    appId: number;
-    minutes2Weeks: number;
-    /**
-     * Lifetime minutes on this game, as of this sync. Archived in every
-     * `source_snapshots` row, so differencing two snapshots gives *exact* minutes
-     * played in that interval — `playtime_2weeks` decays (played minus expired),
-     * this only ever grows. It's the raw material the ledger differences; the
-     * widget itself never shows a lifetime counter.
-     */
-    minutesForever: number;
-    iconUrl?: string;
-    /**
-     * Dominant colour of the game's own icon, sampled at sync. Colour is
-     * imported, never invented: the bar for a game is the colour of that game,
-     * not a slot from a house palette. Absent if the icon didn't load — the bar
-     * falls back to neutral rather than to a guess.
-     */
-    accent?: string;
-  }[];
-}
-
 export type SourceId = keyof SourceData;
 
 /** Every source id, for iteration and for narrowing an untrusted store row. */
-export const SOURCE_IDS = ["github", "wakapi", "steam"] as const satisfies readonly SourceId[];
+export const SOURCE_IDS = ["github", "wakapi"] as const satisfies readonly SourceId[];
 
 export function isSourceId(value: unknown): value is SourceId {
   return typeof value === "string" && (SOURCE_IDS as readonly string[]).includes(value);
@@ -242,13 +213,11 @@ export function isSourceId(value: unknown): value is SourceId {
  */
 export const SOURCE_TTL: Record<SourceId, number> = {
   github: 8 * 60 * 60 * 1000,
-  steam: 60 * 60 * 1000,
   wakapi: 2 * 60 * 60 * 1000,
 };
 
 /** Human label per source, for the "sources" line on a module. */
 export const SOURCE_LABEL: Record<SourceId, string> = {
   github: "GitHub",
-  steam: "Steam",
   wakapi: "Wakapi",
 };

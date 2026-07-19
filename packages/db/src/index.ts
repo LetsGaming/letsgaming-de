@@ -6,6 +6,7 @@ import { contentRepo, type ContentRepo } from "./content-repo.js";
 import { guestbookRepo, type GuestbookRepo } from "./guestbook-repo.js";
 import { musicRepo } from "./music-repo.js";
 import { sessionsRepo } from "./sessions-repo.js";
+import { gameMetaRepo } from "./game-meta-repo.js";
 import { iaRepo, type IaRepo } from "./ia-repo.js";
 import { sourceRepo, type SourceRepo } from "./source-repo.js";
 import { seedIfEmpty, reconcileIa } from "./seed.js";
@@ -23,6 +24,7 @@ export * from "./seed.js";
 
 export type SessionsRepo = ReturnType<typeof sessionsRepo>;
 export type MusicRepo = ReturnType<typeof musicRepo>;
+export type GameMetaRepo = ReturnType<typeof gameMetaRepo>;
 
 export interface Store {
   content: ContentRepo;
@@ -33,6 +35,7 @@ export interface Store {
   guestbook: GuestbookRepo;
   sessions: SessionsRepo;
   music: MusicRepo;
+  gameMeta: GameMetaRepo;
   close(): void;
 }
 
@@ -81,6 +84,7 @@ function storeFrom(db: ReturnType<typeof openDatabase>): Store {
     guestbook: guestbookRepo(db),
     sessions: sessionsRepo(db),
     music: musicRepo(db),
+    gameMeta: gameMetaRepo(db),
     close: () => db.close(),
   };
 }

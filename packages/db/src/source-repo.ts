@@ -1,4 +1,4 @@
-import { isSourceId, type GitHubData, type SourceData, type SourceId, type SteamData, type WakapiData } from "@lg/core";
+import { isSourceId, type GitHubData, type SourceData, type SourceId, type WakapiData } from "@lg/core";
 import type { DB } from "./database.js";
 import { asNullableText, asText, json, mapRow, mapRows, transact, type Row } from "./row-mapper.js";
 
@@ -58,7 +58,6 @@ export function sourceRepo(db: DB) {
         // The id determines the shape; the mapping is the SourceData contract.
         if (row.sourceId === "github") out.github = json<GitHubData>(row.data);
         else if (row.sourceId === "wakapi") out.wakapi = json<WakapiData>(row.data);
-        else if (row.sourceId === "steam") out.steam = json<SteamData>(row.data);
       }
       return out;
     },

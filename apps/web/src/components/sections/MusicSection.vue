@@ -31,6 +31,7 @@ import { useDayDrill } from "../../composables/useDayDrill";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { fetchMusicDay } from "../../lib/music-api";
 import { contiguousDays, daysBefore } from "../../lib/calendar";
+import { dayRowsFor, type DayRow, type ListKind } from "../../lib/music-day";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
@@ -68,7 +69,6 @@ function clearDay() {
 }
 
 // ── which list backs the panel, and whether it's expanded past the top 5 ──────
-type ListKind = "songs" | "artists";
 const list = ref<ListKind>("songs");
 const expanded = ref(false);
 const activeRows = computed<MusicRankView[]>(() => (list.value === "songs" ? d.value.topSongs : d.value.topArtists));
@@ -107,51 +107,9 @@ function onLedgerSelect(i: number) {
 }
 
 // ── the day panel rows, following the active tab ──────────────────────────────
-// songs → the day's tracks; artists → the day's artists, aggregated from those
-// tracks (splitting collaborations the same way the top-artists list does). This
-// is the fix for "click a day on 'different artists' and it showed tracks".
-interface DayRow {
-  key: string;
-  primary: string;
-  secondary?: string;
-  art?: string;
-  minutes: number;
-  plays: number;
-}
-const dayRowsAll = computed<DayRow[]>(() => {
-  const tracks = dayTracks.value ?? [];
-  if (list.value === "artists") {
-    const byArtist = new Map<string, DayRow>();
-    for (const t of tracks) {
-      for (const name of splitArtists(t.artist)) {
-        const key = name.toLowerCase();
-        const cur = byArtist.get(key);
-        if (cur) {
-          cur.minutes += t.minutes;
-          cur.plays += t.plays;
-          if (!cur.art && t.artUrl) cur.art = t.artUrl;
-        } else {
-          byArtist.set(key, {
-            key,
-            primary: name,
-            minutes: t.minutes,
-            plays: t.plays,
-            ...(t.artUrl ? { art: t.artUrl } : {}),
-          });
-        }
-      }
-    }
-    return [...byArtist.values()].sort((a, b) => b.minutes - a.minutes);
-  }
-  return tracks.map((t, i) => ({
-    key: `${t.song}-${i}`,
-    primary: t.song,
-    secondary: t.artist,
-    ...(t.artUrl ? { art: t.artUrl } : {}),
-    minutes: t.minutes,
-    plays: t.plays,
-  }));
-});
+// Delegated to `dayRowsFor` (a tested pure function) so "artists → that day's
+// artists, not its tracks" is locked and can't regress.
+const dayRowsAll = computed<DayRow[]>(() => dayRowsFor(dayTracks.value ?? [], list.value));
 const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN.value)));
 const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN.value));
 
@@ -196,7 +154,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         </div>
         <button
           class="mu-stat mu-tab"
-          :aria-pressed="!selected && list === 'songs'"
+          :aria-pressed="list === 'songs'"
           @click="showList('songs')"
         >
           <span class="mu-n">{{ d.trackCount }}</span>
@@ -204,7 +162,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         </button>
         <button
           class="mu-stat mu-tab"
-          :aria-pressed="!selected && list === 'artists'"
+          :aria-pressed="list === 'artists'"
           @click="showList('artists')"
         >
           <span class="mu-n">{{ d.artistCount }}</span>

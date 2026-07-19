@@ -46,7 +46,7 @@ function setRetention(e: Event) {
 
       <h4>Show live</h4>
       <p class="muted">
-        Which Discord/Steam categories the widget may reveal. The server filters to exactly these
+        Which Discord categories the widget may reveal. The server filters to exactly these
         before anything reaches a visitor — unchecked categories never leave the backend.
       </p>
       <div class="pgrid">
@@ -59,12 +59,11 @@ function setRetention(e: Event) {
       <h4>Record to history</h4>
       <p class="muted">
         Which categories the sampler accumulates for the playtime charts — separate from what's shown
-        live. A category can be recorded but hidden, or shown but not recorded. Steam isn't here: its
-        history comes from its own sync, not the sampler.
+        live. A category can be recorded but hidden, or shown but not recorded.
       </p>
       <div class="pgrid">
         <label
-          v-for="o in PRESENCE_OPTIONS.filter((x) => x.key !== 'steam')"
+          v-for="o in PRESENCE_OPTIONS"
           :key="`sample-${o.key}`"
           class="ptoggle"
         >
@@ -78,7 +77,7 @@ function setRetention(e: Event) {
 
       <h4>Keep history for</h4>
       <p class="muted">
-        Steam forgets after two weeks; this table is the only long memory, so the default keeps it.
+        This table is the only long memory of what was played, so the default keeps it.
         Older sessions are pruned on a daily sweep.
       </p>
       <select class="retention" :value="presenceRetention === null ? 'null' : presenceRetention" @change="setRetention">

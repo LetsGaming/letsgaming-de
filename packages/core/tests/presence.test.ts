@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { defaultPresenceSettings, normalizePresence, sanitizePresenceShow, type LanyardData } from "../src/presence.js";
 
 test("sanitizePresenceShow keeps valid categories, de-dupes, and drops junk", () => {
-  assert.deepEqual(sanitizePresenceShow(["game", "game", "nope", "steam"]), ["game", "steam"]);
+  assert.deepEqual(sanitizePresenceShow(["game", "game", "nope", "steam"]), ["game"]);
   assert.deepEqual(sanitizePresenceShow("nope"), []);
   assert.deepEqual(sanitizePresenceShow([1, {}, "music"]), ["music"]);
   assert.ok(defaultPresenceSettings().show.includes("game"));
@@ -43,12 +43,10 @@ test("disabling music hides Spotify entirely", () => {
   assert.ok(noMusic.cards.some((c) => c.category === "custom"));
 });
 
-test("custom status combines emoji + text; steam is not a Lanyard card", () => {
-  const all = normalizePresence(data, ["game", "music", "streaming", "custom", "steam"]);
+test("custom status combines emoji + text", () => {
+  const all = normalizePresence(data, ["game", "music", "streaming", "custom"]);
   const custom = all.cards.find((c) => c.category === "custom");
   assert.equal(custom?.title, "🛠️ building things");
-  // "steam" only gates the synced section; it never produces a Lanyard card.
-  assert.ok(!all.cards.some((c) => (c.category as string) === "steam"));
 });
 
 test("empty allow-list yields no cards but keeps status", () => {

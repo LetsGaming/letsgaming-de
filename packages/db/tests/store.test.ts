@@ -105,13 +105,13 @@ test("presence settings: seeded default, roundtrip, and sanitized on write", () 
   // Seeded with the default allow-list.
   assert.deepEqual(
     [...store.content.getPresence().show].sort(),
-    ["custom", "game", "music", "steam", "streaming"],
+    ["custom", "game", "music", "streaming"],
   );
   // Unknown categories are dropped on the way in.
   store.content.setPresence({ show: ["game", "steam", "bogus"] as never });
-  assert.deepEqual(store.content.getPresence().show, ["game", "steam"]);
+  assert.deepEqual(store.content.getPresence().show, ["game"]);
   // getContent() carries it through.
-  assert.deepEqual(store.content.getContent().presence?.show, ["game", "steam"]);
+  assert.deepEqual(store.content.getContent().presence?.show, ["game"]);
   store.close();
 });
 
@@ -686,13 +686,13 @@ test("dayBreakdown is the fortnight query scoped to one date", () => {
 test("the four presence settings survive a write/read round-trip", () => {
   const store = openStore(":memory:");
   store.content.setPresence({
-    show: ["game", "steam"],
+    show: ["game", "streaming"],
     sample: ["game", "music"],
     retentionDays: 365,
     hiddenGames: ["Doom", "Quake"],
   });
   const got = store.content.getPresence();
-  assert.deepEqual(got.show.sort(), ["game", "steam"]);
+  assert.deepEqual(got.show.sort(), ["game", "streaming"]);
   assert.deepEqual(got.sample.sort(), ["game", "music"]);
   assert.equal(got.retentionDays, 365);
   assert.deepEqual(got.hiddenGames, ["Doom", "Quake"]);
@@ -726,4 +726,25 @@ test("prune drops sessions past the retention window", () => {
   const rows = store.sessions.playtime("game", daysAgo(700));
   assert.deepEqual(rows.map((r) => r.name), []); // both are zero-length in this seed
   // (prune by count is the real assertion; playtime filters sub-minute sessions)
+});
+
+test("game metadata cache: put, read-all, and skip-set round-trip", () => {
+  const store = openStore(":memory:");
+  store.gameMeta.put("Palworld", { coverUrl: "https://media.rawg.io/p.jpg", genre: "Action" });
+  store.gameMeta.put("  BALATRO ", { genre: "Card" }); // odd casing/spacing → normalized key
+  store.gameMeta.put("Obscure", {}); // resolved, but RAWG had nothing
+
+  const all = store.gameMeta.getAll();
+  assert.deepEqual(all.get("palworld"), { coverUrl: "https://media.rawg.io/p.jpg", genre: "Action" });
+  assert.deepEqual(all.get("balatro"), { genre: "Card" }); // no cover → field absent
+  assert.deepEqual(all.get("obscure"), {}); // empty, but present
+
+  // resolvedKeys includes even the empty resolution, so the sweep skips it next run
+  const done = store.gameMeta.resolvedKeys();
+  assert.ok(done.has("palworld") && done.has("balatro") && done.has("obscure"));
+
+  // upsert: re-putting the same name overwrites rather than duplicating
+  store.gameMeta.put("Palworld", { genre: "Survival" });
+  assert.deepEqual(store.gameMeta.getAll().get("palworld"), { genre: "Survival" });
+  store.close();
 });

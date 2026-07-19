@@ -24,11 +24,9 @@ import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
   defaultPresenceSettings,
-  isLivePresenceCategory,
   isHiddenGame,
-  mergePlaytime,
-  STEAM_CATEGORY,
-  type LedgerDay,
+  playtimeRows,
+  type GameMeta,
   type PlaytimeEntry,
   type MusicRankEntry,
   type PlaytimeHeatCell,
@@ -73,10 +71,15 @@ export interface ResolveInput {
    *  Not a source: it's the store's own accumulation, so it arrives here already
    *  summed rather than as a snapshot to normalize. */
   playtime?: PlaytimeEntry[];
+  /** Cached game metadata (cover art, genre) keyed by `gameMetaKey`, resolved from
+   *  RAWG by the server. The resolver attaches it to the recently-played rows so a
+   *  Discord-observed name gets a cover and a genre it never carried itself. */
+  gameMeta?: ReadonlyMap<string, GameMeta>;
   /** The historical playtime module's data (features 02 + 03): all-time day strip
-   *  and weekday×hour heatmap. Pre-computed by the server — the ledger differences
-   *  archived snapshots, the heatmap groups sessions — so the resolver stays pure. */
-  playHistory?: { ledger: LedgerDay[]; heat: PlaytimeHeatCell[]; since?: string };
+   *  and weekday×hour heatmap, both built server-side from observed sessions (the
+   *  ledger is per-day totals, the heatmap groups by weekday×hour) so the resolver
+   *  stays pure. */
+  playHistory?: { ledger: { day: string; minutes: number }[]; heat: PlaytimeHeatCell[]; since?: string };
   /** The music module's data: top songs/artists/albums plus a per-day listening
    *  strip, over the window. Pre-computed by the server from `music_plays` (the
    *  resolver stays pure), same as `playHistory`. Absent → an empty module. */
@@ -505,66 +508,48 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         return { id: descriptor.id, kind: "guestbook", data: { heading, note, entries } };
       }
       case "presence": {
-        // Enablement is purely the owner's CMS allow-list: is any live category
-        // still shown? No env, no Discord id here — the widget polls the
-        // server-filtered /api/presence and the *server* owns whether Discord is
-        // configured and online. Keeping this env-free is the point: the SSR
-        // process resolves this flag without any presence secret.
+        // Enablement is purely the owner's CMS allow-list: is any category still
+        // shown? No env, no Discord id here — the widget polls the server-filtered
+        // /api/presence and the *server* owns whether Discord is configured and
+        // online. Keeping this env-free is the point: the SSR process resolves this
+        // flag without any presence secret.
         const show = content.presence?.show ?? defaultPresenceSettings().show;
-        const enabled = show.some(isLivePresenceCategory);
-        const steam = source.steam;
-        const includeSteam = show.includes(STEAM_CATEGORY) && steam;
+        const enabled = show.length > 0;
         const avatar = resolveAsset(content.meta.avatar, assets);
 
-        // "Right now" is present-tense only. The current game (steam.playing) stays;
-        // the fortnight list and the merged playtime history moved to the playtime
-        // module, where history belongs. The live Discord half is fetched by the
-        // widget client-side.
+        // "Right now" is present-tense only, and entirely live: the Discord socket
+        // fills it client-side. History (recently played, the ledger) lives in the
+        // playtime module, where it belongs.
         const data: PresenceModuleView = {
           enabled,
           name: content.meta.name,
           handle: content.meta.handle,
           ...(avatar && (avatar.kind === "image" || avatar.kind === "gif") ? { avatar } : {}),
-          ...(includeSteam && steam.playing ? { steam: { playing: steam.playing } } : {}),
         };
         return {
           id: descriptor.id,
           kind: "presence",
-          // Steam's half is synced, so it can be stale; Discord's half is fetched
-          // client-side and reports its own state in the widget. `enabled` above is
-          // a display toggle (a live category is shown) — it says nothing about
-          // whether Discord answered.
-          ...(includeSteam
-            ? { data: { heading, note, freshness: freshnessOf("steam", Boolean(steam)), ...data } }
-            : { data: { heading, note, ...data } }),
+          // `enabled` is a display toggle (a category is shown) — it says nothing
+          // about whether Discord answered; the widget reports its own live state.
+          data: { heading, note, ...data },
         };
       }
       case "playtime": {
-        // Pre-computed by the server; the resolver only shapes it into the view.
-        // Absent history is an empty module, not an error — a fresh install has no
-        // snapshots to difference and no sessions to bucket yet.
+        // Shaped from the server's pre-computed observed history; the resolver
+        // stays pure. Absent history is an empty module, not an error — a fresh
+        // install has recorded no sessions yet.
         const hist = input.playHistory ?? { ledger: [], heat: [] };
         const totalMinutes = hist.ledger.reduce((sum, d) => sum + d.minutes, 0);
 
-        // "Recently played" — moved here from the presence card, because it's
-        // history. Steam's fortnight and Discord's observations are different
-        // measurements of the same hours: Discord reports Steam games too, so
-        // summing them double-counts. `mergePlaytime` takes Steam's number where
-        // Steam has one (it counts hours Discord wasn't watching) and the observed
-        // one everywhere else — the only place a non-Steam game comes from. Gated
-        // on the same `game` allow-list and hidden-games filter the presence card
-        // used, so nothing the owner hid surfaces here either.
+        // "Recently played" — every game Discord observed over the window,
+        // most-played first. Gated on the same `game` allow-list and hidden-games
+        // filter as the presence card, so nothing the owner hid surfaces here.
         const pShow = content.presence?.show ?? defaultPresenceSettings().show;
-        const pSteam = source.steam;
-        const recent =
-          pShow.includes("game")
-            ? mergePlaytime(
-                pShow.includes(STEAM_CATEGORY) && pSteam ? pSteam.recent : [],
-                input.playtime ?? [],
-              )
-                .filter((g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []))
-                .slice(0, FEED.playtime)
-            : [];
+        const recent = pShow.includes("game")
+          ? playtimeRows(input.playtime ?? [], input.gameMeta)
+              .filter((g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []))
+              .slice(0, FEED.playtime)
+          : [];
 
         return {
           id: descriptor.id,

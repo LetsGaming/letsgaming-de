@@ -5,13 +5,13 @@
  * a pure `normalizePresence(raw, show)` maps Lanyard's raw activities into a small,
  * friendly shape and keeps only the categories the owner enabled — so "disable
  * music" or "only games" is a config choice, not a code change. The live socket
- * lives in the web island; the Steam "what I actually play" half is a separate,
- * server-synced source folded in alongside.
+ * lives in the web island; the accumulated "what I actually play" history is a
+ * separate, sampled table (see the sessions repo), folded in alongside.
  */
 
 /**
- * Every presence category the owner can toggle, in display order. `steam` gates
- * the synced Steam section; the rest come from Discord.
+ * Every presence category the owner can toggle, in display order. All are filled
+ * by Discord's live socket.
  *
  * The type derives from this array rather than the other way round, so a new
  * category can't be added to one and forgotten in the other. Everything that
@@ -24,7 +24,6 @@ export const PRESENCE_CATEGORIES = [
   "music",
   "watching",
   "custom",
-  "steam",
 ] as const;
 
 export type PresenceCategory = (typeof PRESENCE_CATEGORIES)[number];
@@ -32,32 +31,6 @@ export type PresenceCategory = (typeof PRESENCE_CATEGORIES)[number];
 export function isPresenceCategory(value: unknown): value is PresenceCategory {
   return typeof value === "string" && (PRESENCE_CATEGORIES as readonly string[]).includes(value);
 }
-
-/** The category the Steam half of the widget is gated on (the one non-Discord one). */
-export const STEAM_CATEGORY = "steam" satisfies PresenceCategory;
-
-/** A category Discord's live socket can fill. The `Exclude<>` and the runtime
- *  list are one derivation, so they can't disagree: the resolver used to hold a
- *  hand-copied `["game","streaming","music","watching","custom"]`, which a sixth
- *  Discord category would have silently missed. */
-export type LivePresenceCategory = Exclude<PresenceCategory, typeof STEAM_CATEGORY>;
-
-/**
- * Is this a category Discord's socket can actually fill?
- *
- * A predicate rather than `LIVE_PRESENCE_CATEGORIES.includes(c as …)`, because the
- * derived list is `LivePresenceCategory[]` and `includes` therefore refuses a
- * plain `PresenceCategory` — correctly: `steam` is in the vocabulary and not in
- * this list. The server used to hand-write `["game","streaming","music",
- * "watching","custom"]` typed as `PresenceCategory[]`, which took anything and
- * asked nothing. The narrower type is the better question.
- */
-export function isLivePresenceCategory(c: PresenceCategory): c is LivePresenceCategory {
-  return c !== STEAM_CATEGORY;
-}
-
-export const LIVE_PRESENCE_CATEGORIES: readonly LivePresenceCategory[] =
-  PRESENCE_CATEGORIES.filter((c): c is LivePresenceCategory => c !== STEAM_CATEGORY);
 
 /** CMS-owned presence config: which categories the widget may reveal. */
 export interface PresenceSettings {
@@ -76,8 +49,8 @@ export interface PresenceSettings {
    */
   sample: PresenceCategory[];
   /** Prune observed sessions older than this many days. `null` = keep forever.
-   *  Steam's own data is a fortnight; this table is the only long memory, so the
-   *  default is to keep it. */
+   *  This table is the only long memory of what was played, so the default is to
+   *  keep it. */
   retentionDays: number | null;
   /** Game names that are recorded but never shown on the public playtime chart.
    *  Matched case-insensitively. "Accumulate it" and "publish it" are separate
@@ -215,7 +188,7 @@ export interface LanyardData {
 
 /** One curated presence card, ready to render. */
 export interface PresenceCard {
-  category: LivePresenceCategory;
+  category: PresenceCategory;
   title: string;
   subtitle?: string;
   image?: string;
@@ -230,7 +203,7 @@ export interface PresenceView {
   cards: PresenceCard[];
 }
 
-const TYPE_TO_CATEGORY: Record<number, LivePresenceCategory> = {
+const TYPE_TO_CATEGORY: Record<number, PresenceCategory> = {
   [LANYARD_ACTIVITY_TYPE.Playing]: "game",
   [LANYARD_ACTIVITY_TYPE.Streaming]: "streaming",
   [LANYARD_ACTIVITY_TYPE.Listening]: "music",
@@ -339,10 +312,9 @@ export const PLAYTIME_MIN_SECONDS = 60;
 /**
  * The window the playtime chart covers.
  *
- * Fourteen days because that's what Steam's `minutes2Weeks` is, and the chart puts
- * both on one axis. A different span for the observed half would be two questions
- * drawn as one — the exact conflation that keeping `source` on every entry exists
- * to prevent.
+ * Fourteen days, to match the listening chart's fortnight so "playing" and
+ * "listening" answer over the same span. A different window here would put two
+ * time ranges on facing cards and invite reading them as one.
  */
 export const PLAYTIME_WINDOW_DAYS = 14;
 
@@ -412,84 +384,68 @@ export interface PlaytimeEntry {
   exact: boolean;
 }
 
-/** What Steam hands back for a recently-played game. Mirrored here rather than
- *  imported from `source.ts` to keep the merge's signature readable at the call
- *  site; the resolver passes `SteamData["recent"]` straight in. */
-export interface SteamRecentGame {
-  name: string;
-  appId: number;
-  minutes2Weeks: number;
-  iconUrl?: string;
-  accent?: string;
-}
-
-/** One row of the playtime chart, whichever half it came from. */
+/** One row of the playtime chart — an observed game and its minutes. Cover art
+ *  and genre, when known, are attached by the resolver from the metadata cache
+ *  (RAWG), matched by name; Discord itself gives only a name and a duration. */
 export interface PlaytimeView {
   name: string;
   minutes: number;
-  source: PlaytimeSource;
+  /** Whether every session's start came from Discord rather than from first
+   *  sight. False means the total is a floor. */
   exact: boolean;
-  /** Steam only — a store link. */
-  appId?: number;
-  /** Steam only — the game's icon. */
-  iconUrl?: string;
-  /** Steam only — the game's own colour, sampled from its icon at sync. */
-  accent?: string;
+  /** Cover image URL (re-served through the media proxy). From RAWG, by name. */
+  coverUrl?: string;
+  /** Primary genre. From RAWG, by name. */
+  genre?: string;
 }
 
-/** Where a playtime number came from — the two are different claims. */
-export const PLAYTIME_SOURCES = ["steam", "observed"] as const;
-export type PlaytimeSource = (typeof PLAYTIME_SOURCES)[number];
+/** Metadata for a game, resolved from a cross-platform database (RAWG) by name.
+ *  Cached in the store keyed by {@link gameMetaKey}; the resolver attaches it to the
+ *  playtime rows so a Discord-observed name gets cover art and a genre it never
+ *  carried on its own. */
+export interface GameMeta {
+  /** Cover image URL (re-served through the media proxy at render time). */
+  coverUrl?: string;
+  /** Primary genre. */
+  genre?: string;
+}
 
-export function isPlaytimeSource(value: unknown): value is PlaytimeSource {
-  return typeof value === "string" && (PLAYTIME_SOURCES as readonly string[]).includes(value);
+/** The cache key for a game name — trimmed + lowercased. The store keys metadata
+ *  by this and the resolver looks up by this, so a row and its lookup always agree
+ *  regardless of the casing/spacing Discord happened to report. */
+export function gameMetaKey(name: string): string {
+  return name.trim().toLowerCase();
 }
 
 /**
- * Steam's number and Discord's are not the same measurement.
+ * Shape observed per-game totals into chart rows, most-played first, attaching
+ * cached metadata (cover art, genre) by name where it's known.
  *
- * Steam reports *all* playtime in a rolling fortnight, including hours when
- * Discord was closed. Discord reports what it watched happen. For a game Steam
- * knows, Steam's total is strictly better and the observed one is a subset — so
- * summing them double-counts, and picking the larger is still a guess about which
- * measurement you're holding.
- *
- * So: Steam where Steam has an answer, observed everywhere else, and each entry
- * says which. That's the whole reason non-Steam games were invisible — nothing was
- * watching them — and the reason the fix can't just add two numbers together.
- *
- * Matched on a normalised name because that's all there is: Lanyard reports what
- * Discord's game detection calls it, with no Steam appid attached.
+ * Playtime is entirely Lanyard-observed now: the sampler records every game
+ * Discord reports — Steam and non-Steam alike — and this turns those per-game
+ * totals into rows. Steam used to contribute a parallel, strictly-more-accurate
+ * fortnight here (it counted hours Discord wasn't watching), merged in by name;
+ * it was dropped because it only ever knew Steam titles, so the observed number —
+ * one consistent measurement across every game — is what's left, and it's the
+ * only thing that ever saw the non-Steam ones anyway. Cover art and genre, which
+ * Steam used to bring, come from RAWG (cross-platform) via the metadata cache.
  */
-export function mergePlaytime(
-  steam: SteamRecentGame[],
+export function playtimeRows(
   observed: PlaytimeEntry[],
+  meta?: ReadonlyMap<string, GameMeta>,
 ): PlaytimeView[] {
-  const key = (n: string) => n.trim().toLowerCase();
-  const fromSteam = new Set(steam.map((g) => key(g.name)));
-
-  const merged: PlaytimeView[] = steam.map((g) => ({
-    name: g.name,
-    minutes: g.minutes2Weeks,
-    source: "steam",
-    exact: true,
-    // Steam's identity travels with the entry rather than being flattened away:
-    // an appId is a store link, an icon is a picture, and the accent is that
-    // game's own colour, sampled at sync. A merge that dropped them would trade
-    // the richer half of the chart for the ability to show the other half.
-    appId: g.appId,
-    ...(g.iconUrl ? { iconUrl: g.iconUrl } : {}),
-    ...(g.accent ? { accent: g.accent } : {}),
-  }));
-
-  for (const o of observed) {
-    if (fromSteam.has(key(o.name))) continue; // Steam already counted it, better
-    // No appId, no icon, no accent — Discord gives a name and nothing else. The
-    // widget renders it plainly, which is honest: we know less about this game.
-    merged.push({ name: o.name, minutes: o.minutes, source: "observed", exact: o.exact });
-  }
-
-  return merged.sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
+  return observed
+    .map((o): PlaytimeView => {
+      const m = meta?.get(gameMetaKey(o.name));
+      return {
+        name: o.name,
+        minutes: o.minutes,
+        exact: o.exact,
+        ...(m?.coverUrl ? { coverUrl: m.coverUrl } : {}),
+        ...(m?.genre ? { genre: m.genre } : {}),
+      };
+    })
+    .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
 }
 
 
@@ -563,65 +519,4 @@ export interface MusicModuleData {
   /** Minutes listened per day, oldest first — same shape as the playtime ledger. */
   ledger: { day: string; minutes: number }[];
   since?: string;
-}
-
-// ── the all-time ledger (feature 02) ─────────────────────────────────────────
-
-/** A snapshot of lifetime minutes per game, at a point in time. */
-export interface SteamSnapshot {
-  syncedAt: string;
-  games: { name: string; appId: number; minutesForever: number }[];
-}
-
-/** Exact minutes played in a day, differenced from lifetime counters. */
-export interface LedgerDay {
-  /** `YYYY-MM-DD`. */
-  day: string;
-  minutes: number;
-}
-
-/**
- * Turn a run of lifetime-minute snapshots into exact minutes played per day.
- *
- * The counter this differences is `playtime_forever`, which only ever grows — so
- * the delta between two snapshots of one game is exactly the minutes played
- * between them, with none of the decay that makes `playtime_2weeks` useless for
- * this (that one is played-minus-expired, and can fall). The snapshots already
- * exist: every Steam sync is archived in `source_snapshots`.
- *
- * Three things it has to get right, and each is a real case rather than a
- * hypothetical:
- *
- * - **A game appears for the first time.** It has no prior snapshot, so its whole
- *   lifetime total isn't "played today" — that would credit hundreds of hours to
- *   the first day it entered the recent list. A game's first sighting seeds its
- *   baseline and contributes nothing until the *next* snapshot.
- * - **The counter goes backwards.** Steam occasionally resets or re-reports; a
- *   negative delta isn't negative playtime, it's noise. Clamped to zero, and the
- *   new value becomes the baseline so the next real delta is still right.
- * - **Snapshots are sparse.** Syncs are every 15 min but the archive may be
- *   pruned or gapped. The delta is attributed to the *newer* snapshot's day,
- *   because that's when the counter was observed to have risen — the interval
- *   might straddle midnight, but crediting the day we saw the increase is the
- *   honest, reproducible choice.
- */
-export function differenceLedger(snapshots: SteamSnapshot[]): LedgerDay[] {
-  const baseline = new Map<number, number>(); // appId → last seen minutesForever
-  const perDay = new Map<string, number>();
-
-  for (const snap of snapshots) {
-    const day = snap.syncedAt.slice(0, 10);
-    for (const g of snap.games) {
-      const prev = baseline.get(g.appId);
-      baseline.set(g.appId, g.minutesForever);
-      if (prev === undefined) continue; // first sighting seeds, credits nothing
-      const delta = g.minutesForever - prev;
-      if (delta <= 0) continue; // reset or noise
-      perDay.set(day, (perDay.get(day) ?? 0) + delta);
-    }
-  }
-
-  return [...perDay.entries()]
-    .map(([day, minutes]) => ({ day, minutes }))
-    .sort((a, b) => a.day.localeCompare(b.day));
 }

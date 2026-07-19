@@ -25,7 +25,7 @@ import { notFound } from "../errors.js";
 const ALLOWED_HOSTS = new Set([
 	"cdn.discordapp.com",
 	"media.discordapp.net",
-	"media.steampowered.com",
+	"media.rawg.io",
 	"i.scdn.co",
 ]);
 

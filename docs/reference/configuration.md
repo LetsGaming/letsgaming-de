@@ -37,7 +37,7 @@ absent so the defaults and fallbacks still apply.
 | `ACCESS_LOG_DIR` | unset | The host directory that holds the access log. Compose mounts it read-only at `/logs`. Set alongside `ACCESS_LOG`. |
 | `ANALYTICS_OWN_HOST` | derived from `WEB_ORIGIN` | Your own host, so self-referrals are dropped from the referrer list. |
 | `WAKAPI_URL` / `WAKAPI_KEY` | unset | Self-hosted Wakapi (coding time). Both required to activate. |
-| `STEAM_API_KEY` / `STEAM_ID` | unset | Steam Web API. Both required to activate. |
+| `RAWG_API_KEY` | unset | RAWG game database — resolves game names to cover art + genre for the playtime module. Optional. |
 
 `SESSION_SECRET` falls back to `CMS_TOKEN` and then to a dev default, but when the
 CMS is enabled the server refuses to start on an empty or default secret. Set a
@@ -63,8 +63,12 @@ different routes. In Docker: `API_URL=http://server:8787` (internal),
   a valid signed session cookie or a matching `CMS_TOKEN`.
 - GitHub data: real with `GITHUB_TOKEN` (needed for the contribution calendar),
   the deterministic mock without it, so the site renders in dev with zero config.
-- Steam and Wakapi: real when both of their variables are set. In development an
-  unconfigured source falls back to a mock; in production it's simply absent.
+- Wakapi: real when both its variables are set. In development an unconfigured
+  source falls back to a mock; in production it's simply absent.
+- Game metadata (RAWG): optional. With `RAWG_API_KEY` the playtime module's
+  recently-played games get cover art and a genre, resolved by name on an hourly
+  sweep; without it the shelf shows monograms and no genre. Playtime itself is
+  Lanyard-observed and needs no key.
 - Contact: enabled when `SMTP_HOST` and `CONTACT_TO` are both set.
 - Presence: enabled when `DISCORD_USER_ID` is set and at least one presence
   category is turned on in the CMS.

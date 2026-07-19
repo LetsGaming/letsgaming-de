@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Change — Playtime is Lanyard-only now; Steam was dropped (and parked)
+
+The playtime module used to be half Steam: the recently-played shelf came from
+Steam's fortnight, the day-by-day ledger was differenced from Steam's lifetime
+counters, and only non-Steam games fell back to what Discord observed. That split
+is gone. The shelf, the ledger, the heatmap, and the total all come from observed
+sessions (Discord/Lanyard) now — one consistent measurement across every game, and
+it covers the non-Steam titles Steam never knew about. The tradeoff is stated
+plainly: observed minutes are a floor (Discord only sees what it's running for)
+where Steam's differenced counter was exact — but Steam only ever knew Steam games,
+and the observed number is the only thing that saw the rest anyway.
+
+The integration wasn't deleted, it was *parked*. `packages/sources/src/steam/
+client.ts` keeps the raw Web API fetch layer, decoupled from everything internal
+(its own result type, its own fetch wrapper) so it can be revived from a known-good
+base rather than rebuilt — it stays in the build and under test, but off the source
+registry and off the request path. The `steam` presence category and the whole
+live/non-live category split went with it, since that distinction existed only to
+carve Steam out.
+
+### Feature — Game cover art and genre, from RAWG (cross-platform, by name)
+
+The recently-played shelf shows a cover and a genre per game again — the richer
+half Steam used to bring — but sourced from RAWG, which knows games on every
+platform, not just Steam. A bare name is all Discord gives us, so an hourly sweep
+resolves each name on the shelf to metadata and caches it (keyed by the normalized
+name, so a lookup and a stored row always agree); the resolver attaches it to the
+rows. Cover art is re-served through the existing media proxy — allow-listed to
+RAWG's CDN — so the browser never talks to RAWG directly. It's optional: set
+`RAWG_API_KEY` to turn it on, and without it the shelf just shows monograms and no
+genre. Playtime itself needs no key.
+
+
 ### Feature — Listening's list length is a CMS setting (a top N; the counts stay whole)
 
 The top-songs and top-artists lists were a fixed top five expanding to everything;

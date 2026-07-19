@@ -4,6 +4,7 @@ import { getStore } from "./store.js";
 import { PRESENCE_SAMPLE_SCHEDULE } from "@lg/core";
 import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
+import { resolveGameMetadata } from "./sync/game-metadata.js";
 import { ingestLog } from "./analytics/ingest.js";
 import cron from "node-cron";
 import { existsSync, statSync } from "node:fs";
@@ -24,7 +25,6 @@ const runner = new SyncRunner(
     githubUsername: env.github.username,
     githubToken: env.github.token,
     ...(env.wakapi ? { wakapiUrl: env.wakapi.url, wakapiKey: env.wakapi.key } : {}),
-    ...(env.steam ? { steamApiKey: env.steam.apiKey, steamId: env.steam.steamId } : {}),
     useMocks: !env.isProduction,
   },
   (msg) => app.log.info(msg),
@@ -37,6 +37,22 @@ runner.start();
 // sample is playtime that never existed. See sync/presence-sampler.ts.
 const sampler = new PresenceSampler(env, store, PRESENCE_SAMPLE_SCHEDULE, (m) => app.log.info(m));
 sampler.start();
+
+// Game metadata (cover art, genre) for the playtime shelf, resolved from RAWG by
+// name. Hourly is plenty: it only queries names it hasn't cached, so it's near-zero
+// cost once caught up, and game metadata doesn't change. Off without a key — the
+// shelf just shows monograms and no genre.
+let rawgTask: ReturnType<typeof cron.schedule> | undefined;
+if (env.rawg) {
+  const rawg = env.rawg;
+  const sweep = () =>
+    resolveGameMetadata(store, rawg, (m) => app.log.info(m)).catch((e) =>
+      app.log.error(`[rawg] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
+    );
+  void sweep(); // once at boot, then hourly
+  rawgTask = cron.schedule("23 * * * *", sweep);
+  app.log.info("[rawg] game-metadata sweep scheduled");
+}
 
 // Traffic analytics: if an access log is configured, ingest it in-process on a
 // schedule (incremental + idempotent) so path/referrer/browser/OS/device stats
@@ -131,6 +147,7 @@ const shutdown = async (signal: string) => {
   runner.stop();
   sampler.stop();
   ingestTask?.stop();
+  rawgTask?.stop();
   await app.close();
   store.close();
   process.exit(0);

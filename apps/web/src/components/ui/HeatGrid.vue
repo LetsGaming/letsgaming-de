@@ -113,7 +113,9 @@ const gridStyle = computed(() => ({
   grid-template-rows: repeat(var(--hg-rows), 1fr);
   gap: 3px;
   overflow-x: auto;
-  padding-bottom: var(--sp-2);
+  /* Room for the selected cell's outline (outset ring) so overflow clipping at the
+     padding edge doesn't shave it off. */
+  padding: 4px;
 }
 .hg-c {
   aspect-ratio: 1;
@@ -161,13 +163,16 @@ button.hg-c:hover {
 .hg.dim button.hg-c {
   opacity: 0.4;
 }
-/* Selection: bold accent ring, full opacity, sitting above the dimmed rest. It
-   wins over the today ring when you select today. */
+/* Selection: bold accent ring, full opacity, lifted above neighbours so no
+   adjacent cell paints over its ring. Wins over the today ring when today is
+   selected. The container's padding keeps the ring from being clipped. */
 .hg.dim button.hg-c.on,
 button.hg-c.on {
   opacity: 1;
   outline: 2px solid var(--live-ink);
   outline-offset: 1px;
+  position: relative;
+  z-index: 1;
 }
 button.hg-c:focus-visible {
   outline: 2px solid var(--live-ink);

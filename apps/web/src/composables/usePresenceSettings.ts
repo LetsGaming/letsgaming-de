@@ -21,7 +21,6 @@ const PRESENCE_COPY: Record<PresenceCategory, { label: string; hint: string }> =
   music: { label: "Music", hint: "Spotify" },
   watching: { label: "Watching", hint: "e.g. YouTube" },
   custom: { label: "Custom status", hint: "your set status + emoji" },
-  steam: { label: "Steam", hint: "recently-played section" },
 };
 
 const PRESENCE_OPTIONS: { key: PresenceCategory; label: string; hint: string }[] =

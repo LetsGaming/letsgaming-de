@@ -1,18 +1,15 @@
 import {
   ASSET_WIDTHS,
-  differenceLedger,
   MUSIC_TOP_LIMIT,
   defaultMusicSettings,
   PLAYTIME_WINDOW_DAYS,
   resolveSiteView,
   SOURCE_TTL,
-  type LedgerDay,
   type Locale,
   type NavNode,
   type PlaytimeHeatCell,
   type ResolvableAsset,
   type SiteView,
-  type SteamData,
 } from "@lg/core";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -60,6 +57,7 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     // the chart are the same question. Steam's `minutes2Weeks` is a fortnight;
     // asking the store for a different span would put two spans on one axis.
     playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
+    gameMeta: store.gameMeta.getAll(),
     playHistory: buildPlayHistory(store),
     // The list cap is the CMS-owned maxCount, applied here as the query LIMIT so
     // the resolved view (and the frontend) never sees more than the top N.
@@ -71,30 +69,22 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
 /**
  * The historical playtime module's data (features 02 + 03).
  *
- * - **The ledger** differences the lifetime counters archived in every Steam
- *   snapshot. `source.history` is the reader written for exactly this; history
- *   comes back newest-first, so it's reversed — the differ needs chronological
- *   order to read the counters as rising.
- * - **The heatmap** buckets observed sessions by weekday and hour. All-time.
+ * Both halves come from observed sessions now (`presence_sessions`), so the module
+ * is entirely Lanyard-driven:
+ * - **The ledger** is per-day observed minutes, oldest first — `dailyTotals` over
+ *   all time (the strip windows it). It used to difference Steam's lifetime
+ *   counters, which were exact but Steam-only; observed minutes are a floor but
+ *   cover every game Discord saw.
+ * - **The heatmap** buckets those same sessions by weekday and hour. All-time.
  */
 function buildPlayHistory(store: Store): {
-  ledger: LedgerDay[];
+  ledger: { day: string; minutes: number }[];
   heat: PlaytimeHeatCell[];
   since?: string;
 } {
-  const snaps = store.source
-    .history<SteamData>("steam", PLAY_HISTORY_SNAPSHOTS)
-    .reverse()
-    .map((row) => ({
-      syncedAt: row.syncedAt,
-      games: row.data.recent.map((g) => ({
-        name: g.name,
-        appId: g.appId,
-        minutesForever: g.minutesForever,
-      })),
-    }));
-
-  const ledger = differenceLedger(snaps);
+  const ledger = store.sessions
+    .dailyTotals("game", EPOCH_ISO)
+    .map((d) => ({ day: d.day, minutes: d.minutes }));
   const heat = store.sessions.heatmap("game", EPOCH_ISO);
   return { ledger, heat, ...(ledger[0] ? { since: ledger[0].day } : {}) };
 }
@@ -172,9 +162,6 @@ export async function buildAssetLookup(
   }
   return map;
 }
-
-/** How many Steam snapshots to difference. At a 15-min sync that's ~1 year. */
-const PLAY_HISTORY_SNAPSHOTS = 35_000;
 
 /** "All time" for the heatmap. Before any possible session. */
 const EPOCH_ISO = "1970-01-01T00:00:00.000Z";

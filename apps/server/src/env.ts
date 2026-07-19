@@ -49,8 +49,9 @@ export interface ServerEnv {
   analyticsOwnHost?: string;
   /** Wakapi coding-time tracker (LAN-only). Both parts required to activate. */
   wakapi?: { url: string; key: string };
-  /** Steam Web API (public data, needs a key). Both parts required to activate. */
-  steam?: { apiKey: string; steamId: string };
+  /** RAWG API key — resolves game names to cover art + genre for the playtime
+   *  module. Optional: without it the shelf just shows monograms and no genre. */
+  rawg?: { apiKey: string };
 }
 
 /** The literal dev fallback — refused at boot when the CMS is enabled (SEC-01). */
@@ -118,9 +119,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
     ...(str(source.WAKAPI_URL) && str(source.WAKAPI_KEY)
       ? { wakapi: { url: str(source.WAKAPI_URL)!, key: str(source.WAKAPI_KEY)! } }
       : {}),
-    ...(str(source.STEAM_API_KEY) && str(source.STEAM_ID)
-      ? { steam: { apiKey: str(source.STEAM_API_KEY)!, steamId: str(source.STEAM_ID)! } }
-      : {}),
+    ...(str(source.RAWG_API_KEY) ? { rawg: { apiKey: str(source.RAWG_API_KEY)! } } : {}),
     ...(str(source.SMTP_HOST) && str(source.CONTACT_TO)
       ? {
           smtp: {

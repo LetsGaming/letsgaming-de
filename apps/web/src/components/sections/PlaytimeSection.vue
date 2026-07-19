@@ -3,13 +3,12 @@
  * The historical playtime module (features 02 + 03).
  *
  * Two views of the past, which is why this is its own module and not more of
- * `presence`: that card is "Right now" — the live dot, the fortnight. This is
- * accumulated history, drawn from data the present-tense card deliberately never
- * reads. Same split the sampler-vs-source distinction drew in the backend.
+ * `presence`: that card is "Right now" — the live dot. This is accumulated
+ * history, drawn from observed sessions the present-tense card never reads.
  *
- * - **The ledger** — exact minutes per day, differenced server-side from Steam's
- *   lifetime counters. Clicking a column fetches that day's breakdown and pins it
- *   against the all-time figures, so a day is always read against the whole.
+ * - **The ledger** — minutes observed per day. Clicking a column fetches that
+ *   day's breakdown and pins it against the all-time figures, so a day is always
+ *   read against the whole.
  * - **The heatmap** — weekday×hour, the same `.heat` component as the contribution
  *   graph, so "when do I play" reads the way "did he commit today" does.
  */
@@ -29,16 +28,12 @@ const { data: liveData } = useLiveModule(props.module.id, "playtime", props.modu
 const d = computed(() => liveData.value);
 
 // ── recently played ──────────────────────────────────────────────────────────
-// The shelf that used to sit in the presence card. Each row is a game with its
-// fortnight hours; `source` says whether the number is Steam's (a true total) or
-// observed from Discord (a floor — Discord only sees what it's running for). The
-// icon is proxied like everywhere else; a lettered tile stands in when there's no
-// icon, which is every non-Steam game (Discord hands over a name and nothing more).
+// Every game Discord observed over the fortnight, most-played first. Minutes are a
+// floor — Discord only sees what it's running for, so "+" marks an inexact total.
+// Cover art and genre come from the metadata cache (RAWG, matched by name) when
+// known; a lettered tile stands in when there's no cover.
 const recent = computed(() => d.value.recent ?? []);
-const gameIcon = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
-const gameAccent = (accent?: string) => accent ?? "var(--surf-3)";
-const storeUrl = (appId?: number) =>
-  appId != null ? `https://store.steampowered.com/app/${appId}` : undefined;
+const gameCover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
 const fmtGameHrs = (min: number) => {
   const h = min / 60;
   return (h >= 10 || h % 1 === 0 ? Math.round(h) : h.toFixed(1)) + "h";
@@ -148,26 +143,21 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
           <span class="pt-scope">last 2 weeks</span>
         </div>
         <div class="pt-recent">
-          <component
-            :is="storeUrl(g.appId) ? 'a' : 'div'"
+          <div
             v-for="(g, i) in recent"
             :key="g.name"
             class="pt-rrow"
             :class="{ 'pt-r1': i === 0 }"
-            v-bind="storeUrl(g.appId) ? { href: storeUrl(g.appId), target: '_blank', rel: 'noreferrer noopener' } : {}"
           >
             <span class="pt-rrank">{{ i + 1 }}</span>
-            <img v-if="gameIcon(g.iconUrl)" :src="gameIcon(g.iconUrl)" alt="" class="pt-rart" loading="lazy" />
-            <span v-else class="pt-rart pt-rmono" :style="{ background: gameAccent(g.accent) }">{{ g.name.slice(0, 1) }}</span>
+            <img v-if="gameCover(g.coverUrl)" :src="gameCover(g.coverUrl)" alt="" class="pt-rart" loading="lazy" />
+            <span v-else class="pt-rart pt-rmono">{{ g.name.slice(0, 1) }}</span>
             <span class="pt-rbody">
               <span class="pt-rname">{{ g.name }}</span>
-              <span class="pt-rsrc">
-                <span class="pt-src" :class="g.source === 'steam' ? 'pt-src-steam' : 'pt-src-obs'"></span>
-                {{ g.source === "steam" ? "Steam" : "observed" }}
-              </span>
+              <span v-if="g.genre" class="pt-rsrc">{{ g.genre }}</span>
             </span>
             <span class="pt-rval">{{ fmtGameHrs(g.minutes) }}<small v-if="!g.exact"> +</small></span>
-          </component>
+          </div>
         </div>
       </div>
 
@@ -184,6 +174,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.heat.length 
           :cells="ledgerCells"
           :rows="1"
           :min-cell="8"
+          :cell-height="30"
           legend
           selectable
           :selected-index="selectedLedgerIndex"
@@ -295,6 +286,7 @@ a.pt-rrow:hover .pt-rname {
 .pt-rmono {
   display: grid;
   place-items: center;
+  background: var(--surf-3);
   font-family: var(--f-d);
   font-size: 15px;
   color: var(--ink-strong);
@@ -312,24 +304,13 @@ a.pt-rrow:hover .pt-rname {
   transition: color var(--dur-fast) var(--ease-out);
 }
 .pt-rsrc {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
+  display: block;
   font-family: var(--f-m);
   font-size: var(--fs-micro);
   color: var(--muted);
-}
-.pt-src {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex: none;
-}
-.pt-src-steam {
-  background: var(--live-ink);
-}
-.pt-src-obs {
-  background: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pt-rval {
   font-family: var(--f-m);

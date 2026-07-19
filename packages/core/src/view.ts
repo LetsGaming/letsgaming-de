@@ -159,8 +159,7 @@ export interface CodingView {
  * configured or currently online. That is the server's concern: the widget polls
  * regardless and shows whatever comes back (a filtered snapshot, or an offline
  * fallback). Deliberately decoupled from any `DISCORD_USER_ID` so the SSR process
- * needs no presence secret to resolve this flag. `steam` is included only when the
- * Steam category is shown.
+ * needs no presence secret to resolve this flag.
  */
 export interface PresenceModuleView {
   enabled: boolean;
@@ -169,16 +168,6 @@ export interface PresenceModuleView {
   handle: string;
   /** Optional portrait, resolved from meta.avatar (shared with the hero). */
   avatar?: ImageAssetView | GifAssetView;
-  /**
-   * The game being played *right now*, if Steam reports one. Present-tense only —
-   * the fortnight list and the merged playtime history moved to the playtime
-   * module ("Time played"), because "Right now" is the live moment and a list of
-   * past games is history. The live Discord half (current game/track) is fetched
-   * client-side by the widget; this is the one synced fact the card still carries.
-   */
-  steam?: {
-    playing?: { name: string; appId: number };
-  };
 }
 
 /** One resolved gallery image: a client-ready picture spec plus its caption. */
@@ -247,10 +236,9 @@ export type ResolvedModule =
  * The historical playtime module (features 02 + 03).
  *
  * Deliberately separate from `PresenceModuleView`, which is present-tense — "Right
- * now", the live dot, the fortnight. This is the *past*: an all-time day strip and
- * a weekday×hour heatmap, both built from data the present-tense card never reads
- * (`source_snapshots` history and accumulated `presence_sessions`). Two subjects,
- * two modules — the split the sampler-vs-source distinction already drew.
+ * now", the live dot. This is the *past*: an all-time day strip and a weekday×hour
+ * heatmap, both built from accumulated `presence_sessions` — the observed history
+ * the present-tense card never reads. Two subjects, two modules.
  *
  * `dayBreakdown` isn't here: it's fetched on demand when a column is clicked, so
  * the module ships one day-strip and one grid rather than 30 days of breakdowns
@@ -259,13 +247,11 @@ export type ResolvedModule =
 export interface PlaytimeModuleView {
   /** All-time hours, rounded, for the headline figure. */
   totalHours: number;
-  /** Recently played, newest/most-played first — the shelf that used to live in
-   *  the presence card. Steam's fortnight merged with observed non-Steam games,
-   *  each row saying which half it came from (`source`). This is history, which is
-   *  why it belongs here and not in "Right now". */
+  /** Recently played, most-played first — every game Discord observed over the
+   *  window. Cover art and genre (from RAWG, by name) ride along when known. This
+   *  is history, which is why it belongs here and not in "Right now". */
   recent: PlaytimeView[];
-  /** The day strip: exact minutes played per day, differenced from lifetime
-   *  counters. Oldest first. */
+  /** The day strip: minutes observed per day, oldest first. */
   ledger: { day: string; minutes: number }[];
   /** The heatmap: minutes per weekday×hour over the window. Sparse — only cells
    *  with play are present; the view fills the 7×24 grid. */
@@ -288,7 +274,8 @@ export interface MusicRankView {
 /**
  * The music module — a fortnight of Spotify listening, sliced three ways plus a
  * timeline. Sibling to `PlaytimeModuleView`: same "accumulated past" shape (top
- * lists + a per-day strip), driven by `music_plays` instead of Steam counters.
+ * lists + a per-day strip), driven by `music_plays` the way playtime is driven by
+ * `presence_sessions`.
  *
  * Like playtime, the per-day breakdown isn't shipped here — it's fetched on demand
  * when a timeline column is clicked (`/api/music/day`), so the module carries one

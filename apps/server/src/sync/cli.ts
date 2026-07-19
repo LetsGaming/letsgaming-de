@@ -13,7 +13,6 @@ const runner = new SyncRunner(store, {
   githubUsername: env.github.username,
   githubToken: env.github.token,
   ...(env.wakapi ? { wakapiUrl: env.wakapi.url, wakapiKey: env.wakapi.key } : {}),
-  ...(env.steam ? { steamApiKey: env.steam.apiKey, steamId: env.steam.steamId } : {}),
   useMocks: !env.isProduction,
 });
 

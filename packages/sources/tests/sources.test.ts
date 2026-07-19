@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { normalizeWakapi } from "../src/wakapi/index.js";
 import type { WakapiRaw } from "../src/wakapi/fetch.js";
-import { normalizeSteam } from "../src/steam/index.js";
-import type { SteamRaw } from "../src/steam/fetch.js";
 
 test("wakapi: languages sort by time, drop zero-time, and cap", () => {
   const raw: WakapiRaw = {
@@ -24,29 +22,41 @@ test("wakapi: languages sort by time, drop zero-time, and cap", () => {
   assert.equal(d.languages[0]?.pct, 60);
 });
 
-test("steam: recent games sorted by 2-week playtime, current game surfaced", () => {
-  const raw: SteamRaw = {
-    summary: { response: { players: [{ gameid: "730", gameextrainfo: "Counter-Strike 2" }] } },
-    recent: {
-      response: {
-        games: [
-          { appid: 427520, name: "Factorio", playtime_2weeks: 120 },
-          { appid: 730, name: "Counter-Strike 2", playtime_2weeks: 300, img_icon_url: "abc" },
-        ],
-      },
-    },
-  };
-  const d = normalizeSteam(raw);
-  assert.equal(d.playing?.name, "Counter-Strike 2");
-  assert.equal(d.playing?.appId, 730);
-  assert.equal(d.recent[0]?.name, "Counter-Strike 2"); // higher 2-week playtime first
-  assert.match(d.recent[0]?.iconUrl ?? "", /apps\/730\/abc\.jpg$/);
+// ── RAWG game-metadata adapter ───────────────────────────────────────────────
+import { normalizeRawgGame } from "../src/rawg/index.js";
+import { searchRawgGame } from "../src/rawg/fetch.js";
+
+test("rawg: normalize picks cover art + first genre, tolerates gaps", () => {
+  assert.deepEqual(
+    normalizeRawgGame({
+      name: "Palworld",
+      background_image: "https://media.rawg.io/media/games/x.jpg",
+      genres: [{ name: "Action" }, { name: "Adventure" }],
+    }),
+    { coverUrl: "https://media.rawg.io/media/games/x.jpg", genre: "Action" },
+  );
+  // no cover, no genre → an empty object, never undefined-valued fields
+  assert.deepEqual(normalizeRawgGame({ name: "Obscure Jam Game" }), {});
+  // null background_image (RAWG's schema allows it) is treated as absent
+  assert.deepEqual(normalizeRawgGame({ name: "X", background_image: null, genres: [] }), {});
 });
 
-test("steam: no current game when profile isn't in-game", () => {
-  const raw: SteamRaw = {
-    summary: { response: { players: [{}] } },
-    recent: { response: { games: [] } },
-  };
-  assert.equal(normalizeSteam(raw).playing, undefined);
+test("rawg: search returns the top match, null when RAWG has none", async () => {
+  const hit = (async () =>
+    new Response(
+      JSON.stringify({ results: [{ name: "Palworld", background_image: "u", genres: [{ name: "Action" }] }] }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+  const res = await searchRawgGame("Palworld", { apiKey: "k", fetchImpl: hit });
+  assert.equal(res.ok, true);
+  if (res.ok) assert.equal(res.value?.name, "Palworld");
+
+  const empty = (async () =>
+    new Response(JSON.stringify({ results: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+  const none = await searchRawgGame("zzznotagame", { apiKey: "k", fetchImpl: empty });
+  assert.equal(none.ok, true);
+  if (none.ok) assert.equal(none.value, null);
 });

@@ -22,7 +22,6 @@
  */
 
 import {
-  isLivePresenceCategory,
   normalizePresence,
   type LanyardData,
   type PresenceView,
@@ -44,7 +43,7 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
     // PresenceCategory[]. The old `as` asserted something that was true anyway —
     // which reads like a checkpoint and is nothing of the kind.
     const show = store.content.getPresence().show;
-    const enabled = Boolean(env.discordUserId) && show.some(isLivePresenceCategory);
+    const enabled = Boolean(env.discordUserId) && show.length > 0;
     if (!enabled || !env.discordUserId) return OFFLINE;
 
     const key = show.join(",");
