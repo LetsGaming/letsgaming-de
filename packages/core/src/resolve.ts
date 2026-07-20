@@ -16,6 +16,8 @@ import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
 import { defaultMusicSettings } from "./music.js";
+import { defaultPlaytimeSettings } from "./playtime-settings.js";
+import { capList } from "./list-settings.js";
 import { AREA } from "./ia.js";
 import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
 import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
@@ -156,9 +158,6 @@ const FEED = {
   projects: 12,
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
-  /** Games in the playtime chart. Editorial, like the rest: a bar chart of twenty
-   *  is a list, and the tail of a fortnight is a game you opened once. */
-  playtime: 6,
 } as const;
 
 export function resolveSiteView(input: ResolveInput): SiteView {
@@ -551,12 +550,17 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // "Recently played" — every game Discord observed over the window,
         // most-played first. Gated on the same `game` allow-list and hidden-games
         // filter as the presence card, so nothing the owner hid surfaces here.
+        // Display counts are CMS-owned; the list is capped to maxCount here (the
+        // client never sees past the cap), while gameCount stays the true total so
+        // the headline and "and N more" are honest.
         const pShow = content.presence?.show ?? defaultPresenceSettings().show;
-        const recent = pShow.includes("game")
-          ? playtimeRows(input.playtime ?? [], input.gameMeta)
-              .filter((g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []))
-              .slice(0, FEED.playtime)
+        const settings = content.playtime ?? defaultPlaytimeSettings();
+        const allRecent = pShow.includes("game")
+          ? playtimeRows(input.playtime ?? [], input.gameMeta).filter(
+              (g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []),
+            )
           : [];
+        const { rows: recent, total: gameCount } = capList(allRecent, settings.maxCount);
 
         return {
           id: descriptor.id,
@@ -566,10 +570,13 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             note,
             totalHours: Math.round(totalMinutes / 60),
             recent,
+            gameCount,
             ledger: hist.ledger,
             heat: hist.heat,
             timeZone: hist.timeZone,
             ...(hist.since ? { since: hist.since } : {}),
+            initialCount: settings.initialCount,
+            maxCount: settings.maxCount,
           },
         };
       }

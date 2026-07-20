@@ -558,8 +558,11 @@
         "heading": "Time played",
         "totalHours": 0,
         "recent": [],
+        "gameCount": 0,
         "ledger": [],
         "heat": [],
+        "initialCount": 5,
+        "maxCount": 15,
         "timeZone": "Europe/Berlin"
       }
     },

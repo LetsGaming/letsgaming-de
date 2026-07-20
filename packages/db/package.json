@@ -17,7 +17,7 @@
     "src/migrations"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node -e \"require('fs').cpSync('src/migrations','dist/migrations',{recursive:true})\"",
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs');fs.rmSync('dist/migrations',{recursive:true,force:true});fs.cpSync('src/migrations','dist/migrations',{recursive:true})\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --import tsx ./tests/*.test.ts"
   },

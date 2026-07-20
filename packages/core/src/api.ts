@@ -124,10 +124,18 @@ export interface ClearAnalyticsResponse extends OkResponse {
 
 /** The ledger drill-in: what was played on one day. Games only — the chart is
  *  games, and the route never exposes other categories. Cover art and genre ride
- *  along (from RAWG, by name) so the day view matches the top-games list. */
+ *  along (from RAWG, by name) so the day view matches the top-games list.
+ *
+ *  `games` is already capped to the module's `maxCount` server-side; `total` is the
+ *  true distinct-game count (for "and N more"), and `minutes` is the day's real
+ *  total (not just the shown rows'). The client never receives games past the cap. */
 export interface PlaytimeDayResponse {
   day: string;
   games: { name: string; minutes: number; sessions: number; exact: boolean; coverUrl?: string; genre?: string }[];
+  /** Distinct games observed this day — the true total behind the capped list. */
+  total: number;
+  /** Total minutes for the day, across all games (summary line). */
+  minutes: number;
 }
 
 // ── guestbook ────────────────────────────────────────────────────────────────

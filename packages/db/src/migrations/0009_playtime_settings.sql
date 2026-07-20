@@ -1,0 +1,13 @@
+-- CMS-owned display config for the Playtime module's top-games list and its
+-- per-day drill-in: how many rows show before "show more" (initialCount) and the
+-- hard cap on rows either list ever shows (maxCount). Separate from the Listening
+-- config (0007) so the two can carry different limits.
+--
+-- Unlike Listening, the cap is applied in the view rather than as a query LIMIT —
+-- the recent-games list over a fortnight is small enough to ship whole — so the
+-- true total is just the list length and "and N more" needs no separate count.
+--
+-- Stored as one JSON object on the singleton content row (two ints — a scalar, not
+-- its own table). Nullable, no data migration: a NULL reads back as the default
+-- (5 / 15), so the existing row and a fresh install both work untouched.
+ALTER TABLE site_content ADD COLUMN playtime TEXT;  -- JSON PlaytimeSettings; NULL → default

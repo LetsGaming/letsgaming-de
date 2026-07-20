@@ -10,7 +10,7 @@
  * Spotify's, not the owner's own games.
  */
 
-import { isValidTimeZone, sanitizeTimeZone, type MusicDayResponse } from "@lg/core";
+import { capList, dayRowsFor, isValidTimeZone, sanitizeTimeZone, type MusicDayResponse } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
@@ -28,7 +28,23 @@ export function registerMusicRoutes(app: FastifyInstance, store: Store): void {
       // (the `TZ` env var).
       const tz = req.query.tz;
       const zone = tz && isValidTimeZone(tz) ? tz : sanitizeTimeZone(process.env.TZ);
-      return { day, tracks: store.music.dayBreakdown(day, zone) };
+      // Aggregate the raw plays into both views, then cap each to the module's
+      // maxCount — so the client is sent only the top-N songs and top-N artists it
+      // can show, never the whole day. The distinct counts and total minutes are
+      // reported alongside (uncapped), for the summary and the "and N more" note.
+      const max = store.content.getMusic().maxCount;
+      const tracks = store.music.dayBreakdown(day, zone);
+      const minutes = tracks.reduce((sum, t) => sum + t.minutes, 0);
+      const songs = capList(dayRowsFor(tracks, "songs"), max);
+      const artists = capList(dayRowsFor(tracks, "artists"), max);
+      return {
+        day,
+        minutes,
+        trackCount: songs.total,
+        artistCount: artists.total,
+        songs: songs.rows,
+        artists: artists.rows,
+      };
     },
   );
 }

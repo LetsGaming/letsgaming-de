@@ -257,6 +257,9 @@ export interface PlaytimeModuleView {
    *  window. Cover art and genre (from RAWG, by name) ride along when known. This
    *  is history, which is why it belongs here and not in "Right now". */
   recent: PlaytimeView[];
+  /** Distinct games observed over the window — the true total, uncapped, for the
+   *  headline and the "and N more" the list cap hides (mirrors the music counts). */
+  gameCount: number;
   /** The day strip: minutes observed per day, oldest first. */
   ledger: { day: string; minutes: number }[];
   /** The heatmap: minutes per weekday×hour over all time. Sparse — only cells with
@@ -268,6 +271,10 @@ export interface PlaytimeModuleView {
   timeZone: string;
   /** How many days the ledger covers, for "since <date>" copy. */
   since?: string;
+  /** Rows shown before "show more" — CMS-configured (mirrors the music module). */
+  initialCount: number;
+  /** Hard cap on rows the list ever shows, in the main list and the day drill-in. */
+  maxCount: number;
 }
 
 /** One row of a music "top" list, ready to render. */

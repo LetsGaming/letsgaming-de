@@ -15,6 +15,7 @@
 import type { Localized } from "./i18n.js";
 import type { PresenceSettings } from "./presence.js";
 import type { MusicSettings } from "./music.js";
+import type { PlaytimeSettings } from "./playtime-settings.js";
 
 /** Site identity / config. Small and stable; edited rarely. */
 export interface SiteMeta {
@@ -120,6 +121,8 @@ export interface SiteContent {
   presence?: PresenceSettings;
   /** CMS-owned Listening list-display config (optional; resolver falls back to default). */
   music?: MusicSettings;
+  /** CMS-owned Playtime list-display config (optional; resolver falls back to default). */
+  playtime?: PlaytimeSettings;
   /** CMS-owned image gallery — uploaded media placed on the site. */
   gallery?: GalleryItem[];
 }

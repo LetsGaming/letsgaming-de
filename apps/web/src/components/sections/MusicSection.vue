@@ -14,13 +14,13 @@
  * are absent by construction — Discord's Spotify presence exposes neither.
  */
 import { computed, ref } from "vue";
-import { splitArtists, type MusicDayResponse, type MusicRankView, type ResolvedModule } from "@lg/core";
+import { type DayRow, type ListKind, type MusicDayResponse, type MusicRankView, type ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
 import { fmtDay } from "../../lib/calendar";
 import { fetchMusicDay } from "../../lib/music-api";
-import { dayRowsFor, type DayRow, type ListKind } from "../../lib/music-day";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
+import { useLimitedList } from "../../composables/useLimitedList";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
@@ -30,46 +30,72 @@ const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }
 const { data: liveData } = useLiveModule(props.module.id, "music", props.module.data);
 const d = computed(() => liveData.value);
 
-// How many rows show before "show more" — CMS-configured. The lists are already
-// capped server-side, so expanding never reveals more than the backend sent.
-const TOP_SHOWN = computed(() => d.value.initialCount);
-
-// The clickable fortnight timeline + day drill-in — shared with Playtime.
-const { selected, dayData: dayTracks, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
-  useLedgerStrip<MusicDayResponse["tracks"]>({
+// The clickable fortnight timeline + day drill-in — shared with Playtime. The day
+// response arrives pre-aggregated and pre-capped: `songs`/`artists` already trimmed
+// to maxCount server-side, with the true counts alongside.
+const EMPTY_DAY: MusicDayResponse = { day: "", minutes: 0, trackCount: 0, artistCount: 0, songs: [], artists: [] };
+const { selected, dayData, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
+  useLedgerStrip<MusicDayResponse>({
     ledger: () => d.value.ledger,
     fetchDay: (iso) => fetchMusicDay(iso, d.value.timeZone),
-    emptyDay: [],
+    emptyDay: EMPTY_DAY,
     title: (day, min) => `${fmtDay(day)} · ${min} min`,
     timeZone: () => d.value.timeZone,
   });
 const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
 
-// Which list backs the panel (songs or artists), and whether it's expanded.
+// Which list backs the panel (songs or artists).
 const list = ref<ListKind>("songs");
-const expanded = ref(false);
 const activeRows = computed<MusicRankView[]>(() => (list.value === "songs" ? d.value.topSongs : d.value.topArtists));
-const shownRows = computed(() => (expanded.value ? activeRows.value : activeRows.value.slice(0, TOP_SHOWN.value)));
-const hiddenCount = computed(() => Math.max(0, activeRows.value.length - TOP_SHOWN.value));
+// The main list: the server already trims to maxCount, and the true total (distinct
+// songs/artists over the window) drives the "and N more" the cap hides.
+const listTotal = computed(() => (list.value === "songs" ? d.value.trackCount : d.value.artistCount));
+const {
+  shown: mainRows,
+  expanded: mainOpen,
+  moreCount: mainMore,
+  overflow: mainOver,
+  atCap: mainAtCap,
+  reset: resetMain,
+} = useLimitedList({
+  rows: activeRows,
+  initial: () => d.value.initialCount,
+  max: () => d.value.maxCount,
+  total: listTotal,
+});
 
 function showList(which: ListKind) {
   list.value = which;
-  expanded.value = false;
+  resetMain();
   clear();
 }
 
-// The day panel rows, following the active tab (delegated to a tested pure fn so
-// "artists → that day's artists, not its tracks" can't regress).
-const dayRowsAll = computed<DayRow[]>(() => dayRowsFor(dayTracks.value ?? [], list.value));
-const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN.value)));
-const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN.value));
-
-// Day summary counts (tracks + split artists), independent of the active tab.
-const dayTrackCount = computed(() => dayTracks.value?.length ?? 0);
-const dayMinutes = computed(() => (dayTracks.value ?? []).reduce((s, t) => s + t.minutes, 0));
-const dayArtistCount = computed(
-  () => new Set((dayTracks.value ?? []).flatMap((t) => splitArtists(t.artist).map((a) => a.toLowerCase()))).size,
+// The day panel rows, following the active tab — already capped server-side, with
+// the true per-view total shipped for "and N more". Reuses the strip's expanded ref,
+// which resets when the selected day changes.
+const dayRowsAll = computed<DayRow[]>(() =>
+  dayData.value ? (list.value === "songs" ? dayData.value.songs : dayData.value.artists) : [],
 );
+const dayListTotal = computed(() =>
+  dayData.value ? (list.value === "songs" ? dayData.value.trackCount : dayData.value.artistCount) : 0,
+);
+const {
+  shown: dayRows,
+  moreCount: dayMore,
+  overflow: dayOver,
+  atCap: dayAtCap,
+} = useLimitedList({
+  rows: dayRowsAll,
+  initial: () => d.value.initialCount,
+  max: () => d.value.maxCount,
+  total: dayListTotal,
+  expanded: dayExpanded,
+});
+
+// Day summary counts, shipped by the server (independent of the active tab).
+const dayTrackCount = computed(() => dayData.value?.trackCount ?? 0);
+const dayMinutes = computed(() => dayData.value?.minutes ?? 0);
+const dayArtistCount = computed(() => dayData.value?.artistCount ?? 0);
 
 const artSrc = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
 const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.length > 0);
@@ -139,7 +165,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
               {{ dayArtistCount }} artist{{ dayArtistCount > 1 ? "s" : "" }}
             </p>
             <RankedRow
-              v-for="(row, i) in shownDayRows"
+              v-for="(row, i) in dayRows"
               :key="row.key"
               :rank="i + 1"
               :name="row.primary"
@@ -150,16 +176,19 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
             >
               {{ row.minutes }}<small> min · {{ row.plays }}×</small>
             </RankedRow>
-            <button v-if="dayHidden > 0" class="mu-more" @click="dayExpanded = !dayExpanded">
-              {{ dayExpanded ? "show less" : `show ${dayHidden} more` }}
-            </button>
+            <p class="mu-foot">
+              <button v-if="dayMore > 0" class="mu-more" @click="dayExpanded = !dayExpanded">
+                {{ dayExpanded ? "show less" : `show ${dayMore} more` }}
+              </button>
+              <span v-if="dayAtCap && dayOver > 0" class="mu-cap">and {{ dayOver }} more</span>
+            </p>
           </template>
         </template>
 
         <!-- a top list -->
         <template v-else>
           <RankedRow
-            v-for="(r, i) in shownRows"
+            v-for="(r, i) in mainRows"
             :key="`${r.name}-${i}`"
             :rank="i + 1"
             :name="r.name"
@@ -170,9 +199,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           >
             {{ r.minutes }}<small> min · {{ r.plays }}×</small>
           </RankedRow>
-          <button v-if="hiddenCount > 0" class="mu-more" @click="expanded = !expanded">
-            {{ expanded ? "show less" : `show ${hiddenCount} more` }}
-          </button>
+          <p class="mu-foot">
+            <button v-if="mainMore > 0" class="mu-more" @click="mainOpen = !mainOpen">
+              {{ mainOpen ? "show less" : `show ${mainMore} more` }}
+            </button>
+            <span v-if="mainAtCap && mainOver > 0" class="mu-cap">and {{ mainOver }} more</span>
+          </p>
         </template>
       </div>
     </div>
@@ -265,10 +297,26 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   background: none;
   border: 0;
   cursor: pointer;
-  padding: var(--sp-8) 0 0;
+  padding: 0;
 }
 .mu-more:hover {
   text-decoration: underline;
+}
+/* "show more" and the "and N more" cap note sit on one row; the note is muted since
+   it isn't actionable — the limit hides those. */
+.mu-foot {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-10);
+  padding-top: var(--sp-8);
+}
+.mu-foot:empty {
+  display: none;
+}
+.mu-cap {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
 }
 .mu-dim {
   color: var(--muted);

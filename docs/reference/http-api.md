@@ -76,12 +76,14 @@ never learns the Discord id.
 
 Day drill-ins behind the playtime and listening charts — one day's breakdown,
 fetched when a column is clicked rather than shipped with the module (the strips
-run to hundreds of days and nobody wants every breakdown up front).
+run to hundreds of days and nobody wants every breakdown up front). Both are capped
+to the module's `maxCount` **server-side** — the response carries only the rows the
+page may show, plus the true totals for the "and N more" note, never the whole day.
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
-| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games }`; hidden games are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
-| `GET /api/music/day?day=YYYY-MM-DD` | none | That day's tracks. Returns `{ day, tracks }`. `400` on a malformed date. |
+| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games, total, minutes }` — `games` capped to `maxCount`, `total` the true distinct-game count, `minutes` the day's real total. Hidden games are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
+| `GET /api/music/day?day=YYYY-MM-DD` | none | That day's listening. Returns `{ day, minutes, trackCount, artistCount, songs, artists }` — `songs` and `artists` each aggregated and capped to `maxCount`; the counts are the true distinct totals. `400` on a malformed date. |
 
 ## Media proxy
 

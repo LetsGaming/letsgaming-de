@@ -9,7 +9,7 @@
  * different lifetimes, different endpoints.
  */
 
-import { gameMetaKey, isHiddenGame, isValidTimeZone, sanitizeTimeZone, type PlaytimeDayResponse } from "@lg/core";
+import { capList, gameMetaKey, isHiddenGame, isValidTimeZone, sanitizeTimeZone, type PlaytimeDayResponse } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
@@ -34,7 +34,7 @@ export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void
       // Cover art + genre, matched by name — same cache the top-games list uses, so
       // a game looks the same drilled-in as it does in the list.
       const meta = store.gameMeta.getAll();
-      const games = store.sessions
+      const allGames = store.sessions
         .dayBreakdown("game", day, zone)
         .filter((g) => !isHiddenGame(g.name, hidden))
         .map((g) => {
@@ -48,7 +48,12 @@ export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void
             ...(m?.genre ? { genre: m.genre } : {}),
           };
         });
-      return { day, games };
+      // Cap to the module's maxCount before sending — the client never receives
+      // games past the cap. `total` (distinct games) and `minutes` (the day's real
+      // total, across every game) are reported uncapped for the summary + "and N more".
+      const minutes = allGames.reduce((sum, g) => sum + g.minutes, 0);
+      const { rows: games, total } = capList(allGames, store.content.getPlaytime().maxCount);
+      return { day, games, total, minutes };
     },
   );
 }

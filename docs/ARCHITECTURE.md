@@ -126,3 +126,10 @@ pages are the repo's own Markdown, rendered at build time with the helpers in
 `apps/web/src/lib/docs.ts` (which also decide the sidebar grouping, one group per
 folder under `docs/`). Markdown assets uploaded through the CMS publish at
 `/md/<slug>` in the same shell.
+
+The client is pure presentation: it renders what the server resolved and caps,
+counts, or infers nothing it wasn't given. Every visibility toggle and every list
+limit — hardcoded or CMS-set — is enforced server-side (in the resolver, a query
+`LIMIT`, or the day-drill-in routes), so the browser is never sent data it will
+only hide or trim. See [The CMS](concepts/the-cms.md) for how the row caps and the
+"and N more" totals work end to end.

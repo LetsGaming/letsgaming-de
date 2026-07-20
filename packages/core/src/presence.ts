@@ -516,22 +516,6 @@ export interface MusicRankEntry {
   artUrl?: string;
 }
 
-/** One track played on a given day — the music drill-in, parallel to the
- *  playtime day breakdown. */
-export interface MusicDayTrack {
-  song: string;
-  artist: string;
-  minutes: number;
-  plays: number;
-  artUrl?: string;
-}
-
-/** `/api/music/day` reply: the tracks played on one date. */
-export interface MusicDayResponse {
-  day: string;
-  tracks: MusicDayTrack[];
-}
-
 /** The music module's data: top songs / artists / albums plus a listening
  *  timeline, over a window. Genre and podcasts are absent — Discord's Spotify
  *  presence doesn't expose them; they'd need the Spotify Web API. */

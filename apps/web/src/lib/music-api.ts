@@ -8,10 +8,10 @@ import { apiUrl } from "./api";
 
 /** Throws on a non-2xx or network error; the drill composable maps that to its
  *  error state. `day` is `YYYY-MM-DD`. */
-export async function fetchMusicDay(day: string, tz?: string): Promise<MusicDayResponse["tracks"]> {
+export async function fetchMusicDay(day: string, tz?: string): Promise<MusicDayResponse> {
   const res = await fetch(apiUrl(`/api/music/day?day=${day}${tz ? `&tz=${encodeURIComponent(tz)}` : ""}`), {
     headers: { Accept: "application/json" },
   });
   if (!res.ok) throw new Error(String(res.status));
-  return ((await res.json()) as MusicDayResponse).tracks;
+  return (await res.json()) as MusicDayResponse;
 }

@@ -36,11 +36,21 @@
 - **Music and Playtime share their strip, timeline, and heatmap wiring** instead of
   mirroring it: the fortnight day-strip and day drill-in are one composable, and the
   ranked row, stat tile, and heat strip one component apiece.
+- **Every capped list — the top songs/artists list, the top-games list, and both
+  per-day drill-ins — shares one "show N, expand to the cap, then say how many the
+  limit hid" composable**, so a change to that behaviour happens in one place instead
+  of being reimplemented per section.
 
 ### Fixes
 
 - The heatmap grid lines up with its day labels and hour axis; hobby cards reflow to two
   columns on a narrow screen.
+- **Drilling into a day on Listening or Played now respects the list's cap.** The day
+  panels used to expand to every track or game for that day, ignoring the limit; they
+  now show at most `maxCount` with an "and N more" note for the rest — and, like the
+  headline lists, the cap is enforced **server-side**, so the browser is never sent the
+  rows the limit hides. The day endpoints return the top-N (aggregated per view) plus
+  the true totals for the note, never the whole day.
 
 ## 2.0.0
 

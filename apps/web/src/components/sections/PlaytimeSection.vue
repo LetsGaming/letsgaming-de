@@ -19,6 +19,7 @@ import { fmtDay } from "../../lib/calendar";
 import { fetchPlaytimeDay } from "../../lib/playtime-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
+import { useLimitedList } from "../../composables/useLimitedList";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
@@ -54,7 +55,6 @@ const d = computed(() => liveData.value);
 // Flip owner↔local: re-fetch straight away rather than waiting for the next poll.
 watch(mode, () => void refresh());
 
-const TOP_SHOWN = 5;
 const fmtHrs = (min: number) => {
   const h = min / 60;
   return (h >= 10 || h % 1 === 0 ? Math.round(h) : h.toFixed(1)) + "h";
@@ -62,30 +62,55 @@ const fmtHrs = (min: number) => {
 
 // The clickable fortnight timeline + day drill-in — shared with Listening. The
 // strip's window and drill-in run in the data's zone (`d.timeZone`), so a flip
-// moves them with the heatmap.
-const { selected, dayData: dayGames, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
-  useLedgerStrip<PlaytimeDayResponse["games"]>({
+// moves them with the heatmap. The day response is pre-capped to maxCount, with the
+// true distinct-game total and the day's real minutes alongside.
+const EMPTY_DAY: PlaytimeDayResponse = { day: "", games: [], total: 0, minutes: 0 };
+const { selected, dayData, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
+  useLedgerStrip<PlaytimeDayResponse>({
     ledger: () => d.value.ledger,
     fetchDay: (iso) => fetchPlaytimeDay(iso, d.value.timeZone),
-    emptyDay: [],
+    emptyDay: EMPTY_DAY,
     title: (day, min) => `${fmtDay(day)} · ${min ? fmtHrs(min) : "nothing"}`,
     timeZone: () => d.value.timeZone,
   });
 const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
 
-// The top-games list.
+// The top-games list. The server caps `recent` at maxCount (the client never sees
+// past the cap); gameCount is the true total, for the headline and "and N more".
 const games = computed(() => d.value.recent ?? []);
-const expanded = ref(false);
-const shownGames = computed(() => (expanded.value ? games.value : games.value.slice(0, TOP_SHOWN)));
-const hiddenCount = computed(() => Math.max(0, games.value.length - TOP_SHOWN));
-const gameCount = computed(() => games.value.length);
+const gameCount = computed(() => d.value.gameCount);
+const {
+  shown: shownGames,
+  expanded: gamesOpen,
+  moreCount: gamesMore,
+  overflow: gamesOver,
+  atCap: gamesAtCap,
+} = useLimitedList({
+  rows: games,
+  initial: () => d.value.initialCount,
+  max: () => d.value.maxCount,
+  total: gameCount,
+});
 
-// The day panel rows.
-const dayRowsAll = computed(() => dayGames.value ?? []);
-const shownDayRows = computed(() => (dayExpanded.value ? dayRowsAll.value : dayRowsAll.value.slice(0, TOP_SHOWN)));
-const dayHidden = computed(() => Math.max(0, dayRowsAll.value.length - TOP_SHOWN));
-const dayMinutes = computed(() => dayRowsAll.value.reduce((s, g) => s + g.minutes, 0));
-const dayGameCount = computed(() => dayRowsAll.value.length);
+// The day panel rows — already capped server-side, with the true distinct-game
+// total shipped for "and N more". Reuses the strip's expanded ref (resets on day
+// change).
+const dayRowsAll = computed(() => dayData.value?.games ?? []);
+const dayListTotal = computed(() => dayData.value?.total ?? 0);
+const {
+  shown: shownDayRows,
+  moreCount: dayMore,
+  overflow: dayOver,
+  atCap: dayAtCap,
+} = useLimitedList({
+  rows: dayRowsAll,
+  initial: () => d.value.initialCount,
+  max: () => d.value.maxCount,
+  total: dayListTotal,
+  expanded: dayExpanded,
+});
+const dayMinutes = computed(() => dayData.value?.minutes ?? 0);
+const dayGameCount = computed(() => dayData.value?.total ?? 0);
 
 const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
 
@@ -211,9 +236,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
             >
               {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
             </RankedRow>
-            <button v-if="dayHidden > 0" class="pt-more" @click="dayExpanded = !dayExpanded">
-              {{ dayExpanded ? "show less" : `show ${dayHidden} more` }}
-            </button>
+            <p class="pt-foot">
+              <button v-if="dayMore > 0" class="pt-more" @click="dayExpanded = !dayExpanded">
+                {{ dayExpanded ? "show less" : `show ${dayMore} more` }}
+              </button>
+              <span v-if="dayAtCap && dayOver > 0" class="pt-cap">and {{ dayOver }} more</span>
+            </p>
           </template>
         </template>
 
@@ -231,9 +259,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           >
             {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
           </RankedRow>
-          <button v-if="hiddenCount > 0" class="pt-more" @click="expanded = !expanded">
-            {{ expanded ? "show less" : `show ${hiddenCount} more` }}
-          </button>
+          <p class="pt-foot">
+            <button v-if="gamesMore > 0" class="pt-more" @click="gamesOpen = !gamesOpen">
+              {{ gamesOpen ? "show less" : `show ${gamesMore} more` }}
+            </button>
+            <span v-if="gamesAtCap && gamesOver > 0" class="pt-cap">and {{ gamesOver }} more</span>
+          </p>
         </template>
       </div>
     </div>
@@ -380,10 +411,25 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   background: none;
   border: 0;
   cursor: pointer;
-  padding: var(--sp-8) 0 0;
+  padding: 0;
 }
 .pt-more:hover {
   text-decoration: underline;
+}
+/* "show more" and the muted "and N more" cap note share a row (mirrors Listening). */
+.pt-foot {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-10);
+  padding-top: var(--sp-8);
+}
+.pt-foot:empty {
+  display: none;
+}
+.pt-cap {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
 }
 .pt-dim {
   color: var(--muted);

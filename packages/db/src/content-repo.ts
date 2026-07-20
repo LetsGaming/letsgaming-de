@@ -5,6 +5,7 @@ import type {
   Localized,
   MusicSettings,
   NowItem,
+  PlaytimeSettings,
   PresenceSettings,
   Project,
   SiteContent,
@@ -15,8 +16,10 @@ import type { GalleryItem } from "@lg/core";
 import {
   defaultPresenceSettings,
   defaultMusicSettings,
+  defaultPlaytimeSettings,
   sanitizeHiddenGames,
   sanitizeMusicSettings,
+  sanitizePlaytimeSettings,
   sanitizePresenceSettings,
   sanitizePresenceShow,
   sanitizeRetentionDays,
@@ -126,6 +129,14 @@ export function contentRepo(db: DB) {
     return sanitizeMusicSettings(json<unknown>(row.music));
   };
 
+  const readPlaytime = (): PlaytimeSettings => {
+    const row = db
+      .prepare("SELECT playtime FROM site_content WHERE id = ?")
+      .get(SINGLETON_ID) as { playtime: string | null } | undefined;
+    if (!row || row.playtime === null) return defaultPlaytimeSettings();
+    return sanitizePlaytimeSettings(json<unknown>(row.playtime));
+  };
+
   /**
    * Snapshot the whole document into the revision archive.
    *
@@ -168,7 +179,7 @@ export function contentRepo(db: DB) {
       return result;
     });
 
-  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music", value: unknown): void =>
+  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music" | "playtime", value: unknown): void =>
     write(col, () => {
       db.prepare(`UPDATE site_content SET ${col} = ? WHERE id = ?`).run(
         JSON.stringify(value),
@@ -193,6 +204,7 @@ export function contentRepo(db: DB) {
           now: readNow(),
           presence: readPresence(),
           music: readMusic(),
+          playtime: readPlaytime(),
           gallery: readGallery(),
         }),
         SINGLETON_ID,
@@ -212,6 +224,12 @@ export function contentRepo(db: DB) {
     getMusic: readMusic,
     setMusic(settings: MusicSettings) {
       setScalar("music", sanitizeMusicSettings(settings));
+    },
+
+    /** Playtime list-display config (CMS-owned). */
+    getPlaytime: readPlaytime,
+    setPlaytime(settings: PlaytimeSettings) {
+      setScalar("playtime", sanitizePlaytimeSettings(settings));
     },
 
     /** Presence category allow-list (CMS-owned). */

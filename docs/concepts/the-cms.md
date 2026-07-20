@@ -99,3 +99,16 @@ category allow-list, and returns only what's permitted. The client never receive
 raw Lanyard data, never learns the Discord id, and never sees a category the owner
 disabled. Which categories show is edited in the CMS; the Discord id lives in the
 environment.
+
+The same rule governs how much a list shows. Every row limit — whether hardcoded
+or set in the CMS — is enforced on the server, so the client is sent only the rows
+it may display and never a fuller payload to trim. This holds for **all** data
+fetched from the backend, not just the headline lists: the Listening and Playtime
+top lists come back already capped to `maxCount` (a query `LIMIT`, or a cap in the
+resolver), and the per-day drill-ins are aggregated and capped *before* the
+response is sent — the day endpoint returns the top-N songs, artists, or games for
+that day, never the whole day. Alongside the capped rows the server reports the
+true totals (distinct tracks, artists, or games, and the day's real minutes), so
+the page can say "and N more" without ever holding the rows the limit hid. The
+client caps nothing and counts nothing it wasn't given; a `maxCount` is a `LIMIT`,
+not a client-side `.slice()`.
