@@ -84,4 +84,14 @@ defineProps<{
 .tile.t-sun {
   background: var(--tile-sun);
 }
+
+/* The responsive step has to live here: once `.hobbies` moved into this scoped
+   block, `.hobbies[data-v]` out-specifies a global `@media .hobbies`, so the
+   breakpoint only wins from inside the same scope. Two columns on a phone, four on
+   the desktop — matching the stats grid. */
+@media (max-width: 680px) {
+  .hobbies {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 </style>

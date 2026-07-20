@@ -12,7 +12,7 @@
  * art and genre come from RAWG, matched by name, served through the shared media
  * proxy; a monogram stands in where there's no cover.
  */
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
 import { fmtDay } from "../../lib/calendar";
@@ -25,9 +25,34 @@ import HeatStrip from "../ui/HeatStrip.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
-// Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data.
-const { data: liveData } = useLiveModule(props.module.id, "playtime", props.module.data);
+
+// Which zone the module is shown in. The backend buckets in a zone and ships it;
+// by default that's the owner's (what SSR sent). A visitor can flip to their own
+// local time, which re-requests the module bucketed in their zone — exact, not a
+// client-side rotation. The owner's zone is captured from the SSR data up front.
+const ownerZone = props.module.data.timeZone;
+const viewerZone = ref<string | null>(null);
+onMounted(() => {
+  viewerZone.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+});
+const mode = ref<"owner" | "local">("owner");
+const requestedZone = computed(() => (mode.value === "local" && viewerZone.value ? viewerZone.value : ownerZone));
+// The toggle only earns its place when the viewer's zone differs from the owner's —
+// otherwise both views are identical. Known only after mount, so it appears a beat
+// after load (and, for the owner, never).
+const showZoneToggle = computed(() => !!viewerZone.value && viewerZone.value !== ownerZone);
+
+// Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data —
+// in `requestedZone`, so a flip re-buckets on the server.
+const { data: liveData, refresh } = useLiveModule(
+  props.module.id,
+  "playtime",
+  props.module.data,
+  () => requestedZone.value,
+);
 const d = computed(() => liveData.value);
+// Flip owner↔local: re-fetch straight away rather than waiting for the next poll.
+watch(mode, () => void refresh());
 
 const TOP_SHOWN = 5;
 const fmtHrs = (min: number) => {
@@ -35,13 +60,16 @@ const fmtHrs = (min: number) => {
   return (h >= 10 || h % 1 === 0 ? Math.round(h) : h.toFixed(1)) + "h";
 };
 
-// The clickable fortnight timeline + day drill-in — shared with Listening.
+// The clickable fortnight timeline + day drill-in — shared with Listening. The
+// strip's window and drill-in run in the data's zone (`d.timeZone`), so a flip
+// moves them with the heatmap.
 const { selected, dayData: dayGames, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
   useLedgerStrip<PlaytimeDayResponse["games"]>({
     ledger: () => d.value.ledger,
-    fetchDay: fetchPlaytimeDay,
+    fetchDay: (iso) => fetchPlaytimeDay(iso, d.value.timeZone),
     emptyDay: [],
     title: (day, min) => `${fmtDay(day)} · ${min ? fmtHrs(min) : "nothing"}`,
+    timeZone: () => d.value.timeZone,
   });
 const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
 
@@ -64,9 +92,15 @@ const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
 // ── the weekday×hour heatmap ("when I play") ──────────────────────────────────
 // A second card, and Playtime's own — Listening has no equivalent. The day strip
 // answers "how much, per day"; this answers "at what time of day".
+//
+// The grid arrives already bucketed in the display zone — the backend aggregated
+// it there from the raw sessions (owner's zone by default, the viewer's when the
+// module is flipped to local). So it renders straight, no client re-projection:
+// what you see is an exact, DST-correct grid for whichever zone `d.timeZone` is.
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-// Build a 7×24 grid (Mon-first) from the sparse cells. SQLite's %w is Sun=0, so
-// rotate to Mon=0.
+
+// Build the 7×24 grid (Mon-first) from the sparse cells. `%w` is Sun=0, rotate to
+// Mon=0.
 const heatGrid = computed(() => {
   const grid = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
   for (const c of d.value.heat) grid[(c.weekday + 6) % 7]![c.hour] = c.minutes;
@@ -75,9 +109,25 @@ const heatGrid = computed(() => {
 const heatMax = computed(() => Math.max(1, ...d.value.heat.map((c) => c.minutes)));
 const heatLevel = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / heatMax.value) * 4)));
 
-const now = new Date();
-const nowHour = now.getHours();
-const nowDay = (now.getDay() + 6) % 7;
+// "now" in the grid's zone (`d.timeZone`), so the marker lands on the right cell in
+// either view. Held back until mount so SSR and the first client render agree.
+const nowMarker = computed(() => {
+  if (!viewerZone.value) return { day: -1, hour: -1 };
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: d.value.timeZone,
+    weekday: "short",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const wd = parts.find((p) => p.type === "weekday")?.value ?? "";
+  return { day: DAYS.indexOf(wd), hour: Number(parts.find((p) => p.type === "hour")?.value ?? -1) };
+});
+
+// The card's zone label: "local time" when it is the viewer's (either the toggle is
+// hidden because the zones match, or they've flipped to local); otherwise the
+// owner's city, so an out-of-zone visitor isn't misled.
+const ownerCity = ownerZone.split("/").pop()?.replace(/_/g, " ") ?? ownerZone;
+const zoneLabel = computed(() => (!showZoneToggle.value || mode.value === "local" ? "local time" : `${ownerCity} time`));
 
 // Cells for HeatGrid, hour-major: column-flow fills each column top-to-bottom, so
 // with 7 rows a column is one hour down the week (Mon→Sun) and the 24 columns are
@@ -90,7 +140,7 @@ const heatCells = computed<HeatCell[]>(() => {
       const min = heatGrid.value[day]?.[hour] ?? 0;
       out.push({
         level: heatLevel(min),
-        today: day === nowDay && hour === nowHour,
+        today: day === nowMarker.value.day && hour === nowMarker.value.hour,
         title: `${DAYS[day]} ${String(hour).padStart(2, "0")}:00 · ${min ? fmtHrs(min) : "nothing"}`,
       });
     }
@@ -192,12 +242,20 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
       <div v-if="d.heat.length" class="pt-card">
         <div class="pt-card-h">
           <span class="pt-t">When I play</span>
-          <span class="pt-scope">local time</span>
+          <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
+          <span v-else class="pt-zone" role="group" aria-label="Show times in">
+            <button type="button" class="pt-zone-b" :class="{ on: mode === 'owner' }" @click="mode = 'owner'">
+              {{ ownerCity }}
+            </button>
+            <button type="button" class="pt-zone-b" :class="{ on: mode === 'local' }" @click="mode = 'local'">
+              Local
+            </button>
+          </span>
         </div>
         <div class="pt-heat">
           <div class="pt-heat-days"><span v-for="dl in DAYS" :key="dl">{{ dl }}</span></div>
           <div class="pt-heat-plot">
-            <HeatGrid :cells="heatCells" :min-cell="8" legend />
+            <HeatGrid :cells="heatCells" :min-cell="8" :cell-height="13" legend />
             <div class="pt-heat-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
           </div>
         </div>
@@ -255,6 +313,33 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   font-family: var(--f-m);
   font-size: var(--fs-micro);
   color: var(--live-ink);
+}
+/* The owner/local timezone toggle — a small segmented control, shown only to a
+   visitor whose zone differs from the owner's. */
+.pt-zone {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--bg-base);
+}
+.pt-zone-b {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: var(--r-xs);
+  padding: 1px var(--sp-6);
+  cursor: pointer;
+}
+.pt-zone-b:hover {
+  color: var(--ink);
+}
+.pt-zone-b.on {
+  color: var(--live-ink);
+  background: var(--card-2);
 }
 .pt-stats {
   display: grid;
@@ -317,17 +402,19 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 }
 
 /* ── weekday×hour heatmap: day labels beside a 24-column grid, hour axis below.
-   The labels mirror HeatGrid's row structure (7 rows, 3px gap, 4px pad) so they
-   line up with the cell rows. ── */
+   `align-items: start` keeps the labels pinned to the top (the grid), not
+   stretched over the legend + axis below it; the fixed 13px rows + 3px gap + 4px
+   pad mirror the grid's fixed-height cells (`:cell-height="13"`) so the seven
+   labels line up with the seven cell rows exactly. ── */
 .pt-heat {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--sp-8);
-  align-items: stretch;
+  align-items: start;
 }
 .pt-heat-days {
   display: grid;
-  grid-template-rows: repeat(7, 1fr);
+  grid-template-rows: repeat(7, 13px);
   gap: 3px;
   padding: 4px 0;
   font-family: var(--f-m);

@@ -1,14 +1,6 @@
-# Release — on a version tag: validate the full monorepo build, attach a deploy
-# bundle to the GitHub release, and push TWO Docker images to GHCR
-# (ghcr.io/<owner>/letsgaming-de-{server,web}:<version> + :latest).
-#
-# letsgaming.de ships as two images, not one: apps/server (the Fastify read + CMS
-# API and in-process sync worker) and apps/web (the Astro SSR site). Both build
-# from the repo root as their context — the Dockerfiles use `pnpm fetch` against
-# the root lockfile, so they need the whole workspace.
-#
-# The release body is the CHANGELOG.md section for the tag, followed by GitHub's
-# generated notes (What's Changed / Full Changelog).
+# Release — on a version tag only: build + push the server and web images to
+# GHCR (ghcr.io/<owner>/<repo>/{server,web}:<version> + :latest), then create a
+# GitHub Release with generated notes. Nothing here runs on a normal push.
 name: Release
 
 on:
@@ -16,104 +8,57 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
-  packages: write
+  contents: write # create the GitHub Release
+  packages: write # push images to GHCR
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  images:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: server
+            dockerfile: apps/server/Dockerfile
+          - name: web
+            dockerfile: apps/web/Dockerfile
     steps:
       - uses: actions/checkout@v4
-
-      # pnpm before setup-node, so `cache: pnpm` can find the store. The version
-      # comes from the repo's `packageManager` field (pnpm@11), keeping it in one
-      # place; add `with: { version: 11 }` here only if that field is absent.
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22 # matches the CI matrix (22 + 24)
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Builds every workspace package in dependency order (core → db → sources →
-      # server, and web after its deps — the SSR site reads @lg/db's dist at build
-      # time). A fail-fast gate before the release is cut and the images pushed.
-      - name: Build
-        run: pnpm -r build
-
-      # The deploy kit: this project's runnable artifact IS the GHCR image, and
-      # GitHub already attaches the source archive, so the tarball is the glue to
-      # bring the pushed images up — the compose file and the env template, plus the
-      # CHANGELOG for reference.
-      - name: Pack release bundle
-        run: |
-          tar -czf letsgaming-de-${{ github.ref_name }}.tar.gz \
-            docker-compose.yml .env.example CHANGELOG.md
-
-      # generate_release_notes builds "What's Changed" out of merged pull requests
-      # only — anything pushed straight to main is invisible to it. The CHANGELOG
-      # section for the tag is the actual summary, and the API pre-pends `body` to
-      # the generated notes, so the release reads: our prose first, then What's
-      # Changed / Full Changelog.
-      #
-      # letsgaming's headings are `## <version>` (no brackets, optional date after),
-      # so we match the exact `## 2.0.0` line or a `## 2.0.0 …` prefix — the trailing
-      # space keeps 2.0.1 from matching 2.0.10 — and stop at the next `## ` heading.
-      - name: Extract the CHANGELOG section for this tag
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          awk -v v="$version" '
-            $0 == "## " v || index($0, "## " v " ") == 1 { found = 1; next }
-            found && /^## /                              { exit }
-            found                                        { print }
-          ' CHANGELOG.md | sed -e '/./,$!d' > "$RUNNER_TEMP/release-notes.md"
-
-          if [ -s "$RUNNER_TEMP/release-notes.md" ]; then
-            echo "Release body: $(wc -l < "$RUNNER_TEMP/release-notes.md") lines from CHANGELOG.md"
-          else
-            echo "::warning::CHANGELOG.md has no '## $version' section (or it is empty) — the release will only carry the generated notes."
-          fi
-
-      - name: Attach bundle to the GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: letsgaming-de-${{ github.ref_name }}.tar.gz
-          body_path: ${{ runner.temp }}/release-notes.md
-          generate_release_notes: true
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # GHCR paths must be lowercase, but github.repository keeps the owner's
-      # original casing (LetsGaming). Lowercase it here so the names are valid
-      # regardless of capitalisation; the two images hang off this base.
-      - name: Compute lowercase image base
-        id: image
-        run: echo "base=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push the server image
-        uses: docker/build-push-action@v6
+      # metadata-action lowercases the image name (github.repository keeps the
+      # owner's original casing) and derives the :<version> + :latest tags.
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/server/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
-          tags: |
-            ${{ steps.image.outputs.base }}-server:${{ github.ref_name }}
-            ${{ steps.image.outputs.base }}-server:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Only the web image bakes the public API URL into its client bundle.
+          build-args: ${{ matrix.name == 'web' && format('PUBLIC_API_URL={0}', vars.PUBLIC_API_URL) || '' }}
 
-      - name: Build and push the web image
-        uses: docker/build-push-action@v6
+  release:
+    runs-on: ubuntu-latest
+    needs: images
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
         with:
-          context: .
-          file: apps/web/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.image.outputs.base }}-web:${{ github.ref_name }}
-            ${{ steps.image.outputs.base }}-web:latest
+          generate_release_notes: true

@@ -5,6 +5,7 @@ import {
   PLAYTIME_WINDOW_DAYS,
   resolveSiteView,
   SOURCE_TTL,
+  sanitizeTimeZone,
   type Locale,
   type NavNode,
   type PlaytimeHeatCell,
@@ -37,10 +38,19 @@ export interface BuildSiteViewOptions {
   mediaDir: string;
   /** Pending nav, for the CMS editor canvas. Omit for the site's saved nav. */
   nav?: NavNode[];
+  /** Zone to bucket the observed-activity charts in. Omit for the owner's
+   *  configured zone (a visitor asking for their own local time passes theirs). */
+  timeZone?: string;
 }
 
 export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): Promise<SiteView> {
   const content = store.content.getContent();
+  // The zone the observed-activity charts bucket in: the caller's requested zone (a
+  // visitor asking for their own local time), else the owner's — the `TZ` env var,
+  // defaulting to Europe/Berlin. A single-user site's owner zone rarely changes, so
+  // an env var (edit + redeploy) is the right weight; the aggregation itself takes
+  // the zone as a parameter, so per-request overrides still work.
+  const timeZone = opts.timeZone ?? sanitizeTimeZone(process.env.TZ);
   return resolveSiteView({
     content,
     source: store.source.getAllCurrent(),
@@ -57,61 +67,70 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     // shows, so the list and the timeline answer the same span.
     playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
     gameMeta: store.gameMeta.getAll(),
-    playHistory: buildPlayHistory(store),
+    playHistory: buildPlayHistory(store, timeZone),
     // The list cap is the CMS-owned maxCount, applied here as the query LIMIT so
     // the resolved view (and the frontend) never sees more than the top N.
-    musicHistory: buildMusicHistory(store, content.music?.maxCount ?? defaultMusicSettings().maxCount),
+    musicHistory: buildMusicHistory(store, content.music?.maxCount ?? defaultMusicSettings().maxCount, timeZone),
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
 }
 
 /**
- * The historical playtime module's data (features 02 + 03).
+ * The historical playtime module's data (features 02 + 03), bucketed in `timeZone`.
  *
  * - **The ledger** is per-day observed minutes, oldest first — `dailyTotals` over
- *   all time (the strip windows it to a fortnight). It used to difference Steam's
- *   lifetime counters, which were exact but Steam-only; observed minutes are a
- *   floor but cover every game Discord saw.
+ *   all time (the strip windows it to a fortnight).
  * - **The heatmap** buckets those same sessions by weekday and hour, all-time —
  *   the "when do I play" grid the day strip can't show.
+ *
+ * Both bucket from the raw UTC rows in `timeZone` (not the process zone), so the
+ * same builder serves the owner's zone and a visitor's. The zone is shipped so the
+ * frontend knows which one it's showing.
  */
-function buildPlayHistory(store: Store): {
+function buildPlayHistory(
+  store: Store,
+  timeZone: string,
+): {
   ledger: { day: string; minutes: number }[];
   heat: PlaytimeHeatCell[];
+  timeZone: string;
   since?: string;
 } {
   const ledger = store.sessions
-    .dailyTotals("game", EPOCH_ISO)
+    .dailyTotals("game", EPOCH_ISO, timeZone)
     .map((d) => ({ day: d.day, minutes: d.minutes }));
-  const heat = store.sessions.heatmap("game", EPOCH_ISO);
-  return { ledger, heat, ...(ledger[0] ? { since: ledger[0].day } : {}) };
+  const heat = store.sessions.heatmap("game", EPOCH_ISO, timeZone);
+  return { ledger, heat, timeZone, ...(ledger[0] ? { since: ledger[0].day } : {}) };
 }
 
 /**
- * The music module's data (top songs/artists/albums + a per-day listening strip).
+ * The music module's data (top songs/artists/albums + a per-day listening strip),
+ * the strip bucketed in `timeZone`.
  *
  * The same 14-day window the playtime chart uses, so "listening" and "playing"
- * cover the same fortnight. Five reads over `music_plays`, joined
- * only in the view; the per-day drill-in isn't here — it's fetched on click from
- * `/api/music/day`, so the module ships three short lists and one strip, not two
- * weeks of track breakdowns.
+ * cover the same fortnight. The per-day drill-in isn't here — it's fetched on click
+ * from `/api/music/day`. The zone is shipped so the strip's window and "today"
+ * agree with the bucketed days.
  *
- * `trackCount`/`artistCount` are the headline stats the module makes clickable, so
- * they're the *distinct* counts over the window, not the sum of plays — and they're
- * uncapped on purpose: `listLimit` (the CMS maxCount) trims only the top-N lists,
- * never the counts, so the headline stays true even when the list is a top N.
+ * `trackCount`/`artistCount` are the *distinct* counts over the window (uncapped on
+ * purpose: `listLimit` trims only the top-N lists, never the counts).
  */
-function buildMusicHistory(store: Store, listLimit: number): {
+function buildMusicHistory(
+  store: Store,
+  listLimit: number,
+  timeZone: string,
+): {
   topSongs: ReturnType<Store["music"]["topSongs"]>;
   topArtists: ReturnType<Store["music"]["topArtists"]>;
   topAlbums: ReturnType<Store["music"]["topAlbums"]>;
   ledger: { day: string; minutes: number }[];
   trackCount: number;
   artistCount: number;
+  timeZone: string;
   since?: string;
 } {
   const since = isoDaysAgo(PLAYTIME_WINDOW_DAYS);
-  const ledger = store.music.dailyTotals(since);
+  const ledger = store.music.dailyTotals(since, timeZone);
   return {
     topSongs: store.music.topSongs(since, listLimit),
     topArtists: store.music.topArtists(since, listLimit),
@@ -119,6 +138,7 @@ function buildMusicHistory(store: Store, listLimit: number): {
     ledger,
     trackCount: store.music.distinctTracks(since),
     artistCount: store.music.distinctArtists(since),
+    timeZone,
     ...(ledger[0] ? { since: ledger[0].day } : {}),
   };
 }

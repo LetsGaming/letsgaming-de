@@ -10,21 +10,25 @@
  * Spotify's, not the owner's own games.
  */
 
-import type { MusicDayResponse } from "@lg/core";
+import { isValidTimeZone, sanitizeTimeZone, type MusicDayResponse } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function registerMusicRoutes(app: FastifyInstance, store: Store): void {
-  app.get<{ Querystring: { day?: string }; Reply: MusicDayResponse | { error: string } }>(
+  app.get<{ Querystring: { day?: string; tz?: string }; Reply: MusicDayResponse | { error: string } }>(
     "/api/music/day",
     async (req, reply) => {
       const day = req.query.day ?? "";
       if (!DAY_RE.test(day)) {
         return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
       }
-      return { day, tracks: store.music.dayBreakdown(day) };
+      // The zone the day is interpreted in: the caller's if valid, else the owner's
+      // (the `TZ` env var).
+      const tz = req.query.tz;
+      const zone = tz && isValidTimeZone(tz) ? tz : sanitizeTimeZone(process.env.TZ);
+      return { day, tracks: store.music.dayBreakdown(day, zone) };
     },
   );
 }

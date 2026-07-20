@@ -74,7 +74,7 @@ test("music ledger is daily minutes, oldest first", () => {
   store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: day(17, 20), seenAt: day(17, 20) + "" });
   store.music.observe({ trackId: "t2", song: "B", artist: "X", startedAt: day(17, 21), seenAt: new Date(Date.UTC(2026,6,17,21,10)).toISOString() });
   store.music.observe({ trackId: "t3", song: "C", artist: "X", startedAt: day(19, 10), seenAt: new Date(Date.UTC(2026,6,19,10,5)).toISOString() });
-  const days = store.music.dailyTotals(day(1, 0));
+  const days = store.music.dailyTotals(day(1, 0), "UTC");
   assert.deepEqual(days.map((d) => d.day), ["2026-07-17", "2026-07-19"]);
 });
 
@@ -163,7 +163,7 @@ test("dayBreakdown returns a date's tracks, most-listened first, with art", () =
     trackId: "t2", song: "Long", artist: "Y", albumArtUrl: "https://i.scdn.co/image/l",
     startedAt: iso(10, 0), seenAt: iso(10, 8),
   });
-  const day = store.music.dayBreakdown("2026-07-17");
+  const day = store.music.dayBreakdown("2026-07-17", "UTC");
   assert.equal(day.length, 2);
   assert.equal(day[0]?.song, "Long", "longer listen ranks first");
   assert.equal(day[0]?.artUrl, "https://i.scdn.co/image/l");
@@ -174,7 +174,7 @@ test("dayBreakdown groups replays of one track within the day", () => {
   const store = openStore(":memory:");
   store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(9, 0), seenAt: iso(9, 3) });
   store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(14, 0), seenAt: iso(14, 2) }); // replay
-  const day = store.music.dayBreakdown("2026-07-17");
+  const day = store.music.dayBreakdown("2026-07-17", "UTC");
   assert.equal(day.length, 1, "one row for the track");
   assert.equal(day[0]?.plays, 2, "two plays summed");
   assert.equal(day[0]?.minutes, 5, "3 + 2 minutes");
@@ -183,7 +183,7 @@ test("dayBreakdown groups replays of one track within the day", () => {
 test("dayBreakdown for a silent day is empty", () => {
   const store = openStore(":memory:");
   store.music.observe({ trackId: "t1", song: "A", artist: "X", startedAt: iso(9, 0), seenAt: iso(9, 3) });
-  assert.deepEqual(store.music.dayBreakdown("2020-01-01"), []);
+  assert.deepEqual(store.music.dayBreakdown("2020-01-01", "UTC"), []);
 });
 
 // ── list ↔ count consistency (no sub-minute floor, no cap) ────────────────────
@@ -204,7 +204,7 @@ test("a sub-minute play still appears in topSongs and matches distinctTracks", (
   assert.equal(songs[0]?.name, "Played");
   assert.equal(songs[1]?.name, "Skipped");
   // And it's exactly the same track set the day breakdown shows.
-  assert.equal(store.music.dayBreakdown("2026-07-17").length, 2);
+  assert.equal(store.music.dayBreakdown("2026-07-17", "UTC").length, 2);
 });
 
 test("topArtists reconciles with distinctArtists (no floor drops a brief artist)", () => {

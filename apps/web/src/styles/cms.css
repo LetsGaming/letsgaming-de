@@ -1310,6 +1310,32 @@ body.is-dragging .cms .glist .gthumb {
   font-weight: 400;
   opacity: 0.6;
 }
+/* The per-module move/hide dropdown — the tap-friendly path for relocating or
+   hiding a module, alongside the drag handle. */
+.cms .railmove {
+  flex: none;
+  max-width: 44%;
+  font-size: 12px;
+  padding: 3px var(--sp-6);
+  border-radius: var(--r-xs);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+}
+.cms .railmove:hover {
+  color: var(--ink);
+}
+/* The page currently open on the canvas — marked so showing every page doesn't
+   lose track of which one is being edited. */
+.cms .railbox-cur {
+  border-color: var(--line-2);
+}
+.cms .railcur {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--live);
+  margin-left: var(--sp-6);
+}
 /* An empty area still needs to be a drop target, or the only way to fill it is to
    already have something in it. */
 .cms .dropzone {

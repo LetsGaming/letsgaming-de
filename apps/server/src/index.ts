@@ -1,7 +1,7 @@
 import { buildApp } from "./app.js";
 import { loadEnv } from "./env.js";
 import { getStore } from "./store.js";
-import { PRESENCE_SAMPLE_SCHEDULE } from "@lg/core";
+import { PRESENCE_SAMPLE_SCHEDULE, DEFAULT_TIMEZONE } from "@lg/core";
 import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
 import { resolveGameMetadata } from "./sync/game-metadata.js";
@@ -14,6 +14,11 @@ import { basename } from "node:path";
 const LOG_MOUNT = "/logs";
 
 const env = loadEnv();
+// `TZ` is the owner's timezone — the default zone the observed-activity charts
+// bucket in (the aggregation takes an explicit zone, so visitors can still override
+// with `?tz`). Docker sets it; this is the dev fallback. Rarely changes for a
+// single-user site, so an env var (edit + redeploy) is the right weight.
+process.env.TZ ??= DEFAULT_TIMEZONE;
 const store = getStore(env.dbPath);
 
 const app = await buildApp(store, env);

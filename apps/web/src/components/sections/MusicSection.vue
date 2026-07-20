@@ -38,9 +38,10 @@ const TOP_SHOWN = computed(() => d.value.initialCount);
 const { selected, dayData: dayTracks, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
   useLedgerStrip<MusicDayResponse["tracks"]>({
     ledger: () => d.value.ledger,
-    fetchDay: fetchMusicDay,
+    fetchDay: (iso) => fetchMusicDay(iso, d.value.timeZone),
     emptyDay: [],
     title: (day, min) => `${fmtDay(day)} · ${min} min`,
+    timeZone: () => d.value.timeZone,
   });
 const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
 

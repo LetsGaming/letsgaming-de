@@ -9,9 +9,11 @@
 import type { ResolvedModule } from "@lg/core";
 import { apiUrl } from "./api";
 
-export async function fetchModule(id: string, locale: string): Promise<ResolvedModule | null> {
+export async function fetchModule(id: string, locale: string, tz?: string): Promise<ResolvedModule | null> {
   try {
-    const res = await fetch(apiUrl(`/api/module/${encodeURIComponent(id)}?locale=${encodeURIComponent(locale)}`), {
+    const params = new URLSearchParams({ locale });
+    if (tz) params.set("tz", tz);
+    const res = await fetch(apiUrl(`/api/module/${encodeURIComponent(id)}?${params.toString()}`), {
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return null;

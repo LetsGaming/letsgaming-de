@@ -56,6 +56,7 @@ const PANEL: Partial<Record<View, Component>> = {
 
 const {
 	areaLabel,
+	areaOptions,
 	canvasLoading,
 	canvasSelected,
 	canvasSite,
@@ -73,16 +74,17 @@ const {
 	refreshCanvas,
 	saveLayout,
 	selectedPanel,
+	setModuleArea,
 	viewSite,
 } = useCmsContext();
+
+/** The value the move/hide `<select>` reports. A plain string cast on the DOM
+ *  event, so the template stays terse. */
+const moveTo = (mid: string, e: Event) => setModuleArea(mid, (e.target as HTMLSelectElement).value);
 
 /** The panel for whatever's selected, or nothing — synced modules have no panel.
  *  `selectedPanel` holds a View or null (its values come from PANEL_FOR_KIND). */
 const editing = computed(() => (selectedPanel.value ? PANEL[selectedPanel.value as View] : undefined));
-
-/** Areas other than the one on the canvas, plus Unplaced — the drop targets for
- *  "put this somewhere else". */
-const otherAreas = computed(() => layoutAreas.value.filter((a) => a.id !== previewArea.value));
 
 function open() {
 	editorOpen.value = true;
@@ -106,9 +108,10 @@ function open() {
 
     <p class="muted editnote">
       The editor takes the screen so the page renders at a real width. Drag a handle to
-      reorder, click a module to <b>edit its content right there</b>, <b>+</b> to add an
-      unplaced one, or drag onto the rail to move it to another page. Content saves as you
-      go; layout isn't live until <b>Save layout</b>. <b>Esc</b> closes it.
+      reorder within a page, click a module to <b>edit its content right there</b>, or use a
+      module's <b>dropdown</b> to move it to another page or <b>hide</b> it. <b>+</b> adds an
+      unplaced one. Content saves as you go; layout isn't live until <b>Save layout</b>.
+      <b>Esc</b> closes it.
     </p>
 
     <CanvasHost
@@ -147,32 +150,44 @@ function open() {
         </template>
 
         <template v-else>
-          <h4>Move to another page</h4>
-        <ol
-          v-for="a in otherAreas"
-          :key="a.id"
-          v-sortable="{ group: 'modules', id: a.id, onMove: dropModule, handle: '.grip', draggable: '.modrow' }"
-          class="modlist railbox"
-        >
-          <li class="railhead">{{ a.label }} <span class="dim">/{{ a.id }}</span></li>
-          <li v-for="mid in a.modules" :key="mid" class="modrow">
-            <span class="grip" aria-hidden="true">⠿</span>
-            <span class="modname">{{ moduleHeading(mid) }}</span>
-          </li>
-          <li v-if="!a.modules.length" class="dropzone dim">empty</li>
-        </ol>
+          <h4>Pages</h4>
+          <ol
+            v-for="a in layoutAreas"
+            :key="a.id"
+            v-sortable="{ group: 'modules', id: a.id, onMove: dropModule, handle: '.grip', draggable: '.modrow' }"
+            class="modlist railbox"
+            :class="{ 'railbox-cur': a.id === previewArea }"
+          >
+            <li class="railhead">
+              {{ a.label }} <span class="dim">/{{ a.id }}</span>
+              <span v-if="a.id === previewArea" class="railcur">editing</span>
+            </li>
+            <li v-for="mid in a.modules" :key="mid" class="modrow">
+              <span class="grip" aria-hidden="true">⠿</span>
+              <span class="modname">{{ moduleHeading(mid) }}</span>
+              <!-- Drag reorders; this moves between pages or hides, which is the
+                   reliable path on touch where a drag between lists is fiddly. -->
+              <select class="railmove" :value="a.id" aria-label="Move module" @change="moveTo(mid, $event)">
+                <option v-for="o in areaOptions" :key="o.id" :value="o.id">{{ o.label }}</option>
+              </select>
+            </li>
+            <li v-if="!a.modules.length" class="dropzone dim">empty — drop here</li>
+          </ol>
 
-        <h4>Unplaced</h4>
-        <ol
-          v-sortable="{ group: 'modules', id: 'hidden', onMove: dropModule, handle: '.grip', draggable: '.modrow' }"
-          class="modlist railbox"
-        >
-          <li v-for="mid in hiddenModules" :key="mid" class="modrow">
-            <span class="grip" aria-hidden="true">⠿</span>
-            <span class="modname">{{ moduleHeading(mid) }}</span>
-          </li>
-          <li v-if="!hiddenModules.length" class="dropzone dim">nothing unplaced</li>
-        </ol>
+          <h4>Unplaced</h4>
+          <ol
+            v-sortable="{ group: 'modules', id: 'hidden', onMove: dropModule, handle: '.grip', draggable: '.modrow' }"
+            class="modlist railbox"
+          >
+            <li v-for="mid in hiddenModules" :key="mid" class="modrow">
+              <span class="grip" aria-hidden="true">⠿</span>
+              <span class="modname">{{ moduleHeading(mid) }}</span>
+              <select class="railmove" :value="'hidden'" aria-label="Add module to a page" @change="moveTo(mid, $event)">
+                <option v-for="o in areaOptions" :key="o.id" :value="o.id">{{ o.label }}</option>
+              </select>
+            </li>
+            <li v-if="!hiddenModules.length" class="dropzone dim">nothing unplaced</li>
+          </ol>
         </template>
       </template>
     </CanvasHost>

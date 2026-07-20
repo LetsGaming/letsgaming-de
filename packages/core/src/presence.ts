@@ -310,6 +310,30 @@ export function normalizePresence(
 export const PLAYTIME_MIN_SECONDS = 60;
 
 /**
+ * Default IANA timezone for aggregating observed sessions into days and hours.
+ * Overridden by the `TZ` environment variable. Sessions are stored in UTC; the
+ * day strips and the weekday×hour heatmap bucket in this zone so they read in the
+ * owner's local time (and cross-midnight play lands on the right local day).
+ */
+export const DEFAULT_TIMEZONE = "Europe/Berlin";
+
+/** Whether `tz` is an IANA zone the runtime's tz database knows. */
+export function isValidTimeZone(tz: string): boolean {
+  if (!tz) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A usable IANA zone, falling back to the default for anything unrecognised. */
+export function sanitizeTimeZone(tz: unknown): string {
+  return typeof tz === "string" && isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;
+}
+
+/**
  * The window the playtime chart covers.
  *
  * Fourteen days, to match the listening chart's fortnight so "playing" and

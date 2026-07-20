@@ -8,6 +8,7 @@ import {
 } from "@lg/core";
 import type { DatabaseSync } from "node:sqlite";
 import { asNumber, asText, mapRow, mapRows, type Row } from "./row-mapper.js";
+import { eachHourSlot, zonedDay } from "./tz.js";
 
 /**
  * Observed play sessions, accumulated from Discord presence polls.
@@ -133,99 +134,93 @@ export function sessionsRepo(db: DatabaseSync) {
     },
 
     /**
-     * When a category is played, as a weekday × hour grid.
+     * When a category is played, as a weekday × hour grid, in `timeZone`.
      *
-     * The shape feature 03 draws: 7 rows (Mon–Sun) × 24 columns, each cell the
-     * minutes played in that slot over the window. Pure SQL over `started_at` —
-     * no new data, the sampler was already writing everything this needs.
-     *
-     * A session is attributed to the weekday/hour of its *start*. A four-hour
-     * session that crosses midnight lands entirely in the hour it began, which is
-     * a simplification — but splitting sessions across hour boundaries would need
-     * per-minute rows, and "what hour do I usually start playing" is the question
-     * the heatmap answers anyway.
-     *
-     * `%w` is 0=Sunday..6=Saturday (SQLite); the caller rotates to Mon-first.
+     * 7 rows (Sun–Sat) × 24 columns, each cell the minutes played in that slot over
+     * the window. A session's minutes are **spread across every hour it spans** (see
+     * `eachHourSlot`), so the grid answers "when am I actually playing", not "when
+     * do I start". The zone is a parameter, bucketed from the raw UTC rows via
+     * `Intl` — so the owner's zone and any visitor's zone come off the same code,
+     * each session credited by its own DST offset.
      */
-    heatmap(category: PresenceCategory, sinceIso: string): PlaytimeHeatCell[] {
-      return mapRows(
-        db.prepare(`
-          SELECT
-            CAST(strftime('%w', started_at) AS INTEGER) AS weekday,
-            CAST(strftime('%H', started_at) AS INTEGER) AS hour,
-            SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds
-          FROM presence_sessions
-          WHERE category = ? AND started_at >= ?
-          GROUP BY weekday, hour
-        `),
-        (r: Row): PlaytimeHeatCell => ({
-          weekday: asNumber(r.weekday),
-          hour: asNumber(r.hour),
-          minutes: Math.round(asNumber(r.seconds) / 60),
-        }),
+    heatmap(category: PresenceCategory, sinceIso: string, timeZone: string): PlaytimeHeatCell[] {
+      const rows = mapRows(
+        db.prepare(`SELECT started_at AS s, last_seen_at AS e FROM presence_sessions WHERE category = ? AND started_at >= ?`),
+        (r: Row) => ({ s: asText(r.s), e: asText(r.e) }),
         category,
         sinceIso,
       );
+      const acc = new Map<number, number>(); // weekday*24 + hour → ms
+      for (const { s, e } of rows) {
+        eachHourSlot(s, e, timeZone, (weekday, hour, ms) => {
+          const k = weekday * 24 + hour;
+          acc.set(k, (acc.get(k) ?? 0) + ms);
+        });
+      }
+      return [...acc].map(([k, ms]) => ({ weekday: Math.floor(k / 24), hour: k % 24, minutes: Math.round(ms / 60000) }));
     },
 
     /**
-     * Daily totals for a category over a window, one row per day that has any.
-     *
-     * The strip in feature 02. Days with no play are simply absent — the caller
-     * fills the calendar, because a gap is a real answer ("didn't play") and the
-     * query shouldn't invent rows to say nothing.
+     * Daily totals for a category over a window, one row per local day (in
+     * `timeZone`) that has any play, oldest first. A session counts on the day it
+     * started — the same attribution `dayBreakdown` uses, so a column and its
+     * drill-in always agree. Days with no play are absent; the caller fills the
+     * calendar, because a gap is a real answer.
      */
-    dailyTotals(category: PresenceCategory, sinceIso: string): PlaytimeDay[] {
-      return mapRows(
-        db.prepare(`
-          SELECT
-            date(started_at) AS day,
-            SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds,
-            COUNT(*) AS sessions
-          FROM presence_sessions
-          WHERE category = ? AND started_at >= ?
-          GROUP BY day
-          ORDER BY day ASC
-        `),
-        (r: Row): PlaytimeDay => ({
-          day: asText(r.day),
-          minutes: Math.round(asNumber(r.seconds) / 60),
-          sessions: asNumber(r.sessions),
-        }),
+    dailyTotals(category: PresenceCategory, sinceIso: string, timeZone: string): PlaytimeDay[] {
+      const rows = mapRows(
+        db.prepare(`SELECT started_at AS s, last_seen_at AS e FROM presence_sessions WHERE category = ? AND started_at >= ?`),
+        (r: Row) => ({ s: asText(r.s), e: asText(r.e) }),
         category,
         sinceIso,
       );
+      const acc = new Map<string, { ms: number; sessions: number }>();
+      for (const { s, e } of rows) {
+        const ms = new Date(e).getTime() - new Date(s).getTime();
+        if (!(ms > 0)) continue;
+        const day = zonedDay(s, timeZone);
+        const cur = acc.get(day) ?? { ms: 0, sessions: 0 };
+        cur.ms += ms;
+        cur.sessions += 1;
+        acc.set(day, cur);
+      }
+      return [...acc.entries()]
+        .map(([day, v]) => ({ day, minutes: Math.round(v.ms / 60000), sessions: v.sessions }))
+        .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
     },
 
     /**
-     * What was played on one specific day — the drill-in behind a clicked column.
-     *
-     * The same `SUM(duration) GROUP BY name` the fortnight chart runs, scoped to a
-     * single date. A day is a `YYYY-MM-DD` string in the same local frame
-     * `dailyTotals` groups by, so a column and its breakdown always agree.
+     * What was played on one local day (in `timeZone`) — the drill-in behind a
+     * clicked column. A session belongs to the day it started in that zone. Fetches
+     * a UTC window bracketing the day (any zone offset is < 24h) and filters to the
+     * exact local day, so it agrees with `dailyTotals`.
      */
-    dayBreakdown(category: PresenceCategory, day: string): PlaytimeEntry[] {
-      return mapRows(
-        db.prepare(`
-          SELECT
-            name,
-            SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds,
-            MIN(started_exact) AS exact,
-            COUNT(*) AS sessions
-          FROM presence_sessions
-          WHERE category = ? AND date(started_at) = ?
-          GROUP BY name
-          ORDER BY seconds DESC, name ASC
-        `),
-        (r: Row): PlaytimeEntry => ({
-          name: asText(r.name),
-          minutes: Math.round(asNumber(r.seconds) / 60),
-          sessions: asNumber(r.sessions),
-          exact: asNumber(r.exact) === 1,
-        }),
+    dayBreakdown(category: PresenceCategory, day: string, timeZone: string): PlaytimeEntry[] {
+      const dayStartUtc = new Date(`${day}T00:00:00Z`).getTime();
+      const lo = new Date(dayStartUtc - 24 * 3_600_000).toISOString();
+      const hi = new Date(dayStartUtc + 48 * 3_600_000).toISOString();
+      const rows = mapRows(
+        db.prepare(
+          `SELECT name, started_at AS s, last_seen_at AS e, started_exact AS ex FROM presence_sessions WHERE category = ? AND started_at >= ? AND started_at < ?`,
+        ),
+        (r: Row) => ({ name: asText(r.name), s: asText(r.s), e: asText(r.e), exact: asNumber(r.ex) === 1 }),
         category,
-        day,
+        lo,
+        hi,
       );
+      const acc = new Map<string, { ms: number; sessions: number; exact: boolean }>();
+      for (const row of rows) {
+        if (zonedDay(row.s, timeZone) !== day) continue;
+        const ms = Math.max(0, new Date(row.e).getTime() - new Date(row.s).getTime());
+        const cur = acc.get(row.name) ?? { ms: 0, sessions: 0, exact: true };
+        cur.ms += ms;
+        cur.sessions += 1;
+        cur.exact = cur.exact && row.exact; // one inexact session makes the total a floor
+        acc.set(row.name, cur);
+      }
+      return [...acc.entries()]
+        .map(([name, v]) => ({ name, minutes: Math.round(v.ms / 60000), sessions: v.sessions, exact: v.exact }))
+        .sort((a, b) => b.minutes - a.minutes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     },
 
     /** Drop sessions older than a cutoff. Nothing calls this yet; the table is

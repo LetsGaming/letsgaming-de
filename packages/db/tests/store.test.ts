@@ -642,21 +642,69 @@ test("categories don't bleed into each other", () => {
 
 // ── playtime shape queries (features 02 & 03) ────────────────────────────────
 
-test("heatmap buckets sessions by weekday and hour", () => {
+test("heatmap spreads each session across the hours it spans", () => {
   const store = openStore(":memory:");
-  // Two sessions Fri 21:00, one Sat 14:00.
   const iso = (y: number, mo: number, d: number, h: number, mi = 0) =>
     new Date(Date.UTC(y, mo, d, h, mi)).toISOString();
   // 2026-07-17 is a Friday.
-  store.sessions.observe({ category: "game", name: "A", startedAt: iso(2026, 6, 17, 21, 0), seenAt: iso(2026, 6, 17, 21, 30), startedExact: true });
-  store.sessions.observe({ category: "game", name: "B", startedAt: iso(2026, 6, 17, 21, 10), seenAt: iso(2026, 6, 17, 22, 10), startedExact: true });
-  store.sessions.observe({ category: "game", name: "C", startedAt: iso(2026, 6, 18, 14, 0), seenAt: iso(2026, 6, 18, 14, 45), startedExact: true });
+  store.sessions.observe({ category: "game", name: "A", startedAt: iso(2026, 6, 17, 21, 0), seenAt: iso(2026, 6, 17, 21, 30), startedExact: true }); // 30m, all in 21
+  store.sessions.observe({ category: "game", name: "B", startedAt: iso(2026, 6, 17, 21, 10), seenAt: iso(2026, 6, 17, 22, 10), startedExact: true }); // 60m: 50 in 21, 10 in 22
+  store.sessions.observe({ category: "game", name: "C", startedAt: iso(2026, 6, 18, 14, 0), seenAt: iso(2026, 6, 18, 14, 45), startedExact: true }); // 45m in 14
 
-  const grid = store.sessions.heatmap("game", iso(2026, 6, 1, 0));
-  const fri21 = grid.find((c) => c.weekday === 5 && c.hour === 21);
-  const sat14 = grid.find((c) => c.weekday === 6 && c.hour === 14);
-  assert.equal(fri21?.minutes, 90, "30 + 60 in the Fri 21:00 bucket");
-  assert.equal(sat14?.minutes, 45);
+  const grid = store.sessions.heatmap("game", iso(2026, 6, 1, 0), "UTC");
+  const at = (weekday: number, hour: number) => grid.find((c) => c.weekday === weekday && c.hour === hour)?.minutes ?? 0;
+  // Fri 21 = A's 30 + B's first 50; Fri 22 = B's spillover 10 — the whole point:
+  // a session that runs into the next hour credits both.
+  assert.equal(at(5, 21), 80, "30 + 50 in Fri 21:00");
+  assert.equal(at(5, 22), 10, "B's last 10 minutes land in Fri 22:00");
+  assert.equal(at(6, 14), 45);
+});
+
+test("heatmap spreads a multi-hour session evenly", () => {
+  const store = openStore(":memory:");
+  const iso = (y: number, mo: number, d: number, h: number) => new Date(Date.UTC(y, mo, d, h)).toISOString();
+  // A clean 16:00–19:00 block: an hour in each of 16, 17, 18 — not 3h in 16.
+  store.sessions.observe({ category: "game", name: "Palworld", startedAt: iso(2026, 6, 17, 16), seenAt: iso(2026, 6, 17, 19), startedExact: true });
+  const grid = store.sessions.heatmap("game", iso(2026, 6, 1, 0), "UTC");
+  const at = (hour: number) => grid.find((c) => c.weekday === 5 && c.hour === hour)?.minutes ?? 0;
+  assert.equal(at(16), 60);
+  assert.equal(at(17), 60);
+  assert.equal(at(18), 60);
+  assert.equal(at(19), 0, "the block ends at 19:00, so hour 19 gets nothing");
+});
+
+test("aggregation buckets in the given zone, not UTC", () => {
+  const since = new Date(Date.UTC(2026, 6, 1)).toISOString();
+  const iso = (h: number) => new Date(Date.UTC(2026, 6, 17, h)).toISOString(); // Fri 2026-07-17
+  const store = openStore(":memory:");
+  store.sessions.observe({ category: "game", name: "X", startedAt: iso(22), seenAt: iso(23), startedExact: true });
+
+  // 22:00–23:00 UTC → in UTC that's Fri (weekday 5) hour 22, on the 17th.
+  assert.equal(store.sessions.heatmap("game", since, "UTC").find((c) => c.weekday === 5 && c.hour === 22)?.minutes, 60);
+  assert.deepEqual(store.sessions.dailyTotals("game", since, "UTC").map((d) => d.day), ["2026-07-17"]);
+  assert.deepEqual(store.sessions.dayBreakdown("game", "2026-07-17", "UTC").map((g) => g.name), ["X"]);
+
+  // The same rows in Berlin (CEST = UTC+2 in July) are 00:00–01:00 the next day:
+  // Sat (weekday 6) hour 0, on the 18th. Same store, only the zone argument differs —
+  // which is the whole point of bucketing from raw rows rather than a fixed process zone.
+  assert.equal(store.sessions.heatmap("game", since, "Europe/Berlin").find((c) => c.weekday === 6 && c.hour === 0)?.minutes, 60);
+  assert.deepEqual(store.sessions.dailyTotals("game", since, "Europe/Berlin").map((d) => d.day), ["2026-07-18"]);
+  assert.deepEqual(store.sessions.dayBreakdown("game", "2026-07-18", "Europe/Berlin").map((g) => g.name), ["X"]);
+  assert.deepEqual(store.sessions.dayBreakdown("game", "2026-07-17", "Europe/Berlin"), []);
+});
+
+test("bucketing is DST-exact — a winter and a summer session land on different local hours", () => {
+  const store = openStore(":memory:");
+  const since = new Date(Date.UTC(2026, 0, 1)).toISOString();
+  // Identical UTC wall-clock (21:30–22:00Z), six months apart. Berlin is +01:00 in
+  // January (CET) and +02:00 in July (CEST), so the *local* hour differs by season —
+  // which a single fixed offset (or a rotation of a collapsed grid) can't get right,
+  // but per-instant bucketing does.
+  store.sessions.observe({ category: "game", name: "W", startedAt: "2026-01-15T21:30:00.000Z", seenAt: "2026-01-15T22:00:00.000Z", startedExact: true });
+  store.sessions.observe({ category: "game", name: "S", startedAt: "2026-07-15T21:30:00.000Z", seenAt: "2026-07-15T22:00:00.000Z", startedExact: true });
+  const grid = store.sessions.heatmap("game", since, "Europe/Berlin");
+  assert.equal(grid.find((c) => c.hour === 22)?.minutes, 30, "Jan 21:30Z → 22:30 CET");
+  assert.equal(grid.find((c) => c.hour === 23)?.minutes, 30, "Jul 21:30Z → 23:30 CEST");
 });
 
 test("dailyTotals is one row per day that has play, ordered", () => {
@@ -666,7 +714,7 @@ test("dailyTotals is one row per day that has play, ordered", () => {
   store.sessions.observe({ category: "game", name: "B", startedAt: iso(17, 22), seenAt: iso(17, 22) + "", startedExact: true });
   store.sessions.observe({ category: "game", name: "A", startedAt: iso(19, 10), seenAt: iso(19, 11), startedExact: true });
   // note: 2026-07-18 has nothing — must be absent, not a zero row
-  const days = store.sessions.dailyTotals("game", iso(1, 0));
+  const days = store.sessions.dailyTotals("game", iso(1, 0), "UTC");
   assert.deepEqual(days.map((d) => d.day), ["2026-07-17", "2026-07-19"]);
   assert.equal(days[0]?.minutes, 60);
 });
@@ -677,7 +725,7 @@ test("dayBreakdown is the fortnight query scoped to one date", () => {
   store.sessions.observe({ category: "game", name: "Factorio", startedAt: iso(17, 20), seenAt: iso(17, 22), startedExact: true }); // 120
   store.sessions.observe({ category: "game", name: "Hades II", startedAt: iso(17, 22), seenAt: iso(17, 23), startedExact: true }); // 60
   store.sessions.observe({ category: "game", name: "Factorio", startedAt: iso(19, 10), seenAt: iso(19, 11), startedExact: true }); // other day
-  const day = store.sessions.dayBreakdown("game", "2026-07-17");
+  const day = store.sessions.dayBreakdown("game", "2026-07-17", "UTC");
   assert.deepEqual(day.map((g) => [g.name, g.minutes]), [["Factorio", 120], ["Hades II", 60]]);
 });
 

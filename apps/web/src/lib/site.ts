@@ -1,6 +1,11 @@
 import { buildSiteView, openStoreReadonly, type Store } from "@lg/db";
-import type { Locale, SiteView } from "@lg/core";
+import { DEFAULT_TIMEZONE, type Locale, type SiteView } from "@lg/core";
 import fallback from "../data/fallback-site.json";
+
+// `TZ` is the owner's timezone — the default zone SSR resolves the activity charts
+// in (the aggregation takes an explicit zone; visitors override with `?tz`). Docker
+// sets it; this is the dev fallback.
+process.env.TZ ??= DEFAULT_TIMEZONE;
 
 /**
  * Load the resolved SiteView for SSR — server-side only, never the browser.

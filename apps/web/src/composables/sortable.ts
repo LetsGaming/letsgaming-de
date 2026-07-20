@@ -56,6 +56,26 @@ interface Attached {
 }
 const instances = new WeakMap<HTMLElement, Attached>();
 
+/**
+ * Index of `el` among its siblings that match `selector` (or all element
+ * siblings if none is given).
+ *
+ * We compute this ourselves because SortableJS's own `oldIndex`/`newIndex` call
+ * its internal `index()` *without* the `draggable` selector — so they count every
+ * element sibling, including a list header (`.railhead`) or an empty-state row.
+ * Wherever a sortable list isn't purely draggable rows, that's an off-by-one:
+ * dragging the first module reports index 1, and the caller splices out the
+ * second. Counting only `draggable` matches makes the index line up with the
+ * backing array regardless of what else is in the list.
+ */
+export function indexAmong(el: Element, selector?: string): number {
+  let i = 0;
+  for (let sib = el.previousElementSibling; sib; sib = sib.previousElementSibling) {
+    if (!selector || sib.matches(selector)) i++;
+  }
+  return i;
+}
+
 export const vSortable: Directive<HTMLElement, SortableBinding> = {
   mounted(el, { value }) {
     /**
@@ -66,13 +86,11 @@ export const vSortable: Directive<HTMLElement, SortableBinding> = {
      * vdom describing the *old* order onto a DOM already in the *new* one, and
      * applies the move twice. So: restore the DOM, then change state, and let the
      * re-render be the only thing that moves anything.
-     *
-     * A remembered sibling rather than reinserting at `oldIndex`: indices here
-     * would have to be counted the same way Sortable counts them (its own
-     * `draggable` filter, ignoring an empty-state row), and a node reference
-     * can't be counted wrong.
      */
     let origin: Element | null = null;
+    // The source index among draggable rows, captured at drag start (before
+    // Sortable moves anything), so it's counted the same way as the target index.
+    let startIndex = 0;
 
     const sortable = Sortable.create(el, {
       group: value.group,
@@ -86,17 +104,23 @@ export const vSortable: Directive<HTMLElement, SortableBinding> = {
       forceFallback: false,
       onStart(evt) {
         origin = evt.item.nextElementSibling;
+        startIndex = indexAmong(evt.item, instances.get(el)?.binding.draggable);
         document.body.classList.add("is-dragging");
       },
       onEnd(evt) {
         document.body.classList.remove("is-dragging");
-        const { from, to, oldIndex, newIndex, item } = evt;
+        const { from, to, item } = evt;
+
+        // Compute the drop index while the item is still where Sortable put it —
+        // among draggable rows, so a list header can't offset it.
+        const draggable = instances.get(el)?.binding.draggable;
+        const newIndex = indexAmong(item, draggable);
+        const oldIndex = startIndex;
 
         // Undo Sortable's DOM edit before touching state (see `origin` above).
         from.insertBefore(item, origin);
         origin = null;
 
-        if (oldIndex === undefined || newIndex === undefined) return;
         const fromId = from.dataset.sortId;
         const toId = to.dataset.sortId;
         if (fromId === undefined || toId === undefined) return;

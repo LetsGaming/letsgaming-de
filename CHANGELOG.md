@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased
+
+### /life — activity in the right timezone
+
+- **The day strips, the "when I play" heatmap, and the per-day drill-in bucket in the
+  owner's timezone, exact across DST.** They aggregate from the raw observed sessions
+  (stored UTC) in a named zone via `Intl`, so each session is credited to its own local
+  day and hour — a summer session at CEST and a winter one at CET land where they
+  actually happened, not an hour off. The heatmap also spreads a session across every
+  hour it spans, not just the one it started in. The owner's zone is `TZ` (default
+  `Europe/Berlin`); rarely changes for one owner, so it's an env var, not a stored
+  setting.
+- **"When I play" can be read in the owner's time or the visitor's own.** A toggle in
+  the card header re-requests the heatmap bucketed in the chosen zone, and hides itself
+  when the visitor is already in the owner's zone (so the owner never sees it). The
+  module and day endpoints take an optional `?tz=`, off the same raw-row aggregation —
+  so the zone is a parameter end to end and both views are exact, not a rotation of a
+  pre-collapsed grid.
+
+### CMS
+
+- **The layout editor's drag-and-drop moves the module you actually grabbed, and can
+  hide one.** SortableJS reported drop indices that counted each area's non-draggable
+  header row, so every drag landed one position off — it moved the wrong module, and
+  dragging onto Unplaced silently did nothing. Indices are now counted among the
+  draggable rows only.
+- **The move rail shows every page, including the one open on the canvas** (marked
+  *editing*, rather than hidden), and each module carries a dropdown to send it to
+  another page or hide it — the reliable path on touch, where dragging between lists is
+  fiddly.
+
+### Refactors
+
+- **Music and Playtime share their strip, timeline, and heatmap wiring** instead of
+  mirroring it: the fortnight day-strip and day drill-in are one composable, and the
+  ranked row, stat tile, and heat strip one component apiece.
+
+### Fixes
+
+- The heatmap grid lines up with its day labels and hour axis; hobby cards reflow to two
+  columns on a narrow screen.
+
 ## 2.0.0
 
 A ground-up rework. The design is decided rather than inherited, the areas became

@@ -26,6 +26,7 @@ import {
   defaultPresenceSettings,
   isHiddenGame,
   playtimeRows,
+  DEFAULT_TIMEZONE,
   type GameMeta,
   type PlaytimeEntry,
   type MusicRankEntry,
@@ -79,7 +80,12 @@ export interface ResolveInput {
    *  strip and the weekday×hour heatmap, both built server-side from observed
    *  sessions (the ledger is per-day totals, the heatmap groups by weekday×hour) so
    *  the resolver stays pure. */
-  playHistory?: { ledger: { day: string; minutes: number }[]; heat: PlaytimeHeatCell[]; since?: string };
+  playHistory?: {
+    ledger: { day: string; minutes: number }[];
+    heat: PlaytimeHeatCell[];
+    timeZone: string;
+    since?: string;
+  };
   /** The music module's data: top songs/artists/albums plus a per-day listening
    *  strip, over the window. Pre-computed by the server from `music_plays` (the
    *  resolver stays pure), same as `playHistory`. Absent → an empty module. */
@@ -90,6 +96,7 @@ export interface ResolveInput {
     ledger: { day: string; minutes: number }[];
     trackCount: number;
     artistCount: number;
+    timeZone: string;
     since?: string;
   };
   /** Library assets referenced by content, keyed by id (built by the read route). */
@@ -538,7 +545,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // Shaped from the server's pre-computed observed history; the resolver
         // stays pure. Absent history is an empty module, not an error — a fresh
         // install has recorded no sessions yet.
-        const hist = input.playHistory ?? { ledger: [], heat: [] };
+        const hist = input.playHistory ?? { ledger: [], heat: [], timeZone: DEFAULT_TIMEZONE };
         const totalMinutes = hist.ledger.reduce((sum, d) => sum + d.minutes, 0);
 
         // "Recently played" — every game Discord observed over the window,
@@ -561,6 +568,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             recent,
             ledger: hist.ledger,
             heat: hist.heat,
+            timeZone: hist.timeZone,
             ...(hist.since ? { since: hist.since } : {}),
           },
         };
@@ -595,6 +603,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             topArtists: (m?.topArtists ?? []).map(rank),
             topAlbums: (m?.topAlbums ?? []).map(rank),
             ledger,
+            timeZone: m?.timeZone ?? DEFAULT_TIMEZONE,
             ...(m?.since ? { since: m.since } : {}),
             initialCount: musicSettings.initialCount,
             maxCount: musicSettings.maxCount,

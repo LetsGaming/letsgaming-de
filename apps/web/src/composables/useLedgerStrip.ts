@@ -28,21 +28,37 @@ export function useLedgerStrip<T>(opts: {
   title: (day: string, minutes: number) => string;
   /** Window length in days. Default 14 (the fortnight both modules show). */
   days?: number;
+  /** The zone the ledger is bucketed in — the strip's window and "today" are
+   *  computed in it so they line up with the data (owner's by default, the
+   *  viewer's when the module is showing local time). */
+  timeZone: MaybeRefOrGetter<string>;
 }) {
   const drill = useDayDrill<T>();
   const dayExpanded = ref(false);
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // "Today" in the display zone, so the window and the current-day marker agree
+  // with the days the ledger is bucketed by. Reactive: flipping the module to local
+  // time changes the zone, which moves "today" with it.
+  const todayIso = computed(() => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: toValue(opts.timeZone),
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (t: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === t)?.value ?? "";
+    return `${get("year")}-${get("month")}-${get("day")}`;
+  });
   const days = opts.days ?? 14;
 
   const rows = computed(() => toValue(opts.ledger));
   const maxDay = computed(() => Math.max(1, ...rows.value.map((x) => x.minutes)));
-  const strip = computed(() => contiguousDays(rows.value, daysBefore(todayIso, days - 1), todayIso));
+  const strip = computed(() => contiguousDays(rows.value, daysBefore(todayIso.value, days - 1), todayIso.value));
 
   // Linear quartile bucketing, local to the strip (relative to its own busiest
   // day), which is what makes a quiet fortnight still legible.
   const level = (min: number) => (min === 0 ? 0 : Math.min(4, Math.ceil((min / maxDay.value) * 4)));
   const cells = computed<HeatCell[]>(() =>
-    strip.value.map((r) => ({ level: level(r.minutes), today: r.day === todayIso, title: opts.title(r.day, r.minutes) })),
+    strip.value.map((r) => ({ level: level(r.minutes), today: r.day === todayIso.value, title: opts.title(r.day, r.minutes) })),
   );
 
   const selectedIndex = computed(() => {

@@ -23,13 +23,18 @@ import { fetchModule } from "../lib/module-api";
  */
 const POLL_MS = 60_000;
 
-export function useLiveModule<T>(id: string, kind: ResolvedModule["kind"], initial: T) {
+export function useLiveModule<T>(
+  id: string,
+  kind: ResolvedModule["kind"],
+  initial: T,
+  zone?: () => string | undefined,
+) {
   const data = shallowRef<T>(initial);
   let timer: ReturnType<typeof setInterval> | null = null;
 
   async function refresh(): Promise<void> {
     const locale = document.documentElement.lang || "en";
-    const next = await fetchModule(id, locale);
+    const next = await fetchModule(id, locale, zone?.());
     if (next && next.kind === kind) {
       data.value = next.data as T;
     }
@@ -43,5 +48,5 @@ export function useLiveModule<T>(id: string, kind: ResolvedModule["kind"], initi
     timer = null;
   });
 
-  return { data };
+  return { data, refresh };
 }

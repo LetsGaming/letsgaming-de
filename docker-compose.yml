@@ -14,6 +14,8 @@ services:
     restart: unless-stopped
     environment:
       PORT: "8787"
+      # The owner's timezone — the default zone the activity charts bucket in.
+      TZ: ${TZ:-Europe/Berlin}
       DB_PATH: /data/letsgaming.sqlite
       MEDIA_DIR: /data/media
       # Explicit origin(s) for the CMS; do NOT use "*" (that disables credentialed
@@ -91,6 +93,8 @@ services:
       # can't write, which is what keeps it from racing the server's migrations.
       DB_PATH: /data/letsgaming.sqlite
       MEDIA_DIR: /data/media
+      # Same owner timezone as the server, so SSR and the API bucket alike.
+      TZ: ${TZ:-Europe/Berlin}
       # No DISCORD_USER_ID here, deliberately: presence enablement is a CMS display
       # decision resolved from the store, and the live Discord data is fetched by
       # the browser from the server's /api/presence. The web process never talks to

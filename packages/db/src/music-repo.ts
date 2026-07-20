@@ -5,6 +5,7 @@ import {
 } from "@lg/core";
 import type { DatabaseSync } from "node:sqlite";
 import { asNumber, asText, mapRows, type Row } from "./row-mapper.js";
+import { zonedDay } from "./tz.js";
 
 /**
  * Spotify track plays, accumulated from presence polls.
@@ -208,53 +209,71 @@ export function musicRepo(db: DatabaseSync) {
       return row ? Number(row.n) : 0;
     },
 
-    /** Minutes listened per day, oldest first — the timeline, same shape as the
-     *  playtime ledger so the module can reuse the strip. */
-    dailyTotals(sinceIso: string): { day: string; minutes: number }[] {
-      return mapRows(
-        db.prepare(`
-          SELECT date(started_at) AS day, SUM(${DURATION}) AS seconds
-          FROM music_plays
-          WHERE started_at >= ?
-          GROUP BY day
-          ORDER BY day ASC
-        `),
-        (r: Row) => ({ day: asText(r.day), minutes: Math.round(asNumber(r.seconds) / 60) }),
+    /** Minutes listened per local day (in `timeZone`), oldest first — the
+     *  timeline, same shape as the playtime ledger so the module reuses the strip. */
+    dailyTotals(sinceIso: string, timeZone: string): { day: string; minutes: number }[] {
+      const rows = mapRows(
+        db.prepare(`SELECT started_at AS s, last_seen_at AS e FROM music_plays WHERE started_at >= ?`),
+        (r: Row) => ({ s: asText(r.s), e: asText(r.e) }),
         sinceIso,
       );
+      const acc = new Map<string, number>();
+      for (const { s, e } of rows) {
+        const ms = new Date(e).getTime() - new Date(s).getTime();
+        if (!(ms > 0)) continue;
+        const day = zonedDay(s, timeZone);
+        acc.set(day, (acc.get(day) ?? 0) + ms);
+      }
+      return [...acc.entries()]
+        .map(([day, ms]) => ({ day, minutes: Math.round(ms / 60000) }))
+        .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
     },
 
     /**
-     * The tracks played on one date — the drill-in, fetched when a timeline column
-     * is clicked (parallel to `sessions.dayBreakdown`). Grouped by track so a song
-     * played twice in a day is one row with two plays; ordered most-listened first.
-     * No sub-minute floor here: the day view is a faithful account of that date, and
-     * a short listen is still part of it.
+     * The tracks played on one local day (in `timeZone`) — the drill-in, fetched
+     * when a timeline column is clicked (parallel to `sessions.dayBreakdown`).
+     * Grouped by track so a song played twice is one row with two plays; most-
+     * listened first. No sub-minute floor — the day view is a faithful account.
+     * Fetches a UTC window bracketing the day, then filters to the exact local day.
      */
-    dayBreakdown(day: string): { song: string; artist: string; minutes: number; plays: number; artUrl?: string }[] {
-      return mapRows(
-        db.prepare(`
-          SELECT
-            track_id,
-            MAX(song) AS song,
-            MAX(artist) AS artist,
-            MAX(album_art_url) AS art,
-            SUM(${DURATION}) AS seconds,
-            COUNT(*) AS plays
-          FROM music_plays
-          WHERE date(started_at) = ?
-          GROUP BY track_id
-          ORDER BY seconds DESC, song ASC
-        `),
+    dayBreakdown(day: string, timeZone: string): { song: string; artist: string; minutes: number; plays: number; artUrl?: string }[] {
+      const dayStartUtc = new Date(`${day}T00:00:00Z`).getTime();
+      const lo = new Date(dayStartUtc - 24 * 3_600_000).toISOString();
+      const hi = new Date(dayStartUtc + 48 * 3_600_000).toISOString();
+      const rows = mapRows(
+        db.prepare(
+          `SELECT track_id AS tid, song, artist, album_art_url AS art, started_at AS s, last_seen_at AS e FROM music_plays WHERE started_at >= ? AND started_at < ?`,
+        ),
         (r: Row) => ({
+          tid: asText(r.tid),
           song: asText(r.song),
           artist: asText(r.artist),
-          minutes: Math.round(asNumber(r.seconds) / 60),
-          plays: asNumber(r.plays),
-          ...(r.art ? { artUrl: asText(r.art) } : {}),
+          art: r.art == null ? undefined : asText(r.art),
+          s: asText(r.s),
+          e: asText(r.e),
         }),
-        day,
+        lo,
+        hi,
       );
+      const acc = new Map<string, { song: string; artist: string; art?: string; ms: number; plays: number }>();
+      for (const row of rows) {
+        if (zonedDay(row.s, timeZone) !== day) continue;
+        const ms = Math.max(0, new Date(row.e).getTime() - new Date(row.s).getTime());
+        const cur = acc.get(row.tid) ?? { song: row.song, artist: row.artist, art: row.art, ms: 0, plays: 0 };
+        cur.ms += ms;
+        cur.plays += 1;
+        if (!cur.art && row.art) cur.art = row.art;
+        acc.set(row.tid, cur);
+      }
+      return [...acc.values()]
+        .map((v) => ({
+          song: v.song,
+          artist: v.artist,
+          minutes: Math.round(v.ms / 60000),
+          plays: v.plays,
+          ...(v.art ? { artUrl: v.art } : {}),
+        }))
+        .sort((a, b) => b.minutes - a.minutes || (a.song < b.song ? -1 : a.song > b.song ? 1 : 0));
     },
 
     /** Total minutes listened over a window, for the headline figure. */

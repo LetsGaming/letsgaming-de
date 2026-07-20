@@ -262,6 +262,10 @@ export interface PlaytimeModuleView {
   /** The heatmap: minutes per weekday×hour over all time. Sparse — only cells with
    *  play are present; the view fills the 7×24 grid. */
   heat: { weekday: number; hour: number; minutes: number }[];
+  /** The IANA timezone the strip and heatmap are bucketed in (the server's `TZ`).
+   *  Shipped so the frontend labels the heatmap honestly and aligns its "now"
+   *  marker to the same zone, rather than the viewer's. */
+  timeZone: string;
   /** How many days the ledger covers, for "since <date>" copy. */
   since?: string;
 }
@@ -302,6 +306,8 @@ export interface MusicModuleView {
   topAlbums: MusicRankView[];
   /** Minutes listened per day, oldest first — the clickable timeline. */
   ledger: { day: string; minutes: number }[];
+  /** The IANA zone the ledger is bucketed in (see PlaytimeModuleView.timeZone). */
+  timeZone: string;
   /** First day in the ledger, for "since <date>" copy. */
   since?: string;
   /** Rows to show before "show more" (CMS-configured display count). */
