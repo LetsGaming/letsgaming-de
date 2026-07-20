@@ -54,3 +54,22 @@ test("empty allow-list yields no cards but keeps status", () => {
   assert.equal(none.cards.length, 0);
   assert.equal(none.status, "online");
 });
+
+test("hidden drops a matching activity from the live widget — not just games", () => {
+  const shown: readonly ("game" | "streaming" | "music" | "custom")[] = ["game", "music", "streaming", "custom"];
+  // Hide the game and the stream by name (case-insensitively); the rest stay.
+  const view = normalizePresence(data, shown, ["counter-strike 2", "Streaming dev work"]);
+  const cats = view.cards.map((c) => c.category);
+  assert.ok(!cats.includes("game"), "hidden game is gone");
+  assert.ok(!cats.includes("streaming"), "hidden stream is gone — hidden isn't games-only");
+  assert.ok(cats.includes("music"), "unrelated music card survives");
+  assert.ok(cats.includes("custom"), "unrelated custom card survives");
+});
+
+test("hidden matches the Spotify song and the custom-status text too", () => {
+  const shown: readonly ("game" | "streaming" | "music" | "custom")[] = ["game", "music", "streaming", "custom"];
+  const view = normalizePresence(data, shown, ["nightcall", "🛠️ building things"]);
+  assert.ok(!view.cards.some((c) => c.category === "music"), "hidden song hides the Spotify card");
+  assert.ok(!view.cards.some((c) => c.category === "custom"), "hidden custom text hides that card");
+  assert.ok(view.cards.some((c) => c.category === "game"), "unrelated game survives");
+});

@@ -42,11 +42,13 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
     // No cast: getPresence() runs sanitizePresenceShow, so `show` is already
     // PresenceCategory[]. The old `as` asserted something that was true anyway —
     // which reads like a checkpoint and is nothing of the kind.
-    const show = store.content.getPresence().show;
+    const settings = store.content.getPresence();
+    const show = settings.show;
+    const hidden = settings.hidden;
     const enabled = Boolean(env.discordUserId) && show.length > 0;
     if (!enabled || !env.discordUserId) return OFFLINE;
 
-    const key = show.join(",");
+    const key = `${show.join(",")}|${hidden.join(",")}`;
     if (cache && cache.key === key && Date.now() - cache.at < CACHE_MS) return cache.view;
 
     try {
@@ -59,7 +61,7 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
       if (!json.success || !json.data) return cache?.view ?? OFFLINE;
 
       // Filter server-side: only the allow-listed categories ever leave here.
-      const view = normalizePresence(json.data, show);
+      const view = normalizePresence(json.data, show, hidden);
       cache = { at: Date.now(), key, view };
       return view;
     } catch {

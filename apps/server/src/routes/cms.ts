@@ -31,6 +31,7 @@ import {
   parseAssetRef,
   sanitizePresenceSettings,
   sanitizeMusicSettings,
+  sanitizePlaytimeSettings,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -153,7 +154,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       show: PresenceCategory[];
       sample?: PresenceCategory[];
       retentionDays?: number | null;
-      hiddenGames?: string[];
+      hidden?: string[];
     };
   }>("/api/cms/presence", write(schemas.presence), async (req) => {
     // sanitizePresenceSettings fills any omitted field from the default, so a
@@ -169,6 +170,17 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       // sanitizeMusicSettings clamps both counts and keeps initialCount ≤ maxCount,
       // filling any omitted field — a partial body still writes a coherent row.
       store.content.setMusic(sanitizeMusicSettings(req.body));
+      return { ok: true };
+    },
+  );
+
+  app.put<{ Body: { initialCount?: number; maxCount?: number } }>(
+    "/api/cms/playtime",
+    write(schemas.playtime),
+    async (req) => {
+      // Twin of the music route — a separate stored value so Played can carry its
+      // own limits; the sanitizer clamps and keeps initialCount ≤ maxCount.
+      store.content.setPlaytime(sanitizePlaytimeSettings(req.body));
       return { ok: true };
     },
   );

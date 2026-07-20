@@ -82,7 +82,7 @@ page may show, plus the true totals for the "and N more" note, never the whole d
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
-| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games, total, minutes }` — `games` capped to `maxCount`, `total` the true distinct-game count, `minutes` the day's real total. Hidden games are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
+| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games, total, minutes }` — `games` capped to `maxCount`, `total` the true distinct-game count, `minutes` the day's real total. Hidden activities are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
 | `GET /api/music/day?day=YYYY-MM-DD` | none | That day's listening. Returns `{ day, minutes, trackCount, artistCount, songs, artists }` — `songs` and `artists` each aggregated and capped to `maxCount`; the counts are the true distinct totals. `400` on a malformed date. |
 
 ## Media proxy

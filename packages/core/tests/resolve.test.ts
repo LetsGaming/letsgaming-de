@@ -390,7 +390,7 @@ test("hidden games are dropped from the recently-played chart but not from the d
       ...content,
       // hide Doom; games shown. The hidden-games filter guards the playtime
       // module's recently-played shelf.
-      presence: { show: ["game"], hiddenGames: ["doom"] },
+      presence: { show: ["game"], hidden: ["doom"] },
     },
     nav,
     modules,

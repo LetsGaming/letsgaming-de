@@ -21,6 +21,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { AuthError, cms, loadToken, setToken } from "../lib/cms";
 import { usePresenceSettings } from "./usePresenceSettings";
 import { useMusicSettings } from "./useMusicSettings";
+import { usePlaytimeSettings } from "./usePlaytimeSettings";
 import { useGuestbookMod } from "./useGuestbookMod";
 import { useAnalytics } from "./useAnalytics";
 import { useLayoutEditor } from "./useLayoutEditor";
@@ -66,6 +67,7 @@ const VIEWS = [
   "library",
   "presence",
   "music",
+  "playtime",
   "guestbook",
   "analytics",
 ] as const;
@@ -103,6 +105,7 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
     items: [
       { id: "presence", label: "Presence" },
       { id: "music", label: "Listening" },
+      { id: "playtime", label: "Played" },
     ],
   },
   { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
@@ -122,6 +125,7 @@ const VIEW_TITLES: Record<View, string> = {
   gallery: "Gallery",
   presence: "Presence widget",
   music: "Listening list",
+  playtime: "Played list",
   guestbook: "Guestbook",
   analytics: "Analytics",
 };
@@ -182,6 +186,9 @@ const now = nowList.items;
   // Listening list-display settings — extracted composable (see useMusicSettings).
   const music = useMusicSettings({ guarded, cms });
   const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, saveMusic, hydrateMusic } = music;
+  // Playtime list-display settings — its own stored value, so its limits can differ.
+  const playtime = usePlaytimeSettings({ guarded, cms });
+  const { PLAYTIME_LIST_BOUNDS, playtimeInitialCount, playtimeMaxCount, savePlaytime, hydratePlaytime } = playtime;
 
   // Guestbook moderation — extracted composable (see useGuestbookMod).
   const { guestbook, loadingG, loadGuestbook, moderate, removeEntry } = useGuestbookMod({
@@ -257,6 +264,7 @@ async function loadAll() {
   now.value = data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i }));
   hydratePresence(data.content.presence);
   hydrateMusic(data.content.music);
+  hydratePlaytime(data.content.playtime);
   hydrateLayout(data);
 }
 
@@ -418,6 +426,7 @@ const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
   gallery: AREA.life,
   presence: AREA.life,
   music: AREA.life,
+  playtime: AREA.life,
 };
 const previewArea = ref<AreaId>(AREA.home);
 const previewKey = ref(0);
@@ -565,6 +574,10 @@ onUnmounted(() => {
     musicInitialCount,
     musicMaxCount,
     saveMusic,
+    PLAYTIME_LIST_BOUNDS,
+    playtimeInitialCount,
+    playtimeMaxCount,
+    savePlaytime,
     guestbook,
     loadingG,
     loadGuestbook,

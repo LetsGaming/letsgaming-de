@@ -21,6 +21,20 @@
 
 ### CMS
 
+- **Played has its own list-limit widget, separate from Listening.** The two modules
+  no longer share a single limit — each carries its own "always show" / "show at most"
+  under Widgets, so their lists can differ. The cap is enforced server-side (the client
+  never receives rows past it); the "games played" headline stays the true total even
+  when the list is trimmed.
+- **The Presence panel reads at a glance.** The two look-alike category grids (show
+  live, record to history) are now one table — a row per category with a *Show* and a
+  *Record* switch — so the two independent axes are obvious instead of easy to confuse.
+- **"Keep history for" has finer choices** — Forever, 2 years, 1 year, 6 months, 3
+  months, 1 month — so a short trail is a real option, not just "keep it all or a year".
+- **"Hidden games" is now "Hidden activities" and applies to more than games.** A hidden
+  name is dropped from the live widget *and* the playtime charts whatever its category —
+  a game, a stream, a show — matched case-insensitively. (Placeholder is a concrete
+  example now, e.g. `R6`.)
 - **The layout editor's drag-and-drop moves the module you actually grabbed, and can
   hide one.** SortableJS reported drop indices that counted each area's non-draggable
   header row, so every drag landed one position off — it moved the wrong module, and

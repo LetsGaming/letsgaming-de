@@ -9,7 +9,7 @@
  * different lifetimes, different endpoints.
  */
 
-import { capList, gameMetaKey, isHiddenGame, isValidTimeZone, sanitizeTimeZone, type PlaytimeDayResponse } from "@lg/core";
+import { capList, gameMetaKey, isHidden, isValidTimeZone, sanitizeTimeZone, type PlaytimeDayResponse } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
@@ -30,13 +30,13 @@ export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void
       // Hidden games are dropped wherever a name would surface publicly. The
       // aggregate ledger and heatmap are shape (when / how much), not identity, so
       // they stay honest totals; this breakdown names games, so it filters.
-      const hidden = store.content.getPresence().hiddenGames;
+      const hidden = store.content.getPresence().hidden;
       // Cover art + genre, matched by name — same cache the top-games list uses, so
       // a game looks the same drilled-in as it does in the list.
       const meta = store.gameMeta.getAll();
       const allGames = store.sessions
         .dayBreakdown("game", day, zone)
-        .filter((g) => !isHiddenGame(g.name, hidden))
+        .filter((g) => !isHidden(g.name, hidden))
         .map((g) => {
           const m = meta.get(gameMetaKey(g.name));
           return {

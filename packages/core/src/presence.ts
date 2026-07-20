@@ -52,10 +52,13 @@ export interface PresenceSettings {
    *  This table is the only long memory of what was played, so the default is to
    *  keep it. */
   retentionDays: number | null;
-  /** Game names that are recorded but never shown on the public playtime chart.
-   *  Matched case-insensitively. "Accumulate it" and "publish it" are separate
-   *  decisions; this is the second one. */
-  hiddenGames: string[];
+  /** Activity names that are recorded/observed but never shown publicly — dropped
+   *  from the live widget (any category) and the playtime chart alike. Matched
+   *  case-insensitively against the display name (a game, a stream/app, a show, a
+   *  custom status). "Accumulate it" and "publish it" are separate decisions; this
+   *  is the second one. Not games-only despite the history: a hidden name hides
+   *  wherever that name would surface. */
+  hidden: string[];
 }
 
 /** Sensible starting allow-list; used to seed the store and as a fallback.
@@ -69,7 +72,7 @@ export function defaultPresenceSettings(): PresenceSettings {
     // you show". Watching is off in both: it records the app, not the video.
     sample: live,
     retentionDays: null, // keep forever; the table is one row per session
-    hiddenGames: [],
+    hidden: [],
   };
 }
 
@@ -82,11 +85,16 @@ export function sanitizePresenceShow(input: unknown): PresenceCategory[] {
 }
 
 /** The retention values the CMS offers. A free-form number could prune the whole
- *  table on a fat-fingered `1`; constraining to a known set makes that impossible. */
+ *  table on a fat-fingered `1`; constraining to a known set makes that impossible.
+ *  Descending, "Forever" first (the default) — a spread from a couple of years down
+ *  to a month, so a short trail is a real choice, not just "keep it all or a year". */
 export const RETENTION_OPTIONS = [
   { label: "Forever", days: null },
   { label: "2 years", days: 730 },
   { label: "1 year", days: 365 },
+  { label: "6 months", days: 180 },
+  { label: "3 months", days: 90 },
+  { label: "1 month", days: 30 },
 ] as const;
 
 /** Coerce arbitrary input to one of the allowed retention values, or forever. */
@@ -95,9 +103,9 @@ export function sanitizeRetentionDays(input: unknown): number | null {
   return RETENTION_OPTIONS.find((o) => o.days === input)?.days ?? null;
 }
 
-/** Clean the hidden-games list: strings only, trimmed, de-duped case-insensitively,
+/** Clean the hidden list: strings only, trimmed, de-duped case-insensitively,
  *  capped so a runaway client can't write an unbounded blob. */
-export function sanitizeHiddenGames(input: unknown): string[] {
+export function sanitizeHidden(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
   const seen = new Set<string>();
   const out: string[] = [];
@@ -124,13 +132,13 @@ export function sanitizePresenceSettings(input: unknown): PresenceSettings {
     show,
     sample,
     retentionDays: "retentionDays" in obj ? sanitizeRetentionDays(obj.retentionDays) : d.retentionDays,
-    hiddenGames: "hiddenGames" in obj ? sanitizeHiddenGames(obj.hiddenGames) : d.hiddenGames,
+    hidden: "hidden" in obj ? sanitizeHidden(obj.hidden) : d.hidden,
   };
 }
 
-/** True when a game name is on the hidden list (case-insensitive), for the
- *  resolver to drop it from the public chart. */
-export function isHiddenGame(name: string, hidden: string[]): boolean {
+/** True when an activity name is on the hidden list (case-insensitive), for the
+ *  resolver and the live route to drop it wherever it would surface. */
+export function isHidden(name: string, hidden: string[]): boolean {
   const key = name.trim().toLowerCase();
   return hidden.some((h) => h.trim().toLowerCase() === key);
 }
@@ -255,14 +263,16 @@ export function spotifyAlbumArtUrl(a: LanyardActivity): string | undefined {
 export function normalizePresence(
   data: LanyardData,
   show: readonly PresenceCategory[],
+  hidden: readonly string[] = [],
 ): PresenceView {
   const allow = new Set(show);
+  const isDropped = (name: string) => isHidden(name, hidden as string[]);
   const status: DiscordStatus = data.discord_status ?? DISCORD_STATUS.Offline;
   const avatar = discordAvatarUrl(data.discord_user);
   const cards: PresenceCard[] = [];
 
   // Music: prefer the structured Spotify object (one clean card).
-  if (allow.has("music") && data.listening_to_spotify && data.spotify) {
+  if (allow.has("music") && data.listening_to_spotify && data.spotify && !isDropped(data.spotify.song)) {
     cards.push({
       category: "music",
       title: data.spotify.song,
@@ -280,9 +290,13 @@ export function normalizePresence(
 
     if (category === "custom") {
       const text = [a.emoji?.name, a.state].filter(Boolean).join(" ").trim();
-      if (text) cards.push({ category, title: text });
+      if (text && !isDropped(text)) cards.push({ category, title: text });
       continue;
     }
+
+    // Hidden by name — the same list that hides a game from the playtime chart also
+    // keeps it (a stream, a show, an app) out of the live widget.
+    if (isDropped(a.name)) continue;
 
     cards.push({
       category,

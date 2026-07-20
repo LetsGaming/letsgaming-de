@@ -63,7 +63,7 @@ export function usePresenceSettings({ guarded, cms }: PresenceDeps) {
         show: presenceShow.value,
         sample: presenceSample.value,
         retentionDays: presenceRetention.value,
-        hiddenGames: presenceHidden.value,
+        hidden: presenceHidden.value,
       }),
     );
 
@@ -72,12 +72,12 @@ export function usePresenceSettings({ guarded, cms }: PresenceDeps) {
     show?: PresenceCategory[];
     sample?: PresenceCategory[];
     retentionDays?: number | null;
-    hiddenGames?: string[];
+    hidden?: string[];
   } | undefined) {
     presenceShow.value = p?.show ?? [];
     presenceSample.value = p?.sample ?? p?.show ?? [];
     presenceRetention.value = p?.retentionDays ?? null;
-    presenceHidden.value = p?.hiddenGames ?? [];
+    presenceHidden.value = p?.hidden ?? [];
   }
 
   return {

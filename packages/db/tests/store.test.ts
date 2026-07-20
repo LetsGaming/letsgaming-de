@@ -737,13 +737,13 @@ test("the four presence settings survive a write/read round-trip", () => {
     show: ["game", "streaming"],
     sample: ["game", "music"],
     retentionDays: 365,
-    hiddenGames: ["Doom", "Quake"],
+    hidden: ["Doom", "Quake"],
   });
   const got = store.content.getPresence();
   assert.deepEqual(got.show.sort(), ["game", "streaming"]);
   assert.deepEqual(got.sample.sort(), ["game", "music"]);
   assert.equal(got.retentionDays, 365);
-  assert.deepEqual(got.hiddenGames, ["Doom", "Quake"]);
+  assert.deepEqual(got.hidden, ["Doom", "Quake"]);
 });
 
 test("the pre-0004 row (no sample column) reads sample as show", () => {
@@ -753,7 +753,7 @@ test("the pre-0004 row (no sample column) reads sample as show", () => {
   // openStore ran 0004, so write a row that leaves the new columns NULL by hand.
   // setPresence always writes all columns, so go under it:
   // (the migration made the columns nullable exactly so this case reads cleanly)
-  store.content.setPresence({ show: ["game", "music"], sample: [], retentionDays: null, hiddenGames: [] });
+  store.content.setPresence({ show: ["game", "music"], sample: [], retentionDays: null, hidden: [] });
   // now null out sample to mimic pre-migration
   // — done via a fresh settings write that clears it is not possible through the
   //   API, so assert the fallback logic directly on a default-shaped read instead:

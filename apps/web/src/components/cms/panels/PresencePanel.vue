@@ -42,34 +42,29 @@ function setRetention(e: Event) {
 <template>
   <section class="pane">
     <div class="card">
-      <h3>Presence &amp; playtime <span class="muted">(Life → “Right now”, and the playtime module)</span></h3>
+      <h3>Presence <span class="muted">(Life → “Right now”, and what the playtime charts record)</span></h3>
 
-      <h4>Show live</h4>
+      <h4>Activity categories</h4>
       <p class="muted">
-        Which Discord categories the widget may reveal. The server filters to exactly these
-        before anything reaches a visitor — unchecked categories never leave the backend.
+        Two independent switches per category. <b>Show</b> puts it on the live widget — the server
+        sends visitors only what's ticked. <b>Record</b> saves it to build the playtime charts. They're
+        separate on purpose: a category can be recorded but not shown, or shown but not recorded.
       </p>
-      <div class="pgrid">
-        <label v-for="o in PRESENCE_OPTIONS" :key="`show-${o.key}`" class="ptoggle">
-          <input type="checkbox" :checked="presenceShow.includes(o.key)" @change="togglePresence(o.key)" />
-          <span><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
-        </label>
-      </div>
-
-      <h4>Record to history</h4>
-      <p class="muted">
-        Which categories the sampler accumulates for the playtime charts — separate from what's shown
-        live. A category can be recorded but hidden, or shown but not recorded.
-      </p>
-      <div class="pgrid">
-        <label
-          v-for="o in PRESENCE_OPTIONS"
-          :key="`sample-${o.key}`"
-          class="ptoggle"
-        >
-          <input type="checkbox" :checked="presenceSample.includes(o.key)" @change="toggleSample(o.key)" />
-          <span><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
-        </label>
+      <div class="catgrid" role="table">
+        <div class="cathead" role="row">
+          <span role="columnheader">Category</span>
+          <span role="columnheader">Show</span>
+          <span role="columnheader">Record</span>
+        </div>
+        <div v-for="o in PRESENCE_OPTIONS" :key="o.key" class="catrow" role="row">
+          <span class="catname"><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
+          <label class="catcell" :title="`Show ${o.label} on the live widget`">
+            <input type="checkbox" :checked="presenceShow.includes(o.key)" @change="togglePresence(o.key)" />
+          </label>
+          <label class="catcell" :title="`Record ${o.label} for the playtime charts`">
+            <input type="checkbox" :checked="presenceSample.includes(o.key)" @change="toggleSample(o.key)" />
+          </label>
+        </div>
       </div>
       <p v-if="sampledButHidden.length" class="muted note">
         Recording but not showing: {{ sampledButHidden.join(", ") }} — accumulating quietly.
@@ -77,8 +72,8 @@ function setRetention(e: Event) {
 
       <h4>Keep history for</h4>
       <p class="muted">
-        This table is the only long memory of what was played, so the default keeps it.
-        Older sessions are pruned on a daily sweep.
+        How long recorded sessions are kept before a daily sweep prunes the rest. This table is the
+        only long memory of what was played, so the default keeps everything.
       </p>
       <select class="retention" :value="presenceRetention === null ? 'null' : presenceRetention" @change="setRetention">
         <option v-for="o in RETENTION_OPTIONS" :key="String(o.days)" :value="o.days === null ? 'null' : o.days">
@@ -86,17 +81,18 @@ function setRetention(e: Event) {
         </option>
       </select>
 
-      <h4>Hidden games</h4>
+      <h4>Hidden activities</h4>
       <p class="muted">
-        Recorded like everything else, but never named on the public page — one per line, matched
-        case-insensitively. The all-time shape (when you play, hours) still counts them; only the
-        named lists drop them.
+        Names that are recorded but never shown publicly — dropped from the live widget <em>and</em>
+        the playtime charts, whatever the category (a game, a stream, a show). One per line, matched
+        case-insensitively. The all-time shape (when you play, hours) still counts them; only the named
+        rows and the live card drop them.
       </p>
       <textarea
         v-model="hiddenText"
-        class="hidden-games"
+        class="hidden-list"
         rows="4"
-        placeholder="e.g. a game you'd rather not list"
+        placeholder="e.g. R6"
         spellcheck="false"
       ></textarea>
 
@@ -119,6 +115,43 @@ function setRetention(e: Event) {
 	font-size: var(--fs-micro);
 	margin-top: var(--sp-6);
 }
+
+/* One row per category, two switch columns — the two axes read at a glance instead
+   of as two look-alike lists. */
+.catgrid {
+	margin-top: var(--sp-8);
+	border: 1px solid var(--line);
+	border-radius: var(--r-s);
+	overflow: hidden;
+}
+.cathead,
+.catrow {
+	display: grid;
+	grid-template-columns: 1fr 4rem 4rem;
+	align-items: center;
+	gap: var(--sp-8);
+	padding: var(--sp-8) var(--sp-10);
+}
+.cathead {
+	font-size: var(--fs-micro);
+	color: var(--muted);
+	background: var(--card-2);
+	border-bottom: 1px solid var(--line);
+}
+.cathead span:not(:first-child) {
+	text-align: center;
+}
+.catrow + .catrow {
+	border-top: 1px solid var(--line);
+}
+.catname {
+	font-size: 13px;
+}
+.catcell {
+	display: flex;
+	justify-content: center;
+	cursor: pointer;
+}
 .retention {
 	font: inherit;
 	font-size: 13px;
@@ -128,7 +161,7 @@ function setRetention(e: Event) {
 	border-radius: var(--r-s);
 	padding: 6px var(--sp-10);
 }
-.hidden-games {
+.hidden-list {
 	width: 100%;
 	font: inherit;
 	font-size: 13px;

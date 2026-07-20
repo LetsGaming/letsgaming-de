@@ -67,10 +67,10 @@ test("playtimeRows matches metadata regardless of the casing Discord sent", () =
 
 // ── settings sanitizers (the CMS management layer) ───────────────────────────
 import {
-  sanitizeHiddenGames,
+  sanitizeHidden,
   sanitizePresenceSettings,
   sanitizeRetentionDays,
-  isHiddenGame,
+  isHidden,
   defaultPresenceSettings,
 } from "../src/presence.js";
 
@@ -84,16 +84,16 @@ test("retention coerces to the allowed set, never arbitrary", () => {
 });
 
 test("hidden games are trimmed, de-duped case-insensitively, capped", () => {
-  assert.deepEqual(sanitizeHiddenGames(["  Doom ", "doom", "Quake"]), ["Doom", "Quake"]);
-  assert.deepEqual(sanitizeHiddenGames("not an array"), []);
-  assert.deepEqual(sanitizeHiddenGames([1, "", "  ", "Real"]), ["Real"]);
-  assert.equal(sanitizeHiddenGames(Array(300).fill("x").map((_, i) => `g${i}`)).length, 200);
+  assert.deepEqual(sanitizeHidden(["  Doom ", "doom", "Quake"]), ["Doom", "Quake"]);
+  assert.deepEqual(sanitizeHidden("not an array"), []);
+  assert.deepEqual(sanitizeHidden([1, "", "  ", "Real"]), ["Real"]);
+  assert.equal(sanitizeHidden(Array(300).fill("x").map((_, i) => `g${i}`)).length, 200);
 });
 
-test("isHiddenGame matches regardless of case and padding", () => {
-  assert.equal(isHiddenGame("Counter-Strike 2", ["counter-strike 2"]), true);
-  assert.equal(isHiddenGame("  DOOM ", ["doom"]), true);
-  assert.equal(isHiddenGame("Factorio", ["Doom"]), false);
+test("isHidden matches regardless of case and padding", () => {
+  assert.equal(isHidden("Counter-Strike 2", ["counter-strike 2"]), true);
+  assert.equal(isHidden("  DOOM ", ["doom"]), true);
+  assert.equal(isHidden("Factorio", ["Doom"]), false);
 });
 
 test("a partial settings body fills omitted fields from the default", () => {
@@ -103,11 +103,11 @@ test("a partial settings body fills omitted fields from the default", () => {
   assert.deepEqual(out.show, ["game"]);
   assert.deepEqual(out.sample, d.sample); // filled, not dropped
   assert.equal(out.retentionDays, d.retentionDays);
-  assert.deepEqual(out.hiddenGames, d.hiddenGames);
+  assert.deepEqual(out.hidden, d.hidden);
 });
 
 test("garbage settings sanitize to a valid object, never throw", () => {
   const out = sanitizePresenceSettings("nonsense");
   assert.ok(Array.isArray(out.show) && Array.isArray(out.sample));
-  assert.ok(Array.isArray(out.hiddenGames));
+  assert.ok(Array.isArray(out.hidden));
 });

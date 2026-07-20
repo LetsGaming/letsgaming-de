@@ -16,6 +16,7 @@ import GuestbookPanel from "./panels/GuestbookPanel.vue";
 import HobbiesPanel from "./panels/HobbiesPanel.vue";
 import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
 import PostsPanel from "./panels/PostsPanel.vue";
+import PlaytimePanel from "./panels/PlaytimePanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
 import LinksPanel from "./panels/LinksPanel.vue";
 import NowPanel from "./panels/NowPanel.vue";
@@ -125,6 +126,7 @@ const {
         <!-- PRESENCE -->
         <PresencePanel v-show="tab === 'presence'" />
         <MusicPanel v-show="tab === 'music'" />
+        <PlaytimePanel v-show="tab === 'playtime'" />
 
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />

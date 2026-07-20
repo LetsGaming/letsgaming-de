@@ -26,7 +26,7 @@ import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
   defaultPresenceSettings,
-  isHiddenGame,
+  isHidden,
   playtimeRows,
   DEFAULT_TIMEZONE,
   type GameMeta,
@@ -557,7 +557,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const settings = content.playtime ?? defaultPlaytimeSettings();
         const allRecent = pShow.includes("game")
           ? playtimeRows(input.playtime ?? [], input.gameMeta).filter(
-              (g) => !isHiddenGame(g.name, content.presence?.hiddenGames ?? []),
+              (g) => !isHidden(g.name, content.presence?.hidden ?? []),
             )
           : [];
         const { rows: recent, total: gameCount } = capList(allRecent, settings.maxCount);

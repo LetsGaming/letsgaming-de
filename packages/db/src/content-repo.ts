@@ -17,7 +17,7 @@ import {
   defaultPresenceSettings,
   defaultMusicSettings,
   defaultPlaytimeSettings,
-  sanitizeHiddenGames,
+  sanitizeHidden,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
   sanitizePresenceSettings,
@@ -115,7 +115,7 @@ export function contentRepo(db: DB) {
       // the behaviour that row was created under (the sampler ignored the list).
       sample: row.sample === null ? show : sanitizePresenceShow(json<unknown>(row.sample)),
       retentionDays: sanitizeRetentionDays(row.retention_days),
-      hiddenGames: row.hidden_games === null ? d.hiddenGames : sanitizeHiddenGames(json<unknown>(row.hidden_games)),
+      hidden: row.hidden_games === null ? d.hidden : sanitizeHidden(json<unknown>(row.hidden_games)),
     };
   };
 
@@ -252,7 +252,7 @@ export function contentRepo(db: DB) {
             JSON.stringify(clean.show),
             JSON.stringify(clean.sample),
             clean.retentionDays,
-            JSON.stringify(clean.hiddenGames),
+            JSON.stringify(clean.hidden),
           ),
       );
     },

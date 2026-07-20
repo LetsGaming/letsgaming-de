@@ -18,6 +18,7 @@ import {
   OPTIONAL_ASSET_REF_PATTERN,
   PRESENCE_CATEGORIES,
   MUSIC_LIST_BOUNDS,
+  LIST_DISPLAY_BOUNDS,
   TONES,
 } from "@lg/core";
 
@@ -140,8 +141,8 @@ export const schemas = {
         uniqueItems: true,
       },
       // null = keep forever; the numbers are the RETENTION_OPTIONS days.
-      retentionDays: { type: ["integer", "null"], enum: [null, 365, 730] },
-      hiddenGames: {
+      retentionDays: { type: ["integer", "null"], enum: [null, 730, 365, 180, 90, 30] },
+      hidden: {
         type: "array",
         items: { type: "string", minLength: 1, maxLength: 200 },
         maxItems: 200,
@@ -157,6 +158,16 @@ export const schemas = {
     properties: {
       initialCount: { type: "integer", minimum: MUSIC_LIST_BOUNDS.min, maximum: MUSIC_LIST_BOUNDS.max },
       maxCount: { type: "integer", minimum: MUSIC_LIST_BOUNDS.min, maximum: MUSIC_LIST_BOUNDS.max },
+    },
+    additionalProperties: false,
+  },
+  playtime: {
+    type: "object",
+    // Same shape and bounds as `music` — a separate stored value so the two
+    // modules' limits can differ; the sanitizer fills any omitted count.
+    properties: {
+      initialCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
+      maxCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
     },
     additionalProperties: false,
   },

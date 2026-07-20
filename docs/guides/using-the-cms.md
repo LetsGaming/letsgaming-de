@@ -38,7 +38,9 @@ it like this:
 | Structure & media | Layout | Reorder modules within an area, move them between areas, or hide them. |
 | Structure & media | Asset library | Your central store of reusable files: images, SVGs, GIFs, PDFs, Markdown. Upload, organise (folders and tags), edit metadata, see where each is used. |
 | Structure & media | Gallery | Curate the image galleries on the site, picked from the library. |
-| Widgets | Presence | Which Discord categories the "right now" widget may show. |
+| Widgets | Presence | The "right now" widget and what the playtime charts record: which Discord categories to show live and which to record, how long to keep history, and a hidden-activities list (names never shown publicly, whatever the category). |
+| Widgets | Listening | How many rows the Listening lists show — before "show more" and at most. |
+| Widgets | Played | The same, for the Played lists — a separate setting, so the two can differ. |
 | Community | Guestbook | Approve, reject, or delete visitor entries (nothing is public until you approve it). |
 | Insights | Analytics | Anonymous traffic and engagement. No cookies, no IPs, nothing personal. |
 

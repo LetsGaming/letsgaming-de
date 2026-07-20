@@ -61,7 +61,7 @@ const envWith = (id: string): ServerEnv =>
 test("a category not on the record list is never written", async () => {
   const store = openStore(":memory:");
   // Owner records games but NOT music.
-  store.content.setPresence({ show: ["game", "music"], sample: ["game"], retentionDays: null, hiddenGames: [] });
+  store.content.setPresence({ show: ["game", "music"], sample: ["game"], retentionDays: null, hidden: [] });
 
   const start = Date.UTC(2026, 6, 17, 20, 0);
   const orig = globalThis.fetch;
@@ -94,7 +94,7 @@ test("a category not on the record list is never written", async () => {
 
 test("enabling music sampling records the full track to music_plays", async () => {
   const store = openStore(":memory:");
-  store.content.setPresence({ show: ["game"], sample: ["game", "music"], retentionDays: null, hiddenGames: [] });
+  store.content.setPresence({ show: ["game"], sample: ["game", "music"], retentionDays: null, hidden: [] });
 
   const start = Date.UTC(2026, 6, 17, 20, 0);
   const orig = globalThis.fetch;
@@ -138,10 +138,10 @@ test("prune honours the CMS retention setting", () => {
   const sampler = new PresenceSampler(envWith("123"), store, "*/5 * * * *", () => {});
 
   // forever → nothing pruned
-  store.content.setPresence({ show: ["game"], sample: ["game"], retentionDays: null, hiddenGames: [] });
+  store.content.setPresence({ show: ["game"], sample: ["game"], retentionDays: null, hidden: [] });
   assert.equal(sampler.prune(), 0, "retention=forever prunes nothing");
 
   // 1 year → the 400-day session goes
-  store.content.setPresence({ show: ["game"], sample: ["game"], retentionDays: 365, hiddenGames: [] });
+  store.content.setPresence({ show: ["game"], sample: ["game"], retentionDays: 365, hidden: [] });
   assert.equal(sampler.prune(), 1, "retention=365 prunes the old session");
 });

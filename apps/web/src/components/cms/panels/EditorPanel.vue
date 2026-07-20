@@ -30,6 +30,7 @@ import NowPanel from "./NowPanel.vue";
 import PostsPanel from "./PostsPanel.vue";
 import PresencePanel from "./PresencePanel.vue";
 import MusicPanel from "./MusicPanel.vue";
+import PlaytimePanel from "./PlaytimePanel.vue";
 import SiteIdentityPanel from "./SiteIdentityPanel.vue";
 
 /**
@@ -52,6 +53,7 @@ const PANEL: Partial<Record<View, Component>> = {
 	guestbook: GuestbookPanel,
 	presence: PresencePanel,
 	music: MusicPanel,
+	playtime: PlaytimePanel,
 };
 
 const {
