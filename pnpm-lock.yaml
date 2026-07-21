@@ -80,7 +80,7 @@ importers:
         version: 5.2.9
       '@nanostores/vue':
         specifier: ^1.1.0
-        version: 1.1.0(nanostores@1.4.0)(vue@3.5.39(typescript@5.9.3))
+        version: 1.1.0(nanostores@1.4.1)(vue@3.5.39(typescript@5.9.3))
       astro:
         specifier: ^6.1.6
         version: 6.4.8(@types/node@22.20.0)(rollup@4.62.2)(tsx@4.23.0)(yaml@2.9.0)
@@ -88,8 +88,8 @@ importers:
         specifier: ^18.0.5
         version: 18.0.5
       nanostores:
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.4.1
+        version: 1.4.1
       sortablejs:
         specifier: ^1.15.7
         version: 1.15.7
@@ -2179,8 +2179,8 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  nanostores@1.4.0:
-    resolution: {integrity: sha512-i0tloweeudshAEuddpDxcg9Ik6pkPfVsHIgKyf143JrgG7/MOh0+q7BypdLXZPoOP7fOYt1eTcwGkyiVmhJFkA==}
+  nanostores@1.4.1:
+    resolution: {integrity: sha512-PGd3uPojJB9Z07d5NX3Db/SOSBbyy3wLMUGq0GpnEEJfVzY9mq7daPMAZ3jObV5D3Jn+YKND636eI5ULg7F80Q==}
     engines: {node: ^20.0.0 || >=22.0.0}
 
   neotraverse@0.6.18:
@@ -3802,9 +3802,9 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@nanostores/vue@1.1.0(nanostores@1.4.0)(vue@3.5.39(typescript@5.9.3))':
+  '@nanostores/vue@1.1.0(nanostores@1.4.1)(vue@3.5.39(typescript@5.9.3))':
     dependencies:
-      nanostores: 1.4.0
+      nanostores: 1.4.1
       vue: 3.5.39(typescript@5.9.3)
 
   '@one-ini/wasm@0.1.1': {}
@@ -5384,7 +5384,7 @@ snapshots:
 
   nanoid@3.3.15: {}
 
-  nanostores@1.4.0: {}
+  nanostores@1.4.1: {}
 
   neotraverse@0.6.18: {}
 
