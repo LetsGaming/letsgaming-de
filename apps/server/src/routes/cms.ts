@@ -32,6 +32,7 @@ import {
   sanitizePresenceSettings,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
+  sanitizeWrappedSettings,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -181,6 +182,18 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       // Twin of the music route — a separate stored value so Played can carry its
       // own limits; the sanitizer clamps and keeps initialCount ≤ maxCount.
       store.content.setPlaytime(sanitizePlaytimeSettings(req.body));
+      return { ok: true };
+    },
+  );
+
+  app.put<{ Body: { enabled?: boolean; everyMonths?: number; forWeeks?: number; fromDate?: string; topCount?: number } }>(
+    "/api/cms/wrapped",
+    write(schemas.wrapped),
+    async (req) => {
+      // The recurring-display schedule. sanitizeWrappedSettings clamps the numbers,
+      // drops a malformed date, and fills any omitted field — a partial body still
+      // writes a coherent row.
+      store.content.setWrapped(sanitizeWrappedSettings(req.body));
       return { ok: true };
     },
   );

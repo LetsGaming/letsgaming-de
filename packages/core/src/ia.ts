@@ -94,7 +94,7 @@ export const PREVIEW_PARAM = "preview";
 export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
   { id: "home", label: en("Home"), modules: ["hero", "glance", "featured", "guestbook"] },
   { id: "code", label: en("Code"), modules: ["activity", "coding", "projects"] },
-  { id: "life", label: en("Life"), modules: ["presence", "playtime", "music", "hobbies", "gallery", "now"] },
+  { id: "life", label: en("Life"), modules: ["presence", "playtime", "music", "wrapped", "hobbies", "gallery", "now"] },
   { id: "about", label: en("About"), modules: ["bio", "contact"] },
   { id: "blog", label: en("Blog"), modules: ["posts"], hidden: true },
 ];
@@ -120,6 +120,10 @@ export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "presence", kind: "presence", heading: en("Right now") },
   { id: "playtime", kind: "playtime", heading: en("Time played") },
   { id: "music", kind: "music", heading: en("Listening") },
+  // Placed in Life but opt-in: disabled by default, and even once enabled it shows
+  // only inside its scheduled window (Widgets → Wrapped), so it's absent the rest
+  // of the time rather than an empty card.
+  { id: "wrapped", kind: "wrapped", heading: en("Wrapped") },
   { id: "hobbies", kind: "hobbies", heading: en("Off the clock") },
   { id: "gallery", kind: "gallery", heading: en("Snapshots") },
   { id: "now", kind: "now", heading: en("Lately") },

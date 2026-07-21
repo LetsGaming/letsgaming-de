@@ -22,6 +22,7 @@ import { AuthError, cms, loadToken, setToken } from "../lib/cms";
 import { usePresenceSettings } from "./usePresenceSettings";
 import { useMusicSettings } from "./useMusicSettings";
 import { usePlaytimeSettings } from "./usePlaytimeSettings";
+import { useWrappedSettings } from "./useWrappedSettings";
 import { useGuestbookMod } from "./useGuestbookMod";
 import { useAnalytics } from "./useAnalytics";
 import { useLayoutEditor } from "./useLayoutEditor";
@@ -68,6 +69,7 @@ const VIEWS = [
   "presence",
   "music",
   "playtime",
+  "wrapped",
   "guestbook",
   "analytics",
 ] as const;
@@ -106,6 +108,7 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
       { id: "presence", label: "Presence" },
       { id: "music", label: "Listening" },
       { id: "playtime", label: "Played" },
+      { id: "wrapped", label: "Wrapped" },
     ],
   },
   { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
@@ -126,6 +129,7 @@ const VIEW_TITLES: Record<View, string> = {
   presence: "Presence widget",
   music: "Listening list",
   playtime: "Played list",
+  wrapped: "Wrapped",
   guestbook: "Guestbook",
   analytics: "Analytics",
 };
@@ -189,6 +193,18 @@ const now = nowList.items;
   // Playtime list-display settings — its own stored value, so its limits can differ.
   const playtime = usePlaytimeSettings({ guarded, cms });
   const { PLAYTIME_LIST_BOUNDS, playtimeInitialCount, playtimeMaxCount, savePlaytime, hydratePlaytime } = playtime;
+  // Wrapped — the recurring retrospective's schedule.
+  const wrapped = useWrappedSettings({ guarded, cms });
+  const {
+    WRAPPED_BOUNDS,
+    wrappedEnabled,
+    wrappedEveryMonths,
+    wrappedForWeeks,
+    wrappedFromDate,
+    wrappedTopCount,
+    saveWrapped,
+    hydrateWrapped,
+  } = wrapped;
 
   // Guestbook moderation — extracted composable (see useGuestbookMod).
   const { guestbook, loadingG, loadGuestbook, moderate, removeEntry } = useGuestbookMod({
@@ -265,6 +281,7 @@ async function loadAll() {
   hydratePresence(data.content.presence);
   hydrateMusic(data.content.music);
   hydratePlaytime(data.content.playtime);
+  hydrateWrapped(data.content.wrapped);
   hydrateLayout(data);
 }
 
@@ -427,6 +444,7 @@ const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
   presence: AREA.life,
   music: AREA.life,
   playtime: AREA.life,
+  wrapped: AREA.life,
 };
 const previewArea = ref<AreaId>(AREA.home);
 const previewKey = ref(0);
@@ -578,6 +596,13 @@ onUnmounted(() => {
     playtimeInitialCount,
     playtimeMaxCount,
     savePlaytime,
+    WRAPPED_BOUNDS,
+    wrappedEnabled,
+    wrappedEveryMonths,
+    wrappedForWeeks,
+    wrappedFromDate,
+    wrappedTopCount,
+    saveWrapped,
     guestbook,
     loadingG,
     loadGuestbook,

@@ -518,3 +518,71 @@ test("playtime recently-played is gated on the game category, like the old prese
   if (!pt || pt.kind !== "playtime") throw new Error("expected playtime");
   assert.deepEqual(pt.data.recent, [], "game disabled → empty shelf");
 });
+
+// A minimal valid content object, reused by the wrapped tests below.
+function wrappedContent(): SiteContent {
+  return {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p")],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+}
+
+const WRAPPED_NAV: NavNode[] = [{ id: "life", label: en("Life"), modules: ["wrapped"] }];
+const WRAPPED_MODULES: ModuleDescriptor[] = [{ id: "wrapped", kind: "wrapped", heading: en("Wrapped") }];
+
+test("wrapped is omitted from the view when no window is active (no data supplied)", () => {
+  // The nav places it and the descriptor exists, but without `wrapped` in the input
+  // (the view builder aggregates only inside a window) the resolver drops it — the
+  // recurring visibility is enforced server-side, not hidden by the client.
+  const view = resolveSiteView({ content: wrappedContent(), nav: WRAPPED_NAV, modules: WRAPPED_MODULES, source: {} });
+  assert.equal(view.modules["wrapped"], undefined, "no wrapped data ⇒ module absent from the view");
+});
+
+test("wrapped shapes the period's music and games when a window is active", () => {
+  const view = resolveSiteView({
+    content: wrappedContent(),
+    nav: WRAPPED_NAV,
+    modules: WRAPPED_MODULES,
+    source: {},
+    wrapped: {
+      periodStart: "2025-10-01T00:00:00.000Z",
+      periodEnd: "2026-01-01T00:00:00.000Z",
+      topCount: 5,
+      music: {
+        totalMinutes: 600, // 10h
+        trackCount: 42,
+        artistCount: 18,
+        topSongs: [{ name: "Nightcall", by: "Kavinsky", minutes: 90, plays: 30 }],
+        topArtists: [{ name: "Kavinsky", minutes: 120, plays: 40 }],
+      },
+      games: {
+        observed: [{ name: "Factorio", minutes: 300, sessions: 10, exact: true }],
+        totalMinutes: 480, // 8h
+        gameCount: 7,
+      },
+    },
+  });
+
+  const w = view.modules["wrapped"];
+  if (!w || w.kind !== "wrapped") throw new Error("expected a wrapped module");
+  assert.equal(w.data.periodStart, "2025-10-01T00:00:00.000Z");
+  assert.equal(w.data.topCount, 5);
+  // Minutes → rounded hours for the headline; the distinct counts pass through as-is.
+  assert.equal(w.data.music.totalHours, 10);
+  assert.equal(w.data.music.trackCount, 42);
+  assert.equal(w.data.music.artistCount, 18);
+  assert.equal(w.data.music.topSongs[0]?.name, "Nightcall");
+  assert.equal(w.data.music.topSongs[0]?.by, "Kavinsky");
+  assert.equal(w.data.music.topArtists[0]?.name, "Kavinsky");
+  assert.equal(w.data.games.totalHours, 8);
+  assert.equal(w.data.games.gameCount, 7);
+  assert.equal(w.data.games.top[0]?.name, "Factorio");
+  assert.equal(w.data.games.top[0]?.minutes, 300);
+});

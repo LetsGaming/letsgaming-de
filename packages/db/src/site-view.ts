@@ -2,15 +2,21 @@ import {
   ASSET_WIDTHS,
   MUSIC_TOP_LIMIT,
   defaultMusicSettings,
+  defaultWrappedSettings,
+  isHidden,
   PLAYTIME_WINDOW_DAYS,
   resolveSiteView,
   SOURCE_TTL,
   sanitizeTimeZone,
+  wrappedWindow,
   type Locale,
   type NavNode,
   type PlaytimeHeatCell,
   type ResolvableAsset,
+  type ResolveInput,
   type SiteView,
+  type WrappedSettings,
+  type WrappedWindow,
 } from "@lg/core";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -51,12 +57,21 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
   // an env var (edit + redeploy) is the right weight; the aggregation itself takes
   // the zone as a parameter, so per-request overrides still work.
   const timeZone = opts.timeZone ?? sanitizeTimeZone(process.env.TZ);
+  // One clock for the whole render: the schedule check here and the resolver's
+  // relative times agree, and Wrapped's numbers are stable within a request.
+  const now = new Date();
+  // The Wrapped module is present only while its schedule window is open — compute
+  // that here, and aggregate the closed cycle's data only when it is. Outside a
+  // window there's no `wrapped` in the input, so the resolver omits the module.
+  const wrappedSettings = content.wrapped ?? defaultWrappedSettings();
+  const win = wrappedWindow(wrappedSettings, now);
   return resolveSiteView({
     content,
     source: store.source.getAllCurrent(),
     nav: opts.nav ?? store.ia.getNav(),
     modules: store.ia.getModules(),
     locale: opts.locale,
+    now,
     syncedAt: store.source.latestSyncedAt(),
     freshness: {
       syncedAt: store.source.syncedAtBySource(),
@@ -71,6 +86,7 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     // The list cap is the CMS-owned maxCount, applied here as the query LIMIT so
     // the resolved view (and the frontend) never sees more than the top N.
     musicHistory: buildMusicHistory(store, content.music?.maxCount ?? defaultMusicSettings().maxCount, timeZone),
+    ...(win ? { wrapped: buildWrapped(store, wrappedSettings, win, content.presence?.hidden ?? []) } : {}),
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
 }
@@ -140,6 +156,45 @@ function buildMusicHistory(
     artistCount: store.music.distinctArtists(since),
     timeZone,
     ...(ledger[0] ? { since: ledger[0].day } : {}),
+  };
+}
+
+/**
+ * The Wrapped module's data for the closed cycle `[periodStart, periodEnd)`: the top
+ * music and games plus the period's totals.
+ *
+ * Games the owner hid are excluded outright — a public retrospective shouldn't
+ * reveal them, so they count toward neither the list nor the totals. Music has no
+ * hide list (a separate data path). The reads pass an upper bound (`untilIso`), so
+ * the window is fixed and the numbers are a stable retrospective, not a rolling
+ * count that drifts across the display window.
+ */
+function buildWrapped(
+  store: Store,
+  settings: WrappedSettings,
+  win: WrappedWindow,
+  hidden: string[],
+): NonNullable<ResolveInput["wrapped"]> {
+  const { periodStart, periodEnd } = win;
+  const top = settings.topCount;
+  const games = store.sessions.playtime("game", periodStart, periodEnd).filter((g) => !isHidden(g.name, hidden));
+  const gameMinutes = games.reduce((sum, g) => sum + g.minutes, 0);
+  return {
+    periodStart,
+    periodEnd,
+    topCount: top,
+    music: {
+      totalMinutes: store.music.totalMinutes(periodStart, periodEnd),
+      trackCount: store.music.distinctTracks(periodStart, periodEnd),
+      artistCount: store.music.distinctArtists(periodStart, periodEnd),
+      topSongs: store.music.topSongs(periodStart, top, periodEnd),
+      topArtists: store.music.topArtists(periodStart, top, periodEnd),
+    },
+    games: {
+      observed: games.slice(0, top),
+      totalMinutes: gameMinutes,
+      gameCount: games.length,
+    },
   };
 }
 

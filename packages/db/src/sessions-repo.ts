@@ -18,6 +18,10 @@ import { eachHourSlot, zonedDay } from "./tz.js";
  * newest row.
  */
 export function sessionsRepo(db: DatabaseSync) {
+  // Default upper bound for period-scoped reads (Wrapped). ISO strings sort
+  // chronologically, so `< FAR_FUTURE` is always true — callers passing no
+  // `untilIso` keep the original "since a cutoff, up to now" behaviour.
+  const FAR_FUTURE = "9999-12-31T23:59:59.999Z";
   /**
    * Record that an activity was seen running.
    *
@@ -104,7 +108,7 @@ export function sessionsRepo(db: DatabaseSync) {
      * `last_seen == started`, which is a zero-length session and a row rather than
      * a fact.
      */
-    playtime(category: PresenceCategory, sinceIso: string): PlaytimeEntry[] {
+    playtime(category: PresenceCategory, sinceIso: string, untilIso: string = FAR_FUTURE): PlaytimeEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -113,7 +117,7 @@ export function sessionsRepo(db: DatabaseSync) {
             MIN(started_exact) AS exact,
             COUNT(*) AS sessions
           FROM presence_sessions
-          WHERE category = ? AND last_seen_at >= ?
+          WHERE category = ? AND last_seen_at >= ? AND last_seen_at < ?
           GROUP BY name
           HAVING seconds >= ?
           ORDER BY seconds DESC, name ASC
@@ -129,6 +133,7 @@ export function sessionsRepo(db: DatabaseSync) {
         }),
         category,
         sinceIso,
+        untilIso,
         PLAYTIME_MIN_SECONDS,
       );
     },

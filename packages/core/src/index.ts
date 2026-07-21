@@ -14,6 +14,7 @@ export * from "./presence.js";
 export * from "./list-settings.js";
 export * from "./music.js";
 export * from "./playtime-settings.js";
+export * from "./wrapped.js";
 export * from "./music-day.js";
 export * from "./assets.js";
 export * from "./resolve.js";

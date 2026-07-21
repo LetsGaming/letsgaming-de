@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Wrapped — a periodic listening + playing retrospective
+
+- **A new Wrapped module**, in the spirit of Spotify Wrapped, built from the activity
+  already recorded: top songs, artists, and games over a past stretch, with the hours,
+  distinct-track, distinct-artist, and distinct-game totals. Both music and games in
+  one card; hidden games are left out, the same as everywhere else.
+- **It appears on a recurring schedule you set** — "show every N months, for M weeks,
+  from date X" — and each window summarizes the cycle that just closed, so the numbers
+  are a fixed retrospective for the whole window rather than a rolling count. Off by
+  default; enable and configure it under Widgets → Wrapped.
+- **The schedule is enforced server-side.** Outside a window the module is absent from
+  the page entirely — not rendered and hidden — matching how every other visibility
+  toggle works here. It's placed in Life by default, so enabling it is enough to make
+  it show up (in season).
+
 ### /life — activity in the right timezone
 
 - **The day strips, the "when I play" heatmap, and the per-day drill-in bucket in the

@@ -17,6 +17,7 @@ import HobbiesPanel from "./panels/HobbiesPanel.vue";
 import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
 import PostsPanel from "./panels/PostsPanel.vue";
 import PlaytimePanel from "./panels/PlaytimePanel.vue";
+import WrappedPanel from "./panels/WrappedPanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
 import LinksPanel from "./panels/LinksPanel.vue";
 import NowPanel from "./panels/NowPanel.vue";
@@ -127,6 +128,7 @@ const {
         <PresencePanel v-show="tab === 'presence'" />
         <MusicPanel v-show="tab === 'music'" />
         <PlaytimePanel v-show="tab === 'playtime'" />
+        <WrappedPanel v-show="tab === 'wrapped'" />
 
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />

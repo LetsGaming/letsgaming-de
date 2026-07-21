@@ -19,6 +19,7 @@ import {
   PRESENCE_CATEGORIES,
   MUSIC_LIST_BOUNDS,
   LIST_DISPLAY_BOUNDS,
+  WRAPPED_BOUNDS,
   TONES,
 } from "@lg/core";
 
@@ -168,6 +169,20 @@ export const schemas = {
     properties: {
       initialCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
       maxCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
+    },
+    additionalProperties: false,
+  },
+  wrapped: {
+    type: "object",
+    // The recurring-display schedule. No required fields: the sanitizer fills any
+    // omitted one and drops a malformed date, so a partial body still writes a valid
+    // row. Bounds come from @lg/core so schema and sanitizer can't drift.
+    properties: {
+      enabled: { type: "boolean" },
+      everyMonths: { type: "integer", minimum: WRAPPED_BOUNDS.everyMonths.min, maximum: WRAPPED_BOUNDS.everyMonths.max },
+      forWeeks: { type: "integer", minimum: WRAPPED_BOUNDS.forWeeks.min, maximum: WRAPPED_BOUNDS.forWeeks.max },
+      fromDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+      topCount: { type: "integer", minimum: WRAPPED_BOUNDS.topCount.min, maximum: WRAPPED_BOUNDS.topCount.max },
     },
     additionalProperties: false,
   },

@@ -228,6 +228,7 @@ export type ResolvedModule =
   | { id: string; kind: "presence"; data: SectionMeta & PresenceModuleView }
   | { id: string; kind: "playtime"; data: SectionMeta & PlaytimeModuleView }
   | { id: string; kind: "music"; data: SectionMeta & MusicModuleView }
+  | { id: string; kind: "wrapped"; data: SectionMeta & WrappedModuleView }
   | { id: string; kind: "gallery"; data: SectionMeta & { images: GalleryImageView[] } }
   | { id: string; kind: "bio"; data: SectionMeta & { blocks: BioBlock[] } }
   | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
@@ -322,6 +323,38 @@ export interface MusicModuleView {
   /** The most list rows shown — the lists are already capped to this server-side,
    *  so this is the expand target, not a client-side filter. */
   maxCount: number;
+}
+
+/**
+ * The Wrapped module — a periodic retrospective of a fixed past window, both music
+ * and games, in the spirit of Spotify Wrapped. Distinct from Music/Playtime, which
+ * are a rolling fortnight: this covers the cycle the CMS schedule just closed, and
+ * only appears while that schedule's window is open (enforced server-side — outside
+ * a window the module is absent from the view, not hidden by the client).
+ *
+ * The top lists are already trimmed to `topCount`; the totals and distinct counts
+ * are the true figures for the period, for the headline stats.
+ */
+export interface WrappedModuleView {
+  /** The summarized period (ISO instants): a whole cycle that just closed. */
+  periodStart: string;
+  periodEnd: string;
+  /** How many rows each top list carries (already applied). */
+  topCount: number;
+  music: {
+    totalHours: number;
+    /** Distinct tracks / artists over the period — the true totals. */
+    trackCount: number;
+    artistCount: number;
+    topSongs: MusicRankView[];
+    topArtists: MusicRankView[];
+  };
+  games: {
+    totalHours: number;
+    /** Distinct games played over the period. */
+    gameCount: number;
+    top: PlaytimeView[];
+  };
 }
 
 /** A nav node with its label already localized (children/modules preserved). */

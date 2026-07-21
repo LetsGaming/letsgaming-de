@@ -103,6 +103,8 @@ const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   // Music too: it's driven by the same presence sampler (the Spotify category is
   // toggled in the same allow-list), so it lands on the presence panel.
   music: "presence",
+  // Wrapped has its own schedule settings, so clicking it opens the Wrapped panel.
+  wrapped: "wrapped",
   bio: "about",
   contact: "links",
   posts: "posts",

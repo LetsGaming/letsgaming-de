@@ -6,6 +6,7 @@ import type {
   MusicSettings,
   NowItem,
   PlaytimeSettings,
+  WrappedSettings,
   PresenceSettings,
   Project,
   SiteContent,
@@ -17,9 +18,11 @@ import {
   defaultPresenceSettings,
   defaultMusicSettings,
   defaultPlaytimeSettings,
+  defaultWrappedSettings,
   sanitizeHidden,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
+  sanitizeWrappedSettings,
   sanitizePresenceSettings,
   sanitizePresenceShow,
   sanitizeRetentionDays,
@@ -137,6 +140,14 @@ export function contentRepo(db: DB) {
     return sanitizePlaytimeSettings(json<unknown>(row.playtime));
   };
 
+  const readWrapped = (): WrappedSettings => {
+    const row = db
+      .prepare("SELECT wrapped FROM site_content WHERE id = ?")
+      .get(SINGLETON_ID) as { wrapped: string | null } | undefined;
+    if (!row || row.wrapped === null) return defaultWrappedSettings();
+    return sanitizeWrappedSettings(json<unknown>(row.wrapped));
+  };
+
   /**
    * Snapshot the whole document into the revision archive.
    *
@@ -179,7 +190,7 @@ export function contentRepo(db: DB) {
       return result;
     });
 
-  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music" | "playtime", value: unknown): void =>
+  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music" | "playtime" | "wrapped", value: unknown): void =>
     write(col, () => {
       db.prepare(`UPDATE site_content SET ${col} = ? WHERE id = ?`).run(
         JSON.stringify(value),
@@ -205,6 +216,7 @@ export function contentRepo(db: DB) {
           presence: readPresence(),
           music: readMusic(),
           playtime: readPlaytime(),
+          wrapped: readWrapped(),
           gallery: readGallery(),
         }),
         SINGLETON_ID,
@@ -230,6 +242,12 @@ export function contentRepo(db: DB) {
     getPlaytime: readPlaytime,
     setPlaytime(settings: PlaytimeSettings) {
       setScalar("playtime", sanitizePlaytimeSettings(settings));
+    },
+
+    /** Wrapped module config (CMS-owned) — the recurring retrospective's schedule. */
+    getWrapped: readWrapped,
+    setWrapped(settings: WrappedSettings) {
+      setScalar("wrapped", sanitizeWrappedSettings(settings));
     },
 
     /** Presence category allow-list (CMS-owned). */

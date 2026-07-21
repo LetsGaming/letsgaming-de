@@ -15,6 +15,7 @@ import PostsSection from "../sections/PostsSection.vue";
 import PresenceSection from "../sections/PresenceSection.vue";
 import PlaytimeSection from "../sections/PlaytimeSection.vue";
 import MusicSection from "../sections/MusicSection.vue";
+import WrappedSection from "../sections/WrappedSection.vue";
 import BioSection from "../sections/BioSection.vue";
 import ContactSection from "../sections/ContactSection.vue";
 
@@ -38,6 +39,7 @@ const sections: Record<ResolvedModule["kind"], Component> = {
   presence: PresenceSection,
   playtime: PlaytimeSection,
   music: MusicSection,
+  wrapped: WrappedSection,
   bio: BioSection,
   contact: ContactSection,
   posts: PostsSection,
