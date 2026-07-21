@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
+import ModuleSection from "../ui/ModuleSection.vue";
 import PresenceWidget from "../presence/PresenceWidget.vue";
 
 defineProps<{
@@ -8,11 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
     <div>
       <PresenceWidget
         :enabled="module.data.enabled"
@@ -21,5 +18,5 @@ defineProps<{
         :avatar="module.data.avatar"
       />
     </div>
-  </section>
+  </ModuleSection>
 </template>

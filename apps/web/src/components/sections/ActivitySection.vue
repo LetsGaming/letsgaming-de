@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
+import ModuleSection from "../ui/ModuleSection.vue";
+import ModuleCard from "../ui/ModuleCard.vue";
+import CardHeader from "../ui/CardHeader.vue";
 import Freshness from "../ui/Freshness.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 import LanguageBars from "../ui/LanguageBars.vue";
@@ -25,11 +28,8 @@ const contributionCells = computed<HeatCell[]>(() =>
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <Freshness :freshness="module.data.freshness" />
-    </div>
+  <ModuleSection :id="module.id" :heading="module.data.heading">
+    <template #note><Freshness :freshness="module.data.freshness" /></template>
     <div class="stats">
       <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
         <div class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></div>
@@ -37,20 +37,20 @@ const contributionCells = computed<HeatCell[]>(() =>
       </div>
     </div>
     <div class="dash">
-      <div class="box">
-        <h3>Contributions</h3>
-        <div class="sub">last 26 weeks · {{ module.data.contributions.total }} in the window</div>
+      <ModuleCard>
+        <CardHeader
+          title="Contributions"
+          :note="`last 26 weeks · ${module.data.contributions.total} in the window`"
+        />
         <HeatGrid :cells="contributionCells" legend />
-      </div>
-      <div class="box">
-        <h3>Languages</h3>
-        <div class="sub">across all public repos</div>
+      </ModuleCard>
+      <ModuleCard>
+        <CardHeader title="Languages" note="across all public repos" />
         <LanguageBars :languages="module.data.languages" />
-      </div>
+      </ModuleCard>
     </div>
-    <div class="box" style="margin-top: 18px">
-      <h3>Recent events</h3>
-      <div class="sub">newest first</div>
+    <ModuleCard class="activity-events">
+      <CardHeader title="Recent events" note="newest first" />
       <div class="feed">
         <p v-if="!module.data.events.length" class="sub">Nothing synced from GitHub yet.</p>
         <component
@@ -74,15 +74,18 @@ const contributionCells = computed<HeatCell[]>(() =>
           {{ expanded ? "show less" : `show ${hidden} more` }}
         </button>
       </div>
-    </div>
-  </section>
+    </ModuleCard>
+  </ModuleSection>
 </template>
 
 <style scoped>
-/* Activity's unique feed rules. The shared dashboard primitives (.stats, .stat,
- * .dash, .box, .heat, .tm, .more) stay global — Coding leans on them too. The
- * language bars moved to the LanguageBars component (scoped, no longer global).
- * The event icon comes from v-html, so `.ei svg` is :deep(svg). */
+/* Activity's unique feed rules. The stat row (.stats, .stat, .dash) stays global —
+ * it's the same dashboard grid Glance uses; the card surface and header are the
+ * ModuleCard / CardHeader components. The event icon comes from v-html, so
+ * `.ei svg` is :deep(svg). */
+.activity-events {
+  margin-top: var(--sp-18);
+}
 .feed {
   display: flex;
   flex-direction: column;
@@ -121,13 +124,13 @@ const contributionCells = computed<HeatCell[]>(() =>
 }
 .ev .em {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 .ev .tm {
   margin-left: auto;
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
   white-space: nowrap;
 }

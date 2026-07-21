@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
+import ModuleSection from "../ui/ModuleSection.vue";
 import AssetPicture from "../ui/AssetPicture.vue";
 
 defineProps<{
@@ -8,11 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
     <div v-if="module.data.images.length" class="gal">
       <figure v-for="img in module.data.images" :key="img.id" class="gal-item">
         <AssetPicture :view="img.image" />
@@ -20,13 +17,12 @@ defineProps<{
       </figure>
     </div>
     <p v-else class="sub">No pictures yet.</p>
-  </section>
+  </ModuleSection>
 </template>
 
 <style scoped>
 /* Gallery-specific rules, scoped so they can't leak or be out-specified. The
- * shared primitives (.sec, .sec-head, .sub) stay global — they're layout the
- * whole site shares, not this section's. */
+ * shell is ModuleSection; `.sub` (the empty-state caption) stays global. */
 .gal {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

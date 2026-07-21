@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
+import ModuleSection from "../ui/ModuleSection.vue";
+import ModuleCard from "../ui/ModuleCard.vue";
+import CardHeader from "../ui/CardHeader.vue";
 import Freshness from "../ui/Freshness.vue";
 import LanguageBars from "../ui/LanguageBars.vue";
 
@@ -9,15 +12,12 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <Freshness :freshness="module.data.freshness" />
-    </div>
-    <div v-if="module.data.coding" class="box">
-      <div class="sub">{{ module.data.coding.range }} · {{ module.data.coding.totalHours }}h tracked</div>
+  <ModuleSection :id="module.id" :heading="module.data.heading">
+    <template #note><Freshness :freshness="module.data.freshness" /></template>
+    <ModuleCard v-if="module.data.coding">
+      <CardHeader :note="`${module.data.coding.range} · ${module.data.coding.totalHours}h tracked`" />
       <LanguageBars :languages="module.data.coding.languages" />
-    </div>
+    </ModuleCard>
     <p v-else class="sub">No coding time synced yet.</p>
-  </section>
+  </ModuleSection>
 </template>

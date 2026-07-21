@@ -2,6 +2,7 @@
 import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
 import { trackClick } from "../../lib/track";
+import ModuleSection from "../ui/ModuleSection.vue";
 import ContactForm from "../forms/ContactForm.vue";
 
 defineProps<{
@@ -10,8 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head"><h2>{{ module.data.heading }}</h2></div>
+  <ModuleSection :id="module.id" :heading="module.data.heading">
     <div
       v-if="module.data.links.filter((l) => !l.href.startsWith('#')).length"
       class="links"
@@ -30,5 +30,5 @@ defineProps<{
       </a>
     </div>
     <div style="margin-top: 20px"><ContactForm /></div>
-  </section>
+  </ModuleSection>
 </template>

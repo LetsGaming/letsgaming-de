@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { trackClick } from "../../lib/track";
+import ModuleSection from "../ui/ModuleSection.vue";
 import Freshness from "../ui/Freshness.vue";
 
 defineProps<{
@@ -9,11 +10,8 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <Freshness :freshness="module.data.freshness" />
-    </div>
+  <ModuleSection :id="module.id" :heading="module.data.heading">
+    <template #note><Freshness :freshness="module.data.freshness" /></template>
     <p v-if="module.data.latest" class="glance-latest">
       {{ module.data.latest.text }}
       <span class="m">{{ module.data.latest.relative }} ago</span>
@@ -27,7 +25,7 @@ defineProps<{
     <a class="more glance-more" :href="module.data.moreHref" @click="() => trackClick('more')">
       full activity →
     </a>
-  </section>
+  </ModuleSection>
 </template>
 
 <style scoped>

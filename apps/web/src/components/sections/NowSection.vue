@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { mdBold } from "../../lib/text";
+import ModuleSection from "../ui/ModuleSection.vue";
+import ModuleCard from "../ui/ModuleCard.vue";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "now" }>;
@@ -8,24 +10,20 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
-    <div class="box">
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
+    <ModuleCard>
       <p v-if="!module.data.items.length" class="sub">Nothing written here lately.</p>
       <div v-for="n in module.data.items" :key="n.id" class="nowrow">
         <span class="k">{{ n.key }}</span>
         <span class="v" v-html="mdBold(n.value)" />
       </div>
-    </div>
-  </section>
+    </ModuleCard>
+  </ModuleSection>
 </template>
 
 <style scoped>
-/* Now-specific rows. `.box` stays global (Coding and Activity share it). The `b`
- * inside `.v` comes from v-html, so it needs :deep() to be reached. */
+/* Now-specific rows; the card surface is ModuleCard. The `b` inside `.v` comes
+ * from v-html, so it needs :deep() to be reached. */
 .nowrow {
   display: flex;
   gap: var(--sp-14);
@@ -38,13 +36,13 @@ defineProps<{
 }
 .nowrow .k {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
   width: 74px;
   flex-shrink: 0;
 }
 .nowrow .v {
-  font-size: 15px;
+  font-size: var(--fs-body);
   color: var(--ink);
 }
 .nowrow .v :deep(b) {

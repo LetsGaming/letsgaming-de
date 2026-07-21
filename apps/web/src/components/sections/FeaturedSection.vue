@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import type { ResolvedModule } from "@lg/core";
 import { langColor, icons } from "../../lib/icons";
+import ModuleSection from "../ui/ModuleSection.vue";
 import Freshness from "../ui/Freshness.vue";
 import { trackClick, trackProject } from "../../lib/track";
 
@@ -16,12 +17,11 @@ const project = computed(() => props.module.data.project);
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
+  <ModuleSection :id="module.id" :heading="module.data.heading">
+    <template #note>
       <Freshness :freshness="module.data.freshness" />
       <a class="more" :href="module.data.moreHref" @click="() => trackClick('more')">see all my work →</a>
-    </div>
+    </template>
     <div class="grid">
       <a
         v-if="project"
@@ -40,5 +40,5 @@ const project = computed(() => props.module.data.project);
       </a>
       <p v-else class="sub">Nothing pinned right now.</p>
     </div>
-  </section>
+  </ModuleSection>
 </template>

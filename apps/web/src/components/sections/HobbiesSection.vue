@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
+import ModuleSection from "../ui/ModuleSection.vue";
 import { icons } from "../../lib/icons";
 
 defineProps<{
@@ -8,11 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
-      <span v-if="module.data.note">{{ module.data.note }}</span>
-    </div>
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
     <div class="hobbies">
       <p v-if="!module.data.hobbies.length" class="sub">Nothing here yet.</p>
       <div v-for="h in module.data.hobbies" :key="h.id" class="tile" :class="'t-' + h.tone">
@@ -23,7 +20,7 @@ defineProps<{
         </div>
       </div>
     </div>
-  </section>
+  </ModuleSection>
 </template>
 
 <style scoped>

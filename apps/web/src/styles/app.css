@@ -203,31 +203,8 @@ h1 {
     0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* sections */
-.sec {
-  margin-top: 52px;
-}
-.sec:first-child {
-  margin-top: var(--sp-8);
-}
-.sec-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-12);
-  margin-bottom: var(--sp-22);
-}
-.sec-head h2 {
-  font-family: var(--f-d);
-  font-weight: 600;
-  font-size: clamp(22px, 4vw, 30px);
-  letter-spacing: -0.01em;
-  color: var(--ink-strong);
-}
-.sec-head span {
-  font-family: var(--f-m);
-  font-size: 12px;
-  color: var(--muted);
-}
+/* The section shell + heading + note now live in the ModuleSection component.
+   `.more` (below) is still a shared text-link, used by Glance and the Activity feed. */
 .more {
   font-family: var(--f-m);
   font-size: var(--fs-micro);
@@ -240,17 +217,6 @@ h1 {
 }
 .more:hover {
   color: var(--ink-strong);
-}
-
-.sec-head .more {
-  margin-left: auto;
-  font-family: var(--f-m);
-  font-size: 12px;
-  color: var(--ink);
-  cursor: pointer;
-  background: none;
-  border: none;
-  text-decoration: none;
 }
 
 /* cards */
@@ -399,25 +365,13 @@ h1 {
   gap: var(--sp-18);
   margin-top: var(--sp-18);
 }
-.box {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-22);
-  box-shadow: var(--sh-card);
-}
-.box h3 {
-  font-family: var(--f-d);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--ink-strong);
-  margin-bottom: var(--sp-4);
-}
-.box .sub {
+/* The card surface and its header moved to the ModuleCard / CardHeader components.
+   `.sub` stays as the shared muted caption — the "nothing here yet" empty states
+   across the sections use it (previously it only resolved inside `.box`). */
+.sub {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
-  margin-bottom: var(--sp-16);
 }
 .src-note {
   margin-top: var(--sp-18);
@@ -786,10 +740,5 @@ footer a {
 footer a:hover {
   text-decoration: underline;
 }
-
-/* The "full activity →" control sits in a text line, not a section header, so it
-   never picked up .sec-head .more. */
-
-
 
 /* Recent: five, then the rest on request. */

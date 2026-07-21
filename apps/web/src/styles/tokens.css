@@ -108,6 +108,11 @@
   --f-m: "Space Mono", ui-monospace, monospace;
 
   --fs-display: clamp(32px, 6.5vw, 56px);
+  /* The module section heading ("Recent", "Listening"). Sits a step above --fs-h2
+     (a card's own title) and below --fs-display (the hero). Was a raw clamp inlined
+     in `.sec-head h2`; named here so every ModuleSection heading is one size, and
+     deliberately not overridden in light mode (it never was). */
+  --fs-section: clamp(22px, 4vw, 30px);
   --fs-h2: clamp(19px, 3.2vw, 25px);
   --fs-h3: 16px;
   --fs-lede: clamp(15px, 2vw, 18px);
@@ -138,6 +143,10 @@
   --sp-20: 20px;
   --sp-22: 22px;
   --sp-24: 24px;
+  /* Vertical rhythm between modules — a layout gap, coarser than the 2px content
+     scale above. Was a raw `margin-top: 52px` on `.sec`; owned by ModuleSection now
+     (which is why Listening/Time-played finally get the same gap as their siblings). */
+  --sp-section: 52px;
 
   color-scheme: dark;
 }

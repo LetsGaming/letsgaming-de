@@ -4,7 +4,8 @@
  *
  * Sibling to `PlaytimeSection`, and built to mirror it: both are the accumulated
  * past, not the live card. The strip + drill wiring is the shared `useLedgerStrip`,
- * the row is `RankedRow`, the stat tiles `StatTile`, the timeline `HeatStrip`.
+ * the row is `RankedRow`, the stat tiles `StatTile`, the timeline `HeatStrip`. The
+ * shell, card, header and list footer are the shared module primitives.
  *
  * What's Music's own: two lists, not one. The stats double as tabs — "tracks
  * played" reveals the songs, "different artists" the artists, one content region
@@ -21,6 +22,10 @@ import { fetchMusicDay } from "../../lib/music-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import { useLimitedList } from "../../composables/useLimitedList";
+import ModuleSection from "../ui/ModuleSection.vue";
+import ModuleCard from "../ui/ModuleCard.vue";
+import CardHeader from "../ui/CardHeader.vue";
+import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
@@ -102,23 +107,20 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 </script>
 
 <template>
-  <section :id="module.id" class="mu">
-    <header class="mu-head">
-      <h2 class="mu-title">{{ d.heading }}</h2>
-      <span v-if="d.note" class="mu-note">{{ d.note }}</span>
-    </header>
-
+  <ModuleSection :id="module.id" :heading="d.heading" :note="d.note">
     <!-- Empty state: nothing recorded until the sampler catches Spotify playing. -->
     <p v-if="!hasData" class="mu-empty">
       Nothing recorded yet. Tracks show up here after the presence sampler catches
       Spotify playing — give it a day.
     </p>
 
-    <div v-else class="mu-card">
-      <div class="mu-card-h">
-        <span class="mu-t">Listening</span>
-        <span class="mu-scope">{{ selected ? fmtDay(selected) : "last 14 days" }}</span>
-      </div>
+    <ModuleCard v-else>
+      <CardHeader
+        as="span"
+        tone="live"
+        title="Listening"
+        :note="selected ? fmtDay(selected) : 'last 14 days'"
+      />
 
       <!-- Stats double as tabs. "time listening" is inert (no list behind it). -->
       <div class="mu-stats">
@@ -149,10 +151,11 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 
       <!-- One content region: a top list, or a day's rows (tracks or artists). -->
       <div class="mu-panel">
-        <div class="mu-panel-h">
-          <h3>{{ selected ? fmtDay(selected) : list === "songs" ? "Top songs" : "Top artists" }}</h3>
-          <button v-if="selected" class="mu-back" @click="clear">← back to top {{ list }}</button>
-        </div>
+        <CardHeader :title="selected ? fmtDay(selected) : list === 'songs' ? 'Top songs' : 'Top artists'">
+          <template #note>
+            <button v-if="selected" class="mu-back" @click="clear">← back to top {{ list }}</button>
+          </template>
+        </CardHeader>
 
         <!-- a day's rows -->
         <template v-if="selected">
@@ -176,12 +179,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
             >
               {{ row.minutes }}<small> min · {{ row.plays }}×</small>
             </RankedRow>
-            <p class="mu-foot">
-              <button v-if="dayMore > 0" class="mu-more" @click="dayExpanded = !dayExpanded">
-                {{ dayExpanded ? "show less" : `show ${dayMore} more` }}
-              </button>
-              <span v-if="dayAtCap && dayOver > 0" class="mu-cap">and {{ dayOver }} more</span>
-            </p>
+            <ListFooter
+              :more-count="dayMore"
+              :expanded="dayExpanded"
+              :overflow="dayAtCap ? dayOver : 0"
+              @toggle="dayExpanded = !dayExpanded"
+            />
           </template>
         </template>
 
@@ -199,82 +202,32 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           >
             {{ r.minutes }}<small> min · {{ r.plays }}×</small>
           </RankedRow>
-          <p class="mu-foot">
-            <button v-if="mainMore > 0" class="mu-more" @click="mainOpen = !mainOpen">
-              {{ mainOpen ? "show less" : `show ${mainMore} more` }}
-            </button>
-            <span v-if="mainAtCap && mainOver > 0" class="mu-cap">and {{ mainOver }} more</span>
-          </p>
+          <ListFooter
+            :more-count="mainMore"
+            :expanded="mainOpen"
+            :overflow="mainAtCap ? mainOver : 0"
+            @toggle="mainOpen = !mainOpen"
+          />
         </template>
       </div>
-    </div>
-  </section>
+    </ModuleCard>
+  </ModuleSection>
 </template>
 
 <style scoped>
-.mu {
-  container-type: inline-size;
-}
-.mu-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-10);
-  margin-bottom: var(--sp-14);
-}
-.mu-title {
-  font-family: var(--f-d);
-  font-size: var(--fs-h2);
-  color: var(--ink-strong);
-}
-.mu-note {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-}
+/* Music's own bits only. The shell, card, card header, and list footer are the
+   shared primitives (ModuleSection / ModuleCard / CardHeader / ListFooter). What
+   stays here: the empty state, the three-up stat/tab grid, the day-drill back
+   button, and the day-drill status/summary lines. */
 .mu-empty {
   color: var(--muted);
   font-size: var(--fs-body);
-}
-.mu-card {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-}
-.mu-card-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-12);
-  margin-bottom: var(--sp-14);
-}
-.mu-t {
-  font-family: var(--f-d);
-  font-size: var(--fs-h3);
-  color: var(--ink-strong);
-}
-.mu-scope {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
 }
 .mu-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-10);
   margin-bottom: var(--sp-16);
-}
-.mu-panel-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-10);
-  margin-bottom: var(--sp-8);
-}
-.mu-panel-h h3 {
-  font-family: var(--f-d);
-  font-size: var(--fs-h3);
-  color: var(--ink-strong);
 }
 .mu-back {
   font: inherit;
@@ -288,35 +241,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 }
 .mu-back:hover {
   color: var(--ink);
-}
-.mu-more {
-  font: inherit;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  padding: 0;
-}
-.mu-more:hover {
-  text-decoration: underline;
-}
-/* "show more" and the "and N more" cap note sit on one row; the note is muted since
-   it isn't actionable — the limit hides those. */
-.mu-foot {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-10);
-  padding-top: var(--sp-8);
-}
-.mu-foot:empty {
-  display: none;
-}
-.mu-cap {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
 }
 .mu-dim {
   color: var(--muted);

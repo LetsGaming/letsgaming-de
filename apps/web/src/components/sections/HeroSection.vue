@@ -35,9 +35,9 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
     editor canvas mapped `.panel`'s Nth child to the Nth module and the hero alone
     is five of them, so every handle after it belonged to the wrong section.
 
-    A plain <section> with no class: `.sec` carries `margin-top: 52px`, and the
-    hero is the top of the page. `.sec:first-child` still resolves the same way,
-    because the hero isn't a `.sec` and never was.
+    A plain <section> with no shell: ModuleSection carries the `margin-top` every
+    other module gets, and the hero is the top of the page, so it wants none. It
+    renders its own root directly and opts out of ModuleSection by design.
   -->
   <section :id="module.id">
     <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" />

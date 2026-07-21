@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { langColor, icons } from "../../lib/icons";
+import ModuleSection from "../ui/ModuleSection.vue";
 import Freshness from "../ui/Freshness.vue";
 import { trackClick, trackProject } from "../../lib/track";
 
@@ -10,9 +11,8 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="module.id" class="sec">
-    <div class="sec-head">
-      <h2>{{ module.data.heading }}</h2>
+  <ModuleSection :id="module.id" :heading="module.data.heading">
+    <template #note>
       <Freshness :freshness="module.data.freshness" />
       <a
         v-if="module.data.githubUrl"
@@ -22,7 +22,7 @@ defineProps<{
         rel="noreferrer noopener"
         @click="trackClick('github-profile')"
       >all repos on GitHub →</a>
-    </div>
+    </template>
     <div class="grid">
       <p v-if="!module.data.projects.length" class="sub">No repos synced yet.</p>
       <a
@@ -39,5 +39,5 @@ defineProps<{
         <div class="meta"><span v-for="(m, i) in p.meta" :key="i">{{ m }}</span></div>
       </a>
     </div>
-  </section>
+  </ModuleSection>
 </template>

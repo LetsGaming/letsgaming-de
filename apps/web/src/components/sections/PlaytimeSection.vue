@@ -20,6 +20,10 @@ import { fetchPlaytimeDay } from "../../lib/playtime-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import { useLimitedList } from "../../composables/useLimitedList";
+import ModuleSection from "../ui/ModuleSection.vue";
+import ModuleCard from "../ui/ModuleCard.vue";
+import CardHeader from "../ui/CardHeader.vue";
+import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
@@ -177,23 +181,20 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 </script>
 
 <template>
-  <section :id="module.id" class="pt">
-    <header class="pt-head">
-      <h2 class="pt-title">{{ d.heading }}</h2>
-      <span v-if="d.note" class="pt-note">{{ d.note }}</span>
-    </header>
-
+  <ModuleSection :id="module.id" :heading="d.heading" :note="d.note">
     <p v-if="!hasData" class="pt-empty">
       Nothing recorded yet. Games show up here after the presence sampler catches
       you playing — give it a day.
     </p>
 
-    <template v-else>
-      <div class="pt-card">
-      <div class="pt-card-h">
-        <span class="pt-t">Played</span>
-        <span class="pt-scope">{{ selected ? fmtDay(selected) : "last 14 days" }}</span>
-      </div>
+    <div v-else class="pt-cards">
+      <ModuleCard>
+      <CardHeader
+        as="span"
+        tone="live"
+        title="Played"
+        :note="selected ? fmtDay(selected) : 'last 14 days'"
+      />
 
       <!-- Two inert stats — a play has one dimension (the game), so unlike
            Listening's song/artist tabs there's nothing to switch between. -->
@@ -212,10 +213,11 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 
       <!-- One content region: the top-games list, or a day's games. -->
       <div class="pt-panel">
-        <div class="pt-panel-h">
-          <h3>{{ selected ? fmtDay(selected) : "Top games" }}</h3>
-          <button v-if="selected" class="pt-back" @click="clear">← back to top games</button>
-        </div>
+        <CardHeader :title="selected ? fmtDay(selected) : 'Top games'">
+          <template #note>
+            <button v-if="selected" class="pt-back" @click="clear">← back to top games</button>
+          </template>
+        </CardHeader>
 
         <!-- a day's games -->
         <template v-if="selected">
@@ -236,12 +238,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
             >
               {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
             </RankedRow>
-            <p class="pt-foot">
-              <button v-if="dayMore > 0" class="pt-more" @click="dayExpanded = !dayExpanded">
-                {{ dayExpanded ? "show less" : `show ${dayMore} more` }}
-              </button>
-              <span v-if="dayAtCap && dayOver > 0" class="pt-cap">and {{ dayOver }} more</span>
-            </p>
+            <ListFooter
+              :more-count="dayMore"
+              :expanded="dayExpanded"
+              :overflow="dayAtCap ? dayOver : 0"
+              @toggle="dayExpanded = !dayExpanded"
+            />
           </template>
         </template>
 
@@ -259,30 +261,31 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           >
             {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
           </RankedRow>
-          <p class="pt-foot">
-            <button v-if="gamesMore > 0" class="pt-more" @click="gamesOpen = !gamesOpen">
-              {{ gamesOpen ? "show less" : `show ${gamesMore} more` }}
-            </button>
-            <span v-if="gamesAtCap && gamesOver > 0" class="pt-cap">and {{ gamesOver }} more</span>
-          </p>
+          <ListFooter
+            :more-count="gamesMore"
+            :expanded="gamesOpen"
+            :overflow="gamesAtCap ? gamesOver : 0"
+            @toggle="gamesOpen = !gamesOpen"
+          />
         </template>
       </div>
-    </div>
+    </ModuleCard>
 
       <!-- ── the weekday×hour heatmap: Playtime's own second card ── -->
-      <div v-if="d.heat.length" class="pt-card">
-        <div class="pt-card-h">
-          <span class="pt-t">When I play</span>
-          <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
-          <span v-else class="pt-zone" role="group" aria-label="Show times in">
-            <button type="button" class="pt-zone-b" :class="{ on: mode === 'owner' }" @click="mode = 'owner'">
-              {{ ownerCity }}
-            </button>
-            <button type="button" class="pt-zone-b" :class="{ on: mode === 'local' }" @click="mode = 'local'">
-              Local
-            </button>
-          </span>
-        </div>
+      <ModuleCard v-if="d.heat.length">
+        <CardHeader as="span" title="When I play">
+          <template #note>
+            <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
+            <span v-else class="pt-zone" role="group" aria-label="Show times in">
+              <button type="button" class="pt-zone-b" :class="{ on: mode === 'owner' }" @click="mode = 'owner'">
+                {{ ownerCity }}
+              </button>
+              <button type="button" class="pt-zone-b" :class="{ on: mode === 'local' }" @click="mode = 'local'">
+                Local
+              </button>
+            </span>
+          </template>
+        </CardHeader>
         <div class="pt-heat">
           <div class="pt-heat-days"><span v-for="dl in DAYS" :key="dl">{{ dl }}</span></div>
           <div class="pt-heat-plot">
@@ -290,56 +293,27 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
             <div class="pt-heat-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
           </div>
         </div>
-      </div>
-    </template>
-  </section>
+      </ModuleCard>
+    </div>
+  </ModuleSection>
 </template>
 
 <style scoped>
-.pt {
-  container-type: inline-size;
+/* Playtime's own bits only. The shell, cards, card headers, and list footers are
+   shared primitives (ModuleSection / ModuleCard / CardHeader / ListFooter). What
+   stays: the empty state, the two-card stack, the two-up stat grid, the day-drill
+   back button + status/summary lines, the timezone toggle, and the heatmap. */
+.pt-cards {
   display: flex;
   flex-direction: column;
   gap: var(--sp-16);
-}
-.pt-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-10);
-  margin-bottom: var(--sp-14);
-}
-.pt-title {
-  font-family: var(--f-d);
-  font-size: var(--fs-h2);
-  color: var(--ink-strong);
-}
-.pt-note {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
 }
 .pt-empty {
   color: var(--muted);
   font-size: var(--fs-body);
 }
-.pt-card {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-}
-.pt-card-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-12);
-  margin-bottom: var(--sp-14);
-}
-.pt-t {
-  font-family: var(--f-d);
-  font-size: var(--fs-h3);
-  color: var(--ink-strong);
-}
+/* Card-2's zone label matches CardHeader's live note (card-1 uses that note
+   directly; here it's a slot, since the note is either this label or the toggle). */
 .pt-scope {
   font-family: var(--f-m);
   font-size: var(--fs-micro);
@@ -378,18 +352,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   gap: var(--sp-10);
   margin-bottom: var(--sp-16);
 }
-.pt-panel-h {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-10);
-  margin-bottom: var(--sp-8);
-}
-.pt-panel-h h3 {
-  font-family: var(--f-d);
-  font-size: var(--fs-h3);
-  color: var(--ink-strong);
-}
 .pt-back {
   font: inherit;
   font-family: var(--f-m);
@@ -402,34 +364,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 }
 .pt-back:hover {
   color: var(--ink);
-}
-.pt-more {
-  font: inherit;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  padding: 0;
-}
-.pt-more:hover {
-  text-decoration: underline;
-}
-/* "show more" and the muted "and N more" cap note share a row (mirrors Listening). */
-.pt-foot {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-10);
-  padding-top: var(--sp-8);
-}
-.pt-foot:empty {
-  display: none;
-}
-.pt-cap {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
 }
 .pt-dim {
   color: var(--muted);
