@@ -7,13 +7,14 @@
  * from `site.nav`, so `areaById` can't find one and this throws. That's what makes
  * `hidden` a fact rather than a flag — the router enforces it.
  */
+import type { Locale, SiteView } from "@lg/core";
 import { areaById } from "~/lib/area";
 import AreaPage from "~/components/shell/AreaPage.vue";
 
 const route = useRoute();
 const areaId = String(route.params.area ?? "");
 
-const { data } = await useFetch("/api/site", {
+const { data } = await useFetch<{ locale: Locale; site: SiteView }>("/api/site", {
   query: { lang: route.query.lang },
 });
 

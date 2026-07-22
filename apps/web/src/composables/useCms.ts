@@ -116,6 +116,7 @@ const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
 ];
 const VIEW_TITLES: Record<View, string> = {
   dashboard: "Dashboard",
+  wrapped: "Wrapped",
   site: "Site identity",
   home: "Home intro",
   about: "About / bio",

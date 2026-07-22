@@ -2,14 +2,17 @@
 import type { NavView } from "@lg/core";
 import { computed, onMounted, ref } from "vue";
 import { icons } from "../../lib/icons";
-import { useSiteState } from "../../composables/useSiteState";
+import { useSiteState, useTheme } from "../../composables/useSiteState";
 import { areaHref } from "../../lib/area";
 import SmartLink from "../ui/SmartLink.vue";
 import SettingsModal from "./SettingsModal.vue";
 
 const props = defineProps<{ nav: NavView[]; locale: "en" | "de"; current: string }>();
 
-const { theme, initSite, setLocale, toggleTheme } = useSiteState();
+// `theme` comes from its own call rather than the destructured bundle: a direct
+// ref binding is what the template unwraps cleanly.
+const theme = useTheme();
+const { initSite, setLocale, toggleTheme } = useSiteState();
 const settingsOpen = ref(false);
 // The server already knows which area this is — it's the URL. No atom, no SSR
 // fallback, no hydration gap where the highlight is wrong.

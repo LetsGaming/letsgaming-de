@@ -7,10 +7,12 @@
  * routes; the only genuinely page-specific part is the in-page jump list, which
  * goes in the shell's `nav-extra` slot.
  */
+import type { ApiReference } from "~/lib/openapi";
+import type { DocGroup } from "~/lib/docs";
 import DocsShell from "~/components/docs/DocsShell.vue";
 import SmartLink from "~/components/ui/SmartLink.vue";
 
-const { data } = await useFetch("/api/openapi");
+const { data } = await useFetch<{ ref: ApiReference; tree: DocGroup[] }>("/api/openapi");
 
 useHead(() => ({ title: `API reference — ${data.value?.ref.info.title ?? "API"}` }));
 

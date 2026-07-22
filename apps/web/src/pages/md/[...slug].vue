@@ -9,12 +9,14 @@
  */
 import SmartLink from "~/components/ui/SmartLink.vue";
 
+interface MdDoc { title: string; draft: boolean; html: string }
+
 const route = useRoute();
 const slug = computed(() =>
   Array.isArray(route.params.slug) ? route.params.slug.join("/") : route.params.slug ?? "",
 );
 
-const { data } = await useFetch(() => `/api/md/${slug.value}`, {
+const { data } = await useFetch<MdDoc>(() => `/api/md/${slug.value}`, {
   query: { preview: route.query.preview },
 });
 if (!data.value) throw createError({ statusCode: 404, statusMessage: "Not found" });

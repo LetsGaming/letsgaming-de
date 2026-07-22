@@ -1,13 +1,14 @@
 {
   "extends": "./.nuxt/tsconfig.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@lg/core": ["../../packages/core/src/index.ts"],
-      "@lg/db": ["../../packages/db/src/index.ts"],
-      "@lg/sources": ["../../packages/sources/src/index.ts"]
-    }
-  },
-  "include": [".nuxt/nuxt.d.ts", "**/*.ts", "**/*.vue", "tests/**/*"],
-  "exclude": ["node_modules", ".output", "dist"]
+  "include": [
+    ".nuxt/nuxt.d.ts",
+    "**/*.ts",
+    "**/*.vue",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".output",
+    "dist"
+  ]
 }

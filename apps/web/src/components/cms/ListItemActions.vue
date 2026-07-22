@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T">
 /**
  * The per-row controls of an editable CMS list: move up, move down, delete, save.
  *
@@ -8,10 +8,10 @@
  * same list helper, so the row takes that helper and the row index and does the
  * rest itself.
  *
- * `list` is deliberately typed structurally rather than importing the list
- * composable's return type: what this needs is "something that can move, remove
- * and save", and stating exactly that keeps the component usable by any future
- * list without widening an import.
+ * `list` is typed structurally rather than importing the list composable's return
+ * type: what this needs is "something that can move, remove and save". The
+ * component is generic in the item type because `save(item: T)` is contravariant —
+ * an `EditableList<unknown>` would reject every concrete list.
  */
 interface EditableList<T> {
   items: { value: T[] };
@@ -22,11 +22,11 @@ interface EditableList<T> {
 
 const props = defineProps<{
   /** The list helper backing this row (`nowList`, `linksList`, …). */
-  list: EditableList<unknown>;
+  list: EditableList<T>;
   /** This row's index within the list. */
   index: number;
   /** The item itself, passed back to `save`. */
-  item: unknown;
+  item: T;
 }>();
 </script>
 

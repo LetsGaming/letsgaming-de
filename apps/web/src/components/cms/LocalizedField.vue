@@ -46,8 +46,8 @@ function onInput(event: Event, field: Localized): void {
   <textarea
     v-if="textarea"
     :rows="rows"
-    :value="lv(field, locale.value)"
+    :value="lv(field, locale)"
     @input="onInput($event, field)"
   />
-  <input v-else :value="lv(field, locale.value)" @input="onInput($event, field)" />
+  <input v-else :value="lv(field, locale)" @input="onInput($event, field)" />
 </template>

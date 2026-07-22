@@ -8,6 +8,7 @@
  * draft area has.
  */
 import type { ResolvedModule } from "@lg/core";
+import { presenceMediaUrl } from "~/lib/api";
 import { useT } from "~/composables/useT";
 import ModuleSection from "../ui/ModuleSection.vue";
 import ModuleCard from "../ui/ModuleCard.vue";
@@ -21,6 +22,15 @@ const props = defineProps<{
 
 const { t, locale } = useT();
 const d = computed(() => props.module.data);
+
+/**
+ * Artwork goes through our own media proxy, exactly as Listening and Time played
+ * do — never straight to Spotify's or RAWG's CDN, which would hand a visitor's IP
+ * to a third party. For games the name rides along too, so the server can fall back
+ * to a labelled tile (and serve the downscaled cover) when there's no art.
+ */
+const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
+const gameCover = (url: string | undefined, game: string) => presenceMediaUrl({ url, game });
 
 /** "Oct 2025 — Jan 2026", formatted for the rendered locale. */
 const periodLabel = computed(() => {
@@ -47,7 +57,7 @@ const periodLabel = computed(() => {
           :rank="i + 1"
           :name="r.name"
           :subtitle="r.detail"
-          :art="r.artUrl"
+          :art="cover(r.artUrl)"
           :highlight="i === 0"
           fallback="♪"
         >{{ r.minutes }}<small> {{ t("minutesShort") }} · {{ r.plays }}×</small></RankedRow>
@@ -60,7 +70,7 @@ const periodLabel = computed(() => {
           :key="`a-${i}`"
           :rank="i + 1"
           :name="r.name"
-          :art="r.artUrl"
+          :art="cover(r.artUrl)"
           :highlight="i === 0"
           fallback="♪"
         >{{ r.minutes }}<small> {{ t("minutesShort") }}</small></RankedRow>
@@ -74,7 +84,7 @@ const periodLabel = computed(() => {
           :rank="i + 1"
           :name="r.name"
           :subtitle="r.detail"
-          :art="r.artUrl"
+          :art="gameCover(r.artUrl, r.name)"
           :highlight="i === 0"
           fallback="🎮"
         >{{ r.minutes }}<small> {{ t("minutesShort") }}</small></RankedRow>

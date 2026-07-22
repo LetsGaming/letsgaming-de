@@ -19,6 +19,11 @@ import { asNumber, asText, mapRows, type Row } from "./row-mapper.js";
 /** A session shorter than this is a single poll with no duration, not a fact. */
 const MIN_SESSION_SECONDS = 60;
 
+/** The `presence_sessions.category` games are stored under. Named rather than
+ *  inlined because it must match what the sampler writes and what the playtime
+ *  module queries — a mismatch reads as "you played nothing", not as an error. */
+const GAME_CATEGORY = "game";
+
 export interface WrappedRankRow {
   name: string;
   detail?: string;
@@ -72,7 +77,22 @@ export function wrappedRepo(db: DatabaseSync) {
           SELECT
             MAX(a.artist) AS artist,
             SUM(strftime('%s', p.last_seen_at) - strftime('%s', p.started_at)) AS seconds,
-            COUNT(*) AS plays
+            COUNT(*) AS plays,
+            -- An artist has no cover of its own in the presence data, so borrow the
+            -- art of this artist's most-listened track *within the same window* —
+            -- the same rule the Listening module uses, so the two agree on who looks
+            -- like what. A monogram fills in when even that has none.
+            (
+              SELECT p2.album_art_url
+              FROM music_play_artists a2
+              JOIN music_plays p2 ON p2.id = a2.play_id
+              WHERE a2.artist_key = a.artist_key
+                AND p2.last_seen_at >= ? AND p2.last_seen_at < ?
+                AND p2.album_art_url IS NOT NULL
+              GROUP BY p2.track_id
+              ORDER BY SUM(strftime('%s', p2.last_seen_at) - strftime('%s', p2.started_at)) DESC
+              LIMIT 1
+            ) AS art
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
           WHERE p.last_seen_at >= ? AND p.last_seen_at < ?
@@ -84,7 +104,13 @@ export function wrappedRepo(db: DatabaseSync) {
           name: asText(r.artist),
           minutes: minutes(r.seconds),
           plays: asNumber(r.plays),
+          ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
+        // The correlated subquery's bounds bind first — SQLite numbers parameters
+        // by position in the statement text, and the subquery appears before the
+        // outer WHERE.
+        startIso,
+        endIso,
         startIso,
         endIso,
         limit,
@@ -105,7 +131,7 @@ export function wrappedRepo(db: DatabaseSync) {
             SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds,
             COUNT(*) AS sessions
           FROM presence_sessions
-          WHERE category = 'playing' AND started_at >= ? AND started_at < ?
+          WHERE category = ? AND started_at >= ? AND started_at < ?
           GROUP BY name
           HAVING seconds >= ?
           ORDER BY seconds DESC, name ASC
@@ -115,6 +141,7 @@ export function wrappedRepo(db: DatabaseSync) {
           minutes: minutes(r.seconds),
           plays: asNumber(r.sessions),
         }),
+        GAME_CATEGORY,
         startIso,
         endIso,
         MIN_SESSION_SECONDS,
@@ -140,9 +167,9 @@ export function wrappedRepo(db: DatabaseSync) {
         .prepare(`
           SELECT SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds
           FROM presence_sessions
-          WHERE category = 'playing' AND started_at >= ? AND started_at < ?
+          WHERE category = ? AND started_at >= ? AND started_at < ?
         `)
-        .get(startIso, endIso) as { seconds: number | null } | undefined;
+        .get(GAME_CATEGORY, startIso, endIso) as { seconds: number | null } | undefined;
       return minutes(row?.seconds ?? 0);
     },
   };
