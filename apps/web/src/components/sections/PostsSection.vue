@@ -17,7 +17,7 @@ defineProps<{
         <SmartLink :href="`/md/${p.slug}`" class="post-t">{{ p.title }}</SmartLink>
         <p v-if="p.excerpt" class="post-x">{{ p.excerpt }}</p>
         <p class="post-m">
-          <time :datetime="p.at">{{ p.relative }} ago</time>
+          <time :datetime="p.at">{{ t("ago", { age: p.relative }) }}</time>
           <!-- Tags are display-only: chips, not links. Tag pages would need
                routes and an area, and the nav is at its breadth cap. -->
           <span v-for="t in p.tags" :key="t" class="tag">{{ t }}</span>

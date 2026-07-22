@@ -31,8 +31,9 @@ import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import Duration from "../ui/Duration.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
+import DrillPanel from "../ui/DrillPanel.vue";
 
-const { t } = useT();
+const { t, plural } = useT();
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
 // Polls `/api/module/:id` so the module refreshes in place, starting from SSR data.
@@ -155,75 +156,74 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
       />
 
       <!-- One content region: a top list, or a day's rows (tracks or artists). -->
-      <div class="mu-panel">
-        <CardHeader :title='selected ? fmtDay(selected) : t(list === "songs" ? "topSongs" : "topArtists")'>
-          <template #note>
-            <button v-if="selected" class="mu-back" @click="clear">{{ t(list === "songs" ? "backToTopSongs" : "backToTopArtists") }}</button>
-          </template>
-        </CardHeader>
-
-        <!-- a day's rows -->
-        <template v-if="selected">
-          <p v-if="dayLoading" class="mu-dim">{{ t("loading") }}</p>
-          <p v-else-if="dayError" class="mu-dim">{{ t("loadDayFailed") }}</p>
-          <p v-else-if="!dayTrackCount" class="mu-dim mu-day-empty">{{ t("emptyDayMusic") }}</p>
-          <template v-else>
-            <p class="mu-day-sum">
-              {{ dayMinutes }} min · {{ dayTrackCount }} track{{ dayTrackCount > 1 ? "s" : "" }} ·
-              {{ dayArtistCount }} artist{{ dayArtistCount > 1 ? "s" : "" }}
-            </p>
-            <RankedRow
-              v-for="(row, i) in dayRows"
-              :key="row.key"
-              :rank="i + 1"
-              :name="row.primary"
-              :subtitle="row.secondary"
-              :art="artSrc(row.art)"
-              :highlight="i === 0"
-              fallback="♪"
-            >
-              <Duration :minutes="row.minutes" /><small> · {{ row.plays }}×</small>
-            </RankedRow>
-            <ListFooter
-              :more-count="dayMore"
-              :expanded="dayExpanded"
-              :overflow="dayAtCap ? dayOver : 0"
-              @toggle="dayExpanded = !dayExpanded"
-            />
-          </template>
+      <DrillPanel
+        :title='t(list === "songs" ? "topSongs" : "topArtists")'
+        :day-title="selected ? fmtDay(selected) : ''"
+        :back-label='t(list === "songs" ? "backToTopSongs" : "backToTopArtists")'
+        :selected="selected"
+        :loading="dayLoading"
+        :error="dayError"
+        :has-day="dayTrackCount > 0"
+        :empty-label='t("emptyDayMusic")'
+        @back="clear"
+      >
+        <template #summary>
+          <Duration :minutes="dayMinutes" /> · {{ dayTrackCount }} {{ plural("track", dayTrackCount) }} ·
+          {{ dayArtistCount }} {{ plural("artist", dayArtistCount) }}
         </template>
 
-        <!-- a top list -->
-        <template v-else>
+        <!-- a day's rows -->
+        <template #day>
           <RankedRow
-            v-for="(r, i) in mainRows"
-            :key="`${r.name}-${i}`"
+            v-for="(row, i) in dayRows"
+            :key="row.key"
             :rank="i + 1"
-            :name="r.name"
-            :subtitle="r.by"
-            :art="artSrc(r.artUrl)"
+            :name="row.primary"
+            :subtitle="row.secondary"
+            :art="artSrc(row.art)"
             :highlight="i === 0"
             fallback="♪"
           >
-            <Duration :minutes="r.minutes" /><small> · {{ r.plays }}×</small>
+            <Duration :minutes="row.minutes" /><small> · {{ row.plays }}×</small>
           </RankedRow>
           <ListFooter
-            :more-count="mainMore"
-            :expanded="mainOpen"
-            :overflow="mainAtCap ? mainOver : 0"
-            @toggle="mainOpen = !mainOpen"
+            :more-count="dayMore"
+            :expanded="dayExpanded"
+            :overflow="dayAtCap ? dayOver : 0"
+            @toggle="dayExpanded = !dayExpanded"
           />
         </template>
-      </div>
+
+        <!-- a top list -->
+        <RankedRow
+          v-for="(r, i) in mainRows"
+          :key="`${r.name}-${i}`"
+          :rank="i + 1"
+          :name="r.name"
+          :subtitle="r.by"
+          :art="artSrc(r.artUrl)"
+          :highlight="i === 0"
+          fallback="♪"
+        >
+          <Duration :minutes="r.minutes" /><small> · {{ r.plays }}×</small>
+        </RankedRow>
+        <ListFooter
+          :more-count="mainMore"
+          :expanded="mainOpen"
+          :overflow="mainAtCap ? mainOver : 0"
+          @toggle="mainOpen = !mainOpen"
+        />
+      </DrillPanel>
     </ModuleCard>
   </ModuleSection>
 </template>
 
 <style scoped>
-/* Music's own bits only. The shell, card, card header, and list footer are the
-   shared primitives (ModuleSection / ModuleCard / CardHeader / ListFooter). What
-   stays here: the empty state, the three-up stat/tab grid, the day-drill back
-   button, and the day-drill status/summary lines. */
+/* Music's own bits only. Everything structural is a shared primitive now — the
+   shell, card and header (ModuleSection / ModuleCard / CardHeader), the capped
+   list (ListFooter), and the whole drill region including its back control and
+   status lines (DrillPanel). What's left is the empty state and the three-up
+   stat/tab grid, which is Music's alone: its stats double as tabs. */
 .mu-empty {
   color: var(--muted);
   font-size: var(--fs-body);
@@ -233,33 +233,5 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-10);
   margin-bottom: var(--sp-16);
-}
-.mu-back {
-  font: inherit;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  padding: 0;
-}
-.mu-back:hover {
-  color: var(--ink);
-}
-.mu-dim {
-  color: var(--muted);
-  font-size: var(--fs-meta);
-  padding: var(--sp-8) 0;
-}
-.mu-day-empty {
-  text-align: center;
-  padding: var(--sp-16) 0;
-}
-.mu-day-sum {
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--muted);
-  margin-bottom: var(--sp-4);
 }
 </style>

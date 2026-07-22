@@ -16,7 +16,7 @@
  * which is also why the Layout panel still exists for seeing every area at once.
  */
 import { computed, type Component } from "vue";
-import type { View } from "../../../composables/useCms";
+import type { View } from "../../../composables/useCmsNav";
 import { vSortable } from "../../../composables/sortable";
 import { useCmsContext } from "../../../composables/cmsContext";
 import CanvasHost from "../CanvasHost.vue";

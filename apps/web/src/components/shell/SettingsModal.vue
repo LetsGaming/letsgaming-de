@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { analyticsAllowed, dntActive, setOptedOut } from "../../lib/track";
 import SmartLink from "../ui/SmartLink.vue";
+import SegmentedControl from "../ui/SegmentedControl.vue";
 
 const props = defineProps<{ open: boolean; theme: "dark" | "light"; locale: "en" | "de" }>();
 const emit = defineEmits<{ close: []; "toggle-theme": []; "set-locale": ["en" | "de"] }>();
 
-// Teleport must not render during SSR inside an Astro island (it corrupts
-// hydration). Only mount it after the client takes over.
+// Teleport has no server-side target, so rendering it during SSR corrupts
+// hydration. Only mount it after the client takes over.
 const mounted = ref(false);
 onMounted(() => {
   mounted.value = true;
@@ -28,13 +29,31 @@ function toggleAnalytics() {
   analyticsOn.value = nowOn;
 }
 
-function setTheme(next: "dark" | "light") {
-  if (next !== props.theme) emit("toggle-theme");
-}
+// The two segmented controls are v-model'd, but the values live in the parent —
+// so these are writable computeds that read the prop and emit on write, rather
+// than local state that would have to be kept in sync with it.
+const THEMES = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+] as const;
+const LOCALES = [
+  { value: "en", label: "English" },
+  { value: "de", label: "Deutsch" },
+] as const;
 
-function setLocale(next: "en" | "de") {
-  if (next !== props.locale) emit("set-locale", next);
-}
+const theme = computed({
+  get: () => props.theme,
+  set: (next) => {
+    if (next !== props.theme) emit("toggle-theme");
+  },
+});
+
+const locale = computed({
+  get: () => props.locale,
+  set: (next) => {
+    if (next !== props.locale) emit("set-locale", next);
+  },
+});
 
 function onKey(e: KeyboardEvent) {
   if (e.key === "Escape") emit("close");
@@ -66,10 +85,7 @@ watch(
 
           <section>
             <h3>Appearance</h3>
-            <div class="seg">
-              <button :class="{ on: theme === 'light' }" @click="setTheme('light')">Light</button>
-              <button :class="{ on: theme === 'dark' }" @click="setTheme('dark')">Dark</button>
-            </div>
+            <SegmentedControl v-model="theme" :options="THEMES" label="Theme" />
           </section>
 
           <section>
@@ -101,10 +117,7 @@ watch(
 
           <section>
             <h3>Language</h3>
-            <div class="seg">
-              <button :class="{ on: locale === 'en' }" @click="setLocale('en')">English</button>
-              <button :class="{ on: locale === 'de' }" @click="setLocale('de')">Deutsch</button>
-            </div>
+            <SegmentedControl v-model="locale" :options="LOCALES" label="Language" />
             <p class="note">
               Reloads the page in your language. Untranslated bits fall back to English.
             </p>
@@ -166,33 +179,11 @@ section {
 }
 section h3 {
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: var(--sp-10);
-}
-.seg {
-  display: inline-flex;
-  gap: var(--sp-4);
-  background: var(--surf-0);
-  border: 1px solid var(--line-1);
-  border-radius: 12px;
-  padding: 3px;
-}
-.seg button {
-  font-family: var(--f-m);
-  font-size: 13px;
-  color: var(--muted);
-  background: none;
-  border: none;
-  border-radius: 9px;
-  padding: 7px var(--sp-16);
-  cursor: pointer;
-}
-.seg button.on {
-  background: var(--surf-2);
-  color: var(--ink-strong);
 }
 .row {
   display: flex;
@@ -201,7 +192,7 @@ section h3 {
   justify-content: space-between;
 }
 .rowtitle {
-  font-size: 15px;
+  font-size: var(--fs-body);
   color: var(--ink-strong);
 }
 .rowdesc {
@@ -251,7 +242,7 @@ section h3 {
   cursor: not-allowed;
 }
 .note {
-  font-size: 12px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   margin-top: var(--sp-10);
 }

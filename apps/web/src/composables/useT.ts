@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, plural, t, type Locale, type MessageKey } from "@lg/core";
+import { DEFAULT_LOCALE, formatDuration, plural, t, type Locale, type MessageKey } from "@lg/core";
 
 /**
  * UI-string lookup bound to the locale the page was rendered in.
@@ -21,5 +21,12 @@ export function useT() {
     locale,
     t: (key: MessageKey, vars?: Record<string, string | number>) => t(key, locale.value, vars),
     plural: (noun: "track" | "artist" | "game", count: number) => plural(noun, count, locale.value),
+    /**
+     * A duration as plain text, for the places a `<Duration>` can't go: a `title`
+     * attribute, an `aria-label`. Same rule and same unit labels as the component,
+     * so a heatmap tooltip and the row beneath it can't disagree.
+     */
+    duration: (minutes: number) =>
+      formatDuration(minutes, { hours: t("hoursShort", locale.value), minutes: t("minutesShort", locale.value) }),
   };
 }

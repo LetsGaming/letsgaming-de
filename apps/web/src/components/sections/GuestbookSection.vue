@@ -44,14 +44,14 @@ defineProps<{
 .gb-entry blockquote {
   margin: 0 0 var(--sp-10);
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--fs-body);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .gb-entry figcaption {
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   color: var(--ink-strong);
   display: flex;
   align-items: baseline;

@@ -31,8 +31,8 @@ defineEmits<{ submit: [] }>();
 /* Shared form styling. Fields come in through the default slot, so the field
    rules use :slotted() to reach the parent-rendered label/input/textarea. */
 .form { display: flex; flex-direction: column; gap: var(--sp-12); max-width: 560px; }
-:slotted(label) { display: flex; flex-direction: column; gap: 5px; font-family: var(--f-m); font-size: 12px; color: var(--muted); }
-:slotted(input), :slotted(textarea) { font-family: var(--f-b); font-size: 15px; color: var(--ink); background: var(--surf-1); border: 1px solid var(--line-1); border-radius: 11px; padding: 11px 13px; width: 100%; }
+:slotted(label) { display: flex; flex-direction: column; gap: 5px; font-family: var(--f-m); font-size: var(--fs-meta); color: var(--muted); }
+:slotted(input), :slotted(textarea) { font-family: var(--f-b); font-size: var(--fs-body); color: var(--ink); background: var(--surf-1); border: 1px solid var(--line-1); border-radius: 11px; padding: 11px 13px; width: 100%; }
 :slotted(input:focus), :slotted(textarea:focus) { outline: none; border-color: var(--ink); }
 :slotted(textarea) { resize: vertical; }
 :slotted(.hp) { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }

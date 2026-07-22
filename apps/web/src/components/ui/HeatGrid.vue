@@ -115,7 +115,7 @@ const gridStyle = computed(() => ({
   overflow-x: auto;
   /* Room for the selected cell's outline (outset ring) so overflow clipping at the
      padding edge doesn't shave it off. */
-  padding: 4px;
+  padding: var(--sp-4);
 }
 .hg-c {
   aspect-ratio: 1;

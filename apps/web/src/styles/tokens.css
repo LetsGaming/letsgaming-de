@@ -36,6 +36,25 @@
   /* One consumer: the live dot. Grep before adding a second. */
   --glow-live: 0 0 9px 1px rgba(199, 125, 255, 0.75);
 
+  /* The solid offset under a ghost button — the chunky edge it "presses" into
+     on :active. Public-only (`.btn-ghost` in app.css, used by the hero and
+     contact CTAs), but it sat in the CMS alias block, where nothing outside
+     `.cms` could reach it. Since a `var()` that resolves to nothing invalidates
+     the whole declaration, both shadow layers were dropped and the buttons had
+     no edge to press into at all. */
+  --ghost-shadow: #100d20;
+
+  /* ── Third-party brand marks. Not part of the palette and not themeable — a
+     visitor reads "Spotify green" as the source, so these are the vendors'
+     values and stay identical in both themes. They live here anyway because a
+     raw hex inside a component is a hex nobody can find: the presence widget
+     had three of them sitting in the same object literal as a var(--live-ink),
+     which is how a half-tokenized palette starts. Only the presence widget's
+     activity categories consume these. */
+  --brand-spotify: #1db954;
+  --brand-youtube: #ff0000;
+  --brand-twitch: #9146ff;
+
   /* ── Surfaces. On dark, elevation is lightness — a drop shadow at --surf-0
      has nothing darker to fall onto, which is why the old --sh-* faked lift
      with a purple bloom. Step the surface, strengthen the line, no shadow.
@@ -171,6 +190,9 @@
   --line-1: rgba(24, 12, 60, 0.09);
   --line-2: rgba(24, 12, 60, 0.15);
 
+  /* Derived from the light shadow palette rather than reused from dark: worth an
+     eyeball, since this pairing has never actually rendered. */
+  --ghost-shadow: rgba(30, 20, 60, 0.22);
   --sh-card: 0 1px 2px rgba(30, 20, 60, 0.06), 0 6px 16px rgba(30, 20, 60, 0.07);
   --sh-anchor: 0 2px 6px rgba(30, 20, 60, 0.08), 0 16px 40px rgba(30, 20, 60, 0.1);
 
@@ -241,8 +263,6 @@
   --r-xs: var(--r-chip);
   --on-accent: var(--on-live);
   --on-accent-soft: rgba(255, 255, 255, 0.3);
-  --ghost-bg: var(--surf-2);
-  --ghost-shadow: #100d20;
   --sh-1: var(--sh-card);
   --sh-2: var(--sh-anchor);
   --mint: #38d6a6;

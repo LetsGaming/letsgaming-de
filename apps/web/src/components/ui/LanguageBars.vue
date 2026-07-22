@@ -32,7 +32,7 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
   gap: 9px;
 }
 .nm {
-  font-size: 12px;
+  font-size: var(--fs-meta);
   color: var(--ink);
   width: 88px;
   font-family: var(--f-m);
@@ -51,7 +51,7 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
 }
 .pc {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
   width: 34px;
   text-align: right;

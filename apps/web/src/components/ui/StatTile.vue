@@ -4,6 +4,12 @@
  * `interactive` to make it a tab — a button with a chevron and an `aria-pressed`
  * state — which is how the Listening module's stats double as navigation. Playtime
  * uses the inert form (one list, nothing to switch between).
+ *
+ * Two sizes, because there were already two of these. `inset` is the compact tile
+ * inside a ModuleCard (Listening, Time played, Wrapped); `lead` is the larger
+ * standalone tile the Activity and Glance dashboards open with, which lived as a
+ * global `.stat` rule and had drifted apart in surface, radius, type scale and
+ * shadow. Same component now; the difference is a prop rather than an accident.
  */
 interface Props {
   /** The readout. Omit and use the `value` slot for richer content (a Duration). */
@@ -15,8 +21,10 @@ interface Props {
   active?: boolean;
   /** Small unit suffix after the number, e.g. "h". */
   unit?: string;
+  /** `inset` sits inside a card; `lead` opens a dashboard. */
+  size?: "inset" | "lead";
 }
-defineProps<Props>();
+withDefaults(defineProps<Props>(), { size: "inset" });
 const emit = defineEmits<{ select: [] }>();
 </script>
 
@@ -24,7 +32,7 @@ const emit = defineEmits<{ select: [] }>();
   <component
     :is="interactive ? 'button' : 'div'"
     class="st"
-    :class="{ 'st-tab': interactive }"
+    :class="[`st--${size}`, { 'st-tab': interactive }]"
     :aria-pressed="interactive ? active : undefined"
     @click="interactive ? emit('select') : undefined"
   >
@@ -39,10 +47,19 @@ const emit = defineEmits<{ select: [] }>();
 .st {
   text-align: left;
   font: inherit;
-  background: var(--surf-2);
   border: 1px solid var(--line-1);
+}
+.st--inset {
+  background: var(--surf-2);
   border-radius: var(--r-control);
   padding: var(--sp-12) var(--sp-14);
+}
+/* The former global `.stat`: a lifted card rather than an inset control. */
+.st--lead {
+  background: var(--surf-1);
+  border-radius: var(--r-card);
+  padding: var(--sp-18);
+  box-shadow: var(--sh-card);
 }
 .st-tab {
   cursor: pointer;
@@ -64,6 +81,11 @@ const emit = defineEmits<{ select: [] }>();
   color: var(--ink-strong);
   line-height: 1;
 }
+.st--lead .st-n {
+  font-family: var(--f-b);
+  font-weight: 700;
+  font-size: 30px;
+}
 /* A <Duration> in the value slot renders its own units; scoped styles don\'t
    reach slotted content, so they need naming explicitly. */
 .st-n :slotted(small),
@@ -71,7 +93,13 @@ const emit = defineEmits<{ select: [] }>();
   font-family: var(--f-m);
   font-size: var(--fs-meta);
   color: var(--muted);
-  margin-left: 2px;
+  margin-left: var(--sp-2);
+}
+.st--lead .st-n :slotted(small),
+.st--lead .st-n small {
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: 600;
 }
 .st-l {
   display: flex;
@@ -80,6 +108,11 @@ const emit = defineEmits<{ select: [] }>();
   font-size: var(--fs-meta);
   color: var(--muted);
   margin-top: var(--sp-4);
+}
+.st--lead .st-l {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  margin-top: 7px;
 }
 .st-tab .st-l::after {
   content: "›";
@@ -94,10 +127,10 @@ const emit = defineEmits<{ select: [] }>();
 }
 
 @container (max-width: 420px) {
-  .st-n {
+  .st--inset .st-n {
     font-size: 20px;
   }
-  .st {
+  .st--inset {
     padding: var(--sp-10);
   }
 }

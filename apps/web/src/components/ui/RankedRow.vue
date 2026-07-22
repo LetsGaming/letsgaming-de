@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 /**
  * A ranked list row: rank · art (or a lettered monogram) · name + optional
  * subtitle · a value. The shared row of the Listening and Playtime modules — their
@@ -19,14 +20,16 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { fallback: "•" });
 
 // First letter/digit of the name, for the monogram fallback. Pure, local.
-const mono = () => props.name.replace(/[^\p{L}\p{N}]/u, "").charAt(0).toUpperCase() || props.fallback;
+const mono = computed(
+  () => props.name.replace(/[^\p{L}\p{N}]/u, "").charAt(0).toUpperCase() || props.fallback,
+);
 </script>
 
 <template>
   <div class="rr" :class="{ 'rr-1': highlight }">
     <span class="rr-rank">{{ rank }}</span>
     <img v-if="art" class="rr-art" :src="art" alt="" loading="lazy" />
-    <span v-else class="rr-art rr-mono">{{ mono() }}</span>
+    <span v-else class="rr-art rr-mono">{{ mono }}</span>
     <span class="rr-body">
       <span class="rr-name">{{ name }}</span>
       <span v-if="subtitle" class="rr-by">{{ subtitle }}</span>
@@ -68,7 +71,7 @@ const mono = () => props.name.replace(/[^\p{L}\p{N}]/u, "").charAt(0).toUpperCas
   display: grid;
   place-items: center;
   font-family: var(--f-d);
-  font-size: 15px;
+  font-size: var(--fs-body);
   color: var(--live-ink);
   background: linear-gradient(135deg, var(--surf-3), var(--surf-1));
 }

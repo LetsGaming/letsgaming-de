@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { GifAssetView, ImageAssetView } from "@lg/core";
+import type { GifAssetView, ImageAssetView, MessageKey } from "@lg/core";
 import { computed } from "vue";
 import AssetPicture from "../ui/AssetPicture.vue";
 import { presenceMediaUrl } from "../../lib/api";
 import { usePresence } from "../../composables/usePresence";
+import { useT } from "~/composables/useT";
 
 // The client only ever knows whether presence is enabled (a CMS display toggle)
 // and the owner identity for the profile header. It never receives the Discord
@@ -23,12 +24,16 @@ const props = defineProps<{
 const { view, loaded, unreachable } = usePresence(() => props.enabled);
 
 // ── Discord half ────────────────────────────────────────────────────────────
+const { t } = useT();
+
 const status = computed(() => view.value?.status ?? "offline");
-const statusLabel: Record<string, string> = {
-  online: "Online",
-  idle: "Idle",
-  dnd: "Do not disturb",
-  offline: "Offline",
+// Keys, not English. This widget was the last untranslated public surface: a
+// dozen strings, several of them the only thing shown while the relay is down.
+const STATUS_LABEL: Record<string, MessageKey> = {
+  online: "presenceOnline",
+  idle: "presenceIdle",
+  dnd: "presenceDnd",
+  offline: "presenceOffline",
 };
 
 const cards = computed(() => view.value?.cards ?? []);
@@ -40,11 +45,14 @@ const activityCards = computed(() =>
 );
 
 // Per-category source label + themed motion + accent (currentColor for the motif).
-const CAT: Record<string, { src: string; motif: string; color: string }> = {
-  music: { src: "Listening to Spotify", motif: "music", color: "#1db954" },
-  game: { src: "Playing", motif: "game", color: "var(--live-ink)" },
-  watching: { src: "Watching", motif: "watch", color: "#ff0000" },
-  streaming: { src: "Streaming", motif: "stream", color: "#9146ff" },
+// Every colour is a token — the three vendor marks are `--brand-*` in tokens.css.
+// They were raw hex here, alongside a `var(--live-ink)`, so the widget owned half
+// a palette that no stylesheet could see.
+const CAT: Record<string, { src: MessageKey; motif: string; color: string }> = {
+  music: { src: "presenceSrcMusic", motif: "music", color: "var(--brand-spotify)" },
+  game: { src: "presenceSrcGame", motif: "game", color: "var(--live-ink)" },
+  watching: { src: "presenceSrcWatching", motif: "watch", color: "var(--brand-youtube)" },
+  streaming: { src: "presenceSrcStreaming", motif: "stream", color: "var(--brand-twitch)" },
 };
 
 const activities = computed(() => {
@@ -57,7 +65,7 @@ const activities = computed(() => {
     // Proxied through our server (privacy); falls back to a labelled tile when
     // the activity has no art (e.g. Valorant).
     art: presenceMediaUrl({ url: c.image || undefined, game: c.title }),
-    src: cats[i]?.src ?? "",
+    src: cats[i] ? t(cats[i]!.src) : "",
     motif: cats[i]?.motif ?? "",
     color: cats[i]?.color ?? "",
   }));
@@ -101,10 +109,10 @@ const idle = computed(
             {{ name }}<span class="pw-handle">{{ handle }}</span>
           </div>
           <div class="pw-stat">
-            <span v-if="unreachable" class="pw-lbl">Can't reach Discord</span>
-            <span v-else class="pw-lbl">{{ statusLabel[status] }}</span>
-            <span v-if="!loaded" class="pw-muted">· loading…</span>
-            <span v-else-if="unreachable" class="pw-muted">· status unknown</span>
+            <span v-if="unreachable" class="pw-lbl">{{ t("presenceUnreachable") }}</span>
+            <span v-else class="pw-lbl">{{ t(STATUS_LABEL[status] ?? "presenceOffline") }}</span>
+            <span v-if="!loaded" class="pw-muted">{{ t("presenceLoading") }}</span>
+            <span v-else-if="unreachable" class="pw-muted">{{ t("presenceUnknown") }}</span>
           </div>
           <div v-if="customStatus" class="pw-cstat">
             <span class="pw-q">“</span>{{ customStatus }}
@@ -148,7 +156,7 @@ const idle = computed(
         </template>
       </div>
       <div v-else-if="idle" class="pw-act pw-off">
-        {{ status === "offline" ? "Offline right now — nothing to show" : "No activity to display right now" }}
+        {{ t(status === "offline" ? "presenceOfflineIdle" : "presenceNoActivity") }}
       </div>
     </div>
   </div>
@@ -157,7 +165,7 @@ const idle = computed(
        "loading…"); this branch is only the deliberate "owner hid every live
        category" case. No mention of any server config — that's not the visitor's
        concern, and never leaking it is the whole point of the split. -->
-  <p v-else class="pw-muted pw-np">Nothing to show here right now.</p>
+  <p v-else class="pw-muted pw-np">{{ t("presenceNothing") }}</p>
 </template>
 
 <style scoped>
@@ -193,7 +201,7 @@ const idle = computed(
   font-family: var(--f-d);
   font-weight: 700;
   font-size: 16px;
-  color: #fff;
+  color: var(--on-live);
   background: linear-gradient(140deg, var(--ink), var(--surf-3));
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
 }
@@ -268,13 +276,13 @@ const idle = computed(
 .pw-name {
   font-family: var(--f-d);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-body);
   color: var(--ink-strong);
   line-height: 1.15;
 }
 .pw-handle {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 400;
   color: var(--muted);
   margin-left: var(--sp-4);
@@ -283,7 +291,7 @@ const idle = computed(
   display: flex;
   align-items: center;
   gap: var(--sp-6);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
   margin-top: var(--sp-2);
 }
@@ -365,7 +373,7 @@ const idle = computed(
 }
 .pw-off {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   justify-content: center;
   padding: 13px;
 }

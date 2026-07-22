@@ -9,7 +9,11 @@ import CardHeader from "../ui/CardHeader.vue";
 import Freshness from "../ui/Freshness.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 import LanguageBars from "../ui/LanguageBars.vue";
-import { computed, ref } from "vue";
+import ListFooter from "../ui/ListFooter.vue";
+import StatGrid from "../ui/StatGrid.vue";
+import StatTile from "../ui/StatTile.vue";
+import { useLimitedList } from "../../composables/useLimitedList";
+import { computed } from "vue";
 
 const { t } = useT();
 const props = defineProps<{
@@ -18,11 +22,19 @@ const props = defineProps<{
 
 /** Five is enough to read at a glance; the rest is there when you want it. */
 const EVENTS_SHOWN = 5;
-const expanded = ref(false);
-const events = computed(() =>
-  expanded.value ? props.module.data.events : props.module.data.events.slice(0, EVENTS_SHOWN),
-);
-const hidden = computed(() => props.module.data.events.length - EVENTS_SHOWN);
+// The same capped-list rule the Listening and Time-played lists use. This section
+// had its own copy, whose "show N more" was the one string on the page that never
+// went through the catalog — it rendered English on the German site.
+const allEvents = computed(() => props.module.data.events);
+const {
+  shown: events,
+  expanded,
+  moreCount: hidden,
+} = useLimitedList({
+  rows: allEvents,
+  initial: EVENTS_SHOWN,
+  max: () => allEvents.value.length,
+});
 
 // Levels are bucketed on the server; the grid just needs {level} per day.
 const contributionCells = computed<HeatCell[]>(() =>
@@ -33,12 +45,16 @@ const contributionCells = computed<HeatCell[]>(() =>
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading">
     <template #note><Freshness :freshness="module.data.freshness" /></template>
-    <div class="stats">
-      <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
-        <div class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></div>
-        <div class="l">{{ s.label }}</div>
-      </div>
-    </div>
+    <StatGrid :columns="4">
+      <StatTile
+        v-for="(s, i) in module.data.stats"
+        :key="i"
+        size="lead"
+        :value="s.value"
+        :unit="s.unit"
+        :label="s.label"
+      />
+    </StatGrid>
     <div class="dash">
       <ModuleCard>
         <CardHeader
@@ -71,19 +87,17 @@ const contributionCells = computed<HeatCell[]>(() =>
           </div>
           <span class="tm">{{ e.relative }}</span>
         </SmartLink>
-        <button v-if="hidden > 0" class="more ev-more" @click="expanded = !expanded">
-          {{ expanded ? "show less" : `show ${hidden} more` }}
-        </button>
+        <ListFooter class="ev-more" :more-count="hidden" :expanded="expanded" @toggle="expanded = !expanded" />
       </div>
     </ModuleCard>
   </ModuleSection>
 </template>
 
 <style scoped>
-/* Activity's unique feed rules. The stat row (.stats, .stat, .dash) stays global —
- * it's the same dashboard grid Glance uses; the card surface and header are the
- * ModuleCard / CardHeader components. The event icon comes from v-html, so
- * `.ei svg` is :deep(svg). */
+/* Activity's unique feed rules. The stat row is StatGrid + StatTile, the card
+ * surface and header are ModuleCard / CardHeader, and the show-more control is
+ * ListFooter; `.dash` (the two-card row below the stats) stays global. The event
+ * icon comes from v-html, so `.ei svg` is :deep(svg). */
 .activity-events {
   margin-top: var(--sp-18);
 }
@@ -150,6 +164,5 @@ a.ev-link:hover .ei :deep(svg) {
 }
 .ev-more {
   margin-top: var(--sp-8);
-  align-self: flex-start;
 }
 </style>

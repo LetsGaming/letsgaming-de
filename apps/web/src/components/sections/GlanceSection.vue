@@ -5,6 +5,8 @@ import { trackClick } from "../../lib/track";
 import SmartLink from "../ui/SmartLink.vue";
 import ModuleSection from "../ui/ModuleSection.vue";
 import Freshness from "../ui/Freshness.vue";
+import StatGrid from "../ui/StatGrid.vue";
+import StatTile from "../ui/StatTile.vue";
 
 const { t } = useT();
 defineProps<{
@@ -17,22 +19,25 @@ defineProps<{
     <template #note><Freshness :freshness="module.data.freshness" /></template>
     <p v-if="module.data.latest" class="glance-latest">
       {{ module.data.latest.text }}
-      <span class="m">{{ module.data.latest.relative }} ago</span>
+      <span class="m">{{ t("ago", { age: module.data.latest.relative }) }}</span>
     </p>
-    <div class="dash">
-      <div v-for="(s, i) in module.data.stats" :key="i" class="stat">
-        <span class="n">{{ s.value }}<small v-if="s.unit">{{ s.unit }}</small></span>
-        <span class="l">{{ s.label }}</span>
-      </div>
-    </div>
+    <StatGrid :columns="2" class="glance-stats">
+      <StatTile
+        v-for="(s, i) in module.data.stats"
+        :key="i"
+        size="lead"
+        :value="s.value"
+        :unit="s.unit"
+        :label="s.label"
+      />
+    </StatGrid>
     <SmartLink class="more glance-more" :href="module.data.moreHref" @click="() => trackClick('more')">{{ t("fullActivity") }}</SmartLink>
   </ModuleSection>
 </template>
 
 <style scoped>
-/* Glance's unique bits. The dashboard primitives (.dash, .stat, .n, .l, .more)
- * stay global — Activity shares them. `.glance-stats` was a dead half of a
- * combined selector (no element uses it) and is dropped. */
+/* Glance's unique bits. The stat row is StatGrid + StatTile (shared with
+ * Activity); `.more` stays global. */
 .glance-latest {
   font-size: var(--fs-body);
   margin-bottom: var(--sp-6);
@@ -41,6 +46,9 @@ defineProps<{
   font-family: var(--f-m);
   font-size: var(--fs-meta);
   color: var(--muted);
+}
+.glance-stats {
+  margin-top: var(--sp-18);
 }
 .glance-more {
   margin-top: var(--sp-12);

@@ -58,7 +58,7 @@ a {
   display: grid;
   place-items: center;
   color: var(--ink-strong);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 .chrome {
   display: flex;
@@ -159,7 +159,7 @@ h1 {
 .btn {
   font-family: var(--f-b);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-body);
   padding: var(--sp-12) var(--sp-20);
   border-radius: 15px;
   border: none;
@@ -244,38 +244,9 @@ h1 {
   border-color: var(--line-2);
   background: var(--surf-2);
 }
-.card.feature {
-  grid-column: 1 / -1;
-  padding: 32px;
-  background: var(--surf-2);
-  border: 1px solid var(--line-2);
-}
-.card.feature .desc {
-  color: var(--ink);
-}
-.card.feature .meta {
-  color: var(--muted);
-}
-.card.feature .tag {
-  background: var(--surf-1);
-}
-.ptitle {
-  font-family: var(--f-d);
-  font-weight: 600;
-  font-size: clamp(19px, 3vw, 25px);
-  letter-spacing: -0.01em;
-  margin-bottom: 9px;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-  color: var(--ink-strong);
-}
-.card.feature .ptitle {
-  font-size: clamp(24px, 4.5vw, 34px);
-}
 .tag {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   padding: var(--sp-4) var(--sp-10);
   border-radius: 999px;
@@ -283,80 +254,15 @@ h1 {
   color: var(--ink);
   display: inline-block;
 }
-.desc {
-  color: var(--muted);
-  font-size: 15px;
-  margin: 11px 0 var(--sp-16);
-  max-width: 48ch;
-}
-.card.feature .desc {
-  font-size: 17px;
-  max-width: 54ch;
-}
 .meta {
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   display: flex;
   gap: var(--sp-14);
   align-items: center;
 }
-.arrow {
-  margin-left: auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--surf-2);
-  display: grid;
-  place-items: center;
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
-}
-.card.feature .arrow {
-  background: rgba(255, 255, 255, 0.2);
-}
-.card:hover .arrow {
-  transform: translateX(3px) rotate(-45deg);
-  background: var(--surf-3);
-}
-.arrow svg {
-  width: 16px;
-  height: 16px;
-  color: var(--ink);
-}
 
-/* stats */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-14);
-}
-.stat {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-  box-shadow: var(--sh-card);
-}
-.stat .n {
-  font-family: var(--f-b);
-  font-weight: 700;
-  font-size: 30px;
-  color: var(--ink-strong);
-  line-height: 1;
-}
-.stat .l {
-  font-family: var(--f-m);
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 7px;
-}
-.stat .n small {
-  font-size: 15px;
-  color: var(--muted);
-  font-weight: 600;
-}
 
 /* dashboard */
 .dash {
@@ -376,7 +282,7 @@ h1 {
 .src-note {
   margin-top: var(--sp-18);
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
   display: flex;
   align-items: center;
@@ -432,7 +338,7 @@ h1 {
 .doc-home {
   display: inline-block;
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   margin-bottom: var(--sp-16);
   text-decoration: none;
@@ -445,7 +351,7 @@ h1 {
 }
 .doc-group h4 {
   font-family: var(--f-m);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted);
@@ -632,7 +538,7 @@ footer {
   margin-top: 56px;
   text-align: center;
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
 footer b {
@@ -645,9 +551,6 @@ footer b {
   .dash {
     grid-template-columns: 1fr;
   }
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 /* Projects/featured grid stays two-up on phones (a pinned card spans the full
    width via `grid-column: 1 / -1`, so the grid keeps the pinned-vs-rest
@@ -659,9 +562,6 @@ footer b {
   }
   .card {
     padding: var(--sp-16);
-  }
-  .card.feature {
-    padding: var(--sp-20);
   }
 }
 

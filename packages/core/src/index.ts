@@ -20,6 +20,7 @@ export * from "./playtime-settings.js";
 export * from "./music-day.js";
 export * from "./assets.js";
 export * from "./resolve.js";
+export * from "./seo.js";
 export * from "./limits.js";
 export * from "./result.js";
 export * from "./frontmatter.js";

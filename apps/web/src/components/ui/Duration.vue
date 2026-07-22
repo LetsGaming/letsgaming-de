@@ -22,17 +22,17 @@ const props = defineProps<{
 }>();
 
 const { t } = useT();
+// Which halves to render is `splitDuration`'s call, not this component's — the
+// same rule has to hold for the plain-text form (`useT().duration()`).
 const parts = computed(() => splitDuration(props.minutes));
-/** Minutes are shown unless they'd read as a redundant "0min" after whole hours. */
-const showMinutes = computed(() => parts.value.minutes > 0 || parts.value.hours === 0);
 </script>
 
 <template>
   <span class="dur">
-    <template v-if="parts.hours > 0"
+    <template v-if="parts.showHours"
       >{{ parts.hours }}<small>{{ t("hoursShort") }}</small></template
-    ><template v-if="showMinutes"
-      ><span v-if="parts.hours > 0" class="dur-gap"> </span>{{ parts.minutes
+    ><template v-if="parts.showMinutes"
+      ><span v-if="parts.showHours" class="dur-gap"> </span>{{ parts.minutes
       }}<small>{{ t("minutesShort") }}</small></template
     >
   </span>

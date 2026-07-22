@@ -6,26 +6,26 @@
  * selected index come from `useLedgerStrip`; clicking a cell emits `select`.
  */
 import HeatGrid, { type HeatCell } from "./HeatGrid.vue";
+import { useT } from "~/composables/useT";
 
 interface Props {
   cells: HeatCell[];
   selectedIndex: number | null;
   /** Label under the left edge — the oldest day shown. */
   startLabel: string;
-  /** Caption above the strip. Defaults describe the interaction. */
-  captionLeft?: string;
-  captionRight?: string;
 }
-withDefaults(defineProps<Props>(), {
-  captionLeft: "minutes per day",
-  captionRight: "click a day to drill in",
-});
+defineProps<Props>();
 const emit = defineEmits<{ select: [index: number] }>();
+
+// The captions were `captionLeft`/`captionRight` props with English defaults that
+// neither caller ever overrode — speculative props hiding three untranslated
+// strings on a component both ledger modules render.
+const { t } = useT();
 </script>
 
 <template>
   <div class="hs">
-    <div class="hs-lbl"><span>{{ captionLeft }}</span><span>{{ captionRight }}</span></div>
+    <div class="hs-lbl"><span>{{ t("minutesPerDay") }}</span><span>{{ t("clickDayToDrill") }}</span></div>
     <HeatGrid
       :cells="cells"
       :rows="1"
@@ -38,7 +38,7 @@ const emit = defineEmits<{ select: [index: number] }>();
     />
     <div class="hs-axis">
       <span>{{ startLabel }}</span>
-      <span class="now">today</span>
+      <span class="now">{{ t("today") }}</span>
     </div>
   </div>
 </template>

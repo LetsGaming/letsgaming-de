@@ -17,8 +17,11 @@ import type {
   SiteMeta,
   Status,
 } from "@lg/core";
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { AuthError, cms, loadToken, setToken } from "../lib/cms";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useCmsNav, type View } from "./useCmsNav";
+import { useCmsSession } from "./useCmsSession";
+import { useCmsPreview } from "./useCmsPreview";
+import { cms } from "../lib/cms";
 import { usePresenceSettings } from "./usePresenceSettings";
 import { useMusicSettings } from "./useMusicSettings";
 import { usePlaytimeSettings } from "./usePlaytimeSettings";
@@ -46,103 +49,37 @@ export type ModEntry = GuestbookEntry;
  */
 
 
-/**
- * The panels, in nav order.
- *
- * A list rather than a bare union, because the URL now names one: a hash is a
- * string a stranger can type, so turning it back into a `View` needs a runtime
- * check, and `Object.keys(VIEW_TITLES) as View[]` would be a cast — a check that
- * cannot fail. The type derives from this, so the two can't disagree.
- */
-const VIEWS = [
-  "dashboard",
-  "site",
-  "home",
-  "about",
-  "hobbies",
-  "links",
-  "now",
-  "editor",
-  "posts",
-  "gallery",
-  "library",
-  "presence",
-  "music",
-  "playtime",
-  "wrapped",
-  "guestbook",
-  "analytics",
-] as const;
-
-export type View = (typeof VIEWS)[number];
-
-/** Where the CMS opens when the URL doesn't say. */
-const DEFAULT_VIEW: View = "dashboard";
-
-// Grouped left-nav, so it's obvious what each screen edits (a small WP/Typo3 shape).
-const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
-  { label: "", items: [{ id: "dashboard", label: "Dashboard" }] },
-  { label: "", items: [{ id: "editor", label: "Editor" }] },
-  {
-    label: "Content",
-    items: [
-      { id: "site", label: "Site identity" },
-      { id: "home", label: "Home intro" },
-      { id: "about", label: "About / bio" },
-      { id: "hobbies", label: "Hobbies" },
-      { id: "links", label: "Links" },
-      { id: "now", label: "Right now" },
-    ],
-  },
-  {
-    label: "Structure & media",
-    items: [
-      { id: "posts", label: "Blog" },
-      { id: "library", label: "Asset library" },
-      { id: "gallery", label: "Gallery" },
-    ],
-  },
-  {
-    label: "Widgets",
-    items: [
-      { id: "presence", label: "Presence" },
-      { id: "music", label: "Listening" },
-      { id: "playtime", label: "Played" },
-      { id: "wrapped", label: "Wrapped" },
-    ],
-  },
-  { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
-  { label: "Insights", items: [{ id: "analytics", label: "Analytics" }] },
-];
-const VIEW_TITLES: Record<View, string> = {
-  dashboard: "Dashboard",
-  wrapped: "Wrapped",
-  site: "Site identity",
-  home: "Home intro",
-  about: "About / bio",
-  hobbies: "Hobbies",
-  links: "Links",
-  now: "Right now",
-  editor: "Editor — arrange and write",
-  posts: "Blog",
-  library: "Asset library",
-  gallery: "Gallery",
-  presence: "Presence widget",
-  music: "Listening list",
-  playtime: "Played list",
-  guestbook: "Guestbook",
-  analytics: "Analytics",
-};
-
 export function useCms() {
 
-const authed = ref(false);
-const login = ref<string | null>(null);
-const loading = ref(true);
-const tab = ref<View>(DEFAULT_VIEW);
+// Routing and the preview dock are their own composables (useCmsNav /
+// useCmsPreview). Opening a panel has effects in three places — lazy-loading a
+// panel's data, moving the preview, and the URL — so `onOpen` is where they meet,
+// rather than a `pick()` that reaches into all of them.
+// Session, routing and preview are each their own composable now; what's left
+// here is the content model and the saves. `loadContent` and `onSaved` are the
+// two things the session can't own — the editor's data, and the fact that a
+// preview exists at all.
+const session = useCmsSession({
+  loadContent: async () => {
+    await loadAll();
+    // Warm the dashboard's badge (cheap, cached after).
+    void loadGuestbook();
+  },
+  onSaved: () => preview.invalidate(),
+});
+const { authed, login, loading, tokenInput, toast, flash, boot, signIn, signOut, guarded } = session;
+
+const preview = useCmsPreview();
+const { previewArea, previewKey, showDock, previewSrc, viewSite } = preview;
+const { tab, pick, NAV_GROUPS, VIEW_TITLES } = useCmsNav({
+  onOpen: (view) => {
+    if ((view === "guestbook" || view === "dashboard") && !guestbook.value) void loadGuestbook();
+    if (view === "analytics" && !analytics.value) void loadAnalytics();
+    preview.followView(view);
+  },
+});
+
 const locale = ref<Locale>(DEFAULT_LOCALE);
-const tokenInput = ref("");
-const toast = ref("");
 
 // Editable state (loaded from the API).
 const meta = reactive<SiteMeta>({ name: "", handle: "", location: emptyL(), role: emptyL() });
@@ -237,28 +174,6 @@ function lv(obj: Localized, l: Locale) {
 function setLv(obj: Localized, l: Locale, val: string) {
   obj[l] = val;
 }
-function flash(msg: string) {
-  toast.value = msg;
-  window.setTimeout(() => (toast.value = ""), 2200);
-}
-
-async function boot() {
-  loadToken();
-  loading.value = true;
-  try {
-    const me = await cms.me();
-    login.value = me.login;
-    authed.value = true;
-    await loadAll();
-    // Warm the dashboard's badge (cheap, cached after).
-    void loadGuestbook();
-  } catch (e) {
-    authed.value = false;
-  } finally {
-    loading.value = false;
-  }
-}
-
 async function loadAll() {
   const data = await cms.content();
   Object.assign(meta, data.content.meta);
@@ -281,40 +196,6 @@ function pickL(l?: Localized): string {
   return (l && (l[locale.value] ?? l.en ?? Object.values(l)[0])) || "";
 }
 
-
-async function signIn() {
-  setToken(tokenInput.value);
-  await boot();
-  if (!authed.value) flash("That token was rejected.");
-}
-function signOut() {
-  setToken(null);
-  authed.value = false;
-}
-
-/**
- * Run a write, then toast or handle the failure.
- *
- * `Promise<unknown>`, not `Promise<void>`: now that the API client returns real
- * shapes instead of `any`, every `cms.put(…)` resolves to `{ ok: true }` — and a
- * `Promise<void>` parameter would have meant twenty call sites each wrapping
- * their own `void (await …)` to throw the value away. `guarded` doesn't read the
- * result; it should say so once rather than make everyone prove it.
- */
-async function guarded(fn: () => Promise<unknown>, ok = "Saved") {
-  try {
-    await fn();
-    flash(ok);
-    previewKey.value++; // any successful save invalidates the preview
-  } catch (e) {
-    if (e instanceof AuthError) {
-      authed.value = false;
-      flash("Session expired — sign in again.");
-    } else {
-      flash((e as Error).message || "Something went wrong.");
-    }
-  }
-}
 
 // Saves
 const saveMeta = () => guarded(() => cms.put("meta", strip(meta)));
@@ -368,76 +249,6 @@ function strip<T>(obj: T): T {
  * Still hand-matched to the server's `chart` object — see SWEEP §4. That's the
  * next thing to fix here, not this.
  */
-
-/**
- * Which panel is open, in the URL.
- *
- * Reloading used to dump you back on Dashboard: the panel was a ref and nothing
- * else, so the one thing you were doing was the one thing the page didn't
- * remember. Sixteen panels deep in the Layout screen, F5 is a punishment.
- *
- * The hash, not localStorage. It survives a reload the same, and it also makes
- * `/admin#analytics` a link you can bookmark, back/forward step through the
- * panels you visited, and two open tabs stop fighting over one stored key — a
- * storage key would mean the tab you *last clicked in* decides where the other
- * one reopens.
- *
- * This isn't a walk-back of ADR 0003. That's routes-over-hash for the *site*,
- * because hidden must be hidden and a shared link has to unfurl as what it points
- * at. Neither is true of an authed single-page admin that renders nothing server
- * side: here the hash is the whole address.
- */
-const isView = (value: unknown): value is View =>
-  typeof value === "string" && VIEWS.includes(value as View);
-
-/** The panel named by the current URL, or the default. Unknown hashes (a stale
- *  bookmark, a renamed panel) fall back rather than rendering nothing. */
-function viewFromHash(): View {
-  if (typeof window === "undefined") return DEFAULT_VIEW;
-  const id = decodeURIComponent(window.location.hash.replace(/^#/, ""));
-  return isView(id) ? id : DEFAULT_VIEW;
-}
-
-/**
- * Open a panel.
- *
- * `push` distinguishes a click (a new history entry, so Back returns you) from
- * restoring what the URL already says (no entry — pushing there would trap Back
- * on the admin page).
- */
-function pick(v: View, push = true) {
-  tab.value = v;
-  if ((v === "guestbook" || v === "dashboard") && !guestbook.value) void loadGuestbook();
-  if (v === "analytics" && !analytics.value) void loadAnalytics();
-  if (AREA_FOR_VIEW[v]) previewArea.value = AREA_FOR_VIEW[v]!; // remember what to preview
-  if (push && typeof window !== "undefined" && viewFromHash() !== v) {
-    window.location.hash = v;
-  }
-}
-
-/** Back/forward, and someone editing the address bar. */
-function onHashChange() {
-  const next = viewFromHash();
-  if (next !== tab.value) pick(next, false);
-}
-
-// Live preview: an iframe of the actual site, aimed at the area you're editing.
-// Content screens map to the site area that renders them, so the preview shows
-// "what you're working on", not the whole page. Saves bump the key to reload.
-const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
-  site: AREA.home,
-  home: AREA.home,
-  about: AREA.about,
-  links: AREA.about,
-  hobbies: AREA.life,
-  now: AREA.life,
-  gallery: AREA.life,
-  presence: AREA.life,
-  music: AREA.life,
-  playtime: AREA.life,
-};
-const previewArea = ref<AreaId>(AREA.home);
-const previewKey = ref(0);
 
 // Layout + gallery + canvas — extracted composable (see useLayoutEditor). It owns
 // the placement state (modules, layoutAreas, hiddenModules, gallery) and every
@@ -497,31 +308,12 @@ const {
   loadAll,
   cms,
 });
-const showDock = ref(false); // side-by-side live preview while editing
 
 
 
-/**
- * Where the preview points.
- *
- * Areas are routes (ADR 0003), so this is `/life`, not `/#life`. Both of these
- * still built a hash after the tab store and its `location.hash` reader were
- * deleted — a URL nothing reads, so every preview and every "view site" opened
- * Home regardless of the panel, and `AREA_FOR_VIEW` above was feeding a dead
- * fragment. Nothing failed: a hash to nowhere is a valid URL.
- *
- * `areaPath` rather than `areaHref(site.nav, id)`: the CMS doesn't hold the
- * resolved nav, and the first area is the root.
- */
-const areaPath = (id: AreaId): string => (id === AREA.home ? "/" : `/${id}`);
-const previewSrc = computed(() => `${areaPath(previewArea.value)}?${PREVIEW_PARAM}=1`);
 function areaLabel(id: string): string {
   return layoutAreas.value.find((a) => a.id === id)?.label ?? id;
 }
-function viewSite() {
-  window.open(areaPath(previewArea.value), "_blank", "noopener");
-}
-
 // Dashboard: quick counts + jump-in links (WP-style landing).
 const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
   { label: "Hobbies", n: hobbies.value.length, to: "hobbies" },
@@ -534,15 +326,9 @@ const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
 // Start/stop the analytics poll as the panel opens and closes. A watcher rather
 // than a hook inside AnalyticsPanel, because the panel is `v-show` — it stays
 // mounted once rendered, so mount/unmount say nothing about whether you can see it.
+// useCmsNav restores the panel from the URL on mount; this is just the session.
 onMounted(() => {
-  // Restore before boot: the gate may render first, but the panel behind it is
-  // already the one the URL names, so signing in lands where you left off.
-  pick(viewFromHash(), false);
-  window.addEventListener("hashchange", onHashChange);
   void boot();
-});
-onUnmounted(() => {
-  window.removeEventListener("hashchange", onHashChange);
 });
 
   return {
@@ -669,7 +455,6 @@ onUnmounted(() => {
     metricTotals,
     chart,
     pick,
-    AREA_FOR_VIEW,
     previewArea,
     previewKey,
     showDock,

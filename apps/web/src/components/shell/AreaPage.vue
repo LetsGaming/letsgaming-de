@@ -14,6 +14,7 @@ import { computed } from "vue";
 import { AREA, type Locale, type SiteView } from "@lg/core";
 import { areaById, areaHref, areaMeta } from "~/lib/area";
 import { useLocale, useT } from "~/composables/useT";
+import { useSeo } from "~/composables/useSeo";
 import SiteChrome from "./SiteChrome.vue";
 import SitePanels from "./SitePanels.vue";
 import SmartLink from "~/components/ui/SmartLink.vue";
@@ -42,11 +43,16 @@ const meta = computed(() =>
 // `data-locale-aware` opts this page into the locale redirect in nuxt.config;
 // the prerendered docs ignore ?lang and so must not carry it.
 useHead(() => ({ htmlAttrs: { lang: props.locale, "data-locale-aware": "1" } }));
-useSeoMeta({
-  title: () => meta.value.title,
-  description: () => meta.value.description,
-  ogTitle: () => meta.value.title,
-  ogDescription: () => meta.value.description,
+
+// The full SEO surface — <title>/description, canonical, hreflang for both
+// locales, Open Graph, Twitter card, and Person + WebSite JSON-LD — built from
+// the clean area path so `?lang`/`?ref` permutations all canonicalize to one URL.
+useSeo({
+  site: props.site,
+  locale: props.locale,
+  path: areaHref(props.site.nav, area.value?.id ?? props.site.nav[0]?.id ?? ""),
+  title: meta.value.title,
+  description: meta.value.description,
 });
 </script>
 

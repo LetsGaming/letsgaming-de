@@ -103,6 +103,40 @@ const EN = {
   hoursShort: "h",
   minutesShort: "min",
 
+  // Presence — the live Discord widget. Status names and the per-category source
+  // lines ("Listening to Spotify") are what Discord itself says, so German keeps
+  // the product names and translates only the verb around them.
+  presenceOnline: "Online",
+  presenceIdle: "Idle",
+  presenceDnd: "Do not disturb",
+  presenceOffline: "Offline",
+  presenceUnreachable: "Can't reach Discord",
+  presenceLoading: "· loading…",
+  presenceUnknown: "· status unknown",
+  presenceOfflineIdle: "Offline right now — nothing to show",
+  presenceNoActivity: "No activity to display right now",
+  presenceNothing: "Nothing to show here right now.",
+  presenceSrcMusic: "Listening to Spotify",
+  presenceSrcGame: "Playing",
+  presenceSrcWatching: "Watching",
+  presenceSrcStreaming: "Streaming",
+
+  // Heat strip
+  minutesPerDay: "minutes per day",
+  clickDayToDrill: "click a day to drill in",
+  today: "today",
+
+  // Freshness — a synced module's own age. One key per FreshnessState, so the
+  // component maps the state to a key instead of branching five ways in its
+  // template. `{age}` is the pre-computed short relative ("8m", "2d").
+  freshFresh: "synced {age} ago",
+  freshStale: "{age} old",
+  freshFailed: "sync failed · showing {age} old",
+  freshNever: "not synced yet",
+  freshEmpty: "nothing synced",
+  /** A bare relative age, for a timestamp that isn't a sync (a post's date). */
+  ago: "{age} ago",
+
   // Coding
   codingScope: "{range} · {hours}h tracked",
 } as const;
@@ -175,6 +209,32 @@ const DE: Messages = {
   differentArtists: "verschiedene Künstler:innen",
   hoursShort: "Std.",
   minutesShort: "Min",
+
+  presenceOnline: "Online",
+  presenceIdle: "Abwesend",
+  presenceDnd: "Bitte nicht stören",
+  presenceOffline: "Offline",
+  presenceUnreachable: "Discord nicht erreichbar",
+  presenceLoading: "· lädt…",
+  presenceUnknown: "· Status unbekannt",
+  presenceOfflineIdle: "Gerade offline — nichts zu zeigen",
+  presenceNoActivity: "Gerade keine Aktivität",
+  presenceNothing: "Hier gibt es gerade nichts zu sehen.",
+  presenceSrcMusic: "Hört Spotify",
+  presenceSrcGame: "Spielt",
+  presenceSrcWatching: "Schaut",
+  presenceSrcStreaming: "Streamt",
+
+  minutesPerDay: "Minuten pro Tag",
+  clickDayToDrill: "Tag anklicken für Details",
+  today: "heute",
+
+  freshFresh: "vor {age} synchronisiert",
+  freshStale: "{age} alt",
+  freshFailed: "Sync fehlgeschlagen · zeige {age} alte Daten",
+  freshNever: "noch nicht synchronisiert",
+  freshEmpty: "nichts synchronisiert",
+  ago: "vor {age}",
 
   codingScope: "{range} · {hours} Std. erfasst",
 };

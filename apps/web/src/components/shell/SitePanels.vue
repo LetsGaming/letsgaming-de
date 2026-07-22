@@ -13,17 +13,6 @@ const modules = computed(() =>
   (current.value?.modules ?? []).map((id) => props.site.modules[id]).filter(Boolean),
 );
 
-/**
- * Navigate to an area.
- *
- * Still a prop, still wrong — this is `<a href>` with the useful parts removed
- * (no middle-click, no ctrl-click, no "copy link address", nothing for a crawler
- * to follow). Two sections use it, for a "more" button. Fixing it properly means
- * the resolver handing those modules a `moreHref`, the way it now hands the hero's
- * links real URLs. Next tranche; `goAnchor` was the same shape and went first
- * because it was hiding a dead CTA.
- */
-
 onMounted(() => {
   useSiteState().initSite(props.site.nav);
   // Deep link within this area. Cross-area hashes don't need handling any more:
