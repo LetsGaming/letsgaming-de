@@ -136,7 +136,7 @@ const Shell = {
 
 beforeEach(() => {
 	// `useState` is keyed per Nuxt app instance, which the nuxt test environment
-	recreates per test file — so this just sets the starting theme.
+	// recreates per test file, so this just sets the starting theme.
 	useTheme().value = "dark";
 });
 

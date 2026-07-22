@@ -585,6 +585,10 @@ onUnmounted(() => {
     playtimeInitialCount,
     playtimeMaxCount,
     savePlaytime,
+    // The Wrapped slice, spread whole: the panel reads every ref plus
+    // WRAPPED_BOUNDS off the context, and listing them here too would be a
+    // second place to keep in sync.
+    ...wrapped,
     guestbook,
     loadingG,
     loadGuestbook,
