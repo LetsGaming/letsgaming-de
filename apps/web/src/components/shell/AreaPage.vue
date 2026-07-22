@@ -39,7 +39,9 @@ const meta = computed(() =>
   areaMeta(area.value, props.site.meta.name, props.site.meta.role),
 );
 
-useHead(() => ({ htmlAttrs: { lang: props.locale } }));
+// `data-locale-aware` opts this page into the locale redirect in nuxt.config;
+// the prerendered docs ignore ?lang and so must not carry it.
+useHead(() => ({ htmlAttrs: { lang: props.locale, "data-locale-aware": "1" } }));
 useSeoMeta({
   title: () => meta.value.title,
   description: () => meta.value.description,

@@ -126,6 +126,17 @@ export default defineNuxtConfig({
           innerHTML:
             "(function(){try{var s=localStorage.getItem('theme');var t=s==='light'||s==='dark'?s:matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();",
         },
+        {
+          // No-flash locale: if the URL carries no explicit ?lang but the visitor
+          // previously chose one that differs from what the server rendered,
+          // redirect once so the whole page is server-rendered in their language.
+          // Cookieless (localStorage), guarded against loops (only when ?lang is
+          // absent), and scoped to the locale-aware pages — `data-locale-aware` is
+          // set by AreaPage, so the prerendered docs, which ignore ?lang, opt out.
+          tagPosition: "head",
+          innerHTML:
+            "(function(){try{if(document.documentElement.dataset.localeAware!=='1')return;var u=new URL(location.href);if(u.searchParams.has('lang'))return;var s=localStorage.getItem('lang');if((s==='en'||s==='de')&&s!==document.documentElement.lang){u.searchParams.set('lang',s);location.replace(u.toString());}}catch(e){}})();",
+        },
       ],
     },
   },
