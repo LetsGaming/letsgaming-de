@@ -96,4 +96,6 @@ in [operations/analytics-ingestion](../operations/analytics-ingestion.md).
 - Local dev: a root `.env` (git-ignored) is the usual source.
 - Docker: Compose `environment:` and build `args:` read your shell or `.env` (see
   `docker-compose.yml`).
-- The web app also honours Astro's `import.meta.env` for `PUBLIC_*` at build.
+- `PUBLIC_API_URL` is inlined into the client bundle at build (`vite.define` in
+  `nuxt.config.ts`). `DOCS_DIR` and `OPENAPI_PATH` override where the docs and the
+  OpenAPI spec are read from at runtime.

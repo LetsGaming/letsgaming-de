@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { NavView } from "@lg/core";
-import { useStore } from "@nanostores/vue";
 import { computed, onMounted, ref } from "vue";
 import { icons } from "../../lib/icons";
-import { $theme, initSite, setLocale, toggleTheme } from "../../stores/site";
+import { useSiteState } from "../../composables/useSiteState";
 import { areaHref } from "../../lib/area";
+import SmartLink from "../ui/SmartLink.vue";
 import SettingsModal from "./SettingsModal.vue";
 
 const props = defineProps<{ nav: NavView[]; locale: "en" | "de"; current: string }>();
 
-const theme = useStore($theme);
+const { theme, initSite, setLocale, toggleTheme } = useSiteState();
 const settingsOpen = ref(false);
 // The server already knows which area this is — it's the URL. No atom, no SSR
 // fallback, no hydration gap where the highlight is wrong.
@@ -25,17 +25,16 @@ onMounted(() => initSite(props.nav));
        the display face and the nested padding — all of which the rules removed. -->
   <div class="chrome">
     <nav class="tabs" aria-label="Sections">
-      <a
+      <SmartLink
         v-for="area in nav"
         :key="area.id"
         class="tab"
         :class="{ active: area.id === current }"
         :aria-current="area.id === current ? 'page' : undefined"
         :href="href(area.id)"
-       
       >
         {{ area.label }}
-      </a>
+      </SmartLink>
     </nav>
     <button
       class="theme-toggle"

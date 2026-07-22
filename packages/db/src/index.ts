@@ -5,6 +5,7 @@ import { assetsRepo, type AssetsRepo } from "./assets-repo.js";
 import { contentRepo, type ContentRepo } from "./content-repo.js";
 import { guestbookRepo, type GuestbookRepo } from "./guestbook-repo.js";
 import { musicRepo } from "./music-repo.js";
+import { wrappedRepo, type WrappedRepo } from "./wrapped-repo.js";
 import { sessionsRepo } from "./sessions-repo.js";
 import { gameMetaRepo } from "./game-meta-repo.js";
 import { iaRepo, type IaRepo } from "./ia-repo.js";
@@ -35,6 +36,7 @@ export interface Store {
   guestbook: GuestbookRepo;
   sessions: SessionsRepo;
   music: MusicRepo;
+  wrapped: WrappedRepo;
   gameMeta: GameMetaRepo;
   close(): void;
 }
@@ -84,6 +86,7 @@ function storeFrom(db: ReturnType<typeof openDatabase>): Store {
     guestbook: guestbookRepo(db),
     sessions: sessionsRepo(db),
     music: musicRepo(db),
+    wrapped: wrappedRepo(db),
     gameMeta: gameMetaRepo(db),
     close: () => db.close(),
   };

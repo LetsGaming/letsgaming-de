@@ -1,7 +1,7 @@
 # Deployment
 
 Homelab, Docker, two containers behind a reverse proxy: the Fastify server (API,
-CMS, sync worker) and the Astro SSR site. The compose file is `docker-compose.yml`
+CMS, sync worker) and the Nuxt SSR site. The compose file is `docker-compose.yml`
 at the repo root.
 
 ## 1. Configure
@@ -69,5 +69,5 @@ moving parts:
 
 ## Notes
 
-The web tier is SSR (`@astrojs/node`), so content is always live: no rebuild on a
+The web tier is SSR (Nitro `node-server`), so content is always live: no rebuild on a
 sync or a CMS edit. A short in-process cache absorbs bursts.

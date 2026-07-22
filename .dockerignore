@@ -12,7 +12,8 @@
 
 # Rebuilt inside the image
 **/dist
-**/.astro
+**/.nuxt
+**/.output
 **/.vite
 **/.turbo
 **/.cache

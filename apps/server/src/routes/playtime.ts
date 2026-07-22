@@ -9,24 +9,21 @@
  * different lifetimes, different endpoints.
  */
 
-import { capList, gameMetaKey, isHidden, isValidTimeZone, sanitizeTimeZone, type PlaytimeDayResponse } from "@lg/core";
+import { capList, gameMetaKey, isHidden, type PlaytimeDayResponse } from "@lg/core";
+import { isValidDay, resolveZone } from "./day-request.js";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void {
   app.get<{ Querystring: { day?: string; tz?: string }; Reply: PlaytimeDayResponse | { error: string } }>(
     "/api/playtime/day",
     async (req, reply) => {
       const day = req.query.day ?? "";
-      if (!DAY_RE.test(day)) {
+      if (!isValidDay(day)) {
         return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
       }
-      // The zone the day is interpreted in: the caller's if valid, else the owner's
-      // (the `TZ` env var) — matching however the strip that was clicked bucketed.
-      const tz = req.query.tz;
-      const zone = tz && isValidTimeZone(tz) ? tz : sanitizeTimeZone(process.env.TZ);
+      const zone = resolveZone(req.query.tz);
       // Hidden games are dropped wherever a name would surface publicly. The
       // aggregate ledger and heatmap are shape (when / how much), not identity, so
       // they stay honest totals; this breakdown names games, so it filters.

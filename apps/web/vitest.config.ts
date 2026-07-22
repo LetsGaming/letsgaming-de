@@ -1,11 +1,15 @@
-import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vitest/config";
+import { defineVitestConfig } from "@nuxt/test-utils/config";
 
-// Component smoke tests only — Astro pages/SSR aren't exercised here.
-export default defineConfig({
-  plugins: [vue()],
+/**
+ * Component smoke tests. The `nuxt` environment is what makes them work now that
+ * the components are Nuxt-native: `SmartLink` calls `useRuntimeConfig()` and
+ * `DocsShell` calls `useRoute()`, both auto-imports that a bare happy-dom run
+ * doesn't provide. Rather than stubbing those per test, the environment supplies
+ * the real ones. SSR and the Nitro routes still aren't exercised here.
+ */
+export default defineVitestConfig({
   test: {
-    environment: "happy-dom",
+    environment: "nuxt",
     include: ["tests/**/*.test.ts"],
   },
 });

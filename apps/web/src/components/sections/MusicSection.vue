@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 /**
  * The music module — a fortnight of Spotify listening, from `music_plays`.
  *
@@ -18,7 +19,7 @@ import { computed, ref } from "vue";
 import { type DayRow, type ListKind, type MusicDayResponse, type MusicRankView, type ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
 import { fmtDay } from "../../lib/calendar";
-import { fetchMusicDay } from "../../lib/music-api";
+import { fetchMusicDay } from "../../lib/day-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import { useLimitedList } from "../../composables/useLimitedList";
@@ -29,6 +30,8 @@ import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
+
+const { t } = useT();
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
 // Polls `/api/module/:id` so the module refreshes in place, starting from SSR data.
@@ -110,31 +113,30 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   <ModuleSection :id="module.id" :heading="d.heading" :note="d.note">
     <!-- Empty state: nothing recorded until the sampler catches Spotify playing. -->
     <p v-if="!hasData" class="mu-empty">
-      Nothing recorded yet. Tracks show up here after the presence sampler catches
-      Spotify playing — give it a day.
+      {{ t("emptyMusic") }}
     </p>
 
     <ModuleCard v-else>
       <CardHeader
         as="span"
         tone="live"
-        title="Listening"
-        :note="selected ? fmtDay(selected) : 'last 14 days'"
+        :title='t("listening")'
+        :note='selected ? fmtDay(selected) : t("lastFourteenDays")'
       />
 
       <!-- Stats double as tabs. "time listening" is inert (no list behind it). -->
       <div class="mu-stats">
-        <StatTile :value="d.totalHours" unit="h" label="time listening" />
+        <StatTile :value="d.totalHours" unit="h" :label='t("timeListening")' />
         <StatTile
           :value="d.trackCount"
-          label="tracks played"
+          :label='t("tracksPlayed")'
           interactive
           :active="list === 'songs'"
           @select="showList('songs')"
         />
         <StatTile
           :value="d.artistCount"
-          label="different artists"
+          :label='t("differentArtists")'
           interactive
           :active="list === 'artists'"
           @select="showList('artists')"
@@ -151,17 +153,17 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 
       <!-- One content region: a top list, or a day's rows (tracks or artists). -->
       <div class="mu-panel">
-        <CardHeader :title="selected ? fmtDay(selected) : list === 'songs' ? 'Top songs' : 'Top artists'">
+        <CardHeader :title='selected ? fmtDay(selected) : t(list === "songs" ? "topSongs" : "topArtists")'>
           <template #note>
-            <button v-if="selected" class="mu-back" @click="clear">← back to top {{ list }}</button>
+            <button v-if="selected" class="mu-back" @click="clear">{{ t(list === "songs" ? "backToTopSongs" : "backToTopArtists") }}</button>
           </template>
         </CardHeader>
 
         <!-- a day's rows -->
         <template v-if="selected">
-          <p v-if="dayLoading" class="mu-dim">Loading…</p>
-          <p v-else-if="dayError" class="mu-dim">Couldn't load that day.</p>
-          <p v-else-if="!dayTrackCount" class="mu-dim mu-day-empty">Nothing played this day.</p>
+          <p v-if="dayLoading" class="mu-dim">{{ t("loading") }}</p>
+          <p v-else-if="dayError" class="mu-dim">{{ t("loadDayFailed") }}</p>
+          <p v-else-if="!dayTrackCount" class="mu-dim mu-day-empty">{{ t("emptyDayMusic") }}</p>
           <template v-else>
             <p class="mu-day-sum">
               {{ dayMinutes }} min · {{ dayTrackCount }} track{{ dayTrackCount > 1 ? "s" : "" }} ·

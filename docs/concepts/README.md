@@ -17,3 +17,4 @@ they are.
 - [the-cms](./the-cms.md) is the "small CMS" philosophy, how it's held, and where
   the line sits now that there's an asset library.
 - [glossary](./glossary.md) defines the project's vocabulary in one place.
+- [localization](./localization.md) — English and German: CMS-authored content vs. the typed UI-string catalog.

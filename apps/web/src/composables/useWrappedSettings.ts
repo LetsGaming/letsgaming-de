@@ -46,8 +46,8 @@ export function useWrappedSettings({ guarded, cms }: WrappedDeps) {
     wrappedEnabled,
     wrappedEveryMonths,
     wrappedForWeeks,
-    wrappedFromDate,
     wrappedTopCount,
+    wrappedFromDate,
     saveWrapped,
     hydrateWrapped: hydrate,
   };

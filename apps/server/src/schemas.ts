@@ -17,9 +17,9 @@ import {
   HREF_PATTERN,
   OPTIONAL_ASSET_REF_PATTERN,
   PRESENCE_CATEGORIES,
+  WRAPPED_BOUNDS,
   MUSIC_LIST_BOUNDS,
   LIST_DISPLAY_BOUNDS,
-  WRAPPED_BOUNDS,
   TONES,
 } from "@lg/core";
 
@@ -174,9 +174,10 @@ export const schemas = {
   },
   wrapped: {
     type: "object",
-    // The recurring-display schedule. No required fields: the sanitizer fills any
-    // omitted one and drops a malformed date, so a partial body still writes a valid
-    // row. Bounds come from @lg/core so schema and sanitizer can't drift.
+    // No required fields: sanitizeWrappedSettings fills every omitted field from the
+    // default, so a partial body still writes a coherent row. Numeric bounds come
+    // from WRAPPED_BOUNDS in @lg/core — the same constant the CMS inputs and the
+    // sanitizer use, so the three can't disagree.
     properties: {
       enabled: { type: "boolean" },
       everyMonths: { type: "integer", minimum: WRAPPED_BOUNDS.everyMonths.min, maximum: WRAPPED_BOUNDS.everyMonths.max },

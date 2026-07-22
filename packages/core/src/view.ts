@@ -325,38 +325,6 @@ export interface MusicModuleView {
   maxCount: number;
 }
 
-/**
- * The Wrapped module — a periodic retrospective of a fixed past window, both music
- * and games, in the spirit of Spotify Wrapped. Distinct from Music/Playtime, which
- * are a rolling fortnight: this covers the cycle the CMS schedule just closed, and
- * only appears while that schedule's window is open (enforced server-side — outside
- * a window the module is absent from the view, not hidden by the client).
- *
- * The top lists are already trimmed to `topCount`; the totals and distinct counts
- * are the true figures for the period, for the headline stats.
- */
-export interface WrappedModuleView {
-  /** The summarized period (ISO instants): a whole cycle that just closed. */
-  periodStart: string;
-  periodEnd: string;
-  /** How many rows each top list carries (already applied). */
-  topCount: number;
-  music: {
-    totalHours: number;
-    /** Distinct tracks / artists over the period — the true totals. */
-    trackCount: number;
-    artistCount: number;
-    topSongs: MusicRankView[];
-    topArtists: MusicRankView[];
-  };
-  games: {
-    totalHours: number;
-    /** Distinct games played over the period. */
-    gameCount: number;
-    top: PlaytimeView[];
-  };
-}
-
 /** A nav node with its label already localized (children/modules preserved). */
 export interface NavView {
   id: string;
@@ -377,4 +345,33 @@ export interface SiteView {
   syncedAt?: string;
 }
 
+/**
+ * The Wrapped retrospective, as resolved for display.
+ *
+ * Only ever present when the schedule says so — the resolver omits the module
+ * entirely outside a window, so there is no "hidden" state for a client to leak.
+ * `periodLabel` is pre-formatted server-side because the period is a fixed
+ * retrospective, not something the client should recompute per render.
+ */
+export interface WrappedRankView {
+  name: string;
+  detail?: string;
+  minutes: number;
+  plays: number;
+  artUrl?: string;
+}
 
+export interface WrappedModuleView {
+  /** Human-readable summarized period, e.g. "Oct 2025 — Jan 2026". */
+  periodLabel: string;
+  /** ISO bounds of the summarized period, for anyone who wants exactness. */
+  periodStart: string;
+  periodEnd: string;
+  /** When this window stops showing — lets the UI say "here until X". */
+  windowEnd: string;
+  totalMinutesListened: number;
+  totalMinutesPlayed: number;
+  topSongs: WrappedRankView[];
+  topArtists: WrappedRankView[];
+  topGames: WrappedRankView[];
+}

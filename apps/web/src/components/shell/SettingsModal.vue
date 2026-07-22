@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { analyticsAllowed, dntActive, setOptedOut } from "../../lib/track";
+import SmartLink from "../ui/SmartLink.vue";
 
 const props = defineProps<{ open: boolean; theme: "dark" | "light"; locale: "en" | "de" }>();
 const emit = defineEmits<{ close: []; "toggle-theme": []; "set-locale": ["en" | "de"] }>();
@@ -78,7 +79,7 @@ watch(
                 <div class="rowtitle">Anonymous usage analytics</div>
                 <p class="rowdesc">
                   Helps me see which sections are useful. No cookies, no IP, no identifier —
-                  just aggregate counts. <a href="/datenschutz">Details</a>.
+                  just aggregate counts. <SmartLink href="/datenschutz">Details</SmartLink>.
                 </p>
               </div>
               <button

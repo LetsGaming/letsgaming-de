@@ -11,9 +11,9 @@
   },
   "scripts": {
     "build": "pnpm lint:nav && pnpm lint:tokens && pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server build && pnpm --filter=@lg/web build",
-    "dev": "pnpm --parallel --filter=@lg/server --filter=@lg/web dev",
-    "dev:server": "pnpm --filter=@lg/server dev",
-    "dev:web": "pnpm --filter=@lg/web dev",
+    "dev": "pnpm -r --filter=./packages/* build && pnpm --parallel --filter=@lg/server --filter=@lg/web dev",
+    "dev:server": "pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server dev",
+    "dev:web": "pnpm -r --filter=./packages/* build && pnpm --filter=@lg/web dev",
     "sync": "pnpm --filter=@lg/server sync",
     "lint:nav": "pnpm --filter=@lg/core lint:nav",
     "typecheck": "pnpm -r typecheck",

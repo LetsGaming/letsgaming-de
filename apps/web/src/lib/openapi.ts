@@ -108,7 +108,11 @@ let cached: ApiReference | null = null;
 /** Parse `openapi.yml` and build the reference model (cached across pages). */
 export function loadApiReference(): ApiReference {
   if (cached) return cached;
-  const source = readFileSync(resolve(process.cwd(), "..", "..", "openapi.yml"), "utf8");
+  // Repo-root `openapi.yml`. The cwd-relative default is correct at build time
+  // (cwd is the app dir when prerendering); `OPENAPI_PATH` covers the runtime
+  // case, where the server starts from the output dir and "../.." misses.
+  const path = process.env.OPENAPI_PATH ?? resolve(process.cwd(), "..", "..", "openapi.yml");
+  const source = readFileSync(path, "utf8");
   const doc = obj(parseYaml(source));
   cached = build(doc);
   return cached;

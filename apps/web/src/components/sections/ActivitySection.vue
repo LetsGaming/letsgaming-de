@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
+import SmartLink from "../ui/SmartLink.vue";
 import ModuleSection from "../ui/ModuleSection.vue";
 import ModuleCard from "../ui/ModuleCard.vue";
 import CardHeader from "../ui/CardHeader.vue";
@@ -9,6 +11,7 @@ import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 import LanguageBars from "../ui/LanguageBars.vue";
 import { computed, ref } from "vue";
 
+const { t } = useT();
 const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "activity" }>;
 }>();
@@ -39,29 +42,27 @@ const contributionCells = computed<HeatCell[]>(() =>
     <div class="dash">
       <ModuleCard>
         <CardHeader
-          title="Contributions"
-          :note="`last 26 weeks · ${module.data.contributions.total} in the window`"
+          :title='t("contributions")'
+          :note='t("contributionsScope", { n: module.data.contributions.total })'
         />
         <HeatGrid :cells="contributionCells" legend />
       </ModuleCard>
       <ModuleCard>
-        <CardHeader title="Languages" note="across all public repos" />
+        <CardHeader :title='t("languages")' :note='t("languagesScope")' />
         <LanguageBars :languages="module.data.languages" />
       </ModuleCard>
     </div>
     <ModuleCard class="activity-events">
-      <CardHeader title="Recent events" note="newest first" />
+      <CardHeader :title='t("recentEvents")' :note='t("newestFirst")' />
       <div class="feed">
-        <p v-if="!module.data.events.length" class="sub">Nothing synced from GitHub yet.</p>
-        <component
-          :is="e.href ? 'a' : 'div'"
+        <p v-if="!module.data.events.length" class="sub">{{ t("emptyActivity") }}</p>
+        <SmartLink
           v-for="(e, i) in events"
           :key="i"
+          :href="e.href"
+          as="div"
           class="ev"
           :class="{ 'ev-link': e.href }"
-          :href="e.href"
-          :target="e.href ? '_blank' : undefined"
-          :rel="e.href ? 'noopener noreferrer' : undefined"
         >
           <span class="ei" v-html="icons[e.type]" />
           <div>
@@ -69,7 +70,7 @@ const contributionCells = computed<HeatCell[]>(() =>
             <div v-if="e.meta" class="em">{{ e.meta }}</div>
           </div>
           <span class="tm">{{ e.relative }}</span>
-        </component>
+        </SmartLink>
         <button v-if="hidden > 0" class="more ev-more" @click="expanded = !expanded">
           {{ expanded ? "show less" : `show ${hidden} more` }}
         </button>

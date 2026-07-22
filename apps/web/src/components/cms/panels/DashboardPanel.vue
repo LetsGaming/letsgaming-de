@@ -2,7 +2,13 @@
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. All state and handlers come from the shared CMS context.
-const { dashStats, guestbook, moderate, now, pick, tab } = useCmsContext();
+const {
+	dashStats,
+	guestbook,
+	moderate,
+	now,
+	pick,
+} = useCmsContext();
 </script>
 
 <template>

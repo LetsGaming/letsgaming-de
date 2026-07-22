@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { useCms } from "../../composables/useCms";
+import SmartLink from "../ui/SmartLink.vue";
+
+// Compile-time constant: false in a production build, so the dev sign-in button
+// below is tree-shaken out rather than merely hidden.
+const isDev = import.meta.dev;
 import AssetLibrary from "./AssetLibrary.vue";
 // Global (un-scoped) admin styles, namespaced under `.cms`. Global rather than
 // scoped so the per-panel child components below are styled by the same rules —
@@ -17,12 +22,12 @@ import HobbiesPanel from "./panels/HobbiesPanel.vue";
 import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
 import PostsPanel from "./panels/PostsPanel.vue";
 import PlaytimePanel from "./panels/PlaytimePanel.vue";
-import WrappedPanel from "./panels/WrappedPanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
 import LinksPanel from "./panels/LinksPanel.vue";
 import NowPanel from "./panels/NowPanel.vue";
 import PresencePanel from "./panels/PresencePanel.vue";
 import MusicPanel from "./panels/MusicPanel.vue";
+import WrappedPanel from "./panels/WrappedPanel.vue";
 import SiteIdentityPanel from "./panels/SiteIdentityPanel.vue";
 
 const context = useCms();
@@ -69,7 +74,13 @@ const {
     <div v-else-if="!authed" class="gate">
       <h1>CMS</h1>
       <p class="muted">Sign in to edit letsgaming.de.</p>
-      <a class="btn primary" :href="cms.loginUrl()">Sign in with GitHub</a>
+      <SmartLink class="btn primary" :href="cms.loginUrl()" target="_self">Sign in with GitHub</SmartLink>
+      <!-- Local development only. `import.meta.dev` is a compile-time constant, so
+           this block is removed from the production bundle rather than hidden in
+           it — and the route behind it isn't registered in production either. -->
+      <SmartLink v-if="isDev" class="btn dev-login" :href="cms.devLoginUrl()" target="_self">
+        Dev sign-in (localhost)
+      </SmartLink>
       <div class="or">or paste a CMS token</div>
       <input v-model="tokenInput" type="password" placeholder="CMS_TOKEN" @keyup.enter="signIn" />
       <button class="btn" @click="signIn">Use token</button>
@@ -127,8 +138,8 @@ const {
         <!-- PRESENCE -->
         <PresencePanel v-show="tab === 'presence'" />
         <MusicPanel v-show="tab === 'music'" />
-        <PlaytimePanel v-show="tab === 'playtime'" />
         <WrappedPanel v-show="tab === 'wrapped'" />
+        <PlaytimePanel v-show="tab === 'playtime'" />
 
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />

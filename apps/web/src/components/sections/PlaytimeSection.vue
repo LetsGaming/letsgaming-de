@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 /**
  * The playtime module — a fortnight of what I've been playing, from observed
  * `presence_sessions`. Built to mirror `MusicSection`: both are the accumulated
@@ -16,7 +17,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
 import { fmtDay } from "../../lib/calendar";
-import { fetchPlaytimeDay } from "../../lib/playtime-api";
+import { fetchPlaytimeDay } from "../../lib/day-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import { useLimitedList } from "../../composables/useLimitedList";
@@ -28,6 +29,8 @@ import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
+
+const { t } = useT();
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
 
@@ -183,8 +186,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 <template>
   <ModuleSection :id="module.id" :heading="d.heading" :note="d.note">
     <p v-if="!hasData" class="pt-empty">
-      Nothing recorded yet. Games show up here after the presence sampler catches
-      you playing — give it a day.
+      {{ t("emptyPlaytime") }}
     </p>
 
     <div v-else class="pt-cards">
@@ -192,8 +194,8 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
       <CardHeader
         as="span"
         tone="live"
-        title="Played"
-        :note="selected ? fmtDay(selected) : 'last 14 days'"
+        :title='t("played")'
+        :note='selected ? fmtDay(selected) : t("lastFourteenDays")'
       />
 
       <!-- Two inert stats — a play has one dimension (the game), so unlike
@@ -213,17 +215,17 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 
       <!-- One content region: the top-games list, or a day's games. -->
       <div class="pt-panel">
-        <CardHeader :title="selected ? fmtDay(selected) : 'Top games'">
+        <CardHeader :title='selected ? fmtDay(selected) : t("topGames")'>
           <template #note>
-            <button v-if="selected" class="pt-back" @click="clear">← back to top games</button>
+            <button v-if="selected" class="pt-back" @click="clear">{{ t("backToTopGames") }}</button>
           </template>
         </CardHeader>
 
         <!-- a day's games -->
         <template v-if="selected">
-          <p v-if="dayLoading" class="pt-dim">Loading…</p>
-          <p v-else-if="dayError" class="pt-dim">Couldn't load that day.</p>
-          <p v-else-if="!dayGameCount" class="pt-dim pt-day-empty">Nothing played this day.</p>
+          <p v-if="dayLoading" class="pt-dim">{{ t("loading") }}</p>
+          <p v-else-if="dayError" class="pt-dim">{{ t("loadDayFailed") }}</p>
+          <p v-else-if="!dayGameCount" class="pt-dim pt-day-empty">{{ t("emptyDayPlaytime") }}</p>
           <template v-else>
             <p class="pt-day-sum">{{ fmtHrs(dayMinutes) }} · {{ dayGameCount }} game{{ dayGameCount > 1 ? "s" : "" }}</p>
             <RankedRow
@@ -273,7 +275,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 
       <!-- ── the weekday×hour heatmap: Playtime's own second card ── -->
       <ModuleCard v-if="d.heat.length">
-        <CardHeader as="span" title="When I play">
+        <CardHeader as="span" :title='t("whenIPlay")'>
           <template #note>
             <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
             <span v-else class="pt-zone" role="group" aria-label="Show times in">

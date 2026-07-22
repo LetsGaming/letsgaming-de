@@ -6,6 +6,7 @@ import type { Store } from "@lg/db";
 import type { ServerEnv } from "./env.js";
 import { registerErrorHandler } from "./errors.js";
 import { registerOAuthRoutes } from "./auth/github-oauth.js";
+import { registerDevLoginRoutes } from "./auth/dev-login.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAssetRoutes } from "./routes/assets.js";
 import { registerCmsRoutes } from "./routes/cms.js";
@@ -44,7 +45,7 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   // Minimal security headers on every response. Kept hand-rolled rather than
   // pulling in helmet — the API serves JSON + images, so the surface is small.
   // HSTS is safe to send behind the TLS-terminating proxy (browsers ignore it
-  // over plain HTTP); the site's CSP is configured in the Astro app.
+  // over plain HTTP); the site's CSP is configured in the Nuxt app.
   app.addHook("onSend", async (_req, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("X-Frame-Options", "DENY");
@@ -84,11 +85,13 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   registerPlaytimeRoutes(app, store);
   registerMusicRoutes(app, store);
   registerModuleRoutes(app, store, env);
-  registerPresenceMediaRoutes(app);
+  registerPresenceMediaRoutes(app, store);
   registerCmsRoutes(app, store, env);
   registerAnalyticsRoutes(app, store, env);
   await registerAssetRoutes(app, store, env);
   registerOAuthRoutes(app, env);
+  // No-op unless NODE_ENV is non-production; see dev-login.ts for the guards.
+  registerDevLoginRoutes(app, env);
 
   return app;
 }

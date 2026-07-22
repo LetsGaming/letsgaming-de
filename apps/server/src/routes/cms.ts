@@ -30,9 +30,9 @@ import {
   MODULE_KIND,
   parseAssetRef,
   sanitizePresenceSettings,
+  sanitizeWrappedSettings,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
-  sanitizeWrappedSettings,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -186,17 +186,16 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     },
   );
 
-  app.put<{ Body: { enabled?: boolean; everyMonths?: number; forWeeks?: number; fromDate?: string; topCount?: number } }>(
-    "/api/cms/wrapped",
-    write(schemas.wrapped),
-    async (req) => {
-      // The recurring-display schedule. sanitizeWrappedSettings clamps the numbers,
-      // drops a malformed date, and fills any omitted field — a partial body still
-      // writes a coherent row.
-      store.content.setWrapped(sanitizeWrappedSettings(req.body));
-      return { ok: true };
-    },
-  );
+  app.put<{
+    Body: { enabled?: boolean; everyMonths?: number; forWeeks?: number; fromDate?: string; topCount?: number };
+  }>("/api/cms/wrapped", write(schemas.wrapped), async (req) => {
+    // The Wrapped schedule. Nothing here decides visibility — the resolver reads
+    // these settings and omits the module outside a window — so this route only
+    // stores intent. sanitizeWrappedSettings clamps the numbers and drops an
+    // unparseable date, so a partial or hostile body still writes a valid row.
+    store.content.setWrapped(sanitizeWrappedSettings(req.body));
+    return { ok: true };
+  });
 
   // ── gallery (images placed on the site, chosen from the asset library) ─────
   // Recompute which assets each gallery module references, so the library's
@@ -333,7 +332,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * resolver needs.
    *
    * Authed, and it writes nothing. That combination is the point: the canvas
-   * document itself ships no data (see apps/web/src/pages/admin/canvas.astro), so
+   * document itself ships no data (see apps/web/components/cms/CanvasHost.vue), so
    * unpublished layout only ever exists behind this session.
    */
   app.post<{ Body: { order: { area: string; modules: string[] }[]; locale?: string } }>(

@@ -103,7 +103,7 @@ const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   // Music too: it's driven by the same presence sampler (the Spotify category is
   // toggled in the same allow-list), so it lands on the presence panel.
   music: "presence",
-  // Wrapped has its own schedule settings, so clicking it opens the Wrapped panel.
+  // Wrapped gets its own panel: its schedule has nothing to do with the sampler.
   wrapped: "wrapped",
   bio: "about",
   contact: "links",
@@ -184,6 +184,12 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     const [mid] = from.splice(fromIdx, 1);
     if (mid === undefined) return;
     to.splice(Math.max(0, Math.min(toIdx, to.length)), 0, mid);
+    // The canvas renders a server-resolved snapshot, not the live layout, so it has
+    // to be re-resolved after every rearrangement. Doing it here rather than at each
+    // call site is the point of having one primitive: the sidebar drag, the ↑/↓
+    // buttons and the area dropdown all previously mutated the layout without
+    // refreshing, so the preview silently went stale on three of the five paths.
+    if (tab.value === "editor") void refreshCanvas();
   }
 
   /** ↑/↓ — the keyboard path, so the admin clears the a11y floor. */
@@ -352,8 +358,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   }
 
   function canvasMove(area: string, oldIndex: number, newIndex: number) {
-    moveModuleTo(area, oldIndex, area, newIndex);
-    void refreshCanvas();
+    moveModuleTo(area, oldIndex, area, newIndex); // refreshes the canvas itself
   }
 
   /** A module clicked on the canvas: record the selection so the editor renders
@@ -384,7 +389,6 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     const from = findModule(mid);
     if (!from) return;
     moveModuleTo(from.listId, from.index, at.area, at.index);
-    void refreshCanvas();
   }
 
   const editorOpen = ref(false);

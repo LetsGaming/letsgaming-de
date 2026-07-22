@@ -1,5 +1,5 @@
 # Homelab deploy. One container for the Fastify server (API + CMS + sync worker)
-# with SQLite + uploaded media on a mounted volume; one for the Astro SSR site.
+# with SQLite + uploaded media on a mounted volume; one for the Nuxt SSR site.
 # Put TLS on your reverse proxy (Traefik/Caddy/nginx + Let's Encrypt).
 #
 # Traffic analytics are ingested in-process every 5 minutes from the log directory

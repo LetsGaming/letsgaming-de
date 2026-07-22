@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 import type { ResolvedModule } from "@lg/core";
 import { mdBold } from "../../lib/text";
 import ModuleSection from "../ui/ModuleSection.vue";
 import ModuleCard from "../ui/ModuleCard.vue";
 
+const { t } = useT();
 defineProps<{
   module: Extract<ResolvedModule, { kind: "now" }>;
 }>();
@@ -12,7 +14,7 @@ defineProps<{
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
     <ModuleCard>
-      <p v-if="!module.data.items.length" class="sub">Nothing written here lately.</p>
+      <p v-if="!module.data.items.length" class="sub">{{ t("emptyNow") }}</p>
       <div v-for="n in module.data.items" :key="n.id" class="nowrow">
         <span class="k">{{ n.key }}</span>
         <span class="v" v-html="mdBold(n.value)" />

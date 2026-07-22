@@ -2,20 +2,75 @@
 
 ## Unreleased
 
-### Wrapped — a periodic listening + playing retrospective
+### Wrapped — a retrospective that shows up on a schedule
 
-- **A new Wrapped module**, in the spirit of Spotify Wrapped, built from the activity
-  already recorded: top songs, artists, and games over a past stretch, with the hours,
-  distinct-track, distinct-artist, and distinct-game totals. Both music and games in
-  one card; hidden games are left out, the same as everywhere else.
-- **It appears on a recurring schedule you set** — "show every N months, for M weeks,
-  from date X" — and each window summarizes the cycle that just closed, so the numbers
-  are a fixed retrospective for the whole window rather than a rolling count. Off by
-  default; enable and configure it under Widgets → Wrapped.
-- **The schedule is enforced server-side.** Outside a window the module is absent from
-  the page entirely — not rendered and hidden — matching how every other visibility
-  toggle works here. It's placed in Life by default, so enabling it is enough to make
-  it show up (in season).
+- **A periodic look back at what you listened to and played**, in the spirit of
+  Spotify Wrapped, built from the plays and sessions already recorded — top songs,
+  artists and games over the stretch that just ended, plus the hours behind them.
+- **It isn't always there.** The CMS sets a recurring schedule — every N months, for
+  M weeks, from an anchor date — and outside that window the module is *absent from
+  the resolved view*, not hidden by the client. Same guarantee a draft area gets:
+  there's no markup to read in the page source. The schedule is a pure function
+  (`wrappedWindow`), so the view builder and the resolver can't disagree about
+  whether it's open, and it's testable without a clock.
+- **The numbers are a fixed retrospective, not a rolling count.** Each window sums up
+  the cycle that just closed, so they don't drift while the window is open. Month-end
+  anchors clamp (Jan 31 + 1 month is Feb 28, not Mar 3), and the period bound is
+  exclusive so two consecutive windows can't both claim the same play.
+- Hidden activities are left out of the games list, the same as everywhere else —
+  filtered before the list is trimmed, so a hidden game can't quietly eat a slot.
+
+### The site is in German as well as English
+
+- **The whole page reads in German, not just the parts stored in the CMS.** Content
+  was always `Localized` and translatable in the CMS, but the text the components
+  emit themselves — "show 3 more", "Nothing played this day", "last 14 days", the
+  footer — was hardcoded English, so switching language left half the page in the
+  wrong one. Those strings now come from a typed EN/DE catalog in `@lg/core`
+  (`ui-messages.ts`), looked up against the locale the server actually rendered in.
+  German plurals get their own forms, because "1 Song / 2 Songs" and
+  "1 Künstler:in / 2 Künstler:innen" don't come out of one string.
+- **A missing translation is a build error, not a stray English word.** The catalog's
+  key set is derived from the English one, so adding a string forces both languages
+  and a typo in either fails to compile.
+- Content with no German value still falls back to English, so translating headings
+  and bio text stays a CMS task rather than a deploy.
+
+### The web app runs on Nuxt 3
+
+- **`apps/web` moved from Astro + Vue islands to Nuxt 3** ([ADR-0015](./docs/adr/0015-nuxt-migration.md)).
+  Everything the old setup did well is intact: SSR resolves the `SiteView` per request
+  by reading the store directly (no HTTP hop), `/docs` and `/datenschutz` are still
+  prerendered, and the API stays a separate service. What's gone is the seam — one
+  link component instead of two, no `client:*` directives, and shared state on Nuxt's
+  own `useState`. `apps/server` and every package are untouched.
+
+### Under the hood
+
+- **The web app's code moved back under `apps/web/src/`.** The Nuxt migration had
+  flattened it to the app root (Nuxt's default); `srcDir` restores the tree the repo
+  had before, which keeps diffs against git history readable. `serverDir` is set
+  explicitly rather than left to a default that has moved between Nuxt majors — a
+  silently-unfound `server/` takes the API routes and the SSR loader with it.
+- **The docs were checked against the code and corrected.** A stale path, a module
+  list that predated Wrapped, and a "German is a content task later" framing that
+  stopped being true once the UI catalog shipped. `concepts/localization.md` is new;
+  so is coverage of the Wrapped schedule, its settings column, and the two new API
+  routes. Adding a module now documents the `PANEL_FOR_KIND` step people meet as a
+  compile error.
+- **`wrapped` was missing from `MODULE_KIND`** — the canonical kind list — even
+  though the resolver and the view union already knew about it. Found by reading the
+  docs against the source, which is the sort of thing that pass is for.
+
+- **Analytics stopped counting asset requests as page views.** The filter that drops
+  non-page paths still matched Astro's `/_astro/` bundle prefix; Nuxt serves from
+  `/_nuxt/`.
+- **Duplication removed where a fix would otherwise have to be made twice:** the music
+  and playtime day-clients were the same file with one word changed (now one
+  `fetchDay`), both day routes repeated the same timezone resolution (now
+  `day-request.ts`), and the CMS panels hand-wrote the same localized-input binding
+  fourteen times and the same reorder/delete/save row three times (now `LocalizedField`
+  and `ListItemActions`).
 
 ### /life — activity in the right timezone
 
@@ -36,6 +91,16 @@
 
 ### CMS
 
+- **Rearranging modules in the sidebar updates the preview.** The canvas renders a
+  server-resolved snapshot, and only the canvas's own drags asked for a fresh one — so
+  a sidebar drag, the ↑/↓ buttons and the area dropdown all changed the layout while
+  the preview kept showing the old one. The refresh now hangs off the single layout
+  primitive every one of those paths already went through.
+- **A one-click sign-in for local development.** Looking at the editor on localhost no
+  longer needs a GitHub OAuth round-trip. The route isn't registered when
+  `NODE_ENV=production`, answers loopback callers only, and the button is compiled out
+  of production builds — three independent guards, because an auth bypass should be
+  impossible to reach rather than merely hidden.
 - **Played has its own list-limit widget, separate from Listening.** The two modules
   no longer share a single limit — each carries its own "always show" / "show at most"
   under Widgets, so their lists can differ. The cap is enforced server-side (the client

@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 import type { ResolvedModule } from "@lg/core";
+import SmartLink from "../ui/SmartLink.vue";
 import ModuleSection from "../ui/ModuleSection.vue";
 
+const { t } = useT();
 defineProps<{
   module: Extract<ResolvedModule, { kind: "posts" }>;
 }>();
@@ -11,7 +14,7 @@ defineProps<{
   <ModuleSection :id="module.id" :heading="module.data.heading">
     <ul v-if="module.data.posts.length" class="posts">
       <li v-for="p in module.data.posts" :key="p.slug" class="post">
-        <a :href="`/md/${p.slug}`" class="post-t">{{ p.title }}</a>
+        <SmartLink :href="`/md/${p.slug}`" class="post-t">{{ p.title }}</SmartLink>
         <p v-if="p.excerpt" class="post-x">{{ p.excerpt }}</p>
         <p class="post-m">
           <time :datetime="p.at">{{ p.relative }} ago</time>
@@ -21,7 +24,7 @@ defineProps<{
         </p>
       </li>
     </ul>
-    <p v-else class="sub">Nothing published yet.</p>
+    <p v-else class="sub">{{ t("emptyPosts") }}</p>
   </ModuleSection>
 </template>
 

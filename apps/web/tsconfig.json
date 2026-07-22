@@ -1,7 +1,6 @@
 {
-  "extends": "astro/tsconfigs/strict",
+  "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
       "@lg/core": ["../../packages/core/src/index.ts"],
@@ -9,6 +8,6 @@
       "@lg/sources": ["../../packages/sources/src/index.ts"]
     }
   },
-  "include": [".astro/types.d.ts", "src/**/*", "tests/**/*"],
-  "exclude": ["dist"]
+  "include": [".nuxt/nuxt.d.ts", "**/*.ts", "**/*.vue", "tests/**/*"],
+  "exclude": ["node_modules", ".output", "dist"]
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
+import SmartLink from "../ui/SmartLink.vue";
 import { mdBold } from "../../lib/text";
 import { trackClick } from "../../lib/track";
 import AssetPicture from "../ui/AssetPicture.vue";
@@ -51,7 +52,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
       <span class="dot" /> {{ module.data.status.verb }} <b>{{ module.data.status.now }}</b>
     </div>
     <div class="links">
-      <a
+      <SmartLink
         v-for="l in module.data.links"
         :key="l.id"
         class="btn"
@@ -63,7 +64,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
           v-else-if="l.icon"
           v-html="icons[l.icon]"
         />{{ l.label }}
-      </a>
+      </SmartLink>
     </div>
   </section>
 </template>

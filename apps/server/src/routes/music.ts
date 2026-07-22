@@ -10,24 +10,21 @@
  * Spotify's, not the owner's own games.
  */
 
-import { capList, dayRowsFor, isValidTimeZone, sanitizeTimeZone, type MusicDayResponse } from "@lg/core";
+import { capList, dayRowsFor, type MusicDayResponse } from "@lg/core";
+import { isValidDay, resolveZone } from "./day-request.js";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function registerMusicRoutes(app: FastifyInstance, store: Store): void {
   app.get<{ Querystring: { day?: string; tz?: string }; Reply: MusicDayResponse | { error: string } }>(
     "/api/music/day",
     async (req, reply) => {
       const day = req.query.day ?? "";
-      if (!DAY_RE.test(day)) {
+      if (!isValidDay(day)) {
         return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
       }
-      // The zone the day is interpreted in: the caller's if valid, else the owner's
-      // (the `TZ` env var).
-      const tz = req.query.tz;
-      const zone = tz && isValidTimeZone(tz) ? tz : sanitizeTimeZone(process.env.TZ);
+      const zone = resolveZone(req.query.tz);
       // Aggregate the raw plays into both views, then cap each to the module's
       // maxCount — so the client is sent only the top-N songs and top-N artists it
       // can show, never the whole day. The distinct counts and total minutes are

@@ -247,4 +247,8 @@ export const cms = {
       credentials: "include",
     }).then(handle<OkResponse>),
   loginUrl: () => `${apiBase}/auth/github/login`,
+  /** Dev-only shortcut. The server only registers this route outside production
+   *  and only answers loopback callers; the button that uses it is compiled out
+   *  of production builds. */
+  devLoginUrl: () => `${apiBase}/auth/dev/login`,
 };

@@ -196,6 +196,8 @@ rolled-up daily stats.
 
 | Endpoint | Purpose |
 |---|---|
+| `PUT /api/cms/wrapped` | Store the Wrapped schedule (`enabled`, `everyMonths`, `forWeeks`, `fromDate`, `topCount`). Sanitized and clamped server-side; a partial body is filled from defaults. |
+| `GET /auth/dev/login` | **Development only.** Mints a CMS session cookie without the OAuth round-trip. Not registered when `NODE_ENV=production`, and serves loopback callers only. |
 | `GET /auth/github/login` | Redirect to GitHub's consent screen. |
 | `GET /auth/github/callback?code=&state=` | Verify the login is `CMS_ALLOWED_LOGIN`, set a signed http-only session cookie, redirect to `WEB_ORIGIN`. A different GitHub user gets `403`. |
 | `POST /auth/logout` | Clear the cookie. |

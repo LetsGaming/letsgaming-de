@@ -3,7 +3,7 @@
 Three kinds of data live in one SQLite store, kept strictly separate: CMS-owned
 content (owner edits), source-owned data (synced from adapters), and analytics
 aggregates. Everything human-authored is `Localized`, a `{ "en": "...", "de"?:
-"..." }` JSON object, so German is a content task later rather than a schema
+"..." }` JSON object, so translating content is a CMS task rather than a schema
 change.
 
 The schema is defined by versioned migrations in `packages/db/src/migrations/` (baseline: `0001_init.sql`); that directory is the source of truth.
@@ -144,3 +144,16 @@ pre-computed, asset references turned into renderable image views. Its shape is
 guestbook, presence, gallery, bio, contact). The frontend walks `nav`, looks up
 each leaf's module ids in `modules`, and switches on `kind`. It never learns
 where a module's data came from.
+
+## Wrapped settings
+
+`site_content.wrapped` (migration `0010`) is one nullable JSON column on the
+singleton content row — the same shape as the music and playtime settings, not its
+own table. It holds `{ enabled, everyMonths, forWeeks, fromDate, topCount }`.
+
+NULL reads back as the default (disabled), so the existing row and a fresh install
+both work without a data migration.
+
+The retrospective itself is not stored. It's aggregated on read over the closed
+period the schedule names (`packages/db/src/wrapped-repo.ts`), so the numbers can't
+drift from the plays and sessions they summarize.

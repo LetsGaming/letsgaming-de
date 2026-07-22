@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
+
+const { t } = useT();
 /**
  * The row under a capped list: a "show more / less" toggle when there are rows to
  * reveal, and a muted "and N more" when the server-side cap hides rows the viewer
@@ -21,9 +24,9 @@ const emit = defineEmits<{ toggle: [] }>();
 <template>
   <p class="list-footer">
     <button v-if="moreCount > 0" class="list-footer__more" @click="emit('toggle')">
-      {{ expanded ? "show less" : `show ${moreCount} more` }}
+      {{ expanded ? t("showLess") : t("showMore", { n: moreCount }) }}
     </button>
-    <span v-if="overflow && overflow > 0" class="list-footer__cap">and {{ overflow }} more</span>
+    <span v-if="overflow && overflow > 0" class="list-footer__cap">{{ t("andMore", { n: overflow }) }}</span>
   </p>
 </template>
 

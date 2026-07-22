@@ -6,7 +6,6 @@ import type {
   MusicSettings,
   NowItem,
   PlaytimeSettings,
-  WrappedSettings,
   PresenceSettings,
   Project,
   SiteContent,
@@ -15,14 +14,15 @@ import type {
 } from "@lg/core";
 import type { GalleryItem } from "@lg/core";
 import {
+  defaultWrappedSettings,
+  sanitizeWrappedSettings,
+  type WrappedSettings,
   defaultPresenceSettings,
   defaultMusicSettings,
   defaultPlaytimeSettings,
-  defaultWrappedSettings,
   sanitizeHidden,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
-  sanitizeWrappedSettings,
   sanitizePresenceSettings,
   sanitizePresenceShow,
   sanitizeRetentionDays,
@@ -132,20 +132,22 @@ export function contentRepo(db: DB) {
     return sanitizeMusicSettings(json<unknown>(row.music));
   };
 
-  const readPlaytime = (): PlaytimeSettings => {
-    const row = db
-      .prepare("SELECT playtime FROM site_content WHERE id = ?")
-      .get(SINGLETON_ID) as { playtime: string | null } | undefined;
-    if (!row || row.playtime === null) return defaultPlaytimeSettings();
-    return sanitizePlaytimeSettings(json<unknown>(row.playtime));
-  };
-
+  /** Wrapped schedule + list size, one JSON column on the singleton row; a NULL
+   *  — a fresh install or the pre-0010 row — reads back as the default (disabled). */
   const readWrapped = (): WrappedSettings => {
     const row = db
       .prepare("SELECT wrapped FROM site_content WHERE id = ?")
       .get(SINGLETON_ID) as { wrapped: string | null } | undefined;
     if (!row || row.wrapped === null) return defaultWrappedSettings();
     return sanitizeWrappedSettings(json<unknown>(row.wrapped));
+  };
+
+  const readPlaytime = (): PlaytimeSettings => {
+    const row = db
+      .prepare("SELECT playtime FROM site_content WHERE id = ?")
+      .get(SINGLETON_ID) as { playtime: string | null } | undefined;
+    if (!row || row.playtime === null) return defaultPlaytimeSettings();
+    return sanitizePlaytimeSettings(json<unknown>(row.playtime));
   };
 
   /**
@@ -216,7 +218,7 @@ export function contentRepo(db: DB) {
           presence: readPresence(),
           music: readMusic(),
           playtime: readPlaytime(),
-          wrapped: readWrapped(),
+            wrapped: readWrapped(),
           gallery: readGallery(),
         }),
         SINGLETON_ID,
@@ -239,15 +241,15 @@ export function contentRepo(db: DB) {
     },
 
     /** Playtime list-display config (CMS-owned). */
-    getPlaytime: readPlaytime,
-    setPlaytime(settings: PlaytimeSettings) {
-      setScalar("playtime", sanitizePlaytimeSettings(settings));
-    },
-
-    /** Wrapped module config (CMS-owned) — the recurring retrospective's schedule. */
+    /** Wrapped schedule config (CMS-owned). */
     getWrapped: readWrapped,
     setWrapped(settings: WrappedSettings) {
       setScalar("wrapped", sanitizeWrappedSettings(settings));
+    },
+
+    getPlaytime: readPlaytime,
+    setPlaytime(settings: PlaytimeSettings) {
+      setScalar("playtime", sanitizePlaytimeSettings(settings));
     },
 
     /** Presence category allow-list (CMS-owned). */

@@ -4,7 +4,8 @@ import { INLINE_SCRIPT_KEYS } from "@lg/core";
 import { describe, expect, it } from "vitest";
 
 /**
- * Layout.astro's anti-FOUC script runs before hydration and cannot import, so it
+ * The anti-FOUC script (nuxt.config's `app.head`) runs before hydration and
+ * cannot import, so it
  * inlines the storage key as a literal while the store uses STORAGE_KEY. Two
  * spellings of one key, in two files, with nothing linking them — rename one and
  * the site silently forgets the visitor's theme on every load, with nothing
@@ -20,12 +21,12 @@ import { describe, expect, it } from "vitest";
  */
 describe("storage keys", () => {
   it("are read by the inline script exactly as the store writes them", () => {
-    const layout = readFileSync(resolve("src/layouts/Layout.astro"), "utf8");
-    const read = [...layout.matchAll(/localStorage\.getItem\(["']([^"']+)["']\)/g)].map(
+    const config = readFileSync(resolve("nuxt.config.ts"), "utf8");
+    const read = [...config.matchAll(/localStorage\.getItem\(["']([^"']+)["']\)/g)].map(
       (m) => m[1] as string,
     );
     for (const key of INLINE_SCRIPT_KEYS) {
-      expect(read, `Layout.astro never reads localStorage key "${key}"`).toContain(key);
+      expect(read, `the inline theme script never reads localStorage key "${key}"`).toContain(key);
     }
   });
 });

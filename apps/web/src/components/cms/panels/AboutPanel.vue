@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LocalizedField from "../LocalizedField.vue";
 import { assetRef } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
@@ -8,12 +9,8 @@ const {
 	bio,
 	bioImageRef,
 	galleryThumb,
-	locale,
-	lv,
 	openPicker,
 	saveBio,
-	setLv,
-	tab,
 } = useCmsContext();
 </script>
 
@@ -26,7 +23,7 @@ const {
                 <img :src="galleryThumb(bioImageRef(p))" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
                 <span class="muted">image</span>
               </div>
-              <textarea v-else :value="lv(p, locale)" @input="setLv(p, locale, ($event.target as HTMLTextAreaElement).value)" rows="2" />
+              <LocalizedField v-else textarea :rows="2" :field="p" />
               <button class="link danger" @click="bio.splice(i, 1)">remove</button>
             </div>
             <div class="actions">

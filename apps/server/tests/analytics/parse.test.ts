@@ -5,7 +5,7 @@ import { lineToHits, parseUserAgent } from "../../src/analytics/parse.js";
 const CHROME =
   '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /work?tab=1 HTTP/1.1" 200 512 "https://news.ycombinator.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"';
 const ASSET =
-  '203.0.113.7 - - [10/Oct/2026:13:55:37 +0000] "GET /_astro/app.css HTTP/1.1" 200 2048 "-" "Mozilla/5.0"';
+  '203.0.113.7 - - [10/Oct/2026:13:55:37 +0000] "GET /_nuxt/app.css HTTP/1.1" 200 2048 "-" "Mozilla/5.0"';
 const IPHONE =
   '198.51.100.2 - - [11/Oct/2026:09:00:00 +0000] "GET / HTTP/1.1" 200 900 "-" "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605 Mobile Safari"';
 

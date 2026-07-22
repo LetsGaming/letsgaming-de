@@ -52,7 +52,7 @@ bounded call rather than a slide toward Typo3 or WordPress. The reasoning is in
 |---|---|---|
 | Language | TypeScript everywhere | one language across the whole stack |
 | Backend | Fastify | schema-first validation and a plugin model that fit the modular design ([ADR-0002](./adr/0002-fastify-backend.md)) |
-| Frontend | Astro shell + Vue islands, SSR | content-driven with near-zero JS, but live on every request ([ADR-0003](./adr/0003-astro-vue-ssr.md)) |
+| Frontend | Nuxt 3, SSR | content-driven with near-zero JS, but live on every request ([ADR-0003](./adr/0003-astro-vue-ssr.md)) |
 | Store | SQLite via `node:sqlite` | one file to back up, no native build step ([ADR-0009](./adr/0009-sqlite-node-sqlite.md)) |
 | Repo | pnpm monorepo | shared contracts edited in one place ([ADR-0001](./adr/0001-monorepo-typescript-pnpm.md)) |
 | Sync | in-process scheduled worker | polls each source on a cron; one container runs it beside the API |

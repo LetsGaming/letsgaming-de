@@ -75,7 +75,7 @@ function logHour(stamp: string): string | null {
  * already here; the preview is the site, framed by the admin, and `/admin` is the
  * admin itself.
  */
-const NOT_THE_SITE = /^\/(admin|_astro|_image|media|api|favicon|robots|sitemap)(\/|$)/;
+const NOT_THE_SITE = /^\/(admin|_nuxt|_image|media|api|favicon|robots|sitemap)(\/|$)/;
 const ASSET_EXT = /\.(css|js|mjs|map|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|xml|txt|json)$/i;
 
 function isPageView(method: string, status: number, path: string): boolean {

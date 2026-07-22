@@ -13,13 +13,23 @@
  * its host is on a fixed allow-list (and only over https, with redirects
  * refused) — a crafted `u` can never reach an internal address.
  *
- * Second job: a fallback. Some games have no art from the API (e.g. Valorant).
- * When there's no usable image, `game=<name>` yields a labelled tile — a
- * per-game override if we ship one, otherwise a generated initials tile — so the
- * widget always has something tidy to show.
+ * Second job: fallbacks. When the handed-in image is missing or blocked,
+ * `game=<name>` is resolved the same way the top-games list resolves cover art —
+ * by name, from the RAWG metadata cache — so a live game with no Discord art still
+ * shows its real cover. Only when that too comes up empty does it fall back to a
+ * labelled tile: a per-game override if we ship one, otherwise a generated
+ * initials tile, so the widget always has something tidy to show.
+ *
+ * Third job: size. RAWG cover art arrives at ~1920×1080 for what renders as a
+ * small thumbnail, so rawg.io images are downscaled to a 640px WebP on the way
+ * through. Other hosts (Discord avatars, Spotify covers) are already small and
+ * pass straight through.
  */
 
 import type { FastifyInstance, FastifyReply } from "fastify";
+import sharp from "sharp";
+import { gameMetaKey } from "@lg/core";
+import type { Store } from "@lg/db";
 import { notFound } from "../errors.js";
 
 /** Exact hosts we will fetch from — nothing else. Keeps this from being an open proxy. */
@@ -32,6 +42,9 @@ const ALLOWED_HOSTS = new Set([
 
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 5 * 1024 * 1024; // presence art is small; refuse anything large
+/** RAWG cover art is served at ~1920×1080 but shown as a small thumbnail; cap its
+ *  longest edge at this many pixels on the way through. */
+const COVER_MAX_PX = 640;
 const CACHE_MAX = 96;
 const CACHE_TTL_MS = 10 * 60_000;
 
@@ -88,6 +101,28 @@ async function fetchUpstream(raw: string): Promise<Bytes | null> {
 		if (declared > MAX_BYTES) return null;
 		const buf = Buffer.from(await res.arrayBuffer());
 		if (buf.byteLength > MAX_BYTES) return null;
+
+		// RAWG cover art comes at ~1920×1080 for what renders as a thumbnail —
+		// downscale it to a small WebP here, so every consumer (the top-games shelf
+		// and the live widget's cover fallback) gets the light version. Other hosts
+		// are already small and pass through; if the bytes can't be decoded, keep
+		// the original rather than failing the request.
+		if (url.hostname === "media.rawg.io") {
+			try {
+				const body = await sharp(buf)
+					.resize({
+						width: COVER_MAX_PX,
+						height: COVER_MAX_PX,
+						fit: "inside",
+						withoutEnlargement: true,
+					})
+					.webp({ quality: 82 })
+					.toBuffer();
+				return { at: Date.now(), contentType: "image/webp", body };
+			} catch {
+				// not a decodable raster (or sharp failed) — fall through to the original
+			}
+		}
 		return { at: Date.now(), contentType, body: buf };
 	} catch {
 		return null; // timeout, redirect, network, abort — caller falls back
@@ -157,24 +192,49 @@ function sendTile(reply: FastifyReply, svg: string): FastifyReply {
 	return reply.send(svg);
 }
 
-export function registerPresenceMediaRoutes(app: FastifyInstance): void {
+export function registerPresenceMediaRoutes(
+	app: FastifyInstance,
+	store: Store,
+): void {
+	/** Serve an allow-listed image from cache or upstream; null when unavailable. */
+	async function serveImage(
+		reply: FastifyReply,
+		imageUrl: string,
+	): Promise<FastifyReply | null> {
+		const cached = cacheGet(imageUrl);
+		if (cached) return sendBytes(reply, cached, 604_800);
+		const fresh = await fetchUpstream(imageUrl);
+		if (fresh) {
+			cacheSet(imageUrl, fresh);
+			return sendBytes(reply, fresh, 604_800);
+		}
+		return null;
+	}
+
 	app.get<{ Querystring: { u?: string; game?: string } }>(
 		"/api/presence/media",
 		async (req, reply) => {
 			const { u, game } = req.query;
 
+			// 1) The image the caller handed us (Discord activity art, an album cover).
 			if (u) {
-				const cached = cacheGet(u);
-				if (cached) return sendBytes(reply, cached, 604_800);
-				const fresh = await fetchUpstream(u);
-				if (fresh) {
-					cacheSet(u, fresh);
-					return sendBytes(reply, fresh, 604_800);
-				}
-				// fell through: upstream missing/blocked — try the game fallback below
+				const served = await serveImage(reply, u);
+				if (served) return served;
+				// fell through: upstream missing/blocked — try the fallbacks below
 			}
 
 			if (game) {
+				// 2) No usable image, but we know the game: resolve its cover the same way
+				//    the top-games list does — by name, from the RAWG metadata cache — so a
+				//    live game with no Discord art still shows its real cover.
+				const coverUrl = store.gameMeta
+					.getAll()
+					.get(gameMetaKey(game))?.coverUrl;
+				if (coverUrl) {
+					const served = await serveImage(reply, coverUrl);
+					if (served) return served;
+				}
+				// 3) Last resort: a per-game override if we ship one, else an initials tile.
 				return sendTile(reply, GAME_ART[slug(game)] ?? gameTile(game));
 			}
 

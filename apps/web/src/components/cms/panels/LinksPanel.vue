@@ -1,9 +1,14 @@
 <script setup lang="ts">
+import ListItemActions from "../ListItemActions.vue";
+import LocalizedField from "../LocalizedField.vue";
 import { assetRef } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. State and handlers come from the shared CMS context.
-const { linksList, locale, lv, openPicker, setLv, tab } = useCmsContext();
+const {
+	linksList,
+	openPicker,
+} = useCmsContext();
 </script>
 
 <template>
@@ -17,15 +22,12 @@ const { linksList, locale, lv, openPicker, setLv, tab } = useCmsContext();
             <button class="link" type="button" @click="openPicker((id) => { l.icon = assetRef(id); linksList.save(l); }, 'svg')">pick SVG</button>
           </span>
         </label>
-        <label>Label<input :value="lv(l.label, locale)" @input="setLv(l.label, locale, ($event.target as HTMLInputElement).value)" /></label>
+        <label>Label<LocalizedField :field="l.label" /></label>
         <label>Href<input v-model="l.href" /></label>
       </div>
       <label class="check"><input type="checkbox" v-model="l.primary" /> primary</label>
       <div class="actions">
-        <button class="link" title="Move up" :disabled="i === 0" @click="linksList.moveTo(i, i - 1)">↑</button>
-        <button class="link" title="Move down" :disabled="i === linksList.items.value.length - 1" @click="linksList.moveTo(i, i + 1)">↓</button>
-        <button class="link danger" @click="linksList.remove(i)">delete</button>
-        <button class="btn" @click="linksList.save(l)">Save</button>
+        <ListItemActions :list="linksList" :index="i" :item="l" />
       </div>
     </div>
     <button class="btn ghost" @click="linksList.add()">+ Add link</button>

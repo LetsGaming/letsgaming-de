@@ -9,7 +9,7 @@ deleted.
 |---|---|---|
 | [0001](./0001-monorepo-typescript-pnpm.md) | Monorepo, TypeScript everywhere, pnpm | Accepted |
 | [0002](./0002-fastify-backend.md) | Fastify for the backend | Accepted |
-| [0003](./0003-astro-vue-ssr.md) | Astro + Vue islands, SSR for self-updating | Accepted |
+| [0003](./0003-astro-vue-ssr.md) | Astro + Vue islands, SSR for self-updating | Superseded by 0015 |
 | [0004](./0004-sqlite-better-sqlite3.md) | SQLite via better-sqlite3 | Superseded by 0009 |
 | [0005](./0005-source-contract.md) | The Source contract (normalized-only seam) | Accepted |
 | [0006](./0006-recursive-nav-lint.md) | Recursive nav tree + build-time lint | Accepted |
@@ -21,6 +21,7 @@ deleted.
 | [0012](./0012-engagement-analytics.md) | Cookieless engagement analytics | Accepted |
 | [0013](./0013-in-process-log-ingest.md) | In-process access-log ingest | Accepted |
 | [0014](./0014-guestbook-presence.md) | Guestbook and presence widget | Accepted |
+| [0015](./0015-nuxt-migration.md) | Nuxt 3 for the web app | Accepted (supersedes 0003) |
 
 The decisions from 0009 onward record where the project grew past its original
 locked spec: a second and third data source, the asset library, the engagement

@@ -45,6 +45,17 @@
   font-size: 12px;
   color: var(--muted);
 }
+/* The local-development sign-in shortcut. Deliberately understated and dashed so
+   it never reads as the real way in — and it only exists in a dev build. */
+.cms .gate .dev-login:not(.lgedit-page *) {
+  background: none;
+  border: 1px dashed var(--line-2);
+  color: var(--muted);
+}
+.cms .gate .dev-login:not(.lgedit-page *):hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
 .cms .bar {
   display: flex;
   align-items: center;

@@ -41,7 +41,14 @@ switch-like spots and nothing on the request path beyond that.
 3. Handle the kind in `resolveSiteView()` (`packages/core/src/resolve.ts`): turn
    stored content and source data into the resolved shape (localize strings,
    pre-compute anything the frontend shouldn't).
-4. Add a branch for the kind in `apps/web/src/components/Module.vue`.
+4. Add the kind to the `kind → component` map in
+   `apps/web/src/components/shell/Module.vue`, and write the section component
+   in `apps/web/src/components/sections/`.
+5. Add the kind to `PANEL_FOR_KIND` in
+   `apps/web/src/composables/useLayoutEditor.ts` — it's a
+   `Record<ModuleKind, …>` on purpose, so a new kind won't compile until it says
+   which CMS panel clicking it opens (`null` is a valid answer for a synced
+   module nothing edits).
 5. Place its id in a leaf's `modules`, either in the seed IA
    (`packages/core/src/ia.ts`) or through the CMS Layout screen. The nav doesn't
    change; a section grows inside an existing area.

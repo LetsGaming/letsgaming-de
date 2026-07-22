@@ -1,7 +1,7 @@
 import type { SiteView } from "@lg/core";
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
-import { $theme } from "../../src/stores/site";
+import { useTheme } from "../../src/composables/useSiteState";
 import SiteChrome from "../../src/components/shell/SiteChrome.vue";
 import SitePanels from "../../src/components/shell/SitePanels.vue";
 
@@ -126,7 +126,7 @@ const site = {
 } as unknown as SiteView;
 
 // Areas are routes, so the harness takes the area the server resolved — exactly
-// as AreaPage.astro passes it. There's no shared tab atom to reset any more: the
+// as AreaPage.vue passes it. There's no shared tab atom to reset any more: the
 // URL is the state, and both islands are told what it is.
 const Shell = {
 	components: { SiteChrome, SitePanels },
@@ -135,7 +135,9 @@ const Shell = {
 };
 
 beforeEach(() => {
-	$theme.set("dark");
+	// `useState` is keyed per Nuxt app instance, which the nuxt test environment
+	recreates per test file — so this just sets the starting theme.
+	useTheme().value = "dark";
 });
 
 describe("public site islands (SiteChrome + SitePanels)", () => {

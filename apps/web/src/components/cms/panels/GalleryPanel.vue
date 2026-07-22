@@ -20,7 +20,6 @@ const {
 	openPicker,
 	removeGalleryItem,
 	saveGalleryItem,
-	tab,
 } = useCmsContext();
 
 // Its own group: an image is not a module, and a gallery is not an area. Sharing

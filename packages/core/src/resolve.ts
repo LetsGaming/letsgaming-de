@@ -16,6 +16,7 @@ import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
 import { defaultMusicSettings } from "./music.js";
+import { defaultWrappedSettings, wrappedWindow } from "./wrapped.js";
 import { defaultPlaytimeSettings } from "./playtime-settings.js";
 import { capList } from "./list-settings.js";
 import { AREA } from "./ia.js";
@@ -88,6 +89,16 @@ export interface ResolveInput {
     timeZone: string;
     since?: string;
   };
+  /** Wrapped's aggregate over the current window's period, pre-computed by the
+   *  server so the resolver stays pure. Absent means the module still shows when
+   *  the schedule says so, with empty lists. */
+  wrappedHistory?: {
+    totalMinutesListened: number;
+    totalMinutesPlayed: number;
+    topSongs: WrappedRankView[];
+    topArtists: WrappedRankView[];
+    topGames: WrappedRankView[];
+  };
   /** The music module's data: top songs/artists/albums plus a per-day listening
    *  strip, over the window. Pre-computed by the server from `music_plays` (the
    *  resolver stays pure), same as `playHistory`. Absent → an empty module. */
@@ -103,31 +114,6 @@ export interface ResolveInput {
   };
   /** Library assets referenced by content, keyed by id (built by the read route). */
   assets?: Map<string, ResolvableAsset>;
-  /**
-   * The Wrapped module's pre-aggregated data for the period the schedule just
-   * closed — present only when a display window is open (the view builder runs the
-   * schedule and aggregates only then). Absent ⇒ the resolver omits the module, so
-   * the recurring visibility is enforced server-side. Raw entries; the resolver
-   * shapes them like the music/playtime cases.
-   */
-  wrapped?: {
-    periodStart: string;
-    periodEnd: string;
-    topCount: number;
-    music: {
-      totalMinutes: number;
-      trackCount: number;
-      artistCount: number;
-      topSongs: MusicRankEntry[];
-      topArtists: MusicRankEntry[];
-    };
-    games: {
-      /** Top games for the period (raw observed rows; resolver maps + attaches art). */
-      observed: PlaytimeEntry[];
-      totalMinutes: number;
-      gameCount: number;
-    };
-  };
   /** Injectable clock for deterministic relative times (tests). */
   now?: Date;
 }
@@ -184,17 +170,6 @@ const FEED = {
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
 } as const;
-
-/** Map a raw music rank entry to its view — shared by the music and wrapped cases. */
-function toMusicRankView(e: MusicRankEntry): MusicRankView {
-  return {
-    name: e.name,
-    minutes: e.minutes,
-    plays: e.plays,
-    ...(e.by ? { by: e.by } : {}),
-    ...(e.artUrl ? { artUrl: e.artUrl } : {}),
-  };
-}
 
 export function resolveSiteView(input: ResolveInput): SiteView {
   const locale = input.locale ?? DEFAULT_LOCALE;
@@ -357,6 +332,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const activeSources = (): string[] =>
     (Object.keys(source) as SourceId[]).filter((id) => source[id]).map((id) => SOURCE_LABEL[id]);
 
+  /** Resolve one module, or `null` when it shouldn't appear at all (currently
+   *  only Wrapped, which is visible on a schedule). A null is dropped from the
+   *  view entirely, so an out-of-window module is absent rather than hidden. */
   function resolveModule(descriptor: ModuleDescriptor): ResolvedModule | null {
     const heading = descriptor.heading ? L(descriptor.heading) : "";
     const note = descriptor.note ? L(descriptor.note) : undefined;
@@ -616,6 +594,34 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           },
         };
       }
+      case "wrapped": {
+        // The schedule *is* the visibility rule, enforced by omission: outside a
+        // window this returns null and the module never reaches the client — no
+        // hidden state to leak, the same guarantee a draft area gets. `now` is the
+        // resolver's injected clock, so this stays pure and testable.
+        const wrappedSettings = content.wrapped ?? defaultWrappedSettings();
+        const win = wrappedWindow(wrappedSettings, now);
+        if (!win) return null;
+        const h = input.wrappedHistory;
+        const top = (rows: WrappedRankView[] | undefined) =>
+          (rows ?? []).slice(0, wrappedSettings.topCount);
+        return {
+          id: descriptor.id,
+          kind: "wrapped",
+          data: {
+            heading,
+            note,
+            periodStart: win.periodStart,
+            periodEnd: win.periodEnd,
+            windowEnd: win.windowEnd,
+            totalMinutesListened: h?.totalMinutesListened ?? 0,
+            totalMinutesPlayed: h?.totalMinutesPlayed ?? 0,
+            topSongs: top(h?.topSongs),
+            topArtists: top(h?.topArtists),
+            topGames: top(h?.topGames),
+          },
+        };
+      }
       case "music": {
         // Same shape as playtime: pre-computed by the server, shaped here. Absent
         // history is an empty module — a fresh install has recorded no plays yet.
@@ -626,6 +632,13 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // maxCount server-side (the query LIMIT), so this only carries the numbers
         // the frontend needs to collapse/expand — never uncapped data.
         const musicSettings = content.music ?? defaultMusicSettings();
+        const rank = (e: MusicRankEntry): MusicRankView => ({
+          name: e.name,
+          minutes: e.minutes,
+          plays: e.plays,
+          ...(e.by ? { by: e.by } : {}),
+          ...(e.artUrl ? { artUrl: e.artUrl } : {}),
+        });
         return {
           id: descriptor.id,
           kind: "music",
@@ -635,44 +648,14 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             totalHours: Math.round(totalMinutes / 60),
             trackCount: m?.trackCount ?? 0,
             artistCount: m?.artistCount ?? 0,
-            topSongs: (m?.topSongs ?? []).map(toMusicRankView),
-            topArtists: (m?.topArtists ?? []).map(toMusicRankView),
-            topAlbums: (m?.topAlbums ?? []).map(toMusicRankView),
+            topSongs: (m?.topSongs ?? []).map(rank),
+            topArtists: (m?.topArtists ?? []).map(rank),
+            topAlbums: (m?.topAlbums ?? []).map(rank),
             ledger,
             timeZone: m?.timeZone ?? DEFAULT_TIMEZONE,
             ...(m?.since ? { since: m.since } : {}),
             initialCount: musicSettings.initialCount,
             maxCount: musicSettings.maxCount,
-          },
-        };
-      }
-      case "wrapped": {
-        // Present only inside a schedule window — the view builder aggregates the
-        // period's data only when one is open. Absent ⇒ omit the module entirely,
-        // so the recurring visibility is enforced here, not hidden by the client.
-        const w = input.wrapped;
-        if (!w) return null;
-        return {
-          id: descriptor.id,
-          kind: "wrapped",
-          data: {
-            heading,
-            note,
-            periodStart: w.periodStart,
-            periodEnd: w.periodEnd,
-            topCount: w.topCount,
-            music: {
-              totalHours: Math.round(w.music.totalMinutes / 60),
-              trackCount: w.music.trackCount,
-              artistCount: w.music.artistCount,
-              topSongs: w.music.topSongs.map(toMusicRankView),
-              topArtists: w.music.topArtists.map(toMusicRankView),
-            },
-            games: {
-              totalHours: Math.round(w.games.totalMinutes / 60),
-              gameCount: w.games.gameCount,
-              top: playtimeRows(w.games.observed, input.gameMeta),
-            },
           },
         };
       }
@@ -714,8 +697,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   }
 
   // Resolve exactly the modules the nav actually places (lint guarantees they exist).
-  // A module may resolve to null (e.g. Wrapped outside its schedule window) — then
-  // it's simply absent from the view, never rendered.
   const modules: Record<string, ResolvedModule> = {};
   for (const id of collectModuleIds(input.nav)) {
     const descriptor = descriptorById.get(id);

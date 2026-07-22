@@ -15,14 +15,14 @@ not a company.
 
 ## Stack
 
-TypeScript everywhere, pnpm monorepo. Astro + Vue islands (SSR web).
+TypeScript everywhere, pnpm monorepo. Nuxt 3 (SSR web).
 Fastify (read API, CMS API, OAuth, sync worker). SQLite via `node:sqlite`.
 Three data sources (GitHub, Steam, Wakapi) behind one contract. Docker on a
 homelab. Dark and light themes, tactile design, self-hosted fonts.
 
 ```
 apps/
-  web/       Astro + Vue islands, public site (SSR) + the /admin CMS
+  web/       Nuxt 3, public site (SSR) + the /admin CMS
   server/    Fastify, read API + CMS API + OAuth + media + analytics + sync worker
 packages/
   core/      contracts + resolver + nav lint (no runtime deps)
@@ -57,7 +57,7 @@ token for real data. The CMS lives at `/admin`.
 | `pnpm sync` | Run every source once (fetch, normalize, persist) and exit |
 | `pnpm analytics <access.log> [host]` | Ingest new log lines into anonymous aggregates |
 | `pnpm lint:nav` | Fail if the nav breaks an information-architecture gate |
-| `pnpm typecheck` | Typecheck every package (incl. `astro check`) |
+| `pnpm typecheck` | Typecheck every package (incl. `vue-tsc`) |
 | `pnpm test` | Unit and integration tests |
 | `pnpm build` | Nav lint, then build packages, server, web |
 

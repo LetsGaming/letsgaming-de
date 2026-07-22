@@ -9,7 +9,8 @@
  * array annotated with a union checks that each value is valid, never that the
  * list is whole.
  *
- * The inline script in Layout.astro can't import this — it runs before hydration
+ * The inline theme script (nuxt.config `app.head`) can't import this — it runs
+ * before hydration
  * — so it spells the values out. That's what `tests/storage-keys.test.ts` covers
  * for the key; the values are two words and the script fails safe to dark.
  */

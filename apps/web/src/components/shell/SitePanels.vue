@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NavView, SiteView } from "@lg/core";
 import { computed, nextTick, onMounted } from "vue";
-import { initSite } from "../../stores/site";
+import { useSiteState } from "../../composables/useSiteState";
 import Module from "./Module.vue";
 
 const props = defineProps<{ site: SiteView; area: string }>();
@@ -25,7 +25,7 @@ const modules = computed(() =>
  */
 
 onMounted(() => {
-  initSite(props.site.nav);
+  useSiteState().initSite(props.site.nav);
   // Deep link within this area. Cross-area hashes don't need handling any more:
   // the area is the URL, so the server already sent the right page.
   const target = decodeURIComponent(window.location.hash.replace(/^#/, ""));

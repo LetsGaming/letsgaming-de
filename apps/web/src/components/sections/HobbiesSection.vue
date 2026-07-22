@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 import type { ResolvedModule } from "@lg/core";
 import ModuleSection from "../ui/ModuleSection.vue";
 import { icons } from "../../lib/icons";
+
+const { t } = useT();
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "hobbies" }>;
@@ -11,7 +14,7 @@ defineProps<{
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
     <div class="hobbies">
-      <p v-if="!module.data.hobbies.length" class="sub">Nothing here yet.</p>
+      <p v-if="!module.data.hobbies.length" class="sub">{{ t("nothingHere") }}</p>
       <div v-for="h in module.data.hobbies" :key="h.id" class="tile" :class="'t-' + h.tone">
         <div>
           <div class="ic" v-html="h.icon ? icons[h.icon] : ''" />

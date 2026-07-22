@@ -19,7 +19,6 @@ const {
 	rangeHours,
 	refreshAnalytics,
 	setRange,
-	tab,
 } = useCmsContext();
 
 /**

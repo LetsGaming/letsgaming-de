@@ -34,10 +34,6 @@ export function musicRepo(db: DatabaseSync) {
   /** The "duration" expression shared by every rollup: seconds between the
    *  track's start and the last time it was seen. */
   const DURATION = "strftime('%s', last_seen_at) - strftime('%s', started_at)";
-  // Default upper bound for the period-scoped reads (Wrapped): ISO strings sort
-  // chronologically, so `< FAR_FUTURE` is always true — callers that pass no
-  // `untilIso` get the original "since a cutoff, up to now" behaviour unchanged.
-  const FAR_FUTURE = "9999-12-31T23:59:59.999Z";
 
   return {
     /**
@@ -75,7 +71,7 @@ export function musicRepo(db: DatabaseSync) {
      * from the most recent play of the track, so a re-titled release shows its
      * latest name.
      */
-    topSongs(sinceIso: string, limit: number, untilIso: string = FAR_FUTURE): MusicRankEntry[] {
+    topSongs(sinceIso: string, limit: number): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -86,7 +82,7 @@ export function musicRepo(db: DatabaseSync) {
             SUM(${DURATION}) AS seconds,
             COUNT(*) AS plays
           FROM music_plays
-          WHERE last_seen_at >= ? AND last_seen_at < ?
+          WHERE last_seen_at >= ?
           GROUP BY track_id
           ORDER BY seconds DESC, song ASC
           LIMIT ?
@@ -99,7 +95,6 @@ export function musicRepo(db: DatabaseSync) {
           ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
-        untilIso,
         limit,
       );
     },
@@ -115,7 +110,7 @@ export function musicRepo(db: DatabaseSync) {
      * to. The "different artists" headline is a separate COUNT (`distinctArtists`)
      * and is deliberately *not* capped, so a count larger than the list is expected.
      */
-    topArtists(sinceIso: string, limit: number, untilIso: string = FAR_FUTURE): MusicRankEntry[] {
+    topArtists(sinceIso: string, limit: number): MusicRankEntry[] {
       return mapRows(
         db.prepare(`
           SELECT
@@ -137,7 +132,6 @@ export function musicRepo(db: DatabaseSync) {
               JOIN music_plays p2 ON p2.id = a2.play_id
               WHERE a2.artist_key = a.artist_key
                 AND p2.last_seen_at >= ?
-                AND p2.last_seen_at < ?
                 AND p2.album_art_url IS NOT NULL
               GROUP BY p2.track_id
               ORDER BY SUM(strftime('%s', p2.last_seen_at) - strftime('%s', p2.started_at)) DESC
@@ -145,7 +139,7 @@ export function musicRepo(db: DatabaseSync) {
             ) AS art
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
-          WHERE p.last_seen_at >= ? AND p.last_seen_at < ?
+          WHERE p.last_seen_at >= ?
           GROUP BY a.artist_key
           ORDER BY seconds DESC, artist ASC
           LIMIT ?
@@ -157,9 +151,7 @@ export function musicRepo(db: DatabaseSync) {
           ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
         sinceIso,
-        untilIso,
         sinceIso,
-        untilIso,
         limit,
       );
     },
@@ -196,24 +188,24 @@ export function musicRepo(db: DatabaseSync) {
 
     /** Distinct tracks played since a cutoff — the "tracks played" headline. A
      *  count of tracks, not plays: two listens of one song is one track. */
-    distinctTracks(sinceIso: string, untilIso: string = FAR_FUTURE): number {
+    distinctTracks(sinceIso: string): number {
       const row = db
-        .prepare("SELECT COUNT(DISTINCT track_id) AS n FROM music_plays WHERE last_seen_at >= ? AND last_seen_at < ?")
-        .get(sinceIso, untilIso) as { n: number } | undefined;
+        .prepare("SELECT COUNT(DISTINCT track_id) AS n FROM music_plays WHERE last_seen_at >= ?")
+        .get(sinceIso) as { n: number } | undefined;
       return row ? Number(row.n) : 0;
     },
 
     /** Distinct artists since a cutoff — the "different artists" headline. Counts
      *  the split artist keys, so a collaboration's members each count once. */
-    distinctArtists(sinceIso: string, untilIso: string = FAR_FUTURE): number {
+    distinctArtists(sinceIso: string): number {
       const row = db
         .prepare(`
           SELECT COUNT(DISTINCT a.artist_key) AS n
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
-          WHERE p.last_seen_at >= ? AND p.last_seen_at < ?
+          WHERE p.last_seen_at >= ?
         `)
-        .get(sinceIso, untilIso) as { n: number } | undefined;
+        .get(sinceIso) as { n: number } | undefined;
       return row ? Number(row.n) : 0;
     },
 
@@ -285,10 +277,10 @@ export function musicRepo(db: DatabaseSync) {
     },
 
     /** Total minutes listened over a window, for the headline figure. */
-    totalMinutes(sinceIso: string, untilIso: string = FAR_FUTURE): number {
+    totalMinutes(sinceIso: string): number {
       const row = db
-        .prepare(`SELECT SUM(${DURATION}) AS seconds FROM music_plays WHERE last_seen_at >= ? AND last_seen_at < ?`)
-        .get(sinceIso, untilIso) as { seconds: number | null } | undefined;
+        .prepare(`SELECT SUM(${DURATION}) AS seconds FROM music_plays WHERE last_seen_at >= ?`)
+        .get(sinceIso) as { seconds: number | null } | undefined;
       return Math.round((row?.seconds ?? 0) / 60);
     },
 

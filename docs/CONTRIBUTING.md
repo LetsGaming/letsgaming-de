@@ -42,7 +42,7 @@ so don't install pnpm separately.
 
 ```bash
 pnpm lint:nav      # information-architecture gates
-pnpm typecheck     # all packages incl. astro check
+pnpm typecheck     # all packages incl. vue-tsc
 pnpm test          # unit + integration
 pnpm build         # full build (also runs lint:nav)
 ```

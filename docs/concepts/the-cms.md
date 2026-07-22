@@ -29,6 +29,10 @@ groups it:
 - Hobbies, links, and "right now" rows.
 - The asset library and the galleries (see below).
 - Presence curation: which Discord categories the widget may reveal.
+- Wrapped: the recurring retrospective's schedule — every N months, for M weeks,
+  from an anchor date, plus how many rows each top list shows. Off by default.
+  The schedule is the *only* control: outside a window the resolver omits the
+  module, so there is no separate show/hide.
 - Guestbook moderation: approve, reject, or delete visitor entries.
 - Layout: reorder modules within an area, move them between areas, or hide them,
   all still checked against the nav lint.

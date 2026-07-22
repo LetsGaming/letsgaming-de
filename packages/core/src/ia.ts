@@ -28,7 +28,7 @@ import type { NavNode } from "./nav.js";
  * grows a fourth spelling convention without anyone deciding on one.
  *
  * Here in core rather than in the web app because the anti-FOUC script in
- * Layout.astro reads two of these from an inline <script> that runs before
+ * The inline script in nuxt.config reads two of these; it runs before
  * hydration — it can't import anything, so it must inline the literal. Two files,
  * one key, and nothing linking them: exactly the drift that renamed an area out
  * from under `go("work")`.
@@ -120,9 +120,6 @@ export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "presence", kind: "presence", heading: en("Right now") },
   { id: "playtime", kind: "playtime", heading: en("Time played") },
   { id: "music", kind: "music", heading: en("Listening") },
-  // Placed in Life but opt-in: disabled by default, and even once enabled it shows
-  // only inside its scheduled window (Widgets → Wrapped), so it's absent the rest
-  // of the time rather than an empty card.
   { id: "wrapped", kind: "wrapped", heading: en("Wrapped") },
   { id: "hobbies", kind: "hobbies", heading: en("Off the clock") },
   { id: "gallery", kind: "gallery", heading: en("Snapshots") },

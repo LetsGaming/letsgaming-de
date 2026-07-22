@@ -1,0 +1,139 @@
+<script setup lang="ts">
+// Static legal text — no data, no interactivity. Prerendered by the route rule in
+// nuxt.config, as it was under Astro. The markup is unchanged from the Astro page
+// (the wording is legal text; only the shell around it moved).
+import SmartLink from "~/components/ui/SmartLink.vue";
+
+useHead({ title: "Datenschutzerklärung — letsgaming.de" });
+</script>
+
+<template>
+<main class="wrap">
+  <div class="prose" style="max-width:680px">
+    <h1 style="font-size:clamp(30px,6vw,44px);margin-bottom:24px">Datenschutzerklärung</h1>
+
+    <p>
+      Diese Seite ist ein privates Projekt. Es werden so wenige Daten wie möglich
+      verarbeitet — im Zweifel gar keine (Datenschutz durch Vermeidung).
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Server-Logs</h2>
+    <p>
+      Beim Aufruf der Seite fallen technische Zugriffsdaten an. Diese werden
+      ausschließlich zu anonymen, aggregierten Statistiken verarbeitet
+      (z. B. Seitenaufrufe pro Pfad, grobe Trends). Die IP-Adresse wird dabei zum
+      Zeitpunkt der Verarbeitung verworfen und <b>nicht gespeichert</b>. Es werden
+      keine personenbezogenen Einzeldatensätze vorgehalten.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Cookies &amp; Tracking</h2>
+    <p>
+      Es werden <b>keine</b> Cookies zu Analyse- oder Werbezwecken gesetzt, keine
+      seitenübergreifenden Tracker, kein Fingerprinting und keine Dienste Dritter zum
+      Nachverfolgen von Besuchern eingebunden. Ein technisch notwendiges
+      Sitzungs-Cookie wird ausschließlich für den (nicht öffentlichen) Login des
+      Seitenbetreibers ins eigene Redaktionssystem verwendet.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Nutzungsmessung (ohne Cookies)</h2>
+    <p>
+      Zur Verbesserung der Seite wird gemessen, wie die Inhalte genutzt werden — welcher
+      Bereich (Home, Work, Life, About) angesehen wird, ungefähr wie lange (in groben
+      Zeitspannen, nicht sekundengenau), zwischen welchen Bereichen gewechselt wird, wie
+      weit gescrollt wird, welche Schaltflächen und Projekte angeklickt werden sowie die
+      <b>grobe</b> Gerätekategorie (Mobil/Tablet/Desktop). Es werden keine exakten
+      Bildschirm- oder Gerätemerkmale erfasst (kein Fingerprinting).
+    </p>
+    <p>
+      Diese Messung kommt <b>ohne Cookies und ohne jede Speicherung auf Ihrem Gerät</b> aus.
+      Es wird <b>keine Kennung</b> (keine Nutzer- oder Sitzungs-ID) und <b>keine IP-Adresse</b>
+      gespeichert. Die Zuordnung einzelner Ereignisse geschieht nur kurzzeitig in Ihrem
+      Browser während des Besuchs; an den Server werden ausschließlich bereits
+      zusammengefasste, anonyme Zählwerte übertragen, aus denen sich kein einzelner Besuch
+      rekonstruieren lässt. Da hierbei <b>keine personenbezogenen Daten</b> verarbeitet und
+      nichts auf dem Endgerät gespeichert oder ausgelesen wird, ist weder eine Einwilligung
+      noch ein gesondertes Widerspruchsverfahren erforderlich (§ 25 Abs. 2 TDDDG).
+    </p>
+    <p>
+      Dennoch respektiert die Seite das <b>„Do Not Track“</b>-Signal Ihres Browsers: ist es
+      aktiv, findet keine Messung statt. Unabhängig davon können Sie die Messung jederzeit
+      selbst deaktivieren — über <b>Einstellungen</b> (Zahnrad-Symbol oben rechts) → „Anonyme
+      Nutzungsstatistik“.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Schriftarten</h2>
+    <p>
+      Alle Schriftarten werden lokal von diesem Server ausgeliefert. Es besteht
+      <b>keine</b> Verbindung zu Google Fonts oder anderen externen Anbietern.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Kontakt</h2>
+    <p>
+      Über das Kontaktformular gesendete Nachrichten werden ausschließlich per
+      E-Mail weitergeleitet und <b>nicht</b> in einer Datenbank gespeichert. Die
+      eingegebenen Angaben (Name, E-Mail, Nachricht) werden nur zur Bearbeitung
+      der Anfrage genutzt. Alternativ ist eine Kontaktaufnahme über die verlinkten
+      Profile möglich.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Gästebuch</h2>
+    <p>
+      Im Gästebuch können Besucher freiwillig einen <b>Namen</b> und eine <b>Nachricht</b>
+      hinterlassen. Gespeichert werden ausschließlich diese Angaben sowie ein Zeitstempel —
+      <b>keine</b> IP-Adresse und <b>keine</b> Kennung. Einträge sind erst öffentlich sichtbar,
+      nachdem der Seitenbetreiber sie freigegeben hat (Vor-Moderation, u. a. zum Schutz vor
+      Spam); Rechtsgrundlage ist Art. 6 Abs. 1 lit. a DSGVO (Einwilligung durch das Absenden).
+      Ein Eintrag kann jederzeit auf formlose Anfrage gelöscht werden. Bitte geben Sie keine
+      sensiblen personenbezogenen Daten ein.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Content-Delivery / Cloudflare</h2>
+    <p>
+      Diese Seite wird über das Content-Delivery-Network von <b>Cloudflare</b> (Cloudflare, Inc.,
+      101 Townsend St, San Francisco, CA 94107, USA) ausgeliefert. Cloudflare verarbeitet dabei
+      als Auftragsverarbeiter technische Verbindungsdaten — insbesondere die IP-Adresse — um die
+      Auslieferung, Erreichbarkeit und Sicherheit der Seite zu gewährleisten (Schutz vor Angriffen,
+      Bot-Abwehr). Rechtsgrundlage ist das berechtigte Interesse an einem sicheren und performanten
+      Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Eine Übermittlung in die USA erfolgt auf Grundlage des
+      EU-US Data Privacy Framework, dem Cloudflare zertifiziert beigetreten ist, sowie ergänzender
+      Standardvertragsklauseln. Details:
+      <SmartLink href="https://www.cloudflare.com/privacypolicy/">Cloudflare-Datenschutzerklärung</SmartLink>.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Bilder im Modul „Right now-ish“</h2>
+    <p>
+      Das Modul „Right now-ish“ (Bereich <b>Life</b>) zeigt Bilder wie das
+      Discord-Profilbild, Aktivitäts- bzw. Spielgrafiken und — bei Spotify — Albumcover.
+      Diese Bilder werden <b>nicht direkt aus Ihrem Browser</b> bei Discord, Steam/Valve
+      oder Spotify geladen, sondern von <b>meinem eigenen Server</b> abgerufen und von
+      dieser Domain ausgeliefert. Ihr Browser verbindet sich dabei ausschließlich mit
+      diesem Server; eine Übermittlung Ihrer IP-Adresse an die genannten Anbieter findet
+      für die Anzeige dieser Bilder <b>nicht</b> statt. Liegt für ein Spiel kein Bild vor,
+      wird eine lokal erzeugte Kachel angezeigt.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Externe Links</h2>
+    <p>
+      Diese Seite verlinkt auf externe Angebote (z. B. GitHub). Für deren Inhalte
+      und Datenschutz sind ausschließlich die jeweiligen Anbieter verantwortlich.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Ihre Rechte</h2>
+    <p>
+      Über die anonyme Nutzungsmessung und die Server-Logs werden keine
+      personenbezogenen Einzeldatensätze gespeichert. Wenn Sie das Gästebuch nutzen,
+      werden die dort angegebenen Daten (Name, Nachricht) gespeichert — hierzu stehen
+      Ihnen die Rechte auf Auskunft, Berichtigung und Löschung zu. Eine formlose
+      Nachricht über die oben genannten Kontaktwege genügt.
+    </p>
+
+    <p style="margin-top:28px;color:var(--muted);font-size:14px">
+      Hinweis: allgemeine Informationen, keine Rechtsberatung.
+    </p>
+
+    <p style="margin-top:24px">
+      <SmartLink href="/" style="color:var(--ink)">← zurück zur Startseite</SmartLink>
+    </p>
+  </div>
+</main>
+</template>

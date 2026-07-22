@@ -31,7 +31,6 @@ import PostsPanel from "./PostsPanel.vue";
 import PresencePanel from "./PresencePanel.vue";
 import MusicPanel from "./MusicPanel.vue";
 import PlaytimePanel from "./PlaytimePanel.vue";
-import WrappedPanel from "./WrappedPanel.vue";
 import SiteIdentityPanel from "./SiteIdentityPanel.vue";
 
 /**
@@ -55,7 +54,6 @@ const PANEL: Partial<Record<View, Component>> = {
 	presence: PresencePanel,
 	music: MusicPanel,
 	playtime: PlaytimePanel,
-	wrapped: WrappedPanel,
 };
 
 const {

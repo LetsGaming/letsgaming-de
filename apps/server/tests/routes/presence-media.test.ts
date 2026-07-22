@@ -114,6 +114,55 @@ test("non-image upstream is rejected", async () => {
 	await app.close();
 });
 
+test("a game with no handed-in image resolves its RAWG cover before initials", async () => {
+	const store = openStore(":memory:");
+	store.gameMeta.put("Hades", {
+		coverUrl: "https://media.rawg.io/media/games/hades.jpg",
+	});
+
+	// The resolved cover should be fetched from the allow-listed rawg host. (The
+	// fake bytes aren't a decodable image, so the downscale step falls back to the
+	// original bytes — which is exactly the resilience we want to exercise.)
+	const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+	let requested = "";
+	globalThis.fetch = (async (input: unknown) => {
+		requested = String(input);
+		return new Response(png, {
+			status: 200,
+			headers: { "content-type": "image/png" },
+		});
+	}) as typeof fetch;
+
+	const env = loadEnv({ WEB_ORIGIN: "http://localhost:4321" });
+	const app = await buildApp(store, env);
+	const res = await app.inject({
+		method: "GET",
+		url: `/api/presence/media?game=${encodeURIComponent("Hades")}`,
+	});
+	assert.equal(res.statusCode, 200);
+	assert.ok(requested.includes("media.rawg.io"), "should fetch the resolved cover");
+	assert.doesNotMatch(String(res.headers["content-type"]), /svg/); // a real image, not the tile
+	await app.close();
+});
+
+test("a game with no cover in the cache still falls back to the initials tile", async () => {
+	globalThis.fetch = (async () => {
+		throw new Error("should not be called — no cover to fetch");
+	}) as typeof fetch;
+
+	const store = openStore(":memory:"); // empty metadata cache
+	const env = loadEnv({ WEB_ORIGIN: "http://localhost:4321" });
+	const app = await buildApp(store, env);
+	const res = await app.inject({
+		method: "GET",
+		url: `/api/presence/media?game=${encodeURIComponent("Valorant")}`,
+	});
+	assert.equal(res.statusCode, 200);
+	assert.match(String(res.headers["content-type"]), /image\/svg\+xml/);
+	assert.match(res.body, />VA</);
+	await app.close();
+});
+
 test("no parameters -> 404", async () => {
 	const app = await build();
 	const res = await app.inject({ method: "GET", url: "/api/presence/media" });

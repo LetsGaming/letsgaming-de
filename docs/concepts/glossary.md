@@ -13,7 +13,8 @@ The words this project uses in a specific way. When a doc says "module" or
 | Branch | A node that holds two or more child nodes with their own secondary nav. It groups, it doesn't render content directly. |
 | Promotion gate | The four tests a module must pass to earn its own nav node: distinct question, weight to stand alone, homeless elsewhere, durable not seasonal. |
 | Nav lint | The build-time check (`pnpm lint:nav`) that fails the build if the nav tree breaks a structural rule. |
-| Localized | A `{ "en": "...", "de"?: "..." }` value. Every human-authored string is one, so German is a content task, not a migration. |
+| Localized | A `{ "en": "...", "de"?: "..." }` value. Every human-authored string is one, so translating *content* is a CMS task, not a migration. |
+| UI string | Text the components emit themselves ("show 3 more", empty states, the footer). Has no CMS row, so it lives in the typed EN/DE catalog `packages/core/src/ui-messages.ts` and is read with `useT()`. |
 | Source | An external integration behind the `Source` contract (GitHub, Wakapi). One adapter per source. See [sources-and-sync](./sources-and-sync.md). |
 | Adapter | The code that implements a source: `fetch()` hits the API, `normalize()` maps the raw response to the common shape. |
 | Normalized shape | The per-source common shape (`GitHubData`, `WakapiData`) that is the only thing the store, API, and frontend ever see. |

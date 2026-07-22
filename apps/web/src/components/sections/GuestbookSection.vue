@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useT } from "~/composables/useT";
 import type { ResolvedModule } from "@lg/core";
 import ModuleSection from "../ui/ModuleSection.vue";
 import GuestbookForm from "../forms/GuestbookForm.vue";
+
+const { t } = useT();
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "guestbook" }>;
@@ -16,7 +19,7 @@ defineProps<{
         <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
       </figure>
     </div>
-    <p v-else class="gb-empty">No notes yet — be the first to sign.</p>
+    <p v-else class="gb-empty">{{ t("emptyGuestbook") }}</p>
     <div><GuestbookForm /></div>
   </ModuleSection>
 </template>

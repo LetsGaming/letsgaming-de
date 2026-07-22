@@ -14,9 +14,11 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const SRC = new URL("../src", import.meta.url).pathname;
-const TOKENS = join(SRC, "styles/tokens.css");
-const EXT = /\.(css|vue|astro|ts)$/;
+// Nuxt has no `src/` dir — components, pages, layouts and styles sit at the app
+// root, so the scan starts there. Build output and deps are skipped below.
+const SRC = new URL("..", import.meta.url).pathname;
+const TOKENS = join(SRC, "src/styles/tokens.css");
+const EXT = /\.(css|vue|ts)$/;
 
 /** `--name:` — a definition. Excludes `var(--name)`, which is a reference.
  *  The optional quote catches custom properties set from an inline style object
@@ -29,8 +31,16 @@ const REF = /var\(\s*(--[a-z0-9-]+)(\$\{)?/gi;
 const namesIn = (text: string, re: RegExp): Set<string> =>
   new Set(Array.from(text.matchAll(re), (m) => m[1] as string));
 
+// Scanning from the app root means the walk would otherwise descend into
+// dependencies and build output, which define thousands of unrelated custom
+// properties (and are not ours to lint).
+// `scripts` is Node tooling that never ships CSS — and this linter's own
+// docstring contains an example `var()` that would otherwise flag itself.
+const SKIP = new Set(["node_modules", ".nuxt", ".output", "dist", ".git", "scripts"]);
+
 const walk = (dir: string, out: string[] = []): string[] => {
   for (const entry of readdirSync(dir)) {
+    if (SKIP.has(entry)) continue;
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) walk(path, out);
     else if (EXT.test(entry)) out.push(path);

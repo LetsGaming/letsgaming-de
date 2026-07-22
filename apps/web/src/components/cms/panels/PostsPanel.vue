@@ -12,6 +12,7 @@
  * a migration.
  */
 import { computed, onMounted, ref } from "vue";
+import SmartLink from "../../ui/SmartLink.vue";
 import { assetRef, MARKDOWN_MIME, POST_PREFIX, parsePost, slugify } from "@lg/core";
 import type { Asset, AssetFolder } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
@@ -187,7 +188,7 @@ onMounted(loadList);
         <div class="posts-bar">
           <button class="btn" @click="pickImage">Image</button>
           <button class="btn" @click="pickLink">Link</button>
-          <a class="btn" :href="previewUrl()" target="_blank" rel="noopener">Preview</a>
+          <SmartLink class="btn" :href="previewUrl()" target="_blank">Preview</SmartLink>
           <span class="posts-meta">
             {{ parsed.frontmatter.draft ? "Draft" : "Published" }} ·
             {{ parsed.frontmatter.tags.length }} tag(s)
