@@ -96,5 +96,15 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
   }
 
   // 3. Committed fixture — a page still renders even with no store and no API.
+  //
+  // Loud, because reaching here in a served request means the site is showing
+  // committed sample data: the wrong repo counts, the wrong module order, and a
+  // `syncedAt` frozen at whenever the fixture was written. It looks like a working
+  // site, which is exactly what makes it dangerous — nothing 500s, the numbers are
+  // just quietly wrong. Neither DB_PATH nor API_URL is reaching this process.
+  console.error(
+    "[web] SERVING THE FALLBACK FIXTURE — no store (DB_PATH) and no API (API_URL). " +
+      "The page will show stale committed data, not live content.",
+  );
   return fallback as unknown as SiteView;
 }

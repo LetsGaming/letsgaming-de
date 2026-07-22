@@ -51,10 +51,22 @@ export default defineNuxtConfig({
   nitro: {
     preset: "node-server",
     // The docs were `prerender = true` under Astro: one static page per doc. The
-    // crawler starts at the entry doc and follows the sidebar, which links every
-    // one. If a crawl ever misses a page it still renders via SSR — the route
-    // works either way, prerendering is only an optimization here.
-    prerender: { crawlLinks: true, routes: ["/docs/readme", "/docs/api", "/datenschutz"] },
+    // crawler starts at the entry doc and follows the sidebar, which links every one.
+    //
+    // `ignore` is load-bearing, not tidiness. The docs shell links back to "/" and
+    // the privacy page links to the homepage, so an unrestricted crawl walks into
+    // the dashboard and prerenders `/`, `/work`, `/life`, `/about` — at build time,
+    // where there is no database. Those pages would bake in the fallback fixture and
+    // then shadow SSR at runtime, so the site would show stale committed data
+    // forever and never reflect a sync or a CMS edit. The dashboard MUST stay
+    // server-rendered per request; only the docs and the static legal page are safe
+    // to freeze. The pattern is "anything that isn't docs or /datenschutz" because
+    // area routes are named by the CMS and unknowable here.
+    prerender: {
+      crawlLinks: true,
+      routes: ["/docs/readme", "/docs/api", "/datenschutz"],
+      ignore: [/^(?!\/docs(\/|$)|\/datenschutz(\/|$))/],
+    },
   },
 
   // `lib/api.ts` reads `import.meta.env.PUBLIC_API_URL` and captures it at module
