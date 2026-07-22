@@ -16,6 +16,7 @@ import type { Localized } from "./i18n.js";
 import type { PresenceSettings } from "./presence.js";
 import type { MusicSettings } from "./music.js";
 import type { PlaytimeSettings } from "./playtime-settings.js";
+import type { WrappedSettings } from "./wrapped.js";
 
 /** Site identity / config. Small and stable; edited rarely. */
 export interface SiteMeta {

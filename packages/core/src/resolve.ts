@@ -22,7 +22,7 @@ import { capList } from "./list-settings.js";
 import { AREA } from "./ia.js";
 import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
 import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
-import type { FreshnessView, PostView } from "./view.js";
+import type { FreshnessView, PostView, WrappedRankView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {

@@ -350,8 +350,9 @@ export interface SiteView {
  *
  * Only ever present when the schedule says so — the resolver omits the module
  * entirely outside a window, so there is no "hidden" state for a client to leak.
- * `periodLabel` is pre-formatted server-side because the period is a fixed
- * retrospective, not something the client should recompute per render.
+ * The period is shipped as ISO bounds, not a formatted label: the section renders
+ * the range with `Intl` in the locale the page was resolved in, which a
+ * server-formatted string couldn't do without duplicating the locale decision.
  */
 export interface WrappedRankView {
   name: string;
@@ -362,8 +363,6 @@ export interface WrappedRankView {
 }
 
 export interface WrappedModuleView {
-  /** Human-readable summarized period, e.g. "Oct 2025 — Jan 2026". */
-  periodLabel: string;
   /** ISO bounds of the summarized period, for anyone who wants exactness. */
   periodStart: string;
   periodEnd: string;
