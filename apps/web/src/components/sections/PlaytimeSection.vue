@@ -27,6 +27,7 @@ import CardHeader from "../ui/CardHeader.vue";
 import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
+import Duration from "../ui/Duration.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 
@@ -201,7 +202,9 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
       <!-- Two inert stats — a play has one dimension (the game), so unlike
            Listening's song/artist tabs there's nothing to switch between. -->
       <div class="pt-stats">
-        <StatTile :value="d.totalHours" unit="h" label="time played" />
+        <StatTile label="time played">
+          <template #value><Duration :minutes="d.totalHours * 60" /></template>
+        </StatTile>
         <StatTile :value="gameCount" :label="gameCount === 1 ? 'game' : 'games'" />
       </div>
 
@@ -238,7 +241,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
               :highlight="i === 0"
               fallback="🎮"
             >
-              {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
+              <Duration :minutes="g.minutes" /><small v-if="!g.exact"> +</small>
             </RankedRow>
             <ListFooter
               :more-count="dayMore"
@@ -261,7 +264,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
             :highlight="i === 0"
             fallback="🎮"
           >
-            {{ fmtHrs(g.minutes) }}<small v-if="!g.exact"> +</small>
+            <Duration :minutes="g.minutes" /><small v-if="!g.exact"> +</small>
           </RankedRow>
           <ListFooter
             :more-count="gamesMore"

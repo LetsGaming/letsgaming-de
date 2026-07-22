@@ -373,4 +373,6 @@ export interface WrappedModuleView {
   topSongs: WrappedRankView[];
   topArtists: WrappedRankView[];
   topGames: WrappedRankView[];
+  /** Time by RAWG genre over the same period — the long tail, not just the top games. */
+  topGenres: WrappedRankView[];
 }

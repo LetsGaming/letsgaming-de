@@ -218,6 +218,7 @@ function buildWrappedHistory(
       topSongs: WrappedRankRow[];
       topArtists: WrappedRankRow[];
       topGames: WrappedRankRow[];
+        topGenres: WrappedRankRow[];
     }
   | undefined {
   const settings = content.wrapped ?? defaultWrappedSettings();
@@ -228,14 +229,42 @@ function buildWrappedHistory(
   const hidden = content.presence?.hidden ?? [];
   const covers = store.gameMeta.getAll();
 
-  const games = store.wrapped
-    .topGames(from, to)
-    .filter((g) => !isHidden(g.name, hidden))
-    .slice(0, settings.topCount)
-    .map((g) => {
-      const cover = covers.get(gameMetaKey(g.name))?.coverUrl;
-      return cover ? { ...g, artUrl: cover } : g;
-    });
+  // Every qualifying game in the period, hidden ones already dropped. Kept whole
+  // rather than trimmed here, because the genre roll-up below has to see the long
+  // tail: a genre's total is the sum of everything in it, not just its top few.
+  const allGames = store.wrapped.topGames(from, to).filter((g) => !isHidden(g.name, hidden));
+
+  /** A game's cached RAWG metadata, matched the way the playtime chart matches it. */
+  const metaFor = (name: string) => covers.get(gameMetaKey(name));
+
+  const games = allGames.slice(0, settings.topCount).map((g) => {
+    const meta = metaFor(g.name);
+    return {
+      ...g,
+      ...(meta?.coverUrl ? { artUrl: meta.coverUrl } : {}),
+      // The genre doubles as the row's subtitle, so a game row reads like a song
+      // row (title over artist) instead of sitting title-only beside it.
+      ...(meta?.genre ? { detail: meta.genre } : {}),
+    };
+  });
+
+  // Time by genre, folded from the same rows. RAWG gives one genre per game, so a
+  // game's whole total lands in exactly one bucket and the sums stay honest.
+  // Games we never resolved metadata for are simply absent — better a short,
+  // truthful list than an "Unknown" bucket that competes with real genres.
+  const genreMinutes = new Map<string, { minutes: number; plays: number }>();
+  for (const game of allGames) {
+    const genre = metaFor(game.name)?.genre;
+    if (!genre) continue;
+    const acc = genreMinutes.get(genre) ?? { minutes: 0, plays: 0 };
+    acc.minutes += game.minutes;
+    acc.plays += game.plays;
+    genreMinutes.set(genre, acc);
+  }
+  const topGenres: WrappedRankRow[] = [...genreMinutes.entries()]
+    .map(([name, v]) => ({ name, minutes: v.minutes, plays: v.plays }))
+    .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name))
+    .slice(0, settings.topCount);
 
   return {
     totalMinutesListened: store.wrapped.minutesListened(from, to),
@@ -243,5 +272,6 @@ function buildWrappedHistory(
     topSongs: store.wrapped.topSongs(from, to, settings.topCount),
     topArtists: store.wrapped.topArtists(from, to, settings.topCount),
     topGames: games,
+    topGenres,
   };
 }

@@ -29,6 +29,7 @@ import CardHeader from "../ui/CardHeader.vue";
 import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
+import Duration from "../ui/Duration.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
 
 const { t } = useT();
@@ -126,7 +127,9 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 
       <!-- Stats double as tabs. "time listening" is inert (no list behind it). -->
       <div class="mu-stats">
-        <StatTile :value="d.totalHours" unit="h" :label='t("timeListening")' />
+        <StatTile :label='t("timeListening")'>
+          <template #value><Duration :minutes="d.totalHours * 60" /></template>
+        </StatTile>
         <StatTile
           :value="d.trackCount"
           :label='t("tracksPlayed")'
@@ -179,7 +182,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
               :highlight="i === 0"
               fallback="♪"
             >
-              {{ row.minutes }}<small> min · {{ row.plays }}×</small>
+              <Duration :minutes="row.minutes" /><small> · {{ row.plays }}×</small>
             </RankedRow>
             <ListFooter
               :more-count="dayMore"
@@ -202,7 +205,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
             :highlight="i === 0"
             fallback="♪"
           >
-            {{ r.minutes }}<small> min · {{ r.plays }}×</small>
+            <Duration :minutes="r.minutes" /><small> · {{ r.plays }}×</small>
           </RankedRow>
           <ListFooter
             :more-count="mainMore"

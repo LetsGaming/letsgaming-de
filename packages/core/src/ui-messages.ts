@@ -89,6 +89,7 @@ const EN = {
   topSongs: "Top songs",
   topArtists: "Top artists",
   topGames: "Top games",
+  topGenres: "Top genres",
   backToTopSongs: "← back to top songs",
   backToTopArtists: "← back to top artists",
   backToTopGames: "← back to top games",
@@ -99,6 +100,7 @@ const EN = {
   emptyWrapped: "Nothing to look back on for this period yet.",
   tracksPlayed: "tracks played",
   differentArtists: "different artists",
+  hoursShort: "h",
   minutesShort: "min",
 
   // Coding
@@ -160,6 +162,7 @@ const DE: Messages = {
   topSongs: "Top-Songs",
   topArtists: "Top-Künstler:innen",
   topGames: "Top-Spiele",
+  topGenres: "Top-Genres",
   backToTopSongs: "← zurück zu den Top-Songs",
   backToTopArtists: "← zurück zu den Top-Künstler:innen",
   backToTopGames: "← zurück zu den Top-Spielen",
@@ -170,6 +173,7 @@ const DE: Messages = {
   emptyWrapped: "Für diesen Zeitraum gibt es noch nichts zurückzublicken.",
   tracksPlayed: "Songs gehört",
   differentArtists: "verschiedene Künstler:innen",
+  hoursShort: "Std.",
   minutesShort: "Min",
 
   codingScope: "{range} · {hours} Std. erfasst",

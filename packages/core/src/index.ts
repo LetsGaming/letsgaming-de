@@ -1,4 +1,5 @@
 export * from "./i18n.js";
+export * from "./duration.js";
 export * from "./ui-messages.js";
 export * from "./wrapped.js";
 export * from "./theme.js";

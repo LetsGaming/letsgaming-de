@@ -98,6 +98,7 @@ export interface ResolveInput {
     topSongs: WrappedRankView[];
     topArtists: WrappedRankView[];
     topGames: WrappedRankView[];
+    topGenres: WrappedRankView[];
   };
   /** The music module's data: top songs/artists/albums plus a per-day listening
    *  strip, over the window. Pre-computed by the server from `music_plays` (the
@@ -619,6 +620,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             topSongs: top(h?.topSongs),
             topArtists: top(h?.topArtists),
             topGames: top(h?.topGames),
+            topGenres: top(h?.topGenres),
           },
         };
       }

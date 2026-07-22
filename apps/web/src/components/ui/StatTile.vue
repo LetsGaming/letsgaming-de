@@ -6,7 +6,8 @@
  * uses the inert form (one list, nothing to switch between).
  */
 interface Props {
-  value: string | number;
+  /** The readout. Omit and use the `value` slot for richer content (a Duration). */
+  value?: string | number;
   label: string;
   /** Render as a clickable tab rather than a static readout. */
   interactive?: boolean;
@@ -27,7 +28,9 @@ const emit = defineEmits<{ select: [] }>();
     :aria-pressed="interactive ? active : undefined"
     @click="interactive ? emit('select') : undefined"
   >
-    <span class="st-n">{{ value }}<small v-if="unit">{{ unit }}</small></span>
+    <span class="st-n">
+        <slot name="value">{{ value }}<small v-if="unit">{{ unit }}</small></slot>
+      </span>
     <span class="st-l">{{ label }}</span>
   </component>
 </template>
@@ -61,6 +64,9 @@ const emit = defineEmits<{ select: [] }>();
   color: var(--ink-strong);
   line-height: 1;
 }
+/* A <Duration> in the value slot renders its own units; scoped styles don\'t
+   reach slotted content, so they need naming explicitly. */
+.st-n :slotted(small),
 .st-n small {
   font-family: var(--f-m);
   font-size: var(--fs-meta);
