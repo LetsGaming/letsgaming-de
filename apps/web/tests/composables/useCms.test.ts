@@ -116,7 +116,7 @@ const emptyChart = (): AnalyticsChart => ({
 });
 
 const emptyAnalytics = (): AnalyticsResponse => ({
-  range: { from: "2026-07-17T00", to: "2026-07-17T12", hours: 12, unit: "hour" },
+  range: { from: "2026-07-17T00", to: "2026-07-17T12", hours: 12, unit: "hour", timeZone: "UTC" },
   paths: [],
   referrers: [],
   browsers: [],

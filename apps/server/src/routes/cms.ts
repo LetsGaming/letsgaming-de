@@ -62,7 +62,9 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * Works on a fresh copy from the store, so nothing is mutated unless the caller
    * saves it.
    */
-  const applyLayoutOrder = (order: { area: string; modules: string[] }[]): NavNode[] => {
+  const applyLayoutOrder = (
+    order: { area: string; modules: string[]; description?: Localized }[],
+  ): NavNode[] => {
     const nav = store.ia.getNav();
     const registry = new Set(store.ia.getModules().map((m) => m.id));
     const leaves = new Map<string, NavNode>();
@@ -83,7 +85,19 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
         seen.add(mid);
       }
     }
-    for (const entry of order) leaves.get(entry.area)!.modules = [...entry.modules];
+    for (const entry of order) {
+      const node = leaves.get(entry.area)!;
+      node.modules = [...entry.modules];
+      // Only touched when the client sends the key at all, so the preview path —
+      // which doesn't — can't blank a description as a side effect of arranging
+      // modules. An all-empty value clears the field rather than storing `""`,
+      // which keeps "unset" a single representable state for `areaMeta`.
+      if (entry.description !== undefined) {
+        const filled = Object.values(entry.description).some((v) => v?.trim());
+        if (filled) node.description = entry.description;
+        else delete node.description;
+      }
+    }
     return nav;
   };
 
@@ -277,7 +291,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   // Accepts the full desired placement. A module may sit in at most one area;
   // any registered module left out of every area is "hidden". Can't invent
   // modules, and the result must pass nav-lint (e.g. no empty area).
-  app.put<{ Body: { order: { area: string; modules: string[] }[] } }>(
+  app.put<{ Body: { order: { area: string; modules: string[]; description?: Localized }[] } }>(
     "/api/cms/layout",
     write(schemas.layout),
     async (req, reply) => {

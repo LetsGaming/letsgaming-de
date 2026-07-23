@@ -165,7 +165,17 @@ function onScroll() {
   });
 }
 
-/** Finalize the visit exactly once (on pagehide): last section dwell + summary. */
+/**
+ * Finalize the visit exactly once (on pagehide): last section dwell + summary.
+ *
+ * `session_tabs` and `session_dwell` are emitted only here, so they are the
+ * *completed*-visit counts: a tab that's backgrounded and killed by the OS, or a
+ * browser that never fires `pagehide`, contributes pageviews but no session row.
+ * Visits therefore read slightly below pageviews by construction. The CMS labels
+ * that metric "Visits — completed visits" for exactly this reason; don't
+ * reconcile the two numbers by moving this call earlier, which would count
+ * visits that hadn't happened yet.
+ */
 function end() {
   if (!enabled || ended) return;
   ended = true;

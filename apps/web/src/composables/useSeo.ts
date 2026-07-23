@@ -1,4 +1,4 @@
-import { useHead, useRoute, useRuntimeConfig } from "#imports";
+import { useHead, useRuntimeConfig } from "#imports";
 import { buildSeoTags, personLd, websiteLd, type Locale, type SiteView } from "@lg/core";
 
 /**
@@ -17,18 +17,28 @@ import { buildSeoTags, personLd, websiteLd, type Locale, type SiteView } from "@
  * the domain.
  */
 export function useSeo(opts: {
-  site: SiteView;
+  /**
+   * The resolved site, when the page has one.
+   *
+   * Dashboard areas do; the blog, the docs and the privacy page are standalone
+   * documents that never load it. Present, it supplies the Person/WebSite graphs
+   * and the Twitter handle — absent, the page still gets canonical, Open Graph
+   * and its own JSON-LD, just without the site-identity graphs.
+   */
+  site?: SiteView;
   locale: Locale;
   path: string;
   title: string;
   description: string;
   ogType?: "website" | "article" | "profile";
+  /** See `localized` in core's `SeoInput` — areas only. */
+  localized?: boolean;
+  /** Page-specific graphs, e.g. a `BlogPosting` for a post. */
+  jsonLd?: Record<string, unknown>[];
 }) {
   const config = useRuntimeConfig();
   const origin = (config.public.siteUrl as string).replace(/\/$/, "");
-  const route = useRoute();
-
-  const { name, handle, role } = opts.site.meta;
+    const identity = opts.site?.meta;
 
   const tags = buildSeoTags({
     origin,
@@ -40,36 +50,48 @@ export function useSeo(opts: {
     // A dedicated share card served from the build's own assets — self-hosted and
     // versioned with the site, same rule as the fonts.
     image: "/og-image.png",
-    twitterHandle: handle,
+    localized: opts.localized,
+    twitterHandle: identity?.handle,
   });
 
-  const person = personLd({
-    name,
-    handle,
-    role,
-    origin,
-    sameAs: profileLinks(opts.site),
-  });
-  const website = websiteLd({ name, handle, role, origin });
+  // Person + WebSite describe the site as a whole, so they belong on the pages
+  // that *are* the site. A blog post carries its own BlogPosting graph instead —
+  // repeating the site graphs on every document would just be noise.
+  const graphs: Record<string, unknown>[] = [];
+  if (opts.site && identity) {
+    const id = {
+      name: identity.name,
+      handle: identity.handle,
+      role: identity.role,
+      origin,
+      sameAs: profileLinks(opts.site),
+    };
+    graphs.push(personLd(id), websiteLd(id));
+  }
+  graphs.push(...(opts.jsonLd ?? []));
 
   useHead(() => ({
+    // The page's own title and description, which is the whole point — Open Graph
+    // is what a chat client unfurls, but `<title>` and `<meta name="description">`
+    // are what a search result is built from. `nuxt.config` sets a site-wide
+    // default for both; without overriding them here, every page inherits the
+    // homepage's, and the per-page titles quietly disappear.
+    title: opts.title,
     link: [
       { rel: "canonical", href: tags.canonical },
       ...tags.alternates.map((a) => ({ rel: "alternate", hreflang: a.hreflang, href: a.href })),
     ],
-    meta: tags.meta.map((m) => ({ ...m, key: m.property ?? m.name })),
-    script: [
-      // One graph node per script block is the shape Google's parser prefers over
-      // an @graph array; both validate, this reads cleaner in view-source.
-      { type: "application/ld+json", innerHTML: JSON.stringify(person) },
-      { type: "application/ld+json", innerHTML: JSON.stringify(website) },
+    meta: [
+      { name: "description", content: opts.description, key: "description" },
+      ...tags.meta.map((m) => ({ ...m, key: m.property ?? m.name })),
     ],
-    // Never let a JSON-LD block get HTML-escaped — an escaped `"` breaks the
-    // parser silently. Nuxt escapes innerHTML by default; opt these two out.
-    __dangerouslyDisableSanitizersByTagID: {
-      "ld-person": ["innerHTML"],
-      "ld-website": ["innerHTML"],
-    },
+    // One graph per script block is the shape Google's parser prefers over an
+    // @graph array; both validate, this reads cleaner in view-source.
+    script: graphs.map((graph, i) => ({
+      type: "application/ld+json",
+      innerHTML: JSON.stringify(graph),
+      key: `ld-${i}`,
+    })),
   }));
 
   return { canonical: tags.canonical };

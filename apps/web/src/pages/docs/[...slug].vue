@@ -10,6 +10,8 @@
  */
 import type { DocGroup } from "~/lib/docs";
 import DocsShell from "~/components/docs/DocsShell.vue";
+import { plainExcerpt } from "@lg/core";
+import { useSeo } from "~/composables/useSeo";
 
 const route = useRoute();
 const slug = computed(() =>
@@ -21,7 +23,15 @@ const { data, error } = await useFetch<{ title: string; html: string; slug: stri
 );
 if (error.value) throw createError({ statusCode: 404, statusMessage: "No such doc." });
 
-useHead(() => ({ title: `${data.value?.title ?? "Docs"} — letsgaming.de docs` }));
+// Docs are English-only repo markdown, prerendered — no `localized`, because
+// `?lang=de` serves the same words and claiming an alternate would be a false
+// hreflang. No site graphs either: these are documents, not the site itself.
+useSeo({
+  locale: "en",
+  path: `/docs/${slug.value}`,
+  title: `${data.value?.title ?? "Docs"} — letsgaming.de docs`,
+  description: plainExcerpt(data.value?.html ?? "") || `${data.value?.title ?? "Documentation"} — letsgaming.de documentation.`,
+});
 </script>
 
 <template>

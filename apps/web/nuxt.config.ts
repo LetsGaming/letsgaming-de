@@ -1,3 +1,4 @@
+import { SITE_DESCRIPTION } from "./src/lib/site-meta";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineNuxtConfig } from "nuxt/config";
@@ -119,11 +120,7 @@ export default defineNuxtConfig({
       meta: [
         { charset: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
-        {
-          name: "description",
-          content:
-            "Personal homepage of Domenic (@LetsGaming) — full-time web developer in Germany. Clean interfaces by day; plant sensors and LED strips by night.",
-        },
+        { name: "description", content: SITE_DESCRIPTION },
         { name: "theme-color", content: "#8b5cf6" },
       ],
       link: [

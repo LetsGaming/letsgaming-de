@@ -22,8 +22,15 @@ deleted.
 | [0013](./0013-in-process-log-ingest.md) | In-process access-log ingest | Accepted |
 | [0014](./0014-guestbook-presence.md) | Guestbook and presence widget | Accepted |
 | [0015](./0015-nuxt-migration.md) | Nuxt 3 for the web app | Accepted (supersedes 0003) |
+| [0016](./0016-analytics-timezone.md) | Analytics stored in UTC, grouped in the reader's zone | Accepted (extends 0012) |
+| [0017](./0017-seo-metadata.md) | SEO metadata is derived, not hand-written per page | Accepted |
 
 The decisions from 0009 onward record where the project grew past its original
 locked spec: a second and third data source, the asset library, the engagement
 beacon, self-serve log ingest, and the guestbook and presence widget. Each stays
 bounded and points back at the principle it extends.
+
+0016 and 0017 are the two places where "obvious" turned out to be wrong: a day
+boundary is a wall-clock fact rather than a string prefix, and a `Disallow` line
+is a public index of what you were hiding. Both are recorded because the wrong
+version looked right and shipped green.

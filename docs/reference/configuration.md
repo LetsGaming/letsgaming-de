@@ -50,11 +50,19 @@ long random value in production (`openssl rand -hex 32`). See
 |---|---|---|
 | `API_URL` | runtime, server-side | Where SSR reads the `SiteView`. In Docker this is the internal URL. |
 | `PUBLIC_API_URL` | build-time, client | Where the browser reaches the API; baked into the CMS and client bundle. |
+| `PUBLIC_SITE_URL` | build-time, both | The site's canonical origin (default `https://letsgaming.de`). |
 | `HOST` / `PORT` | runtime | Bind for the SSR Node server (`0.0.0.0` and `4321` in the image). |
 
 There are two API URLs because the SSR process and the browser reach the API by
 different routes. In Docker: `API_URL=http://server:8787` (internal),
 `PUBLIC_API_URL` is the public API URL.
+
+`PUBLIC_SITE_URL` is more load-bearing than it looks. It is the single origin
+behind every canonical URL, `hreflang` alternate, `og:url`, JSON-LD `url`, the
+`Sitemap:` line in `robots.txt` and every `<loc>` in the sitemap — and it's what
+`SmartLink` uses to tell an internal link from an external one. Set it wrong and
+the site will still render perfectly while telling search engines that every page
+lives somewhere else. Change it in one place; nothing else hardcodes the domain.
 
 ## What enables each optional feature
 

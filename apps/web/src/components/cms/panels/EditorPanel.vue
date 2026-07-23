@@ -20,6 +20,7 @@ import type { View } from "../../../composables/useCmsNav";
 import { vSortable } from "../../../composables/sortable";
 import { useCmsContext } from "../../../composables/cmsContext";
 import CanvasHost from "../CanvasHost.vue";
+import LocalizedField from "../LocalizedField.vue";
 import AboutPanel from "./AboutPanel.vue";
 import GalleryPanel from "./GalleryPanel.vue";
 import GuestbookPanel from "./GuestbookPanel.vue";
@@ -80,6 +81,17 @@ const {
 	viewSite,
 } = useCmsContext();
 
+/**
+ * The page whose search description the field edits — the one being previewed,
+ * which is the page every other control here already acts on.
+ *
+ * Falls back to the first area so the field is never bound to `undefined`: the
+ * preview area is set on mount, but the template renders once before that.
+ */
+const editedArea = computed(
+  () => layoutAreas.value.find((a) => a.id === previewArea.value) ?? layoutAreas.value[0],
+);
+
 /** The value the move/hide `<select>` reports. A plain string cast on the DOM
  *  event, so the template stays terse. */
 const moveTo = (mid: string, e: Event) => setModuleArea(mid, (e.target as HTMLSelectElement).value);
@@ -97,6 +109,14 @@ function open() {
 <template>
   <section class="pane editor">
     <div class="editbar">
+      <label v-if="editedArea" class="seo-desc">Search description
+        <LocalizedField :field="editedArea.description" textarea placeholder="One sentence describing this page for search results and link previews." />
+        <span class="hint">
+          Shown in Google and when the page is shared. Leave empty to fall back to
+          the site-wide description. Saved with the layout.
+        </span>
+      </label>
+
       <label>Page
         <select v-model="previewArea">
           <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>

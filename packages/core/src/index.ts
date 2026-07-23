@@ -12,6 +12,7 @@ export * from "./view.js";
 export * from "./ia.js";
 export * from "./format.js";
 export * from "./analytics.js";
+export * from "./chart.js";
 export * from "./guestbook.js";
 export * from "./presence.js";
 export * from "./list-settings.js";

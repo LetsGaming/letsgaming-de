@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildSeoTags, personLd, websiteLd, type SeoInput } from "../src/seo.js";
+import { articleLd, buildSeoTags, personLd, plainExcerpt, websiteLd, type SeoInput } from "../src/seo.js";
 
 const base: SeoInput = {
   origin: "https://letsgaming.de",
@@ -26,7 +26,7 @@ test("a trailing slash on origin doesn't double up", () => {
 });
 
 test("hreflang lists every locale plus x-default; default is bare, others carry ?lang", () => {
-  const { alternates } = buildSeoTags({ ...base, path: "/life" });
+  const { alternates } = buildSeoTags({ ...base, path: "/life", localized: true });
   const byLang = Object.fromEntries(alternates.map((a) => [a.hreflang, a.href]));
   assert.equal(byLang.en, "https://letsgaming.de/life");
   assert.equal(byLang.de, "https://letsgaming.de/life?lang=de");
@@ -91,4 +91,60 @@ test("websiteLd names both locales as inLanguage", () => {
   const ld = websiteLd({ name: "Domenic", handle: "@LetsGaming", role: "web developer", origin: "https://letsgaming.de" });
   assert.deepEqual(ld.inLanguage, ["en", "de"]);
   assert.equal(ld["@type"], "WebSite");
+});
+
+test("a single-language page claims no alternates — an unlocalized page must not advertise hreflang", () => {
+  const tags = buildSeoTags({ ...base, path: "/md/a-post" });
+  assert.deepEqual(tags.alternates, []);
+  assert.equal(
+    tags.meta.some((m) => m.property === "og:locale:alternate"),
+    false,
+  );
+});
+
+test("a localized page advertises the other locale to Facebook too, but not its own", () => {
+  const alts = buildSeoTags({ ...base, locale: "en", localized: true }).meta
+    .filter((m) => m.property === "og:locale:alternate")
+    .map((m) => m.content);
+  assert.deepEqual(alts, ["de"]);
+});
+
+test("articleLd carries the page as mainEntityOfPage and omits empty optionals", () => {
+  const ld = articleLd({
+    headline: "A post",
+    url: "https://letsgaming.de/md/a-post",
+    datePublished: "2026-02-01T10:00:00.000Z",
+    author: { name: "Domenic" },
+    keywords: [],
+  });
+  assert.equal(ld["@type"], "BlogPosting");
+  assert.equal(ld.mainEntityOfPage, "https://letsgaming.de/md/a-post");
+  assert.equal("keywords" in ld, false);
+  assert.equal("description" in ld, false);
+  assert.deepEqual(ld.author, { "@type": "Person", name: "Domenic" });
+});
+
+test("plainExcerpt strips tags, markdown and code fences", () => {
+  assert.equal(plainExcerpt("<p>Hello <strong>world</strong>.</p>"), "Hello world.");
+  assert.equal(plainExcerpt("## Heading\n\nSome *emphasised* text."), "Heading Some emphasised text.");
+  assert.equal(plainExcerpt("Intro.\n\n```ts\nconst x = 1;\n```"), "Intro.");
+});
+
+test("plainExcerpt keeps link text and drops the target", () => {
+  assert.equal(plainExcerpt("See [the docs](https://example.com/x) for more."), "See the docs for more.");
+});
+
+test("plainExcerpt decodes entities and collapses whitespace", () => {
+  assert.equal(plainExcerpt("a &amp; b &nbsp;  c"), "a & b c");
+});
+
+test("plainExcerpt cuts at a word boundary and marks the truncation", () => {
+  const out = plainExcerpt("word ".repeat(60));
+  assert.ok(out.length <= 156, `too long: ${out.length}`);
+  assert.ok(out.endsWith("…"));
+  assert.ok(!out.includes("wor…"), "should not cut mid-word");
+});
+
+test("plainExcerpt yields empty string for a body with no prose", () => {
+  assert.equal(plainExcerpt("```\nconst x = 1;\n```"), "");
 });

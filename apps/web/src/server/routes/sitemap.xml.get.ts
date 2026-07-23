@@ -17,9 +17,13 @@ import { areaHref, LOCALES, DEFAULT_LOCALE, type Locale } from "@lg/core";
  *   `md`/`docs`/`datenschutz` routes are likewise omitted — only content areas
  *   are listed.
  *
- * Each URL carries `xhtml:link` alternates for both locales, which is the sitemap
- * half of the `hreflang` story: the same signal the pages emit in `<head>`, so a
- * crawler that reads either one learns the site is bilingual.
+ * Areas carry `xhtml:link` alternates for both locales — the sitemap half of the
+ * `hreflang` story, matching what those pages emit in `<head>`. Blog posts don't:
+ * a post is written in one language and `?lang` doesn't translate it, so the two
+ * signals stay consistent about which pages are really bilingual.
+ *
+ * Posts are listed too, and they're the only entries with a meaningful `lastmod`
+ * — a real publication date, rather than the sync timestamp the areas share.
  */
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
@@ -30,12 +34,24 @@ export default defineEventHandler(async (event) => {
   const site = await loadSite(DEFAULT_LOCALE);
   const paths = site.nav.map((area) => areaHref(site.nav, area.id));
 
+  // Posts come from whichever module resolved them — the same list the blog index
+  // renders, so drafts are already absent (the resolver drops them) and a post
+  // can't reach the sitemap before it's published.
+  const posts = Object.values(site.modules).flatMap((module) =>
+    module.kind === "posts" ? module.data.posts : [],
+  );
+
   const url = (path: string, locale: Locale): string => {
     const base = path === "/" ? origin : `${origin}${path}`;
     return locale === DEFAULT_LOCALE ? base : `${base}?lang=${locale}`;
   };
 
   const lastmod = site.syncedAt ? new Date(site.syncedAt).toISOString() : undefined;
+
+  const entry = (loc: string, mod: string | undefined, alternates: string): string =>
+    ["  <url>", `    <loc>${loc}</loc>`, mod ? `    <lastmod>${mod}</lastmod>` : "", alternates, "  </url>"]
+      .filter(Boolean)
+      .join("\n");
 
   const body = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -47,16 +63,9 @@ export default defineEventHandler(async (event) => {
           return `    <xhtml:link rel="alternate" hreflang="${l}" href="${href}"/>`;
         })
         .join("\n");
-      return [
-        "  <url>",
-        `    <loc>${url(path, DEFAULT_LOCALE)}</loc>`,
-        lastmod ? `    <lastmod>${lastmod}</lastmod>` : "",
-        alternates,
-        "  </url>",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      return entry(url(path, DEFAULT_LOCALE), lastmod, alternates);
     }),
+    ...posts.map((post) => entry(`${origin}/md/${post.slug}`, post.at, "")),
     "</urlset>",
   ].join("\n");
 

@@ -39,23 +39,71 @@ rate limit and is never stored, the same posture as the contact relay.
 
 It can tell you popular paths, referrer sources, browser and OS and device split,
 which sections hold attention, how people move between them, and coarse trends
-over time. It cannot tell you unique visitors, sessions, bounce rate, or
-per-person journeys, because those need a cookie or a pseudonymous hash. That's an
-accepted trade, not a bug.
+over time. It cannot tell you unique visitors, bounce rate, or per-person
+journeys, because those need a cookie or a pseudonymous hash. That's an accepted
+trade, not a bug.
+
+It *can* count **visits**, with a caveat worth stating precisely, because two of
+the dashboard's numbers used to be labelled as each other:
+
+| Metric | Dimension | What one row is |
+|---|---|---|
+| Page views | `path` | one request, from the access log, bots excluded |
+| Section views | `tab` | one *section entry* — several per visitor |
+| Visits | `session_dwell` | one *completed visit*, emitted once on unload |
+| Visit length | `session_dwell` keys | a coarse dwell bucket, shown as a median |
+
+"Visits" is completed visits: the summary event fires from `pagehide`, so a tab
+the OS kills while backgrounded contributes page views but no visit row. Visits
+therefore read slightly under page views by construction. Moving that event
+earlier would count visits that hadn't finished, so the number stays honest and
+the label says "completed".
 
 ## Storage and retention
 
-Both systems write to `analytics_hourly`, keyed by UTC hour, so recent data has
-hourly resolution. A maintenance pass (`rollupAndPrune`, run by the sync worker)
+Both systems write to `analytics_hourly`, keyed by **UTC** hour, so recent data
+has hourly resolution and one storage zone. A maintenance pass (`rollupAndPrune`, run by the sync worker)
 sums hourly rows older than `RETAIN_HOURLY_DAYS` (default 90) into
 `analytics_daily` and prunes the hourly rows, which keeps the table from growing
 without bound while long-range daily totals survive. `analytics_state` holds the
 log file's byte offset so re-running the ingest is idempotent and never
 double-counts. See [data-model](./data-model.md) for the table shapes.
 
+## Which clock the dashboard reads in
+
+Rows are stored in UTC; the dashboard reads them in the owner's zone by default,
+with a UTC toggle. That split is not cosmetic:
+
+- **Hour buckets stay UTC.** An hour is an hour in any zone, so only the *label*
+  moves. This is done client-side.
+- **Day buckets are grouped in the reader's zone, on the server.** A day boundary
+  is a wall-clock fact: in Berlin the 22:00 and 23:00 UTC hours already belong to
+  the next local day. `substr(bucket, 1, 10)` would file them in the wrong column
+  and no relabelling could fix it, so the regrouping is done in JS with
+  `zonedParts` (`@lg/db/tz.ts`) — the same DST-exact helper the playtime heatmap
+  buckets with, applied per instant rather than as a fixed offset.
+- **Day windows snap to local midnight**, so the oldest column is a whole day.
+  This was a real bug: the window used an *hour* bound while grouping by day, so
+  the first day silently lost every hour before the current hour-of-day — up to
+  23/24 of itself, varying with the time of day the dashboard happened to be
+  open, while the chart drew it as complete.
+
+The dashboard also compares each metric against the window immediately before it.
+When that earlier window predates any data the comparison is omitted rather than
+zeroed, so a new install reads "no earlier data to compare" instead of −100%.
+
+## Reading it without a mouse
+
+The chart is an SVG with `aria-hidden`, paired with a real `<table>` carrying the
+same per-bucket numbers — hidden visually, present in the accessibility tree, and
+revealable with a toggle. It used to carry `role="img"`, which makes assistive
+tech treat the whole plot as one opaque image and ignore anything inside it, so
+the values were mouse-only by construction.
+
 The dashboard in the CMS reads these aggregates over a chosen time window and can
-clear a range. It's read-only over anonymous counts; there's nothing personal to
-expose or protect. How to set the log ingest up in production is in
+clear a range (which reports how many rows it removed). It's read-only over
+anonymous counts; there's nothing personal to expose or protect. How to set the
+log ingest up in production is in
 [operations/analytics-ingestion](../operations/analytics-ingestion.md).
 
 ## The rest of the privacy posture

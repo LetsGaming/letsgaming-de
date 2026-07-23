@@ -8,9 +8,14 @@
  * undo that by announcing it to anyone who fetches this file. So `/admin` is
  * deliberately not named.
  *
- * `/api/` and `/md/` are disallowed because they're not pages a search result
- * should land on — raw JSON and raw markdown — but there's nothing secret about
- * them, so naming them costs nothing.
+ * `/api/` is disallowed because JSON endpoints aren't pages a search result should
+ * land on. Nothing secret about them, so naming them costs nothing.
+ *
+ * `/md/` is deliberately NOT disallowed. It looks like an internal path but it's
+ * the rendered blog — the highest-value pages on the site for search. The raw
+ * markdown lives at `/api/md/`, which the `/api/` rule already covers. An earlier
+ * version of this file blocked `/md/` on the assumption that the name meant raw
+ * content; that would have deindexed every post.
  *
  * The `Sitemap:` line is the one thing a static file couldn't get right without
  * hardcoding the domain: it's built from the same canonical origin everything
@@ -23,7 +28,6 @@ export default defineEventHandler((event) => {
   const body = [
     "User-agent: *",
     "Disallow: /api/",
-    "Disallow: /md/",
     "Allow: /",
     "",
     `Sitemap: ${origin}/sitemap.xml`,

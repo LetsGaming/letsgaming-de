@@ -20,6 +20,19 @@ export interface NavNode {
   id: string;
   /** Human label, localized. Editable via the CMS (nav labels are CMS-owned). */
   label: Localized;
+  /**
+   * The area's own meta description, localized. CMS-owned, like the label.
+   *
+   * Optional because it's the one piece of page metadata nothing can derive: a
+   * label is a nav affordance ("Life"), not a sentence a search result can use.
+   * Without it every area published the same site-wide description, which search
+   * engines treat as four duplicate pages and usually discard in favour of a
+   * snippet they synthesize themselves.
+   *
+   * Left unset, `areaMeta` falls back to the site description — a shared but
+   * accurate sentence — so an area is never worse off for not having one.
+   */
+  description?: Localized;
   /** Optional icon key resolved by the frontend's icon set. */
   icon?: string;
   /** Branch: child nodes with their own secondary nav. Mutually exclusive with `modules`. */

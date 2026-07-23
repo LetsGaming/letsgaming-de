@@ -36,8 +36,9 @@ const { t } = useT();
 
 // Per-area <title>/description, so a link pasted into a chat unfurls as the thing
 // it points at rather than as the homepage.
+const isHome = computed(() => area.value?.id === props.site.nav[0]?.id);
 const meta = computed(() =>
-  areaMeta(area.value, props.site.meta.name, props.site.meta.role),
+  areaMeta(area.value, props.site.meta.name, props.site.meta.role, isHome.value),
 );
 
 // `data-locale-aware` opts this page into the locale redirect in nuxt.config;
@@ -53,6 +54,9 @@ useSeo({
   path: areaHref(props.site.nav, area.value?.id ?? props.site.nav[0]?.id ?? ""),
   title: meta.value.title,
   description: meta.value.description,
+  // Areas are the only pages that genuinely render in both languages from one
+  // URL, so they're the only ones that may claim hreflang alternates.
+  localized: true,
 });
 </script>
 

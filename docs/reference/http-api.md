@@ -174,19 +174,48 @@ Guestbook moderation:
 
 Analytics:
 
-`GET /api/cms/analytics?hours=720` returns anonymous aggregates over the window
-(default 720 hours; the response uses hourly buckets at or under 72 hours, daily
-above). The shape:
+`GET /api/cms/analytics?hours=720&tz=Europe/Berlin` returns anonymous aggregates
+over the window (default 720 hours; the response uses hourly buckets at or under
+72 hours, daily above).
+
+`tz` is an IANA zone, defaulting to the owner's (`Europe/Berlin`); anything
+unrecognised falls back rather than erroring. It decides **where a day starts**,
+which is a wall-clock fact and not a display detail: in a zone ahead of UTC the
+last hours of a UTC day already belong to the next local day, so day buckets are
+grouped in this zone server-side. Hour buckets stay UTC — an hour is an hour —
+and only their labels shift client-side.
+
+For day units the window is also snapped to local midnight, so the oldest column
+is a whole day. Asking for `hours=168` therefore covers seven *whole local days*,
+which can be up to 23 hours more than 168.
 
 ```jsonc
 {
-  "range": { "from": "...", "to": "...", "hours": 720, "unit": "day" },
+  "range": {
+    "from": "2026-07-11",        // a local day when unit is "day"; an hour bucket when "hour"
+    "to": "2026-07-17",
+    "hours": 720,
+    "unit": "day",
+    "timeZone": "Europe/Berlin" // the zone the buckets are expressed in
+  },
   "paths": [ { "key": "/", "count": 12 }, ... ],
   "referrers": [ ... ], "browsers": [ ... ], "os": [ ... ], "devices": [ ... ],
-  "chart": { "unit": "day", "pageviews": [...], "sections": [...], "clicks": [...], "visitLength": [...] },
+  "bots": [ ... ],
+  "chart": { "unit": "day", "pageviews": [...], "sections": [...], "clicks": [...], "visitLength": [...], "bots": [...] },
+  // Totals over the window immediately before this one, for a "vs previous
+  // period" reading. OMITTED — not zeroed — when that window predates any data,
+  // so a fresh install shows "nothing to compare" rather than −100%.
+  "previous": { "pageviews": 0, "sections": 0, "clicks": 0, "visitLength": 0, "bots": 0 },
   "engagement": { "tabs": [...], "exits": [...], "transitions": [...], "dwell": [...], "scroll": [...], "clicks": [...], "projects": [...], "viewport": [...], "theme": [...] }
 }
 ```
+
+What the `chart` series actually count, since two of them read like something
+else: `sections` is the `tab` dimension — one row per *section entry*, several per
+visitor, so it totals section views and not visits. `visitLength` is
+`session_dwell`, emitted exactly once per visit when the page unloads, so its
+total **is** the visit count and its keys are dwell buckets. The CMS labels them
+"Section views" and "Visits" for this reason.
 
 `POST /api/cms/analytics/clear` with `{ "range": "hour" | "24h" | "3d" | "7d" |
 "all" }` clears that range and returns `{ ok, removed }`. `all` also wipes the

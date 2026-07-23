@@ -1,9 +1,13 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { AuthError } from "../lib/cms";
 import {
+  DWELL_BUCKETS,
   VIEW_RANGES,
   CLEAR_RANGES,
+  buildStackedChart,
+  columnAtX,
   type AnalyticsResponse,
+  type ChartColumn,
   type ClearRangeId,
 } from "@lg/core";
 
@@ -25,12 +29,39 @@ import {
 const METRIC_KEYS = ["pageviews", "sections", "clicks", "visitLength", "bots"] as const;
 type MetricKey = (typeof METRIC_KEYS)[number];
 
+/**
+ * What each tile is called, and what its headline number actually counts.
+ *
+ * Two of these were wrong, in a way that made the dashboard confidently
+ * misreport its own traffic:
+ *
+ * - `sections` is the `tab` dimension, emitted on every section entry — several
+ *   per visitor. It was labelled "Confirmed visits", so the number shown as a
+ *   visit count was inflated by however many sections people browsed.
+ * - `visitLength` is `session_dwell`, emitted exactly once per visit (in the
+ *   tracker's `end()`, behind an `ended` guard). Summing it gives the number of
+ *   visits, not a length — so the tile labelled "Visit length" was showing the
+ *   visit count, and the real visit count had no tile of its own.
+ *
+ * Both now say what they hold. Visit *length* is a distribution across dwell
+ * buckets, so its headline is the median bucket rather than a sum — adding up
+ * bucket labels was never going to mean anything.
+ */
 const METRIC_LABELS: Record<MetricKey, string> = {
   pageviews: "Page views",
-  sections: "Confirmed visits",
+  sections: "Section views",
   clicks: "Clicks",
-  visitLength: "Visit length",
+  visitLength: "Visits",
   bots: "Bots",
+};
+
+/** The sub-label under each headline number, naming the unit it's counted in. */
+const METRIC_UNITS: Record<MetricKey, string> = {
+  pageviews: "from the access log",
+  sections: "sections opened",
+  clicks: "tracked elements",
+  visitLength: "completed visits",
+  bots: "crawler hits",
 };
 
 /** METRIC_KEYS, not `Object.keys(METRIC_LABELS) as MetricKey[]` — a cast is a
@@ -44,7 +75,7 @@ const CLEARS = CLEAR_RANGES;
 
 // Chart palette lives in tokens.css (--stack-1..7); referenced as CSS variables
 // so the theme owns the colours and the chart carries no hard-coded hex.
-const STACK_COLORS = [
+export const STACK_COLORS = [
   "var(--stack-1)",
   "var(--stack-2)",
   "var(--stack-3)",
@@ -63,60 +94,12 @@ const STACK_COLORS = [
  */
 const ANALYTICS_POLL_MS = 30_000;
 
-/** Round up to a "nice" number (1/2/5 × 10ⁿ) for an axis top. */
-function niceCeil(v: number): number {
-  if (v <= 1) return 1;
-  const exp = Math.floor(Math.log10(v));
-  const base = 10 ** exp;
-  const f = v / base;
-  const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
-  return nf * base;
-}
-/** A "nice" step dividing `range` into roughly `count` intervals. */
-function niceStep(range: number, count: number): number {
-  const raw = range / Math.max(1, count);
-  const exp = Math.floor(Math.log10(raw));
-  const base = 10 ** exp;
-  const f = raw / base;
-  const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
-  return nf * base;
-}
-/** Integer y-axis ticks 0..top for count data (min step 1, ~4 divisions). */
-function yAxisTicks(max: number): { top: number; ticks: number[] } {
-  const step = Math.max(1, Math.round(niceStep(niceCeil(max), 4)));
-  const top = Math.max(step, Math.ceil(max / step) * step);
-  const ticks: number[] = [];
-  for (let v = 0; v <= top + 1e-9; v += step) ticks.push(v);
-  return { top, ticks };
-}
-
-/** Enumerate the continuous bucket axis for the current range + unit. */
-function axisBuckets(from: string, to: string, unit: "hour" | "day"): string[] {
-  const out: string[] = [];
-  if (unit === "hour") {
-    const d = new Date(`${from}:00:00Z`);
-    const end = new Date(`${to}:00:00Z`);
-    while (d <= end) {
-      out.push(d.toISOString().slice(0, 13));
-      d.setUTCHours(d.getUTCHours() + 1);
-    }
-  } else {
-    const d = new Date(`${from.slice(0, 10)}T00:00:00Z`);
-    const end = new Date(`${to.slice(0, 10)}T00:00:00Z`);
-    while (d <= end) {
-      out.push(d.toISOString().slice(0, 10));
-      d.setUTCDate(d.getUTCDate() + 1);
-    }
-  }
-  return out;
-}
-
 /** Shared bits the analytics slice needs from the parent CMS. */
 export interface AnalyticsDeps {
   /** Which panel is open — the poll runs only while this is "analytics". */
   tab: Ref<string>;
   cms: {
-    analytics: (hours: number) => Promise<AnalyticsResponse>;
+    analytics: (hours: number, tz?: string) => Promise<AnalyticsResponse>;
     clearAnalytics: (range: ClearRangeId) => Promise<unknown>;
   };
   authed: { value: boolean };
@@ -127,6 +110,18 @@ export interface AnalyticsDeps {
 export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps) {
   const analytics = ref<AnalyticsResponse | null>(null);
   const rangeHours = ref(72);
+  /**
+   * Which clock the chart is read in.
+   *
+   * `local` is the browser's zone, `utc` is the raw storage zone. Local is the
+   * default because the only reader is the owner, and "yesterday evening" should
+   * mean their evening — the chart used to be UTC-only with a caption admitting
+   * it, which is an offset the reader had to carry in their head.
+   */
+  const zone = ref<"local" | "utc">("local");
+  const browserZone =
+    typeof Intl !== "undefined" ? (Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC") : "UTC";
+  const activeZone = computed(() => (zone.value === "utc" ? "UTC" : browserZone));
   const metric = ref<MetricKey>("pageviews");
   const loadingA = ref(false);
   const clearing = ref(false);
@@ -146,7 +141,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
   async function loadAnalytics(opts: { quiet?: boolean } = {}) {
     if (!opts.quiet) loadingA.value = true;
     try {
-      analytics.value = await cms.analytics(rangeHours.value);
+      analytics.value = await cms.analytics(rangeHours.value, activeZone.value);
       analyticsAt.value = Date.now();
     } catch (e) {
       if (e instanceof AuthError) {
@@ -157,7 +152,10 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
         flash((e as Error).message || "Couldn't load analytics.");
       }
     } finally {
-      loadingA.value = false;
+      // Only the load that raised the spinner may lower it — a quiet poll
+      // landing mid-refresh used to switch it off while the manual load was
+      // still running.
+      if (!opts.quiet) loadingA.value = false;
     }
   }
 
@@ -194,14 +192,28 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     refreshAnalytics();
   }
 
+  /** Switching clocks re-groups day columns server-side, so it's a refetch. */
+  function setZone(z: "local" | "utc") {
+    if (z === zone.value) return;
+    zone.value = z;
+    refreshAnalytics();
+  }
+
   async function clearRange(range: ClearRangeId, label: string) {
     if (!confirm(`Delete analytics for ${label}? This can't be undone.`)) return;
     clearing.value = true;
+    // The endpoint answers with how many rows it removed, and that number is the
+    // only confirmation an irreversible delete gets. It used to be discarded,
+    // with an empty success message on top — so clearing everything looked
+    // exactly like clearing nothing.
+    let removed = 0;
     await guarded(async () => {
-      await cms.clearAnalytics(range);
+      const res = (await cms.clearAnalytics(range)) as { removed?: number };
+      removed = res?.removed ?? 0;
       await loadAnalytics();
     }, "");
     clearing.value = false;
+    flash(removed ? `Cleared ${removed} rows (${label}).` : `Nothing to clear for ${label}.`);
   }
 
   const metricTotals = computed<Record<MetricKey, number>>(() => {
@@ -212,106 +224,91 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
       pageviews: sum(c?.pageviews),
       sections: sum(c?.sections),
       clicks: sum(c?.clicks),
+      // One `session_dwell` row per visit, so its sum is the visit count.
       visitLength: sum(c?.visitLength),
       bots: sum(c?.bots),
     };
   });
 
-  /** Stacked-area geometry for the selected metric (composition over time). */
+  /**
+   * This window against the one before it, per metric.
+   *
+   * `null` when the server sent no previous window — it omits it rather than
+   * zeroing, so "nothing to compare against" stays distinguishable from "down
+   * 100%", which is what a fresh install would otherwise report forever.
+   */
+  const comparison = computed<Record<MetricKey, { delta: number; pct: number | null }> | null>(() => {
+    const prev = analytics.value?.previous;
+    if (!prev) return null;
+    const out = {} as Record<MetricKey, { delta: number; pct: number | null }>;
+    for (const k of METRIC_KEYS) {
+      const before = prev[k];
+      const now = metricTotals.value[k];
+      // A rise from zero has no percentage — reporting +∞% or +100% would both
+      // be inventions. The absolute delta still says something true.
+      out[k] = { delta: now - before, pct: before > 0 ? ((now - before) / before) * 100 : null };
+    }
+    return out;
+  });
+
+  /**
+   * The median visit-length bucket — the honest headline for a distribution.
+   *
+   * Walks the ordered dwell buckets accumulating visits until it passes the
+   * halfway point, so the answer is a real bucket somebody actually fell into.
+   * Empty when there are no completed visits, rather than defaulting to the
+   * shortest bucket and implying everyone bounced.
+   */
+  const medianVisitLength = computed<string>(() => {
+    const rows = analytics.value?.chart?.visitLength ?? [];
+    const byBucket = new Map<string, number>();
+    for (const r of rows) byBucket.set(r.key, (byBucket.get(r.key) ?? 0) + r.count);
+    const total = [...byBucket.values()].reduce((s, v) => s + v, 0);
+    if (!total) return "";
+    let seen = 0;
+    for (const bucket of DWELL_BUCKETS) {
+      seen += byBucket.get(bucket) ?? 0;
+      if (seen * 2 >= total) return bucket;
+    }
+    return "";
+  });
+
+  /**
+   * Stacked-area geometry for the selected metric. The maths is `@lg/core`'s
+   * `buildStackedChart` — pure, and unit-tested against exact output; this only
+   * chooses which rows to hand it.
+   */
   const chart = computed(() => {
     const a = analytics.value;
     if (!a?.chart) return null;
-    const rows = (a.chart[metric.value] ?? []) as { bucket: string; key: string; count: number }[];
-    const unit = a.chart.unit as "hour" | "day";
-    const buckets = axisBuckets(a.range.from, a.range.to, unit);
-    const idx = new Map(buckets.map((b, i) => [b, i]));
-
-    // keys ordered by total desc, capped to 6 (+ "other")
-    const totals = new Map<string, number>();
-    for (const r of rows) totals.set(r.key, (totals.get(r.key) ?? 0) + r.count);
-    let keys = [...totals.entries()].sort((x, y) => y[1] - x[1]).map((e) => e[0]);
-    const overflow = keys.slice(6);
-    keys = keys.slice(0, 6);
-    const remap = (k: string) => (overflow.includes(k) ? "other" : k);
-    if (overflow.length) keys.push("other");
-
-    // matrix[keyIndex][bucketIndex]
-    const matrix = keys.map(() => new Array(buckets.length).fill(0));
-    for (const r of rows) {
-      const bi = idx.get(r.bucket);
-      if (bi == null) continue;
-      const ki = keys.indexOf(remap(r.key));
-      if (ki >= 0) matrix[ki][bi] += r.count;
-    }
-
-    const colTotals = buckets.map((_, bi) => keys.reduce((s, _k, ki) => s + matrix[ki][bi], 0));
-    const max = Math.max(1, ...colTotals);
-
-    // Plot box with margins so the axes have room for labels.
-    const W = 720;
-    const H = 210;
-    const M = { l: 38, r: 12, t: 12, b: 34 };
-    const x0 = M.l;
-    const x1 = W - M.r;
-    const y0 = M.t;
-    const y1 = H - M.b;
-    const n = buckets.length;
-    const { top: yTop, ticks: yTickVals } = yAxisTicks(max);
-    const xAt = (i: number) => (n <= 1 ? (x0 + x1) / 2 : x0 + (i / (n - 1)) * (x1 - x0));
-    const yAt = (v: number) => y1 - (v / yTop) * (y1 - y0);
-
-    // Build stacked layer paths (bottom-up).
-    const cum = new Array(buckets.length).fill(0);
-    const layers = keys.map((key, ki) => {
-      const lower = cum.slice();
-      for (let bi = 0; bi < buckets.length; bi++) cum[bi] += matrix[ki][bi];
-      const top = cum.map((v, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ");
-      const bottom = lower
-        .map((_, i) => `L${xAt(buckets.length - 1 - i).toFixed(1)} ${yAt(lower[buckets.length - 1 - i]).toFixed(1)}`)
-        .join(" ");
-      return {
-        key,
-        color: STACK_COLORS[ki % STACK_COLORS.length],
-        total: matrix[ki].reduce((s: number, v: number) => s + v, 0),
-        path: `${top} ${bottom} Z`,
-      };
+    return buildStackedChart({
+      rows: (a.chart[metric.value] ?? []) as { bucket: string; key: string; count: number }[],
+      from: a.range.from,
+      to: a.range.to,
+      unit: a.chart.unit as "hour" | "day",
+      timeZone: a.range.timeZone,
     });
-
-    const total = colTotals.reduce((s, v) => s + v, 0);
-    const labelFmt = (b: string) => (unit === "hour" ? `${b.slice(5, 10)} ${b.slice(11)}h` : b.slice(5));
-
-    // Y ticks: value + pixel row + label (for gridlines and the count scale).
-    const yTicks = yTickVals.map((v) => ({ v, y: +yAt(v).toFixed(1), label: String(v) }));
-    // X ticks: a readable subset (~6) across the buckets, first & last always shown.
-    const targetX = Math.min(n, 6);
-    const stepX = Math.max(1, Math.round((n - 1) / Math.max(1, targetX - 1)));
-    const xTicks: { x: number; label: string; anchor: "start" | "middle" | "end" }[] = [];
-    for (let i = 0; i < n; i += stepX)
-      xTicks.push({ x: +xAt(i).toFixed(1), label: labelFmt(buckets[i]!), anchor: "middle" });
-    if (n > 1 && (n - 1) % stepX !== 0)
-      xTicks.push({ x: +xAt(n - 1).toFixed(1), label: labelFmt(buckets[n - 1]!), anchor: "middle" });
-    if (xTicks.length) {
-      xTicks[0]!.anchor = "start";
-      xTicks[xTicks.length - 1]!.anchor = "end";
-    }
-
-    return {
-      W,
-      H,
-      x0,
-      x1,
-      y0,
-      y1,
-      layers,
-      max,
-      total,
-      unit,
-      yTicks,
-      xTicks,
-      fromLabel: labelFmt(buckets[0] ?? a.range.from),
-      toLabel: labelFmt(buckets[n - 1] ?? a.range.to),
-    };
   });
+
+  // ── hover ───────────────────────────────────────────────────────────────────
+  //
+  // The chart used to carry one native `<title>` per layer holding that layer's
+  // whole-range total, which reads like a per-point value and never changes as
+  // you move along the axis. Pointer position now resolves to a bucket, and the
+  // panel shows what every series did *there*.
+  const hovered = ref<ChartColumn | null>(null);
+
+  /** Track the pointer across the plot. `xInView` is in viewBox units. */
+  function hoverAt(xInView: number) {
+    const c = chart.value;
+    hovered.value = c ? (columnAtX(c, xInView) ?? null) : null;
+  }
+  function clearHover() {
+    hovered.value = null;
+  }
+  // A range or metric change re-lays the axis; a tooltip pinned to the old one
+  // would be describing a bucket that's no longer under the pointer.
+  watch([metric, rangeHours], clearHover);
 
   // Lifecycle: the poll follows the open panel and the tab's visibility. Owning
   // its own watcher and listeners keeps all the timing in one place.
@@ -326,6 +323,8 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
 
   return {
     METRIC_LABELS,
+    METRIC_UNITS,
+    medianVisitLength,
     metricKeys,
     RANGES,
     CLEARS,
@@ -340,8 +339,14 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     refreshAnalytics,
     setRange,
     clearRange,
-    axisBuckets,
     metricTotals,
+    comparison,
+    zone,
+    activeZone,
+    setZone,
     chart,
+    hovered,
+    hoverAt,
+    clearHover,
   };
 }

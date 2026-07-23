@@ -187,6 +187,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     nodes.map((n) => ({
       id: n.id,
       label: L(n.label),
+      // Omitted rather than empty-stringed when unset, so `areaMeta` can tell
+      // "no description authored" from "authored as blank".
+      ...(n.description ? { description: L(n.description) } : {}),
       icon: n.icon,
       ...(n.children ? { children: localizeNav(n.children) } : {}),
       ...(n.modules ? { modules: n.modules } : {}),

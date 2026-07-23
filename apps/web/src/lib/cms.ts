@@ -103,9 +103,12 @@ export const cms = {
     fetch(`${apiBase}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
       handle<CmsContentResponse>,
     ),
-  analytics: (hours?: number) => {
+  analytics: (hours?: number, tz?: string) => {
     const q = new URLSearchParams();
     if (hours) q.set("hours", String(hours));
+    // Day columns are grouped server-side in this zone — a day boundary is a
+    // wall-clock fact, so it can't be a display-time transform.
+    if (tz) q.set("tz", tz);
     return fetch(`${apiBase}/api/cms/analytics?${q}`, {
       headers: headers(false),
       credentials: "include",

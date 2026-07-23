@@ -56,6 +56,17 @@ export interface SeoInput {
   image?: string;
   /** `@handle` for the Twitter card's `site`/`creator`. */
   twitterHandle?: string;
+  /**
+   * Whether this page genuinely exists in every locale at the same URL.
+   *
+   * Only the dashboard areas do — they re-render from the store in whatever
+   * language `?lang` asks for. The blog, the docs and the privacy page are
+   * single-language documents: `?lang=de` on a post serves the same English words
+   * it always did. Claiming `hreflang` alternates for those is a Search Console
+   * error ("alternate page returns duplicate content"), not a harmless extra — so
+   * this defaults to off, and the areas opt in.
+   */
+  localized?: boolean;
 }
 
 export interface SeoTags {
@@ -103,13 +114,15 @@ export function buildSeoTags(input: SeoInput): SeoTags {
   const canonical = url(input.origin, input.path);
   const ogType = input.ogType ?? "website";
 
-  const alternates: AlternateLink[] = LOCALES.map((locale) => ({
-    hreflang: locale,
-    href: localeUrl(input.origin, input.path, locale),
-  }));
-  // x-default points at the locale-negotiated URL (the bare path) — the page that
-  // picks a language from the visitor's Accept-Language rather than forcing one.
-  alternates.push({ hreflang: "x-default", href: canonical });
+  const alternates: AlternateLink[] = [];
+  if (input.localized) {
+    for (const locale of LOCALES) {
+      alternates.push({ hreflang: locale, href: localeUrl(input.origin, input.path, locale) });
+    }
+    // x-default points at the locale-negotiated URL (the bare path) — the page
+    // that picks a language from Accept-Language rather than forcing one.
+    alternates.push({ hreflang: "x-default", href: canonical });
+  }
 
   const meta: MetaTag[] = [
     { property: "og:type", content: ogType },
@@ -123,6 +136,14 @@ export function buildSeoTags(input: SeoInput): SeoTags {
     { name: "twitter:title", content: input.title },
     { name: "twitter:description", content: input.description },
   ];
+
+  // Facebook learns about the other language from og:locale:alternate, not from
+  // hreflang — so a localized page has to say it twice, in two vocabularies.
+  if (input.localized) {
+    for (const locale of LOCALES) {
+      if (locale !== input.locale) meta.push({ property: "og:locale:alternate", content: locale });
+    }
+  }
 
   if (input.image) {
     const img = absImage(input.origin, input.image);
@@ -181,4 +202,99 @@ export function websiteLd(id: SiteIdentity): Record<string, unknown> {
     author: { "@type": "Person", name: id.name, alternateName: id.handle },
     inLanguage: LOCALES as readonly string[],
   };
+}
+
+/**
+ * `schema.org/BlogPosting` for one post — the graph that makes a result eligible
+ * to render with a date and a byline instead of a bare blue link.
+ *
+ * `BlogPosting` rather than the broader `Article`: it's the more specific type,
+ * and specificity is free here since every consumer of this function is a blog
+ * post.
+ *
+ * One caveat worth knowing rather than silently working around: Google ignores a
+ * `headline` longer than about 110 characters for rich results. This doesn't
+ * truncate — quietly rewriting a title to a different title is worse than an
+ * ineligible result — so keep post titles short if rich results matter.
+ */
+export interface ArticleLdInput {
+  headline: string;
+  /** Canonical URL of the post. */
+  url: string;
+  /** ISO 8601 publication timestamp. Omitted when the post has none — a made-up
+   *  date is worse structured data than a missing field. */
+  datePublished?: string;
+  description?: string;
+  /** Post tags, as `keywords`. */
+  keywords?: string[];
+  /** Absolute image URL. */
+  image?: string;
+  author: { name: string; url?: string };
+}
+
+export function articleLd(input: ArticleLdInput): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: input.headline,
+    url: input.url,
+    // `mainEntityOfPage` is what tells a crawler this graph describes the page
+    // it's embedded in, rather than something the page merely mentions.
+    mainEntityOfPage: input.url,
+    ...(input.datePublished ? { datePublished: input.datePublished } : {}),
+    ...(input.description ? { description: input.description } : {}),
+    ...(input.keywords && input.keywords.length ? { keywords: input.keywords } : {}),
+    ...(input.image ? { image: input.image } : {}),
+    author: {
+      "@type": "Person",
+      name: input.author.name,
+      ...(input.author.url ? { url: input.author.url } : {}),
+    },
+  };
+}
+
+/** Roughly where a meta description stops being shown. Not a hard limit — search
+ *  engines rewrite snippets freely — but past this it's certainly truncated. */
+const EXCERPT_MAX = 155;
+
+/**
+ * A plain-text lead for a meta description, from rendered HTML or raw Markdown.
+ *
+ * Both the blog and the docs hold their body as prose, not as a description
+ * field, so the description has to be derived. This strips tags and the common
+ * Markdown syntax, decodes the handful of entities that survive rendering,
+ * collapses whitespace, and cuts at a word boundary.
+ *
+ * Deliberately conservative: it's better to return a short, clean sentence than
+ * a long one with half a code fence in it. A page whose body is entirely code or
+ * images yields `""`, and the caller falls back to something static rather than
+ * publishing a description made of punctuation.
+ */
+export function plainExcerpt(source: string, maxLength = EXCERPT_MAX): string {
+  const text = source
+    // Fenced code blocks are never a good description.
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    // Keep link text, drop the target.
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, " ")
+    .replace(/[*_`>]/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    // Removing an inline tag leaves a gap where none was written: "<b>world</b>."
+    // collapses to "world ." Close it up, or every description with bold or a
+    // link in its first sentence ships with a floating full stop.
+    .replace(/\s+([.,;:!?…)\]])/g, "$1")
+    .trim();
+
+  if (text.length <= maxLength) return text;
+  const cut = text.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }

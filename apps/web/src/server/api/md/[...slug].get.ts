@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import { firstParagraph, parsePost } from "@lg/core";
 
 /**
  * A published Markdown asset (the blog), fetched from the API and rendered.
@@ -27,12 +28,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "Not found" });
   }
 
-  // The body still carries its frontmatter fence; strip it rather than letting
-  // marked render it as a table or a rule.
-  const body = doc.markdown.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+  // `parsePost` both strips the frontmatter fence (so `marked` can't render it as
+  // a table) and hands back the fields the page needs for its metadata — the real
+  // publication date above all. That date used to stay locked in the markdown, so
+  // the page had nothing truthful to put in `datePublished`.
+  const { frontmatter, body } = parsePost(doc.markdown, slug);
   return {
     title: doc.title,
     draft: doc.draft === true,
     html: await marked.parse(body, { async: true }),
+    // ISO publication date. `parsePost` falls back to the epoch when a post has no
+    // `date:` — passed through as undefined rather than as 1970, since a wrong
+    // date in structured data is worse than an absent one.
+    at: frontmatter.date === new Date(0).toISOString() ? undefined : frontmatter.date,
+    excerpt: frontmatter.excerpt ?? firstParagraph(body),
+    tags: frontmatter.tags,
   };
 });

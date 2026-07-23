@@ -59,9 +59,41 @@ you can:
 - Move a module to a different area, or to Hidden to take it off the site, with
   the dropdown.
 - Bring a hidden module back by choosing an area for it.
+- Write the **search description** for the page you're previewing — one sentence,
+  in both languages. This is what Google shows under the title and what appears
+  when the page is shared in a chat. Leave it empty and the page falls back to
+  the site-wide description, which is accurate but identical on every page, so
+  filling it in is the single highest-value thing you can do for search.
 
 Then click Save layout. One rule: an area must keep at least one module, so you
 can't leave an area empty. Changes take effect on the next page load.
+
+## Reading the analytics dashboard
+
+Five tiles across the top, each showing a total for the window and how it
+compares with the window before it. Two of them are easy to misread, so they say
+what they count underneath:
+
+- **Page views** — requests, from the web server's log, with self-identified bots
+  counted separately and never as people.
+- **Section views** — how many times a section was opened. Several per visitor,
+  so this is always larger than Visits.
+- **Visits** — completed visits. The summary is sent when the page closes, so a
+  tab your phone kills in the background never gets counted; visits read slightly
+  under page views by design.
+- **Visit length** — the spread of how long visits lasted, in coarse buckets,
+  with the median called out beneath the chart.
+
+**Local / UTC** switches which clock the chart is read in. Local is the default
+and is almost always what you want — on UTC, an evening's traffic in Germany
+lands on the previous day's column. Switching re-groups the data, so it reloads.
+
+Hover anywhere on the chart for a breakdown of that hour or day. Click a legend
+entry to mute that series. **Show data table** gives you the same numbers as text
+you can read or copy, and is also what a screen reader gets.
+
+Clearing a range asks for confirmation and then tells you how many rows it
+removed. There is no undo.
 
 ## Working with images and files
 

@@ -329,6 +329,8 @@ export interface MusicModuleView {
 export interface NavView {
   id: string;
   label: string;
+  /** The area's meta description, localized. Absent when the CMS hasn't set one. */
+  description?: string;
   icon?: string;
   children?: NavView[];
   modules?: string[];

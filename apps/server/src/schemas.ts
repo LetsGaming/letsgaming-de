@@ -259,6 +259,10 @@ export const schemas = {
           properties: {
             area: { type: "string", minLength: 1 },
             modules: { type: "array", items: { type: "string" } },
+            // The area's meta description. Optional and only on `layout`, not on
+            // `preview`: a description is invisible in a rendered preview, so
+            // sending it there would be payload nobody reads.
+            description: localized,
           },
           additionalProperties: false,
         },

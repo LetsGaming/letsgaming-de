@@ -564,6 +564,128 @@
   width: 100%;
   height: auto;
   display: block;
+  /* The whole plot is the hover target — bands are far too thin to aim at, and a
+     series with no data in a bucket has no band there at all. */
+  cursor: crosshair;
+}
+.cms .plotwrap {
+  position: relative;
+}
+/* The per-bucket readout. Positioned in percent of the wrapper so it tracks the
+   crosshair at any panel width, and flipped to the other side past 60% so it
+   can't run off the right edge. */
+.cms .tip {
+  position: absolute;
+  top: var(--sp-8);
+  z-index: 2;
+  min-width: 132px;
+  padding: var(--sp-8) var(--sp-10);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  box-shadow: var(--sh-2);
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--ink);
+  pointer-events: none;
+}
+.cms .tiphead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  padding-bottom: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.cms .tiphead b {
+  color: var(--ink);
+}
+.cms .tiprow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  line-height: 1.7;
+}
+.cms .tiprow i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+.cms .tipkey {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 148px;
+}
+/* In the accessibility tree, off the screen. Not `display: none`, which would
+   remove it from that tree as well and leave the chart with no textual form. */
+.cms .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.cms .tablewrap {
+  margin-top: var(--sp-8);
+}
+.cms .datatable {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: var(--sp-6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+}
+.cms .datatable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--f-m);
+  font-size: 11px;
+}
+.cms .datatable caption {
+  text-align: left;
+  padding: var(--sp-8);
+  color: var(--muted);
+}
+.cms .datatable th,
+.cms .datatable td {
+  padding: var(--sp-4) var(--sp-8);
+  text-align: right;
+  border-top: 1px solid var(--line);
+  white-space: nowrap;
+}
+.cms .datatable th[scope="row"] {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 400;
+}
+.cms .datatable thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  color: var(--muted);
+  font-weight: 500;
+}
+/* Comparison against the previous window. Colour is a hint, never the message —
+   the sign is in the text, so this reads the same to anyone who can't see it. */
+.cms .sunit em {
+  font-style: normal;
+  margin-left: var(--sp-4);
+}
+.cms .sunit em.up {
+  color: var(--mint);
+}
+.cms .sunit em.down {
+  color: var(--coral);
+}
+.cms .medianline {
+  margin-top: var(--sp-6);
+  font-family: var(--f-m);
+  font-size: 11px;
 }
 .cms .c-area {
   fill: var(--purple);
@@ -583,6 +705,18 @@
   text-align: center;
   padding: var(--sp-8) 0;
 }
+/* Every painted decoration is inert to the pointer. The axis lines are drawn
+   after the bands, and the bottom axis sits exactly on `yAt(0)` — the baseline of
+   the first stacked layer, which is the largest series — so it used to intercept
+   hovers precisely where the most important band is thickest. The chart's own
+   pointermove handler owns hit-testing; nothing else should compete. */
+.cms .c-grid,
+.cms .c-axis,
+.cms .c-cross,
+.cms .c-ylabel,
+.cms .c-xlabel {
+  pointer-events: none;
+}
 .cms .c-grid {
   stroke: var(--line);
   stroke-width: 1;
@@ -592,6 +726,12 @@
   stroke: var(--muted);
   stroke-width: 1;
   opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.cms .c-cross {
+  stroke: var(--purple-br);
+  stroke-width: 1;
+  opacity: 0.8;
   vector-effect: non-scaling-stroke;
 }
 .cms .c-ylabel {
@@ -634,6 +774,21 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-6);
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.cms .legend .lg:hover {
+  color: var(--purple-br);
+}
+/* A muted series stays in place and keeps its colour — toggling it back on
+   shouldn't reshuffle the stack under the reader. */
+.cms .legend .lg.off {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 .cms .legend i {
   width: 10px;

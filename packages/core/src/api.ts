@@ -106,7 +106,21 @@ export interface AnalyticsResponse {
   /** The window that was actually summarised — echoed back because the request
    *  asks in hours and the store answers in buckets, and the chart needs the
    *  bucket edges to draw an axis with no data in it. */
-  range: { from: string; to: string; hours: number; unit: "hour" | "day" };
+  range: {
+    from: string;
+    to: string;
+    hours: number;
+    unit: "hour" | "day";
+    /**
+     * The IANA zone the buckets are expressed in.
+     *
+     * Day buckets *are* local days — a day boundary is a wall-clock fact, so the
+     * grouping has to happen in the reader's zone or the columns are simply the
+     * wrong sets of hours. Hour buckets stay UTC (an hour is an hour) and the
+     * client shifts only their labels.
+     */
+    timeZone: string;
+  };
   paths: AnalyticsRow[];
   referrers: AnalyticsRow[];
   browsers: AnalyticsRow[];
@@ -115,7 +129,24 @@ export interface AnalyticsResponse {
   /** Self-identifying non-humans, by coarse family. Counted, never conflated. */
   bots: AnalyticsRow[];
   chart: AnalyticsChart;
+  /**
+   * The same metric totals over the window immediately before this one, for a
+   * "vs previous period" reading. Absent when that window predates any data, so
+   * the UI can distinguish "no change" from "nothing to compare against" —
+   * showing −100% for the week before the site existed would be worse than
+   * showing nothing.
+   */
+  previous?: AnalyticsTotals;
   engagement: AnalyticsEngagement;
+}
+
+/** Per-metric totals, matching the chart's metric keys. */
+export interface AnalyticsTotals {
+  pageviews: number;
+  sections: number;
+  clicks: number;
+  visitLength: number;
+  bots: number;
 }
 
 export interface ClearAnalyticsResponse extends OkResponse {

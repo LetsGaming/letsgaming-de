@@ -118,7 +118,9 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
 
   // ── placement state (the shared refs the three concerns operate on) ─────────
   const modules = ref<ModuleDescriptor[]>([]);
-  const layoutAreas = ref<{ id: string; label: string; modules: string[] }[]>([]);
+  const layoutAreas = ref<
+    { id: string; label: string; modules: string[]; description: Localized }[]
+  >([]);
   const hiddenModules = ref<string[]>([]);
   const gallery = ref<GalleryRow[]>([]);
   const activeGallery = ref<string>(DEFAULT_GALLERY_ID);
@@ -134,10 +136,19 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     gallery.value = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
 
     modules.value = (data.modules ?? []).filter((m) => isModuleKind(m.kind));
-    const leaves: { id: string; label: string; modules: string[] }[] = [];
+    const leaves: { id: string; label: string; modules: string[]; description: Localized }[] = [];
     const walk = (nodes: NavNode[]) => {
       for (const n of nodes) {
-        if (n.modules) leaves.push({ id: n.id, label: pickL(n.label), modules: [...n.modules] });
+        if (n.modules) {
+          leaves.push({
+            id: n.id,
+            label: pickL(n.label),
+            modules: [...n.modules],
+            // Editable as a full localized value, so the German site gets German
+            // descriptions rather than the English ones translated by nobody.
+            description: n.description ? { ...n.description } : emptyL(),
+          });
+        }
         if (n.children) walk(n.children);
       }
     };
@@ -221,7 +232,14 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
 
   const saveLayout = () =>
     guarded(
-      () => cms.put("layout", { order: layoutAreas.value.map((a) => ({ area: a.id, modules: a.modules })) }),
+      () =>
+        cms.put("layout", {
+          order: layoutAreas.value.map((a) => ({
+            area: a.id,
+            modules: a.modules,
+            description: strip(a.description),
+          })),
+        }),
       "Layout saved",
     );
 

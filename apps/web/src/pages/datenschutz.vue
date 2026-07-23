@@ -1,10 +1,21 @@
 <script setup lang="ts">
+import { useSeo } from "~/composables/useSeo";
 // Static legal text — no data, no interactivity. Prerendered by the route rule in
 // nuxt.config, as it was under Astro. The markup is unchanged from the Astro page
 // (the wording is legal text; only the shell around it moved).
 import SmartLink from "~/components/ui/SmartLink.vue";
 
-useHead({ title: "Datenschutzerklärung — letsgaming.de" });
+// A German legal page, single-language by nature. It gets a canonical and a
+// description so it stops being an untitled duplicate in the index, but no
+// hreflang: there is no English version to point at.
+useSeo({
+  locale: "de",
+  path: "/datenschutz",
+  title: "Datenschutzerklärung — letsgaming.de",
+  description:
+    "Datenschutzerklärung für letsgaming.de: welche Daten erhoben werden, " +
+    "wie sie verarbeitet werden und welche Rechte Besucher haben.",
+});
 </script>
 
 <template>
@@ -38,11 +49,13 @@ useHead({ title: "Datenschutzerklärung — letsgaming.de" });
     <h2 style="font-family:var(--f-d);margin:28px 0 10px">Nutzungsmessung (ohne Cookies)</h2>
     <p>
       Zur Verbesserung der Seite wird gemessen, wie die Inhalte genutzt werden — welcher
-      Bereich (Home, Work, Life, About) angesehen wird, ungefähr wie lange (in groben
-      Zeitspannen, nicht sekundengenau), zwischen welchen Bereichen gewechselt wird, wie
-      weit gescrollt wird, welche Schaltflächen und Projekte angeklickt werden sowie die
-      <b>grobe</b> Gerätekategorie (Mobil/Tablet/Desktop). Es werden keine exakten
-      Bildschirm- oder Gerätemerkmale erfasst (kein Fingerprinting).
+      Bereich der Seite angesehen wird, ungefähr wie lange (in groben Zeitspannen, nicht
+      sekundengenau), zwischen welchen Bereichen gewechselt wird, wie weit gescrollt wird,
+      welche Schaltflächen und Projekte angeklickt werden, wie viele Bereiche während eines
+      Besuchs angesehen werden und wie lange ein Besuch insgesamt ungefähr dauert (ebenfalls
+      nur in groben Zeitspannen) sowie die <b>grobe</b> Gerätekategorie
+      (Mobil/Tablet/Desktop). Es werden keine exakten Bildschirm- oder Gerätemerkmale
+      erfasst (kein Fingerprinting).
     </p>
     <p>
       Diese Messung kommt <b>ohne Cookies und ohne jede Speicherung auf Ihrem Gerät</b> aus.
@@ -50,15 +63,29 @@ useHead({ title: "Datenschutzerklärung — letsgaming.de" });
       gespeichert. Die Zuordnung einzelner Ereignisse geschieht nur kurzzeitig in Ihrem
       Browser während des Besuchs; an den Server werden ausschließlich bereits
       zusammengefasste, anonyme Zählwerte übertragen, aus denen sich kein einzelner Besuch
-      rekonstruieren lässt. Da hierbei <b>keine personenbezogenen Daten</b> verarbeitet und
-      nichts auf dem Endgerät gespeichert oder ausgelesen wird, ist weder eine Einwilligung
-      noch ein gesondertes Widerspruchsverfahren erforderlich (§ 25 Abs. 2 TDDDG).
+      rekonstruieren lässt. Weil keine Kennung existiert, sind <b>wiederkehrende Besucher
+      nicht erkennbar</b>: es gibt bewusst keine Statistik über „eindeutige Besucher“,
+      keine Wiedererkennung über mehrere Besuche hinweg und keine Möglichkeit, einzelne
+      Besucher herauszufiltern. Da hierbei <b>keine personenbezogenen Daten</b> verarbeitet
+      und nichts auf dem Endgerät gespeichert oder ausgelesen wird, ist weder eine
+      Einwilligung noch ein gesondertes Widerspruchsverfahren erforderlich
+      (§ 25 Abs. 2 TDDDG).
     </p>
     <p>
       Dennoch respektiert die Seite das <b>„Do Not Track“</b>-Signal Ihres Browsers: ist es
       aktiv, findet keine Messung statt. Unabhängig davon können Sie die Messung jederzeit
       selbst deaktivieren — über <b>Einstellungen</b> (Zahnrad-Symbol oben rechts) → „Anonyme
       Nutzungsstatistik“.
+    </p>
+
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Speicherdauer der Statistik</h2>
+    <p>
+      Gespeichert werden ausschließlich zusammengefasste Zählwerte je Stunde — also etwa
+      „Bereich <i>Life</i>, 14 Uhr, 7 Aufrufe“. Ältere Stundenwerte werden automatisch zu
+      Tageswerten zusammengefasst und die Stundenwerte gelöscht (Standard: nach 90 Tagen).
+      Ein Personenbezug entsteht dabei zu keinem Zeitpunkt, da die zugrunde liegenden
+      Ereignisse keine Kennung enthalten. Zugriffe, die sich selbst als Bot oder Crawler
+      zu erkennen geben, werden getrennt gezählt und nicht als Besuche gewertet.
     </p>
 
     <h2 style="font-family:var(--f-d);margin:28px 0 10px">Schriftarten</h2>
@@ -112,6 +139,16 @@ useHead({ title: "Datenschutzerklärung — letsgaming.de" });
       wird eine lokal erzeugte Kachel angezeigt.
     </p>
 
+    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Suchmaschinen &amp; Vorschaubilder</h2>
+    <p>
+      Die Seiten enthalten strukturierte Daten und Vorschau-Angaben für Suchmaschinen und
+      Messenger (Titel, Beschreibung, Sprache, Vorschaubild sowie Name, Handle und öffentlich
+      verlinkte Profile des Seitenbetreibers). Diese Angaben betreffen ausschließlich den
+      Seitenbetreiber und werden bewusst veröffentlicht — <b>Besucherdaten sind darin nicht
+      enthalten</b>. Das Vorschaubild liegt auf diesem Server; es wird kein externer Dienst
+      eingebunden.
+    </p>
+
     <h2 style="font-family:var(--f-d);margin:28px 0 10px">Externe Links</h2>
     <p>
       Diese Seite verlinkt auf externe Angebote (z. B. GitHub). Für deren Inhalte
@@ -125,10 +162,6 @@ useHead({ title: "Datenschutzerklärung — letsgaming.de" });
       werden die dort angegebenen Daten (Name, Nachricht) gespeichert — hierzu stehen
       Ihnen die Rechte auf Auskunft, Berichtigung und Löschung zu. Eine formlose
       Nachricht über die oben genannten Kontaktwege genügt.
-    </p>
-
-    <p style="margin-top:28px;color:var(--muted);font-size:14px">
-      Hinweis: allgemeine Informationen, keine Rechtsberatung.
     </p>
 
     <p style="margin-top:24px">
