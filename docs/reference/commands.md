@@ -10,6 +10,7 @@ pinned in `package.json` under `packageManager`). Run these from the repo root.
 | `pnpm dev` | Build the workspace packages, then run the server and the web app (SSR) in parallel. API on `:8787`, site on `:4321`. The build step is what makes a fresh clone work: `@lg/core` and `@lg/db` resolve through `dist/`, which isn't committed. |
 | `pnpm dev:server` / `pnpm dev:web` | Run just one of them. |
 | `pnpm sync` | Run every source once (fetch, normalize, persist) and exit. Uses the mock GitHub source without a token. |
+| `pnpm analytics:rebuild [log]` | Delete every log-derived dimension and re-derive from the access log. Deletes first — check what your rotation keeps. In Docker: `docker compose run --rm server node dist/analytics/rebuild-cli.js` with the server stopped. |
 | `pnpm analytics:reclassify` | Re-file stored rows through the current classifiers (e.g. scanner requests still counted as page views). Safe to repeat. |
 | `pnpm analytics <access.log> [host]` | Ingest new lines from an access log into the anonymous aggregates. Optional `host` keeps your own domain out of the referrer list. |
 | `pnpm lint:nav` | Fail if the nav breaks an information-architecture gate. |

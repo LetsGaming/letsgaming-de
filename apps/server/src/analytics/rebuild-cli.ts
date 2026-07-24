@@ -35,20 +35,31 @@ const LOG_DERIVED: readonly AnalyticsDimension[] = [
 
 const env = loadEnv();
 
-const file = process.argv[2];
+const file = process.argv[2] ?? env.accessLog;
 if (!file) {
-  console.error("usage: pnpm analytics:rebuild <access.log> [ownHost]");
+  console.error("usage: analytics:rebuild <access.log> [ownHost]   (or set ACCESS_LOG)");
   process.exit(2);
 }
 
-function defaultOwnHost(origin: string): string | undefined {
+/**
+ * The site's own hostname, so internal navigation isn't filed as a referral.
+ *
+ * `ANALYTICS_OWN_HOST` is the setting that exists for this; the `WEB_ORIGIN`
+ * host is a fallback so the common case needs no extra configuration. It was
+ * optional and easy to omit, and omitting it is not harmless: the proxy's
+ * HTTP→HTTPS redirect makes the browser send `Referer: http://<site>` on the
+ * follow-up request, so every visit would report the site as its own referrer.
+ */
+function resolveOwnHost(): string | undefined {
+  if (process.argv[3]) return process.argv[3];
+  if (env.analyticsOwnHost) return env.analyticsOwnHost;
   try {
-    return new URL(origin.split(",")[0]!.trim()).host || undefined;
+    return new URL(env.webOrigin.split(",")[0]!.trim()).host || undefined;
   } catch {
     return undefined;
   }
 }
-const ownHost = process.argv[3] ?? defaultOwnHost(env.webOrigin);
+const ownHost = resolveOwnHost();
 
 const store = openStore(env.dbPath);
 const removed = store.analytics.clearDimensions(LOG_DERIVED);

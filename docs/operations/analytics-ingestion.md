@@ -124,8 +124,41 @@ dimension they were given. Two commands, and the difference between them matters
 
 | Command | What it does | When |
 |---|---|---|
-| `pnpm analytics:reclassify` | Moves stored `path` rows into `probe` where the current rules say so. In place, idempotent, no log needed. | The path list is polluted and you still want the counts. |
-| `pnpm analytics:rebuild <access.log> [ownHost]` | **Deletes** every log-derived dimension and re-derives them by re-reading the log from byte zero. | The browser/OS/device/referrer splits are polluted too. |
+| `analytics:reclassify` | Moves stored `path` rows into `probe` where the current rules say so. In place, idempotent, no log needed. | The path list is polluted and you still want the counts. |
+| `analytics:rebuild [access.log] [ownHost]` | **Deletes** every log-derived dimension and re-derives them by re-reading the log from byte zero. | The browser/OS/device/referrer splits are polluted too. |
+
+Both default their arguments from the server's own config — the log path from
+`ACCESS_LOG`, the host from `ANALYTICS_OWN_HOST` (falling back to the `WEB_ORIGIN`
+host) — so in a configured deployment they take none.
+
+### Running them in Docker
+
+`pnpm analytics:rebuild` is the **development** form. It won't work in the
+container: the image is pruned to production dependencies, so there is no `pnpm`,
+no `tsx` and no `src/`. What it does have is the compiled output, and these
+commands are part of it — so invoke them with plain `node`:
+
+```bash
+# Safe form: the in-process ingest can't race the rebuild if the server is down.
+docker compose stop server
+docker compose run --rm server node dist/analytics/rebuild-cli.js
+docker compose start server
+```
+
+`docker compose run` starts a throwaway container from the same image with the
+same volumes, so it sees the same store at `/data` and the same log at `/logs`.
+No arguments needed — the log path comes from `ACCESS_LOG`.
+
+The stop/start matters. Analytics are ingested **in-process every 5 minutes**, and
+the rebuild works by rewinding the file offset to zero and re-reading. If the
+timer fires while that's happening, both readers start from the same rewound
+offset and the counts double. Five minutes is a wide enough window to hit.
+
+For the reclassify, which neither rewinds nor deletes, the quick form is fine:
+
+```bash
+docker compose exec server node dist/analytics/reclassify-cli.js
+```
 
 Reclassify can only fix the dimension it moves, and that is a property of the
 storage rather than a shortcoming of the command. A request mistaken for a page
