@@ -17,6 +17,10 @@
  * Only rebuilds what the given log file still covers. Rotated-away days are gone
  * — check what your rotation keeps before running this, because it deletes
  * first.
+ *
+ * This also lifts the "cleared through" watermark that `POST /analytics/clear`
+ * sets. That is the point: a rebuild says "re-derive everything the log holds",
+ * so anything previously cleared *will* come back if the log still has it.
  */
 import { openStore, type AnalyticsDimension } from "@lg/db";
 import { loadEnv } from "../env.js";
@@ -63,6 +67,9 @@ const ownHost = resolveOwnHost();
 
 const store = openStore(env.dbPath);
 const removed = store.analytics.clearDimensions(LOG_DERIVED);
+// Lift the deletion watermark: a rebuild is an explicit request to re-derive
+// everything the log still holds, which includes whatever was cleared before.
+store.analytics.setClearedThrough(null);
 // Rewind so the ingest re-reads the file from the start instead of resuming
 // where it left off and rebuilding nothing.
 store.analytics.setOffset(file, 0);

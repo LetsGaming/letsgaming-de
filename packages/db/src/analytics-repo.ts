@@ -209,6 +209,31 @@ export function analyticsRepo(db: DB) {
       return removed;
     },
 
+    /**
+     * The hour up to which analytics were deliberately deleted, or null.
+     *
+     * Consulted by the ingest so a deletion survives a log rotation. See
+     * migration 0012 for why an offset alone isn't enough.
+     */
+    getClearedThrough(): string | null {
+      const row = db
+        .prepare("SELECT cleared_through FROM analytics_clear_marker WHERE id = 1")
+        .get() as { cleared_through: string } | undefined;
+      return row?.cleared_through ?? null;
+    },
+
+    /** Record a deletion watermark, or clear it (an explicit rebuild). */
+    setClearedThrough(bucket: string | null): void {
+      if (bucket === null) {
+        db.prepare("DELETE FROM analytics_clear_marker WHERE id = 1").run();
+        return;
+      }
+      db.prepare(
+        `INSERT INTO analytics_clear_marker (id, cleared_through) VALUES (1, ?)
+         ON CONFLICT(id) DO UPDATE SET cleared_through = excluded.cleared_through`,
+      ).run(bucket);
+    },
+
     clearHourly(fromB: string, toB: string): number {
       return Number(
         db.prepare(`DELETE FROM analytics_hourly WHERE bucket BETWEEN ? AND ?`).run(fromB, toB).changes,

@@ -267,6 +267,23 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
             store.analytics.clearDaily(BUCKET_MIN, BUCKET_MAX)
           : store.analytics.clearHourly(isoHour(new Date(now.getTime() - (range.hours - 1) * HOUR)), toB);
 
+      /**
+       * Make the deletion durable.
+       *
+       * The rows are gone, but the access log on the proxy still holds every line
+       * that produced them, and this server has no business editing it. The byte
+       * offset usually stops a re-read — until the log rotates, the file shrinks,
+       * the offset resets and the whole thing is read again. One rotation and the
+       * deletion is undone.
+       *
+       * The watermark only ever moves forward. Clearing a *narrower* range after a
+       * wider one must not re-open the older window: the rows there are already
+       * gone, and re-ingesting them would look like traffic appearing out of a
+       * range the operator deleted.
+       */
+      const previous = store.analytics.getClearedThrough();
+      if (!previous || toB > previous) store.analytics.setClearedThrough(toB);
+
       const cleared: ClearAnalyticsResponse = { ok: true, removed };
       return cleared;
     },

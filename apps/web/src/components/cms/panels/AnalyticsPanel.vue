@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
 import { STACK_COLORS } from "../../../composables/useAnalytics";
+import AnalyticsCard from "../AnalyticsCard.vue";
 
 // View-only panel. All state and handlers come from the shared CMS context.
 const {
@@ -105,6 +106,11 @@ const muted = ref(new Set<string>());
 
 /** Whether the data table is on screen as well as in the accessibility tree. */
 const showTable = ref(false);
+
+/** Scroll depth is stored as a bare number; the card shows it as a percentage. */
+const scrollRows = computed(() =>
+	(lists.value?.engagement?.scroll ?? []).map((r) => ({ key: `${r.key}%`, count: r.count })),
+);
 
 /** Where to draw the held marker for the focused bucket. */
 /** The focused bucket as the chart would label it. */
@@ -405,10 +411,8 @@ const age = computed(() => {
                 </button>
               </span>
             </div>
-            <div v-if="showsCard('paths')" class="card"><h3>Top paths</h3><ul><li v-for="r in lists?.paths" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div v-if="showsCard('referrers')" class="card">
-              <h3>Referrers</h3>
-              <ul><li v-for="r in lists?.referrers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul>
+            <AnalyticsCard v-if="showsCard('paths')" title="Top paths" :rows="lists?.paths" />
+            <AnalyticsCard v-if="showsCard('referrers')" title="Referrers" :rows="lists?.referrers">
               <!-- Editing lives here rather than in a content panel because this
                    is where you find out you need a rule: an unfamiliar host in
                    the list above is the prompt to name it. -->
@@ -432,29 +436,29 @@ const age = computed(() => {
                   </button>
                 </div>
               </div>
-            </div>
-            <div v-if="showsCard('browsers')" class="card"><h3>Browsers</h3><ul><li v-for="r in lists?.browsers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div v-if="showsCard('os')" class="card"><h3>OS</h3><ul><li v-for="r in lists?.os" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div v-if="showsCard('devices')" class="card"><h3>Devices</h3><ul><li v-for="r in lists?.devices" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+            </AnalyticsCard>
+            <AnalyticsCard v-if="showsCard('browsers')" title="Browsers" :rows="lists?.browsers" />
+            <AnalyticsCard v-if="showsCard('os')" title="OS" :rows="lists?.os" />
+            <AnalyticsCard v-if="showsCard('devices')" title="Devices" :rows="lists?.devices" />
             <!-- Counted, and kept out of the four cards above: those describe
                  people, and a crawler answers all four with noise. -->
-            <div v-if="showsCard('bots')" class="card">
-              <h3>Bots <span class="muted">(not counted as visits)</span></h3>
-              <ul>
-                <li v-for="r in lists?.bots" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li>
-              </ul>
-              <p v-if="!lists?.bots?.length" class="muted">Nothing self-identified as a bot in this range.</p>
-            </div>
+            <AnalyticsCard
+              v-if="showsCard('bots')"
+              title="Bots"
+              note="(not counted as visits)"
+              :rows="lists?.bots"
+              empty="Nothing self-identified as a bot in this range."
+            />
             <!-- The traffic the bot check can't see: scanners send a real browser
                  user-agent, so they're identified by what they asked for. Kept
                  out of the cards above for the same reason bots are. -->
-            <div v-if="showsCard('probes')" class="card">
-              <h3>Probes <span class="muted">(scans, not people)</span></h3>
-              <ul>
-                <li v-for="r in lists?.probes" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li>
-              </ul>
-              <p v-if="!lists?.probes?.length" class="muted">No scanner traffic in this range.</p>
-            </div>
+            <AnalyticsCard
+              v-if="showsCard('probes')"
+              title="Probes"
+              note="(scans, not people)"
+              :rows="lists?.probes"
+              empty="No scanner traffic in this range."
+            />
           </div>
           <!-- Gated on the scope like every other card. It wasn't, so selecting
                "Page views" left the engagement lists on screen under a bar that
@@ -463,17 +467,17 @@ const age = computed(() => {
           <template v-if="showsCard('engagement') && lists?.engagement">
             <h3 style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page</span></h3>
             <div class="cols">
-              <div class="card"><h3>Sections viewed</h3><ul><li v-for="r in lists.engagement.tabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Transitions</h3><ul><li v-for="r in lists.engagement.transitions" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Exited from</h3><ul><li v-for="r in lists.engagement.exits" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Dwell / section</h3><ul><li v-for="r in lists.engagement.dwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Scroll depth</h3><ul><li v-for="r in lists.engagement.scroll" :key="r.key"><span>{{ r.key }}%</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Clicks</h3><ul><li v-for="r in lists.engagement.clicks" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Projects opened</h3><ul><li v-for="r in lists.engagement.projects" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Viewport</h3><ul><li v-for="r in lists.engagement.viewport" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Sections / visit</h3><ul><li v-for="r in lists.engagement.sessionTabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Visit length</h3><ul><li v-for="r in lists.engagement.sessionDwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Theme</h3><ul><li v-for="r in lists.engagement.theme" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <AnalyticsCard title="Sections viewed" :rows="lists.engagement.tabs" />
+              <AnalyticsCard title="Transitions" :rows="lists.engagement.transitions" />
+              <AnalyticsCard title="Exited from" :rows="lists.engagement.exits" />
+              <AnalyticsCard title="Dwell / section" :rows="lists.engagement.dwell" />
+              <AnalyticsCard title="Scroll depth" :rows="scrollRows" />
+              <AnalyticsCard title="Clicks" :rows="lists.engagement.clicks" />
+              <AnalyticsCard title="Projects opened" :rows="lists.engagement.projects" />
+              <AnalyticsCard title="Viewport" :rows="lists.engagement.viewport" />
+              <AnalyticsCard title="Sections / visit" :rows="lists.engagement.sessionTabs" />
+              <AnalyticsCard title="Visit length" :rows="lists.engagement.sessionDwell" />
+              <AnalyticsCard title="Theme" :rows="lists.engagement.theme" />
             </div>
           </template>
           <p class="muted">Anonymous aggregates only — no cookies, no IPs, nothing personal stored.</p>

@@ -26,6 +26,18 @@ export interface IngestResult {
 
 export function ingestLog(store: Store, file: string, ownHost?: string): IngestResult {
   const size = statSync(file).size;
+  /**
+   * Anything older than this was deleted on purpose and must not come back.
+   *
+   * The byte offset below normally prevents a re-read, but it resets whenever the
+   * file shrinks — which is what a rotation looks like. Without this, one rotation
+   * after a "clear everything" re-ingests the entire current log and undoes it.
+   *
+   * Compared strictly, so the hour the clear happened in stays ingestible: traffic
+   * logged seconds after the click is newer than the deletion, and dropping it
+   * would be its own small lie.
+   */
+  const clearedThrough = store.analytics.getClearedThrough();
   let offset = store.analytics.getOffset(file);
   // If the file shrank (rotated), start over from the top.
   if (offset > size) offset = 0;
@@ -52,7 +64,10 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
           linesRead++;
           const hits = lineToHits(line, ownHost);
           if (!hits.length && unparsedSample === undefined) unparsedSample = line.slice(0, 200);
-          batch.push(...hits);
+          for (const hit of hits) {
+            if (clearedThrough && hit.bucket < clearedThrough) continue;
+            batch.push(hit);
+          }
         }
       }
       if (batch.length) {

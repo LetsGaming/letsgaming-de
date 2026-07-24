@@ -117,6 +117,31 @@ View them in the CMS Analytics screen. Preview traffic from the admin is never
 counted.
 
 
+## Clearing is durable, and how
+
+Clearing a range from the CMS deletes the aggregate rows. It cannot delete the
+access log — that lives on the NPM host, it is the source these numbers are
+derived from, and this server has no business editing it.
+
+The byte offset in `analytics_state` normally stops those lines being read twice.
+But the offset resets whenever the file shrinks, and a shrinking file is exactly
+what a rotation looks like: one rotation after a clear and the entire current log
+is re-read, silently undoing the deletion.
+
+So a clear also records a **watermark** — the hour it happened — and the ingest
+drops any line older than it. The deletion then survives a rotation, a re-copy, or
+a manual re-run.
+
+Three things worth knowing about it:
+
+- The comparison is strict, so the hour the clear happened in stays ingestible.
+  Traffic logged seconds after the click is genuinely newer than the deletion.
+- The watermark only moves forward. Clearing "last hour" after "everything"
+  doesn't re-open the older window.
+- **`analytics:rebuild` lifts it**, deliberately. A rebuild means "re-derive
+  everything the log still holds", and that includes whatever was cleared. If you
+  clear and then rebuild, it comes back.
+
 ## Repairing the aggregates after a rule change
 
 Classification happens at ingest, so rows written before a rule existed keep the
