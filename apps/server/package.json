@@ -16,7 +16,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "analytics": "tsx src/analytics/cli.ts",
     "test": "node --test --import tsx \"tests/**/*.test.ts\"",
-    "analytics:reclassify": "tsx src/analytics/reclassify-cli.ts"
+    "analytics:reclassify": "tsx src/analytics/reclassify-cli.ts",
+    "analytics:rebuild": "tsx src/analytics/rebuild-cli.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11",

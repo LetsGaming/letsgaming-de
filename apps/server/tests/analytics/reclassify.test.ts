@@ -73,3 +73,56 @@ test("moving into a family that already has rows adds to it", () => {
   assert.equal(totals(store, "probe"), 3, "merged rather than overwritten");
   store.close();
 });
+
+test("clearing log-derived dimensions leaves beacon data alone", () => {
+  // The distinction that makes a rebuild safe: the log can reconstruct paths and
+  // browsers, and can never reconstruct what a visitor did once the page loaded.
+  const store = openStore(":memory:");
+  store.analytics.recordHourly([
+    { bucket: BUCKET, dimension: "path", key: "/" },
+    { bucket: BUCKET, dimension: "browser", key: "Chrome" },
+    { bucket: BUCKET, dimension: "os", key: "Windows" },
+    { bucket: BUCKET, dimension: "referrer", key: "direct" },
+    { bucket: BUCKET, dimension: "probe", key: "PHP probe" },
+    { bucket: BUCKET, dimension: "tab", key: "home" },
+    { bucket: BUCKET, dimension: "session_dwell", key: "30-60s" },
+  ]);
+
+  const removed = store.analytics.clearDimensions([
+    "path",
+    "referrer",
+    "browser",
+    "os",
+    "device",
+    "bot",
+    "probe",
+  ]);
+
+  assert.equal(removed, 5, "the five log-derived rows");
+  for (const d of ["path", "browser", "os", "referrer", "probe"] as const) {
+    assert.equal(store.analytics.topHourly(d, BUCKET, BUCKET).length, 0, d);
+  }
+  assert.equal(store.analytics.topHourly("tab", BUCKET, BUCKET).length, 1, "beacon kept");
+  assert.equal(store.analytics.topHourly("session_dwell", BUCKET, BUCKET).length, 1, "beacon kept");
+  store.close();
+});
+
+test("the pollution reclassify cannot reach is exactly what a rebuild fixes", () => {
+  // A probe mistaken for a page view wrote five rows. Reclassify moves one of
+  // them; the browser/os/device/referrer rows have no link back to it and stay.
+  const store = openStore(":memory:");
+  store.analytics.recordHourly([
+    { bucket: BUCKET, dimension: "path", key: "/wso.php" },
+    { bucket: BUCKET, dimension: "browser", key: "Chrome" },
+    { bucket: BUCKET, dimension: "os", key: "Windows" },
+  ]);
+  store.analytics.reclassify("path", "probe", (k) => (k.endsWith(".php") ? "PHP probe" : null));
+
+  assert.equal(store.analytics.topHourly("path", BUCKET, BUCKET).length, 0, "path moved");
+  assert.equal(
+    store.analytics.topHourly("browser", BUCKET, BUCKET)[0]?.count,
+    1,
+    "the browser row survives — this is the limit of an in-place fix",
+  );
+  store.close();
+});

@@ -20,7 +20,8 @@
     "test": "pnpm -r test",
     "analytics": "pnpm --filter=@lg/server analytics",
     "lint:tokens": "pnpm --filter=@lg/web lint:tokens",
-    "analytics:reclassify": "pnpm --filter=@lg/server analytics:reclassify"
+    "analytics:reclassify": "pnpm --filter=@lg/server analytics:reclassify",
+    "analytics:rebuild": "pnpm --filter=@lg/server analytics:rebuild"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

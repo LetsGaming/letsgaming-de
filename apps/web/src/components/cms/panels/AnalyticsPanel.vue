@@ -456,20 +456,24 @@ const age = computed(() => {
               <p v-if="!lists?.probes?.length" class="muted">No scanner traffic in this range.</p>
             </div>
           </div>
-          <template v-if="analytics.engagement">
+          <!-- Gated on the scope like every other card. It wasn't, so selecting
+               "Page views" left the engagement lists on screen under a bar that
+               said "human cards" — the state was described accurately and applied
+               to only half the page. -->
+          <template v-if="showsCard('engagement') && lists?.engagement">
             <h3 style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page</span></h3>
             <div class="cols">
-              <div class="card"><h3>Sections viewed</h3><ul><li v-for="r in analytics.engagement.tabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Transitions</h3><ul><li v-for="r in analytics.engagement.transitions" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Exited from</h3><ul><li v-for="r in analytics.engagement.exits" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Dwell / section</h3><ul><li v-for="r in analytics.engagement.dwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Scroll depth</h3><ul><li v-for="r in analytics.engagement.scroll" :key="r.key"><span>{{ r.key }}%</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Clicks</h3><ul><li v-for="r in analytics.engagement.clicks" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Projects opened</h3><ul><li v-for="r in analytics.engagement.projects" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Viewport</h3><ul><li v-for="r in analytics.engagement.viewport" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Sections / visit</h3><ul><li v-for="r in analytics.engagement.sessionTabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Visit length</h3><ul><li v-for="r in analytics.engagement.sessionDwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-              <div class="card"><h3>Theme</h3><ul><li v-for="r in analytics.engagement.theme" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Sections viewed</h3><ul><li v-for="r in lists.engagement.tabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Transitions</h3><ul><li v-for="r in lists.engagement.transitions" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Exited from</h3><ul><li v-for="r in lists.engagement.exits" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Dwell / section</h3><ul><li v-for="r in lists.engagement.dwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Scroll depth</h3><ul><li v-for="r in lists.engagement.scroll" :key="r.key"><span>{{ r.key }}%</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Clicks</h3><ul><li v-for="r in lists.engagement.clicks" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Projects opened</h3><ul><li v-for="r in lists.engagement.projects" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Viewport</h3><ul><li v-for="r in lists.engagement.viewport" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Sections / visit</h3><ul><li v-for="r in lists.engagement.sessionTabs" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Visit length</h3><ul><li v-for="r in lists.engagement.sessionDwell" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+              <div class="card"><h3>Theme</h3><ul><li v-for="r in lists.engagement.theme" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
             </div>
           </template>
           <p class="muted">Anonymous aggregates only — no cookies, no IPs, nothing personal stored.</p>

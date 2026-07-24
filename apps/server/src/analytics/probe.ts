@@ -73,17 +73,49 @@ const RULES: { family: ProbeFamily; test: RegExp }[] = [
 ];
 
 /**
+ * Percent-decode and strip trailing junk, without throwing on malformed input.
+ *
+ * Scanners append `%20` — an encoded space — precisely to defeat extension
+ * matching: `/xp.php%20` requests the same file as `/xp.php` on a sloppy server,
+ * but `.php` is no longer at the end of the string. The live dashboard had a
+ * column of them (`/xp.php%20`, `/wp-header.php%20`, `/fm.php%20`) sitting in Top
+ * paths as human page views while their unsuffixed twins were correctly filed as
+ * probes.
+ *
+ * `decodeURIComponent` throws on a lone `%`, which a scanner will also send, so
+ * a failed decode falls back to the raw string rather than taking the request
+ * down.
+ */
+function normalizePath(path: string): string {
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    // Malformed encoding: judge what was actually sent.
+  }
+  // Trailing spaces, dots and slashes are all "same file, different string" on
+  // the servers these scans are written for.
+  return decoded.replace(/[\s.]+$/, "");
+}
+
+/**
  * The probe family for a request path, or `null` if it looks like a real request.
  *
  * Takes the path only — never the query, never the agent. A false positive here
  * loses a page view from the count; a false negative leaves scanner noise in the
  * human-facing dimensions. The rules are therefore written to match things that
  * cannot exist on this site rather than things that merely look suspicious.
+ *
+ * Matched against both the raw and the normalized form: normalizing catches the
+ * `%20` evasion, and keeping the raw catches the traversal patterns that only
+ * exist *because* they're encoded (`..%2f`).
  */
 export function probeFamily(path: string): ProbeFamily | null {
   if (!path || path === "/") return null;
+  const normalized = normalizePath(path);
+  if (!normalized || normalized === "/") return null;
   for (const rule of RULES) {
-    if (rule.test.test(path)) return rule.family;
+    if (rule.test.test(path) || rule.test.test(normalized)) return rule.family;
   }
   return null;
 }

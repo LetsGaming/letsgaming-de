@@ -183,6 +183,32 @@ export function analyticsRepo(db: DB) {
     },
 
     /** Delete engagement rows in an inclusive hour-bucket range. Returns rows removed. */
+    /**
+     * Delete every row for the given dimensions, in both tables.
+     *
+     * For rebuilding a derived set from its source. The aggregates keep no link
+     * between the rows one request produced — a probe that was mistaken for a
+     * page view wrote a `path` row *and* a `browser`, `os`, `device` and
+     * `referrer` row, and nothing records that they belong together. So a
+     * misclassification can't be surgically undone: the only honest repair is to
+     * drop the whole derived set and re-derive it from the access log, which is
+     * the actual source of truth.
+     *
+     * Beacon dimensions are never passed here — they come from the browser, not
+     * the log, and re-reading a log cannot rebuild them.
+     */
+    clearDimensions(dimensions: readonly AnalyticsDimension[]): number {
+      let removed = 0;
+      transact(db, () => {
+        for (const table of ["analytics_hourly", "analytics_daily"] as const) {
+          for (const d of dimensions) {
+            removed += db.prepare(`DELETE FROM ${table} WHERE dimension = ?`).run(d).changes as number;
+          }
+        }
+      });
+      return removed;
+    },
+
     clearHourly(fromB: string, toB: string): number {
       return Number(
         db.prepare(`DELETE FROM analytics_hourly WHERE bucket BETWEEN ? AND ?`).run(fromB, toB).changes,

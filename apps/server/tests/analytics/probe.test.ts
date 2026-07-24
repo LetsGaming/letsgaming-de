@@ -80,3 +80,29 @@ test("the root is never a probe, and neither is an empty path", () => {
   assert.equal(probeFamily("/"), null);
   assert.equal(probeFamily(""), null);
 });
+
+test("a trailing %20 does not smuggle a probe past the extension match", () => {
+  // A scanner evasion, and it worked: these sat in the live dashboard's Top
+  // paths as human page views while their unsuffixed twins were classified.
+  assert.equal(probeFamily("/xp.php%20"), PROBE_FAMILY.php);
+  assert.equal(probeFamily("/wp-header.php%20"), PROBE_FAMILY.php);
+  assert.equal(probeFamily("/fm.php%20"), PROBE_FAMILY.php);
+  assert.equal(probeFamily("/wp-content/themes/twentytwentyfour/system_cache.php%20"), PROBE_FAMILY.wordpress);
+  // A literal trailing space, for a proxy that decoded it already.
+  assert.equal(probeFamily("/admin.php "), PROBE_FAMILY.php);
+});
+
+test("malformed percent-encoding is judged, not thrown on", () => {
+  // `decodeURIComponent` throws on a lone %; a scanner will send one.
+  assert.equal(probeFamily("/wp-login.php%"), PROBE_FAMILY.wordpress);
+  assert.doesNotThrow(() => probeFamily("/%"));
+  assert.equal(probeFamily("/%"), null);
+});
+
+test("encoded traversal is still caught after decoding", () => {
+  assert.equal(probeFamily("/a/..%2f..%2fetc/passwd"), PROBE_FAMILY.shell);
+});
+
+test("a real path with an encoded space is still a real path", () => {
+  assert.equal(probeFamily("/md/blog/hello%20world"), null);
+});

@@ -115,3 +115,28 @@ points at the wrong directory. See
 
 View them in the CMS Analytics screen. Preview traffic from the admin is never
 counted.
+
+
+## Repairing the aggregates after a rule change
+
+Classification happens at ingest, so rows written before a rule existed keep the
+dimension they were given. Two commands, and the difference between them matters:
+
+| Command | What it does | When |
+|---|---|---|
+| `pnpm analytics:reclassify` | Moves stored `path` rows into `probe` where the current rules say so. In place, idempotent, no log needed. | The path list is polluted and you still want the counts. |
+| `pnpm analytics:rebuild <access.log> [ownHost]` | **Deletes** every log-derived dimension and re-derives them by re-reading the log from byte zero. | The browser/OS/device/referrer splits are polluted too. |
+
+Reclassify can only fix the dimension it moves, and that is a property of the
+storage rather than a shortcoming of the command. A request mistaken for a page
+view wrote five rows — `path`, `referrer`, `browser`, `os`, `device` — and the
+aggregates record no link between them. Moving the `path` row leaves the other
+four behind, which is how a dashboard ends up reporting "Probes: 1,300" and
+"Chrome: 863" on a site with forty visitors.
+
+The log is the source of truth and the aggregates are a projection of it, so the
+complete repair is to rebuild the projection. **Rebuild deletes before it
+re-reads, and it can only restore what the log file still covers** — check what
+your rotation keeps first. Engagement data (sections, clicks, dwell, visits) is
+never touched: it comes from the browser beacon, and no log replay can
+reconstruct it.
