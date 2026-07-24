@@ -630,6 +630,50 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* Held marker for the focused bucket. Heavier than the hover crosshair: one is
+   where the pointer happens to be, the other is what the tables below are
+   describing. */
+.cms .c-focus {
+  stroke: var(--purple-br);
+  stroke-width: 2;
+  opacity: 0.9;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.cms .scopebar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  align-items: baseline;
+  font-family: var(--f-m);
+  font-size: 11px;
+  color: var(--muted);
+}
+.cms .scopeacts {
+  display: flex;
+  gap: var(--sp-12);
+}
+.cms .rules {
+  margin-top: var(--sp-8);
+  display: grid;
+  gap: var(--sp-6);
+}
+.cms .rule {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--sp-6);
+  align-items: center;
+}
+.cms .rule input {
+  min-width: 0;
+}
+.cms .ruleactions {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-4);
+}
 .cms .tablewrap {
   margin-top: var(--sp-8);
 }

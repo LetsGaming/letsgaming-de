@@ -122,3 +122,76 @@ test("the previous period is omitted, not zeroed, when nothing precedes the wind
   const { body } = await seededAnalytics("hours=168&tz=UTC", 167);
   assert.equal(body.previous, undefined, "no comparison rather than a −100% cliff");
 });
+
+/**
+ * Clicking a column in the chart narrows the lists underneath it. Before this,
+ * Top paths always summarised the whole window, so a traffic spike was visible
+ * and unexplainable on the same screen.
+ */
+test("a bucket can be selected, and the lists narrow to it", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  const older = new Date(now.getTime() - 5 * HOUR);
+  store.analytics.recordHourly([
+    { bucket: isoHour(older), dimension: "path", key: "/spike" },
+    { bucket: isoHour(older), dimension: "path", key: "/spike" },
+    { bucket: isoHour(now), dimension: "path", key: "/normal" },
+  ]);
+
+  const whole = await app.inject({ method: "GET", url: "/api/cms/analytics?hours=24&tz=UTC", headers: auth });
+  const wholePaths = (whole.json() as AnalyticsResponse).paths.map((r) => r.key).sort();
+  assert.deepEqual(wholePaths, ["/normal", "/spike"], "the range shows both");
+
+  const one = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?hours=24&tz=UTC&at=${isoHour(older)}`,
+    headers: auth,
+  });
+  const body = one.json() as AnalyticsResponse;
+  assert.equal(body.range.at, isoHour(older), "the response says what it narrowed to");
+  assert.deepEqual(
+    body.paths.map((r) => [r.key, r.count]),
+    [["/spike", 2]],
+    "only the selected hour",
+  );
+});
+
+test("a selected bucket carries no period comparison", async () => {
+  // "vs the hour before" answers a different question from the range picker's.
+  const { app, store } = await appWithStore();
+  const at = isoHour(new Date());
+  store.analytics.recordHourly([{ bucket: at, dimension: "path", key: "/" }]);
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?hours=24&tz=UTC&at=${at}`,
+    headers: auth,
+  });
+  assert.equal((res.json() as AnalyticsResponse).previous, undefined);
+});
+
+test("a day bucket selects the whole local day, not a substring of it", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  // 23:00 UTC is the next local day in Berlin — it must be included when that
+  // local day is selected, and excluded from the day before.
+  const late = new Date(now.getTime() - 24 * HOUR);
+  late.setUTCHours(23, 0, 0, 0);
+  store.analytics.recordHourly([{ bucket: isoHour(late), dimension: "path", key: "/late" }]);
+  const berlinDay = zonedParts(late.getTime(), "Europe/Berlin").day;
+
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?hours=168&tz=Europe/Berlin&at=${berlinDay}`,
+    headers: auth,
+  });
+  assert.deepEqual(
+    (res.json() as AnalyticsResponse).paths.map((r) => r.key),
+    ["/late"],
+  );
+});
+
+test("a malformed bucket is ignored rather than concatenated into a query", async () => {
+  const { body } = await seededAnalytics("hours=24&tz=UTC&at=' OR 1=1 --", 24);
+  assert.equal(body.range.at, undefined, "falls back to the whole range");
+  assert.equal(body.range.unit, "hour");
+});

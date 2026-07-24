@@ -7,6 +7,7 @@ import {
   buildStackedChart,
   columnAtX,
   type AnalyticsResponse,
+  type ReferrerRule,
   type ChartColumn,
   type ClearRangeId,
 } from "@lg/core";
@@ -26,7 +27,7 @@ import {
  * write helpers; everything analytics-specific is internal.
  */
 
-const METRIC_KEYS = ["pageviews", "sections", "clicks", "visitLength", "bots"] as const;
+const METRIC_KEYS = ["pageviews", "sections", "clicks", "visitLength", "bots", "probes"] as const;
 type MetricKey = (typeof METRIC_KEYS)[number];
 
 /**
@@ -53,15 +54,45 @@ const METRIC_LABELS: Record<MetricKey, string> = {
   clicks: "Clicks",
   visitLength: "Visits",
   bots: "Bots",
+  probes: "Probes",
 };
 
 /** The sub-label under each headline number, naming the unit it's counted in. */
+/**
+ * Which cards below the chart belong to which metric.
+ *
+ * The lists were previously fixed: selecting "Bots" still showed Top paths,
+ * Referrers, Browsers and the rest — dimensions that describe *people* and are
+ * empty of bots by construction, since a bot never reaches them. Scoping them to
+ * the selected metric is what makes the two halves of the screen one screen.
+ *
+ * `everything` is the way back, and it's the default the dashboard opens on.
+ */
+export const CARD_GROUPS = {
+  human: ["paths", "referrers", "browsers", "os", "devices"],
+  machine: ["bots", "probes"],
+  engagement: ["engagement"],
+} as const;
+
+export type CardScope = "everything" | keyof typeof CARD_GROUPS;
+
+/** The card group a metric is about. */
+const SCOPE_FOR_METRIC: Record<string, CardScope> = {
+  pageviews: "human",
+  sections: "engagement",
+  clicks: "engagement",
+  visitLength: "engagement",
+  bots: "machine",
+  probes: "machine",
+};
+
 const METRIC_UNITS: Record<MetricKey, string> = {
   pageviews: "from the access log",
   sections: "sections opened",
   clicks: "tracked elements",
   visitLength: "completed visits",
   bots: "crawler hits",
+  probes: "scans, not people",
 };
 
 /** METRIC_KEYS, not `Object.keys(METRIC_LABELS) as MetricKey[]` — a cast is a
@@ -99,7 +130,8 @@ export interface AnalyticsDeps {
   /** Which panel is open — the poll runs only while this is "analytics". */
   tab: Ref<string>;
   cms: {
-    analytics: (hours: number, tz?: string) => Promise<AnalyticsResponse>;
+    saveReferrerRules: (rules: ReferrerRule[]) => Promise<unknown>;
+    analytics: (hours: number, tz?: string, at?: string) => Promise<AnalyticsResponse>;
     clearAnalytics: (range: ClearRangeId) => Promise<unknown>;
   };
   authed: { value: boolean };
@@ -142,6 +174,12 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     if (!opts.quiet) loadingA.value = true;
     try {
       analytics.value = await cms.analytics(rangeHours.value, activeZone.value);
+      // Hydrate the editor from what's actually in effect, unless the owner is
+      // mid-edit — clobbering half-typed rules on a background poll would be its
+      // own small betrayal.
+      if (!savingRules.value && !referrerRules.value.some((r) => !r.match || !r.label)) {
+        referrerRules.value = analytics.value.referrerRules.map((r) => ({ ...r }));
+      }
       analyticsAt.value = Date.now();
     } catch (e) {
       if (e instanceof AuthError) {
@@ -192,6 +230,34 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     refreshAnalytics();
   }
 
+  /**
+   * Custom referrer rules, editable here rather than in a content panel because
+   * this is where you find out you need one: an unrecognised host showing up in
+   * the list is the prompt to name it.
+   *
+   * Saving refetches, since the grouping happens server-side on read — which is
+   * also why a new rule relabels traffic that arrived before it existed.
+   */
+  const referrerRules = ref<ReferrerRule[]>([]);
+  const savingRules = ref(false);
+
+  function addReferrerRule() {
+    referrerRules.value.push({ match: "", label: "" });
+  }
+  function removeReferrerRule(i: number) {
+    referrerRules.value.splice(i, 1);
+  }
+  async function saveReferrerRules() {
+    savingRules.value = true;
+    await guarded(async () => {
+      const rules = referrerRules.value.filter((r) => r.match.trim() && r.label.trim());
+      await cms.saveReferrerRules(rules);
+      referrerRules.value = rules;
+      await loadAnalytics();
+    }, "Referrer rules saved.");
+    savingRules.value = false;
+  }
+
   /** Switching clocks re-groups day columns server-side, so it's a refetch. */
   function setZone(z: "local" | "utc") {
     if (z === zone.value) return;
@@ -227,6 +293,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
       // One `session_dwell` row per visit, so its sum is the visit count.
       visitLength: sum(c?.visitLength),
       bots: sum(c?.bots),
+      probes: sum(c?.probes),
     };
   });
 
@@ -298,6 +365,77 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
   // panel shows what every series did *there*.
   const hovered = ref<ChartColumn | null>(null);
 
+  /**
+   * The bucket the lists underneath the chart are describing, or null for the
+   * whole window.
+   *
+   * The graph and the tables below it used to be unrelated: a spike was visible
+   * and unexplainable on the same screen, because Top paths always summarised
+   * the entire range. Clicking a column answers "what was that?" by re-asking
+   * the same query with a one-bucket window.
+   *
+   * The chart itself keeps showing the full range while focused — losing the
+   * context would make it impossible to click anywhere else, and the point is to
+   * move around the graph, not to zoom into it.
+   */
+  /**
+   * Which cards are shown. Follows the selected metric until the reader says
+   * otherwise, and "Show everything" puts it back.
+   */
+  const scope = ref<CardScope>("everything");
+  const pinnedScope = ref(false);
+  const activeScope = computed<CardScope>(() =>
+    pinnedScope.value ? scope.value : (SCOPE_FOR_METRIC[metric.value] ?? "everything"),
+  );
+  const showsCard = (name: string): boolean =>
+    activeScope.value === "everything" ||
+    (CARD_GROUPS[activeScope.value] as readonly string[]).includes(name);
+
+  function setScope(next: CardScope) {
+    scope.value = next;
+    // Choosing "everything" is a request to stop following the metric; choosing
+    // a group is too, just a narrower one.
+    pinnedScope.value = true;
+  }
+  /** Back to the default: cards follow the metric again. */
+  function resetScope() {
+    pinnedScope.value = false;
+    scope.value = "everything";
+  }
+
+  const focus = ref<string | null>(null);
+  const focused = ref<AnalyticsResponse | null>(null);
+  const loadingFocus = ref(false);
+
+  /** The response the cards below the chart read from. */
+  const lists = computed(() => focused.value ?? analytics.value);
+
+  async function focusBucket(bucket: string | null) {
+    focus.value = bucket;
+    if (!bucket) {
+      focused.value = null;
+      return;
+    }
+    loadingFocus.value = true;
+    try {
+      focused.value = await cms.analytics(rangeHours.value, activeZone.value, bucket);
+    } catch {
+      // A failed drill-in shouldn't strand the view on a stale slice.
+      focus.value = null;
+      focused.value = null;
+    } finally {
+      loadingFocus.value = false;
+    }
+  }
+
+  /** Clicking the plot focuses whichever bucket is under the pointer. */
+  function selectAt(xInView: number) {
+    const c = chart.value;
+    const col = c ? columnAtX(c, xInView) : undefined;
+    if (!col) return;
+    void focusBucket(focus.value === col.bucket ? null : col.bucket);
+  }
+
   /** Track the pointer across the plot. `xInView` is in viewBox units. */
   function hoverAt(xInView: number) {
     const c = chart.value;
@@ -309,6 +447,9 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
   // A range or metric change re-lays the axis; a tooltip pinned to the old one
   // would be describing a bucket that's no longer under the pointer.
   watch([metric, rangeHours], clearHover);
+  // A new axis means the focused bucket may not exist any more, and a stale
+  // slice under a changed chart is worse than no slice.
+  watch([rangeHours, zone], () => void focusBucket(null));
 
   // Lifecycle: the poll follows the open panel and the tab's visibility. Owning
   // its own watcher and listeners keeps all the timing in one place.
@@ -325,6 +466,11 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     METRIC_LABELS,
     METRIC_UNITS,
     medianVisitLength,
+    referrerRules,
+    savingRules,
+    addReferrerRule,
+    removeReferrerRule,
+    saveReferrerRules,
     metricKeys,
     RANGES,
     CLEARS,
@@ -348,5 +494,16 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     hovered,
     hoverAt,
     clearHover,
+    focus,
+    focused,
+    lists,
+    loadingFocus,
+    focusBucket,
+    selectAt,
+    activeScope,
+    pinnedScope,
+    showsCard,
+    setScope,
+    resetScope,
   };
 }

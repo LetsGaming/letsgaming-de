@@ -247,6 +247,27 @@ export const schemas = {
     },
     additionalProperties: false,
   },
+  referrerRules: {
+    type: "object",
+    required: ["rules"],
+    properties: {
+      rules: {
+        type: "array",
+        maxItems: 100,
+        items: {
+          type: "object",
+          required: ["match", "label"],
+          properties: {
+            match: { type: "string", minLength: 1, maxLength: 200 },
+            label: { type: "string", minLength: 1, maxLength: 60 },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    additionalProperties: false,
+  },
+
   layout: {
     type: "object",
     required: ["order"],

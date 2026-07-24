@@ -92,6 +92,21 @@ Hover anywhere on the chart for a breakdown of that hour or day. Click a legend
 entry to mute that series. **Show data table** gives you the same numbers as text
 you can read or copy, and is also what a screen reader gets.
 
+**The graph and the tables below it are one screen.** Click a column to drill the
+lists into that hour or day — the marker stays put, and everything under the
+chart describes just that slice, which is how you find out what a spike was. The
+chart keeps showing the whole range so you can click somewhere else.
+
+The cards also follow the metric you've selected: **Bots** or **Probes** shows
+the machine cards, **Page views** shows paths, referrers, browsers, OS and
+devices, and the engagement metrics show the engagement lists. A bar above the
+cards always says what's being shown, with **Clear selection**, **Show all
+cards** and **Reset to default** — you can't clear a filter you didn't know was
+on, so the default state is stated rather than implied.
+
+Note that changing the range or the clock clears a selected bucket: a new axis
+may not contain it, and a stale slice under a changed chart is worse than none.
+
 Clearing a range asks for confirmation and then tells you how many rows it
 removed. There is no undo.
 

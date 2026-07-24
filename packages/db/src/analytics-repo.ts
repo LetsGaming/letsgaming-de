@@ -65,6 +65,51 @@ export function analyticsRepo(db: DB) {
       });
     },
 
+    /**
+     * Move rows from one dimension to another, remapping their keys.
+     *
+     * Built for reclassification after a rule changes — when the probe detector
+     * learned to recognise scanner paths, the rows already in the store were
+     * still filed as `path`, and the alternative to fixing them was waiting out
+     * the 90-day retention with a dashboard that read 1,361 page views on a site
+     * with about forty.
+     *
+     * `remap` returns the new key, or `null` to leave a row where it is. Counts
+     * are merged rather than replaced, since the destination may already hold a
+     * row for the same bucket and key. Both tables are done in one transaction:
+     * a half-migrated dimension would double-count.
+     */
+    reclassify(
+      from: AnalyticsDimension,
+      to: AnalyticsDimension,
+      remap: (key: string) => string | null,
+    ): number {
+      let moved = 0;
+      transact(db, () => {
+        for (const [table, period] of [
+          ["analytics_hourly", "bucket"],
+          ["analytics_daily", "day"],
+        ] as const) {
+          const rows = db
+            .prepare(`SELECT ${period} AS period, key, count FROM ${table} WHERE dimension = ?`)
+            .all(from) as { period: string; key: string; count: number }[];
+          const del = db.prepare(`DELETE FROM ${table} WHERE dimension = ? AND ${period} = ? AND key = ?`);
+          const ins = db.prepare(
+            `INSERT INTO ${table} (${period}, dimension, key, count) VALUES (?, ?, ?, ?)
+             ON CONFLICT(${period}, dimension, key) DO UPDATE SET count = count + excluded.count`,
+          );
+          for (const row of rows) {
+            const key = remap(row.key);
+            if (key === null) continue;
+            del.run(from, row.period, row.key);
+            ins.run(row.period, to, key, row.count);
+            moved += row.count;
+          }
+        }
+      });
+      return moved;
+    },
+
     /** Top keys for a log dimension over an inclusive day range. */
     top(dimension: AnalyticsDimension, from: string, to: string, limit = 20): AnalyticsRow[] {
       return mapRows(

@@ -1,3 +1,4 @@
+import type { ReferrerRule } from "./referrer.js";
 /**
  * What the API returns.
  *
@@ -86,6 +87,7 @@ export interface AnalyticsChart {
   clicks: AnalyticsPoint[];
   visitLength: AnalyticsPoint[];
   bots: AnalyticsPoint[];
+  probes: AnalyticsPoint[];
 }
 
 export interface AnalyticsEngagement {
@@ -120,6 +122,8 @@ export interface AnalyticsResponse {
      * client shifts only their labels.
      */
     timeZone: string;
+    /** Set when the window was narrowed to one bucket (a click on the chart). */
+    at?: string;
   };
   paths: AnalyticsRow[];
   referrers: AnalyticsRow[];
@@ -128,6 +132,12 @@ export interface AnalyticsResponse {
   devices: AnalyticsRow[];
   /** Self-identifying non-humans, by coarse family. Counted, never conflated. */
   bots: AnalyticsRow[];
+  /**
+   * Requests that didn't admit to being automated but asked for something only a
+   * scanner asks for. Separate from `bots`: a crawler is honest, a probe wears a
+   * Chrome user-agent and sweeps for `/wp-login.php`.
+   */
+  probes: AnalyticsRow[];
   chart: AnalyticsChart;
   /**
    * The same metric totals over the window immediately before this one, for a
@@ -137,6 +147,12 @@ export interface AnalyticsResponse {
    * showing nothing.
    */
   previous?: AnalyticsTotals;
+  /**
+   * The custom referrer rules currently in effect, echoed so the dashboard can
+   * edit them where they're used. They're applied to `referrers` above before it
+   * leaves the server, so the list and the rules can't disagree.
+   */
+  referrerRules: ReferrerRule[];
   engagement: AnalyticsEngagement;
 }
 
@@ -147,6 +163,7 @@ export interface AnalyticsTotals {
   clicks: number;
   visitLength: number;
   bots: number;
+  probes: number;
 }
 
 export interface ClearAnalyticsResponse extends OkResponse {

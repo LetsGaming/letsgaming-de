@@ -5,11 +5,14 @@
  *
  * That constraint is also the ceiling on what this file can say about bots. With
  * no identifier there is nothing to correlate across requests, so a line is judged
- * on what it carries and nothing else: see agent.ts.
+ * on what it carries and nothing else: what it *claims* to be (agent.ts) and what
+ * it *asked for* (probe.ts).
  */
 
 import type { HourlyHit } from "@lg/db";
+import { UTM_PREFIX, sanitizeUtmSource } from "@lg/core";
 import { botFamily } from "./agent.js";
+import { probeFamily } from "./probe.js";
 
 export interface ParsedUA {
   browser: string;
@@ -78,12 +81,43 @@ function logHour(stamp: string): string | null {
 const NOT_THE_SITE = /^\/(admin|_nuxt|_image|media|api|favicon|robots|sitemap)(\/|$)/;
 const ASSET_EXT = /\.(css|js|mjs|map|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|xml|txt|json)$/i;
 
-function isPageView(method: string, status: number, path: string): boolean {
+/**
+ * Is this line worth classifying at all?
+ *
+ * Deliberately looser than "was a page served", because a request that *failed*
+ * still says something: a scanner sweeping for `/.env.bak` gets a 404, and that
+ * 404 is the entire security signal. Filtering on success first is what made the
+ * probe counts vanish — the noise was excluded before anything could name it.
+ *
+ * **Redirects are dropped here, and that's the important part.** The reverse
+ * proxy upgrades HTTP to HTTPS with a 301, so every request writes two lines: the
+ * 301, then the real 200 or 404. Counting both double-counts every visit and
+ * every probe. Dropping 3xx leaves exactly one line per request, and loses
+ * nothing — a redirect that leads somewhere is followed by a request for the
+ * destination, and that request is the event.
+ */
+function isCountable(method: string, status: number, path: string): boolean {
   if (method !== "GET") return false;
-  if (status < 200 || status >= 400) return false;
+  // 3xx is the redirect half of a pair; 1xx never reaches here.
+  if (status < 200 || (status >= 300 && status < 400)) return false;
   if (NOT_THE_SITE.test(path)) return false;
   if (ASSET_EXT.test(path)) return false;
   return true;
+}
+
+/** Was a page actually served? Only then is it a page view. */
+const wasServed = (status: number): boolean => status >= 200 && status < 300;
+
+/** `utm_source` (or the shorter aliases) from a raw request target. */
+function taggedSource(rawPath: string): string | null {
+  const q = rawPath.indexOf("?");
+  if (q === -1) return null;
+  const params = new URLSearchParams(rawPath.slice(q + 1));
+  for (const key of ["utm_source", "ref", "from", "source"]) {
+    const hit = sanitizeUtmSource(params.get(key));
+    if (hit) return hit;
+  }
+  return null;
 }
 
 function referrerHost(ref: string): string | null {
@@ -106,7 +140,21 @@ export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   if (/[?&]preview=1(?:&|$)/.test(rawPath ?? "")) return [];
   const path = (rawPath ?? "").split("?")[0] ?? "/";
   const status = Number(statusStr);
-  if (!isPageView(method!, status, path)) return [];
+  if (!isCountable(method!, status, path)) return [];
+
+  // What it *asked for*, before what it *claims to be*.
+  //
+  // The path is the harder signal to forge: a user agent is a string anyone can
+  // type, and the logs show secret-hunting sweeps arriving as "Googlebot" and
+  // "Applebot" asking for `/.env.bak` and `/api/config`. A real Googlebot does
+  // not do that. Checking the agent first filed those under "Search engine",
+  // which is both wrong and flattering.
+  //
+  // Scanners that don't bother lying are caught here too: they send a plain
+  // Chrome user-agent, so before this existed they landed in `path`, `browser`,
+  // `os` and `device` as "Chrome on Windows" and buried the real traffic.
+  const probe = probeFamily(path);
+  if (probe) return [{ bucket, dimension: "probe", key: probe }];
 
   // A request that says it isn't a person is counted, and counted separately.
   //
@@ -118,10 +166,27 @@ export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   const family = botFamily(ua ?? "");
   if (family) return [{ bucket, dimension: "bot", key: family }];
 
+  // Anything left that didn't get a page is not a page view. A human hitting a
+  // typo'd URL and getting a 404 is a real person, but they didn't read a page,
+  // and their browser/OS shouldn't pad the split either.
+  if (!wasServed(status)) return [];
+
   const hits: HourlyHit[] = [{ bucket, dimension: "path", key: path }];
 
+  // Where they came from: the link's own tag first, the `Referer` header second.
+  //
+  // The tag wins because it's the one that survives. Native apps hand a URL to
+  // the browser with no previous page, so a visit from the Discord or Steam
+  // client arrives header-less and indistinguishable from someone typing the
+  // address. A `?utm_source=` on the link answers anyway. When there's no tag
+  // this falls back to exactly what it did before.
+  const tagged = taggedSource(rawPath ?? "");
   const host = referrerHost(referrer ?? "");
-  if (host && host !== ownHost) hits.push({ bucket, dimension: "referrer", key: host });
+  if (tagged) {
+    hits.push({ bucket, dimension: "referrer", key: `${UTM_PREFIX}${tagged}` });
+  } else if (host && host !== ownHost) {
+    hits.push({ bucket, dimension: "referrer", key: host });
+  }
 
   const { browser, os, device } = parseUserAgent(ua ?? "");
   hits.push({ bucket, dimension: "browser", key: browser });

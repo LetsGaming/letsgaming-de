@@ -152,6 +152,12 @@ export const LOG_DIMENSIONS = [
   "os", // coarse platform                        → key: Windows|macOS|…
   "device", // coarse form factor                 → key: mobile|desktop
   "bot", // a request that says it isn't a person → key: <BotFamily>
+  // A request that *doesn't* say it isn't a person but asked for something only
+  // a scanner asks for (`/wp-login.php`, `/.env`). Separate from `bot` because
+  // the two are different things: one is a crawler being honest, the other is an
+  // exploit sweep wearing a Chrome user-agent. Kept out of path/browser/os/
+  // device/referrer for the same reason `bot` is — those describe people.
+  "probe", // an attack probe                       → key: <ProbeFamily>
 ] as const;
 export type LogDimension = (typeof LOG_DIMENSIONS)[number];
 

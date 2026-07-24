@@ -26,6 +26,8 @@ import {
   sanitizePresenceSettings,
   sanitizePresenceShow,
   sanitizeRetentionDays,
+  sanitizeReferrerRules,
+  type ReferrerRule,
 } from "@lg/core";
 import type { DB } from "./database.js";
 import {
@@ -142,6 +144,18 @@ export function contentRepo(db: DB) {
     return sanitizeWrappedSettings(json<unknown>(row.wrapped));
   };
 
+  /** Custom referrer rules (CMS-owned), applied when the dashboard is read so a
+   *  new rule relabels history. NULL — a fresh install or a pre-0011 row — reads
+   *  back as no rules, which is what the dashboard did before they existed. */
+  const readReferrerRules = (): ReferrerRule[] => {
+    const row = db
+      .prepare("SELECT analytics FROM site_content WHERE id = ?")
+      .get(SINGLETON_ID) as { analytics: string | null } | undefined;
+    if (!row || row.analytics === null) return [];
+    const parsed = json<{ referrerRules?: unknown }>(row.analytics);
+    return sanitizeReferrerRules(parsed?.referrerRules);
+  };
+
   const readPlaytime = (): PlaytimeSettings => {
     const row = db
       .prepare("SELECT playtime FROM site_content WHERE id = ?")
@@ -192,7 +206,7 @@ export function contentRepo(db: DB) {
       return result;
     });
 
-  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music" | "playtime" | "wrapped", value: unknown): void =>
+  const setScalar = (col: "meta" | "headline" | "lede" | "status" | "bio" | "music" | "playtime" | "wrapped" | "analytics", value: unknown): void =>
     write(col, () => {
       db.prepare(`UPDATE site_content SET ${col} = ? WHERE id = ?`).run(
         JSON.stringify(value),
@@ -245,6 +259,12 @@ export function contentRepo(db: DB) {
     getWrapped: readWrapped,
     setWrapped(settings: WrappedSettings) {
       setScalar("wrapped", sanitizeWrappedSettings(settings));
+    },
+
+    /** Custom referrer → source-name rules (CMS-owned). */
+    getReferrerRules: readReferrerRules,
+    setReferrerRules(rules: ReferrerRule[]) {
+      setScalar("analytics", { referrerRules: sanitizeReferrerRules(rules) });
     },
 
     getPlaytime: readPlaytime,

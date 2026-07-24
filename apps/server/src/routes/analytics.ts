@@ -8,7 +8,7 @@
  * and the owner can clear fine-grained ranges (last hour, last 3 days, …).
  */
 
-import { clearRange, sanitizeTimeZone } from "@lg/core";
+import { clearRange, groupReferrers, sanitizeTimeZone } from "@lg/core";
 import type { AnalyticsResponse, AnalyticsTotals, ClearAnalyticsResponse } from "@lg/core";
 import { zonedParts, type AnalyticsDimension, type SeriesRow, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
@@ -103,7 +103,7 @@ function fromBucket(from: Date, unit: "hour" | "day"): string {
 }
 
 export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
-  app.get<{ Querystring: { hours?: string; tz?: string } }>(
+  app.get<{ Querystring: { hours?: string; tz?: string; at?: string } }>(
     "/api/cms/analytics",
     { preHandler: requireAuth(env) },
     async (req) => {
@@ -114,6 +114,20 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const timeZone = sanitizeTimeZone(req.query.tz);
       const now = new Date();
 
+      /**
+       * A single bucket to narrow everything to — what the dashboard sends when
+       * you click a column in the chart.
+       *
+       * The lists underneath the graph used to describe the whole window no
+       * matter what the graph was showing, so a traffic spike was visible and
+       * unexplainable in the same screen. Anchoring to a bucket is all it takes:
+       * the same query, a narrower window.
+       *
+       * Validated by shape, not trusted: `YYYY-MM-DD` or `YYYY-MM-DDTHH`, and
+       * anything else is ignored rather than concatenated into a bucket string.
+       */
+      const at = /^\d{4}-\d{2}-\d{2}(T\d{2})?$/.test(req.query.at ?? "") ? req.query.at! : null;
+
       // The window, and the window immediately before it for the comparison.
       const windowStart = new Date(now.getTime() - (hours - 1) * HOUR);
       const prevEnd = new Date(windowStart.getTime() - HOUR);
@@ -123,7 +137,21 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       let toB: string;
       let prevFromB: string;
       let prevToB: string;
-      if (unit === "day") {
+      if (at) {
+        // One bucket. An hour is itself; a local day spans from its midnight to
+        // the hour before the next one, which is why this can't be a substring.
+        if (at.length === 13) {
+          fromB = at;
+          toB = at;
+        } else {
+          fromB = isoHour(new Date(localDayStartMs(at, timeZone)));
+          toB = isoHour(new Date(localDayStartMs(at, timeZone) + 23 * HOUR));
+        }
+        // No comparison window for a single bucket: "vs the hour before" is a
+        // different question from the one the range picker is answering.
+        prevFromB = "";
+        prevToB = "";
+      } else if (unit === "day") {
         // Whole local days: the axis draws day columns, so the window has to
         // start at a local midnight or the oldest column is a partial day drawn
         // as a full one.
@@ -142,8 +170,8 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
 
       // Day buckets are local days; hour buckets stay UTC and only their labels
       // shift client-side.
-      const rangeFrom = unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB;
-      const rangeTo = unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB;
+      const rangeFrom = at ?? (unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB);
+      const rangeTo = at ?? (unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB);
 
       const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, fromB, toB);
       const series = (d: AnalyticsDimension) => {
@@ -153,24 +181,34 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const sumOf = (d: AnalyticsDimension, from: string, to: string) =>
         store.analytics.topHourly(d, from, to).reduce((s, r) => s + r.count, 0);
 
+      // A single bucket has no comparison window — "vs the hour before" answers a
+      // different question from the one the range picker asked.
+      const hasPrev = Boolean(prevFromB && prevToB);
+
       const previous: AnalyticsTotals = {
-        pageviews: sumOf("path", prevFromB, prevToB),
-        sections: sumOf("tab", prevFromB, prevToB),
-        clicks: sumOf("click", prevFromB, prevToB),
-        visitLength: sumOf("session_dwell", prevFromB, prevToB),
-        bots: sumOf("bot", prevFromB, prevToB),
+        pageviews: hasPrev ? sumOf("path", prevFromB, prevToB) : 0,
+        sections: hasPrev ? sumOf("tab", prevFromB, prevToB) : 0,
+        clicks: hasPrev ? sumOf("click", prevFromB, prevToB) : 0,
+        visitLength: hasPrev ? sumOf("session_dwell", prevFromB, prevToB) : 0,
+        bots: hasPrev ? sumOf("bot", prevFromB, prevToB) : 0,
+        probes: hasPrev ? sumOf("probe", prevFromB, prevToB) : 0,
       };
       const hasPrevious = Object.values(previous).some((v) => v > 0);
 
+      const referrerRules = store.content.getReferrerRules();
       const response: AnalyticsResponse = {
-        range: { from: rangeFrom, to: rangeTo, hours, unit, timeZone },
+        range: { from: rangeFrom, to: rangeTo, hours, unit, timeZone, ...(at ? { at } : {}) },
         // Log-derived top lists (now hour-bucketed, same pipeline).
         paths: top("path"),
-        referrers: top("referrer"),
+        // Grouped on read, not on ingest: the rules live in the CMS, so a rule
+        // added today has to relabel every referrer that ever arrived. Baking
+        // labels into the aggregates would only ever label the future.
+        referrers: groupReferrers(top("referrer"), referrerRules),
         browsers: top("browser"),
         os: top("os"),
         devices: top("device"),
         bots: top("bot"),
+        probes: top("probe"),
         // The graph: stacked composition over time, per metric.
         chart: {
           unit,
@@ -179,10 +217,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
           clicks: series("click"),
           visitLength: series("session_dwell"),
           bots: series("bot"),
+          probes: series("probe"),
         },
         // Omitted rather than zeroed when the previous window predates any data,
         // so the UI can say "no comparison" instead of "down 100%".
         ...(hasPrevious ? { previous } : {}),
+        referrerRules,
         // Engagement top lists (hour-bucketed).
         engagement: {
           tabs: top("tab"),

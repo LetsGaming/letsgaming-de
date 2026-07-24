@@ -48,16 +48,97 @@ the dashboard's numbers used to be labelled as each other:
 
 | Metric | Dimension | What one row is |
 |---|---|---|
-| Page views | `path` | one request, from the access log, bots excluded |
+| Page views | `path` | one request, from the access log, bots and probes excluded |
 | Section views | `tab` | one *section entry* — several per visitor |
 | Visits | `session_dwell` | one *completed visit*, emitted once on unload |
 | Visit length | `session_dwell` keys | a coarse dwell bucket, shown as a median |
+| Bots | `bot` | a request whose agent *admits* to being automated |
+| Probes | `probe` | a request that asked for something only a scanner asks for |
 
 "Visits" is completed visits: the summary event fires from `pagehide`, so a tab
 the OS kills while backgrounded contributes page views but no visit row. Visits
 therefore read slightly under page views by construction. Moving that event
 earlier would count visits that hadn't finished, so the number stays honest and
 the label says "completed".
+
+## Two ways to not be a person
+
+The probe check runs **before** the agent check. The path is the harder signal to
+forge: production logs show secret sweeps arriving as "Googlebot" and "Applebot"
+asking for `/.env.bak` and `/api/config`, and a real Googlebot does not do that.
+Checking the agent first filed those under "Search engine", which was both wrong
+and flattering.
+
+`agent.ts` asks whether a request **claims** to be automated. That catches most of
+the volume — Googlebot, uptime pings, `curl` — and misses anything that lies.
+
+`probe.ts` asks whether what it requested **could have been asked for by a person
+on this site**. Scanners send a real browser user-agent, so before this existed
+they landed in Top paths as "Chrome on Windows": a live dashboard read 1,361 page
+views on a site with about forty, and the browser/OS/device splits were mostly
+scanner noise.
+
+The signal is unusually clean because it's specific to this codebase. There is no
+PHP, no WordPress and no CGI anywhere in a Nuxt application, so `/wp-login.php`,
+`/.env` and `/wso.php` are not typos — those paths have never existed here. That
+makes the rule a statement about this server's routes rather than a guess about
+intent, which is why it can be applied with confidence.
+
+Probes are counted, not dropped: a scan burst is worth seeing, and it's the most
+useful thing in the log for knowing you're being enumerated. They just don't
+belong in `path`, `browser`, `os`, `device` or `referrer`, which exist to
+describe people — the same reasoning that separates bots.
+
+Classification happens at ingest, so rows written before a rule existed keep
+their old dimension. `pnpm analytics:reclassify` re-files them, and is safe to
+run repeatedly.
+
+## What counts as a request
+
+Three filters, in order, and the order matters.
+
+**Redirects are dropped.** The reverse proxy upgrades HTTP to HTTPS with a 301,
+so every request writes two log lines: the redirect, then the real answer.
+Counting both double-counts every visit *and* every scanner probe — this single
+`status < 400` was most of what the dashboard was reporting. On a live 16-line
+sample it counted 10 page views where 4 pages were served.
+
+**Then classification, on whatever's left, regardless of status.** A probe that
+404s is still a probe, and that 404 is the entire security signal; filtering on
+success first is what made the probe counts vanish.
+
+**Then page views, on 2xx only.** A human who hits a typo'd URL is a real person
+who didn't read a page, so they don't count and their browser doesn't pad the
+split either.
+
+## Naming referrer sources
+
+The log stores a bare hostname. `out.reddit.com`, `www.reddit.com` and
+`old.reddit.com` are three lines and one answer, and `t.co` doesn't obviously say
+"X". So hosts are stored raw and grouped when the dashboard is **read**, against
+a built-in table (ChatGPT, Claude, Steam, Discord, Reddit, GitHub, search
+engines, …) plus any custom rules from the CMS.
+
+Sources come from two places, tag first:
+
+1. **`?utm_source=` on the link** (also `ref`, `from`, `source`). This is the one
+   that survives. Native apps — the Discord desktop client, the Steam client,
+   most messengers — hand a URL to the browser as a fresh navigation with no
+   previous page, so those visits arrive header-less and indistinguishable from
+   someone typing the address. A tag answers anyway. The value is
+   attacker-controlled, so it's capped to 32 characters of `[a-z0-9._-]` before
+   it becomes a row.
+2. **The `Referer` header**, when there's no tag. Unchanged behaviour.
+
+Both resolve through the same table, so `?utm_source=discord` and a real referral
+from `discord.com` land on one line rather than two.
+
+Reading-time grouping is the point of the ordering: classifying at ingest would
+bake today's rules into history, so a source added next month would only be
+labelled from next month. Grouping on read relabels everything that ever
+arrived. Unmatched hosts fall through to themselves — an unrecognised referrer
+sending real traffic is exactly what's worth noticing, and it's the prompt to
+name it.
 
 ## Storage and retention
 

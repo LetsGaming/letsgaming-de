@@ -164,6 +164,10 @@ useSeo({
       Nachricht über die oben genannten Kontaktwege genügt.
     </p>
 
+    <p style="margin-top:28px;color:var(--muted);font-size:14px">
+      Hinweis: allgemeine Informationen, keine Rechtsberatung.
+    </p>
+
     <p style="margin-top:24px">
       <SmartLink href="/" style="color:var(--ink)">← zurück zur Startseite</SmartLink>
     </p>

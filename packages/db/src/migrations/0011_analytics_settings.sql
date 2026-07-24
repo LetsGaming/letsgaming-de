@@ -1,0 +1,18 @@
+-- CMS-owned analytics config. Today it holds one thing: the custom referrer
+-- rules, which map a host suffix to a display name ("steamcommunity.com" →
+-- "Steam") so the dashboard can say who sent someone rather than listing four
+-- subdomains of the same site.
+--
+-- Stored as one JSON object on the singleton content row — a scalar, not its own
+-- table, like the music/playtime/wrapped settings (0007, 0009, 0010). A rule list
+-- is small, edited as a whole, and never queried by its parts, so a table would
+-- buy nothing but joins.
+--
+-- The rules are applied when the dashboard is *read*, not when the log is
+-- ingested. That is the point of storing them here rather than baking labels into
+-- the aggregates: adding a rule next month relabels every referrer that ever
+-- arrived, instead of only the ones that arrive afterwards.
+--
+-- Nullable, no data migration: a NULL reads back as "no custom rules", which is
+-- exactly the behaviour before this column existed.
+ALTER TABLE site_content ADD COLUMN analytics TEXT;  -- JSON AnalyticsSettings; NULL → defaults

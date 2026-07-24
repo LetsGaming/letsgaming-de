@@ -103,9 +103,19 @@ export const cms = {
     fetch(`${apiBase}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
       handle<CmsContentResponse>,
     ),
-  analytics: (hours?: number, tz?: string) => {
+  saveReferrerRules: (rules: { match: string; label: string }[]) =>
+    fetch(`${apiBase}/api/cms/referrer-rules`, {
+      method: "PUT",
+      headers: headers(true),
+      credentials: "include",
+      body: JSON.stringify({ rules }),
+    }).then(handle<OkResponse>),
+
+  analytics: (hours?: number, tz?: string, at?: string) => {
     const q = new URLSearchParams();
     if (hours) q.set("hours", String(hours));
+    // Narrow everything to one bucket — what a click on the chart sends.
+    if (at) q.set("at", at);
     // Day columns are grouped server-side in this zone — a day boundary is a
     // wall-clock fact, so it can't be a display-time transform.
     if (tz) q.set("tz", tz);

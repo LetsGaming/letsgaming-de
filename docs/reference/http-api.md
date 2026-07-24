@@ -200,8 +200,10 @@ which can be up to 23 hours more than 168.
   },
   "paths": [ { "key": "/", "count": 12 }, ... ],
   "referrers": [ ... ], "browsers": [ ... ], "os": [ ... ], "devices": [ ... ],
-  "bots": [ ... ],
-  "chart": { "unit": "day", "pageviews": [...], "sections": [...], "clicks": [...], "visitLength": [...], "bots": [...] },
+  "bots": [ ... ],          // self-identifying crawlers
+  "probes": [ ... ],        // scanners, identified by what they asked for
+  "referrerRules": [ { "match": "steamcommunity.com", "label": "Steam" } ],
+  "chart": { "unit": "day", "pageviews": [...], "sections": [...], "clicks": [...], "visitLength": [...], "bots": [...], "probes": [...] },
   // Totals over the window immediately before this one, for a "vs previous
   // period" reading. OMITTED — not zeroed — when that window predates any data,
   // so a fresh install shows "nothing to compare" rather than −100%.
@@ -216,6 +218,11 @@ visitor, so it totals section views and not visits. `visitLength` is
 `session_dwell`, emitted exactly once per visit when the page unloads, so its
 total **is** the visit count and its keys are dwell buckets. The CMS labels them
 "Section views" and "Visits" for this reason.
+
+`referrers` is grouped by source before it leaves the server — built-in table
+plus the custom rules, which are echoed back in `referrerRules`. Grouping happens
+on read, so `PUT /api/cms/referrer-rules` with `{ "rules": [{ "match", "label" }] }`
+relabels traffic that arrived before the rule existed.
 
 `POST /api/cms/analytics/clear` with `{ "range": "hour" | "24h" | "3d" | "7d" |
 "all" }` clears that range and returns `{ ok, removed }`. `all` also wipes the

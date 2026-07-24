@@ -113,6 +113,7 @@ const emptyChart = (): AnalyticsChart => ({
   clicks: [],
   visitLength: [],
   bots: [],
+  probes: [],
 });
 
 const emptyAnalytics = (): AnalyticsResponse => ({
@@ -123,6 +124,8 @@ const emptyAnalytics = (): AnalyticsResponse => ({
   os: [],
   devices: [],
   bots: [],
+  probes: [],
+  referrerRules: [],
   chart: emptyChart(),
   engagement: {
     tabs: [], exits: [], transitions: [], dwell: [], scroll: [],

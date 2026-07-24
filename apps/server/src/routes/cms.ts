@@ -13,6 +13,7 @@ import type {
   Hobby,
   Link,
   Localized,
+  ReferrerRule,
   NavNode,
   NowItem,
   PresenceCategory,
@@ -148,6 +149,17 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     store.content.setMeta(req.body);
     return { ok: true };
   });
+  // Custom referrer → source-name rules. Applied when the analytics dashboard is
+  // read, so saving a rule relabels traffic that arrived before it existed.
+  app.put<{ Body: { rules: ReferrerRule[] } }>(
+    "/api/cms/referrer-rules",
+    write(schemas.referrerRules),
+    async (req) => {
+      store.content.setReferrerRules(req.body.rules);
+      return { ok: true };
+    },
+  );
+
   app.put<{ Body: Headline }>("/api/cms/headline", write(schemas.headline), async (req) => {
     store.content.setHeadline(req.body);
     return { ok: true };

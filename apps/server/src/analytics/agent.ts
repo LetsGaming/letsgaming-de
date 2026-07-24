@@ -55,14 +55,20 @@ export type BotFamily = (typeof BOT_FAMILY)[keyof typeof BOT_FAMILY];
  * "Googlebot" contains "bot" — so a flat list would file every crawler under
  * "Other bot" or not, depending on which regex happened to be first. Rule of
  * three's cousin: a list whose order is load-bearing needs to say so.
+ *
+ * The list is only ever as complete as the last log you read. These were added
+ * after finding them in production being counted as people: `cohere-ai` and the
+ * other AI crawlers match nothing containing "bot"; `PetalBot` was landing in
+ * "Other" rather than search; and the generic rule said `monitoring`, which
+ * misses every agent that calls itself `monitor-something`.
  */
 const BOT_PATTERNS: readonly (readonly [RegExp, BotFamily])[] = [
-  [/googlebot|bingbot|yandex(bot)?|duckduckbot|baiduspider|slurp|applebot/, BOT_FAMILY.search],
-  [/gptbot|claudebot|anthropic|ccbot|perplexity|bytespider|google-extended/, BOT_FAMILY.ai],
+  [/googlebot|bingbot|yandex(bot)?|duckduckbot|baiduspider|slurp|applebot|petalbot|seznambot|qwantify/, BOT_FAMILY.search],
+  [/gptbot|claudebot|anthropic|ccbot|perplexity|bytespider|google-extended|cohere|amazonbot|meta-externalagent|diffbot|omgili|timpibot|youbot|imagesift/, BOT_FAMILY.ai],
   [/facebookexternalhit|twitterbot|slackbot|discordbot|whatsapp|telegrambot|linkedinbot|embedly|pinterest/, BOT_FAMILY.social],
   [/uptimerobot|pingdom|statuscake|betteruptime|newrelic|datadog|site24x7|hetrixtool/, BOT_FAMILY.monitor],
-  [/curl|wget|python-requests|python-urllib|go-http-client|okhttp|axios|node-fetch|libwww|httpie|postman|insomnia|java\/|apache-httpclient|scrapy|puppeteer|playwright|headlesschrome|phantomjs|lighthouse/, BOT_FAMILY.tool],
-  [/bot\b|crawler|crawl|spider|scraper|feedfetcher|archiver|monitoring|checker|validator|preview/, BOT_FAMILY.other],
+  [/curl|wget|python-requests|python-urllib|go-http-client|quic-go|okhttp|axios|node-fetch|libwww|httpie|postman|insomnia|java\/|apache-httpclient|scrapy|puppeteer|playwright|headlesschrome|phantomjs|lighthouse/, BOT_FAMILY.tool],
+  [/bot\b|crawler|crawl|spider|scraper|feedfetcher|archiver|monitor|checker|validator|preview/, BOT_FAMILY.other],
 ];
 
 /**

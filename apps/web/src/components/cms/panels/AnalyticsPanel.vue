@@ -23,6 +23,21 @@ const {
 	activeZone,
 	setZone,
 	medianVisitLength,
+	focus,
+	lists,
+	loadingFocus,
+	focusBucket,
+	selectAt,
+	activeScope,
+	pinnedScope,
+	showsCard,
+	setScope,
+	resetScope,
+	referrerRules,
+	savingRules,
+	addReferrerRule,
+	removeReferrerRule,
+	saveReferrerRules,
 	hovered,
 	hoverAt,
 	clearHover,
@@ -60,6 +75,14 @@ function onPointer(e: PointerEvent) {
 	hoverAt(((e.clientX - rect.left) / rect.width) * chart.value.W);
 }
 
+/** A click anywhere on the plot drills the lists below into that bucket. */
+function onSelect(e: PointerEvent) {
+	const svg = e.currentTarget as SVGSVGElement;
+	const rect = svg.getBoundingClientRect();
+	if (!rect.width || !chart.value) return;
+	selectAt(((e.clientX - rect.left) / rect.width) * chart.value.W);
+}
+
 /** Keep the tooltip inside the plot instead of letting it run off the edge. */
 const tipStyle = computed(() => {
 	const c = chart.value;
@@ -82,6 +105,17 @@ const muted = ref(new Set<string>());
 
 /** Whether the data table is on screen as well as in the accessibility tree. */
 const showTable = ref(false);
+
+/** Where to draw the held marker for the focused bucket. */
+/** The focused bucket as the chart would label it. */
+const focusLabel = computed(() => focusedColumn.value?.label ?? focus.value ?? "");
+
+const focusedColumn = computed(() =>
+	focus.value ? (chart.value?.columns.find((c) => c.bucket === focus.value) ?? null) : null,
+);
+
+/** Whether the referrer-rule editor is open. */
+const showRules = ref(false);
 function toggleSeries(key: string) {
 	const next = new Set(muted.value);
 	if (!next.delete(key)) next.add(key);
@@ -177,6 +211,7 @@ const age = computed(() => {
                 :viewBox="`0 0 ${chart.W} ${chart.H}`"
                 aria-hidden="true"
                 @pointermove="onPointer"
+                @click="onSelect"
               >
                 <!-- count gridlines -->
                 <line
@@ -201,6 +236,15 @@ const age = computed(() => {
                      pointer-events:none it swallows hovers there. -->
                 <line class="c-axis" :x1="chart.x0" :y1="chart.y0" :x2="chart.x0" :y2="chart.y1" />
                 <line class="c-axis" :x1="chart.x0" :y1="chart.y1" :x2="chart.x1" :y2="chart.y1" />
+                <!-- the focused bucket, held until it's cleared -->
+                <line
+                  v-if="focusedColumn"
+                  class="c-focus"
+                  :x1="focusedColumn.x"
+                  :x2="focusedColumn.x"
+                  :y1="chart.y0"
+                  :y2="chart.y1"
+                />
                 <!-- crosshair at the hovered bucket -->
                 <line
                   v-if="hovered"
@@ -318,25 +362,98 @@ const age = computed(() => {
               </button>
             </div>
           </div>
-          <p v-if="analytics && !analytics.paths.length" class="muted" style="margin-top: 4px">
+          <p v-if="analytics && !lists?.paths?.length" class="muted" style="margin-top: 4px">
             No traffic stats yet. These come from the reverse-proxy access log — set
             <b>ACCESS_LOG</b> on the server (see <code>.env.example</code>). The cookieless
             engagement stats below don't need it.
           </p>
           <div class="cols">
-            <div class="card"><h3>Top paths</h3><ul><li v-for="r in analytics.paths" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div class="card"><h3>Referrers</h3><ul><li v-for="r in analytics.referrers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div class="card"><h3>Browsers</h3><ul><li v-for="r in analytics.browsers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div class="card"><h3>OS</h3><ul><li v-for="r in analytics.os" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
-            <div class="card"><h3>Devices</h3><ul><li v-for="r in analytics.devices" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+<!-- What the lists below are describing, and how to get back. Always
+                 rendered, so the default state is a visible choice rather than an
+                 absence — you can't clear a filter you didn't know was on. -->
+            <div class="scopebar">
+              <span class="scopewhat">
+                <template v-if="focus">
+                  Showing <b>{{ focusLabel }}</b> only
+                  <span v-if="loadingFocus" class="muted">· loading…</span>
+                </template>
+                <template v-else>Showing the whole range</template>
+                <template v-if="activeScope !== 'everything'">
+                  · <b>{{ activeScope }}</b> cards
+                  <span v-if="!pinnedScope" class="muted">(following {{ METRIC_LABELS[metric] }})</span>
+                </template>
+              </span>
+              <span class="scopeacts">
+                <button v-if="focus" type="button" class="link" @click="focusBucket(null)">
+                  Clear selection
+                </button>
+                <button
+                  v-if="activeScope !== 'everything'"
+                  type="button"
+                  class="link"
+                  @click="setScope('everything')"
+                >
+                  Show all cards
+                </button>
+                <button
+                  v-if="focus || pinnedScope"
+                  type="button"
+                  class="link"
+                  @click="focusBucket(null); resetScope();"
+                >
+                  Reset to default
+                </button>
+              </span>
+            </div>
+            <div v-if="showsCard('paths')" class="card"><h3>Top paths</h3><ul><li v-for="r in lists?.paths" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+            <div v-if="showsCard('referrers')" class="card">
+              <h3>Referrers</h3>
+              <ul><li v-for="r in lists?.referrers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul>
+              <!-- Editing lives here rather than in a content panel because this
+                   is where you find out you need a rule: an unfamiliar host in
+                   the list above is the prompt to name it. -->
+              <button type="button" class="link" :aria-expanded="showRules" @click="showRules = !showRules">
+                {{ showRules ? "Hide" : "Name a source" }}
+              </button>
+              <div v-if="showRules" class="rules">
+                <p class="muted">
+                  Map a host to a name — <code>steamcommunity.com</code> → <code>Steam</code>.
+                  Subdomains are included. Applies to past traffic too.
+                </p>
+                <div v-for="(r, i) in referrerRules" :key="i" class="rule">
+                  <input v-model="r.match" placeholder="host, e.g. chatgpt.com" aria-label="Referrer host" />
+                  <input v-model="r.label" placeholder="name, e.g. ChatGPT" aria-label="Source name" />
+                  <button type="button" class="link" @click="removeReferrerRule(i)" aria-label="Remove rule">✕</button>
+                </div>
+                <div class="ruleactions">
+                  <button type="button" class="btn ghost" @click="addReferrerRule()">+ Add rule</button>
+                  <button type="button" class="btn" :disabled="savingRules" @click="saveReferrerRules()">
+                    {{ savingRules ? "Saving…" : "Save rules" }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-if="showsCard('browsers')" class="card"><h3>Browsers</h3><ul><li v-for="r in lists?.browsers" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+            <div v-if="showsCard('os')" class="card"><h3>OS</h3><ul><li v-for="r in lists?.os" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
+            <div v-if="showsCard('devices')" class="card"><h3>Devices</h3><ul><li v-for="r in lists?.devices" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li></ul></div>
             <!-- Counted, and kept out of the four cards above: those describe
                  people, and a crawler answers all four with noise. -->
-            <div class="card">
+            <div v-if="showsCard('bots')" class="card">
               <h3>Bots <span class="muted">(not counted as visits)</span></h3>
               <ul>
-                <li v-for="r in analytics.bots" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li>
+                <li v-for="r in lists?.bots" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li>
               </ul>
-              <p v-if="!analytics.bots?.length" class="muted">Nothing self-identified as a bot in this range.</p>
+              <p v-if="!lists?.bots?.length" class="muted">Nothing self-identified as a bot in this range.</p>
+            </div>
+            <!-- The traffic the bot check can't see: scanners send a real browser
+                 user-agent, so they're identified by what they asked for. Kept
+                 out of the cards above for the same reason bots are. -->
+            <div v-if="showsCard('probes')" class="card">
+              <h3>Probes <span class="muted">(scans, not people)</span></h3>
+              <ul>
+                <li v-for="r in lists?.probes" :key="r.key"><span>{{ r.key }}</span><b>{{ r.count }}</b></li>
+              </ul>
+              <p v-if="!lists?.probes?.length" class="muted">No scanner traffic in this range.</p>
             </div>
           </div>
           <template v-if="analytics.engagement">
