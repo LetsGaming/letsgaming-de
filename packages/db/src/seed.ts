@@ -1,6 +1,7 @@
 import {
   defaultPresenceSettings,
-  en,
+  l,
+  mergeLocales,
   LAUNCH_MODULES,
   LAUNCH_NAV,
   type Hobby,
@@ -17,9 +18,18 @@ import { contentRepo } from "./content-repo.js";
 import { iaRepo } from "./ia-repo.js";
 
 /**
- * Launch seed content. Real where it's ready (bio direction, the real projects
- * plantcare-tracker / LED-Controller-Websocket / dotfiles), scaffolded English
- * elsewhere — all editable later in the CMS, German added as content (§11).
+ * Launch seed content, in both shipped locales.
+ *
+ * German is seeded rather than left as a later content task: a site that offers a
+ * language switch and then answers half of it in English isn't bilingual, it's
+ * broken in two places. Everything here is still fully CMS-editable — this is the
+ * starting text, not the authority. `mergeLocales` in `reconcileIa` is what carries
+ * the same guarantee to the module headings and area labels of a store that was
+ * seeded before German existed.
+ *
+ * The German is a translation of intent, not of grammar: "Off the clock" is
+ * "Nach Feierabend", not "Von der Uhr". Where a term is genuinely the English one
+ * in German usage (Fachinformatiker, Home Lab, Raspberry Pi) it stays.
  *
  * Prose fields use `**bold**`; the frontend renders it safely. No source data is
  * seeded — repos/stats/graph/feed arrive only from a real sync.
@@ -28,27 +38,31 @@ const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
   meta: {
     name: "Domenic",
     handle: "LetsGaming",
-    location: en("Germany"),
-    role: en("web developer"),
+    location: l("Germany", "Deutschland"),
+    role: l("web developer", "Webentwickler"),
   },
   headline: {
-    before: en("I build for the web — and "),
-    highlight: en("tinker"),
-    after: en(" after hours."),
+    before: l("I build for the web — and ", "Ich baue fürs Web — und "),
+    highlight: l("tinker", "bastle"),
+    after: l(" after hours.", " nach Feierabend."),
   },
-  lede: en(
+  lede: l(
     "Full-time web developer, **Fachinformatiker Anwendungsentwicklung**. Clean, usable interfaces by day; plant sensors and LED strips by night.",
+    "Webentwickler in Vollzeit, **Fachinformatiker Anwendungsentwicklung**. Tagsüber klare, benutzbare Oberflächen; nachts Pflanzensensoren und LED-Streifen.",
   ),
-  status: { verb: en("building"), now: en("plantcare-tracker") },
+  status: { verb: l("building", "baue"), now: l("plantcare-tracker", "plantcare-tracker") },
   bio: [
-    en(
+    l(
       "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into making interfaces that are genuinely pleasant to use.",
+      "Ich bin Webentwickler in Vollzeit und über eine Ausbildung zum Fachinformatiker für Anwendungsentwicklung hierhergekommen. Den größten Teil des Tages verbringe ich damit, Oberflächen zu bauen, die sich wirklich angenehm bedienen lassen.",
     ),
-    en(
+    l(
       "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby — usually attached to a plant, an LED strip, or some corner of my home lab that didn't strictly need automating.",
+      "Nach der Arbeit bin ich am glücklichsten mit einem Lötkolben oder einem Raspberry Pi in Reichweite — meistens angeschlossen an eine Pflanze, einen LED-Streifen oder irgendeine Ecke meines Home Labs, die man nicht zwingend hätte automatisieren müssen.",
     ),
-    en(
+    l(
       "This site is its own little project: a small custom CMS feeds the content, and a backend quietly accumulates data from GitHub (and whatever I plug in next) so it stays current on its own.",
+      "Diese Seite ist selbst so ein Projekt: Ein kleines, selbstgebautes CMS liefert die Inhalte, und ein Backend sammelt im Hintergrund Daten von GitHub (und was ich als Nächstes anschließe), damit sie sich von allein aktuell hält.",
     ),
   ],
 };
@@ -59,22 +73,62 @@ const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
 const PROJECTS: Project[] = [];
 
 const HOBBIES: Hobby[] = [
-  { id: "gaming", title: en("Gaming"), blurb: en("where the name comes from"), tone: "purple", icon: "game" },
-  { id: "plants", title: en("Houseplants"), blurb: en("more than I can count"), tone: "mint", icon: "plant" },
-  { id: "leds", title: en("LEDs & Pi"), blurb: en("lights that do things"), tone: "coral", icon: "chip" },
-  { id: "homelab", title: en("Home lab"), blurb: en("automating the boring bits"), tone: "sun", icon: "server" },
+  {
+    id: "gaming",
+    title: l("Gaming", "Gaming"),
+    blurb: l("where the name comes from", "daher kommt der Name"),
+    tone: "purple",
+    icon: "game",
+  },
+  {
+    id: "plants",
+    title: l("Houseplants", "Zimmerpflanzen"),
+    blurb: l("more than I can count", "mehr, als ich zählen kann"),
+    tone: "mint",
+    icon: "plant",
+  },
+  {
+    id: "leds",
+    title: l("LEDs & Pi", "LEDs & Pi"),
+    blurb: l("lights that do things", "Licht, das etwas tut"),
+    tone: "coral",
+    icon: "chip",
+  },
+  {
+    id: "homelab",
+    title: l("Home lab", "Home Lab"),
+    blurb: l("automating the boring bits", "das Langweilige automatisieren"),
+    tone: "sun",
+    icon: "server",
+  },
 ];
 
 const LINKS: Link[] = [
-  { id: "github", label: en("GitHub"), href: "https://github.com/LetsGaming", icon: "gh", primary: false },
-  { id: "contact", label: en("Get in touch"), href: "#contact", icon: "mail", primary: true },
+  { id: "github", label: l("GitHub", "GitHub"), href: "https://github.com/LetsGaming", icon: "gh", primary: false },
+  { id: "contact", label: l("Get in touch", "Kontakt aufnehmen"), href: "#contact", icon: "mail", primary: true },
 ];
 
 const NOW: NowItem[] = [
-  { id: "building", key: en("building"), value: en("**plantcare-tracker** — watering schedules") },
-  { id: "playing", key: en("playing"), value: en("whatever's in the backlog") },
-  { id: "tinkering", key: en("tinkering"), value: en("a Pi-driven LED shelf") },
-  { id: "growing", key: en("growing"), value: en("one more monstera, allegedly the last") },
+  {
+    id: "building",
+    key: l("building", "baue"),
+    value: l("**plantcare-tracker** — watering schedules", "**plantcare-tracker** — Gießpläne"),
+  },
+  {
+    id: "playing",
+    key: l("playing", "spiele"),
+    value: l("whatever's in the backlog", "was gerade im Backlog liegt"),
+  },
+  {
+    id: "tinkering",
+    key: l("tinkering", "bastle"),
+    value: l("a Pi-driven LED shelf", "ein LED-Regal mit Raspberry Pi"),
+  },
+  {
+    id: "growing",
+    key: l("growing", "ziehe"),
+    value: l("one more monstera, allegedly the last", "noch eine Monstera, angeblich die letzte"),
+  },
 ];
 
 /** Idempotent: only seeds tables that are empty. Safe to run on every boot. */
@@ -200,23 +254,58 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
     }
   }
 
-  // 1b. Keep existing descriptors' heading/note in sync with the code registry.
-  //     Headings are code-defined (not CMS-editable), so this is how a rename in
-  //     LAUNCH_MODULES reaches an already-seeded store on the next boot. (The
-  //     resolver still applies its dynamic note overrides on top at read time.)
+  // 1b. Fill in locales the store's descriptors are missing, without overwriting
+  //     anything already there.
+  //
+  //     This used to assign `canon.heading` outright, on the grounds that headings
+  //     were code-defined and not CMS-editable. They are editable now, which makes
+  //     an unconditional overwrite a reverter: save a heading in the CMS, restart,
+  //     and the code's wording is back. Additive merge instead — a store seeded
+  //     before German existed gains the German, an edited English survives, and a
+  //     rename in LAUNCH_MODULES no longer reaches a store that already has its own
+  //     answer. (That last part is the trade, and it's the right way round: the
+  //     registry is a *seed*, and the CMS owns the value once it exists.)
   const canonical = new Map(LAUNCH_MODULES.map((m) => [m.id, m]));
-  const same = (a: unknown, b: unknown): boolean =>
-    JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
   let metaChanged = false;
   for (const m of modules) {
     const canon = canonical.get(m.id);
     if (!canon) continue;
-    if (!same(m.heading, canon.heading) || !same(m.note, canon.note)) {
-      m.heading = canon.heading;
-      m.note = canon.note;
-      metaChanged = true;
+    if (canon.heading) {
+      const merged = m.heading ? mergeLocales(m.heading, canon.heading) : canon.heading;
+      if (merged !== m.heading) {
+        m.heading = merged;
+        metaChanged = true;
+      }
+    }
+    if (canon.note) {
+      const merged = m.note ? mergeLocales(m.note, canon.note) : canon.note;
+      if (merged !== m.note) {
+        m.note = merged;
+        metaChanged = true;
+      }
     }
   }
+
+  // 1c. The same rule for nav labels and area descriptions, which are CMS-owned
+  //     for exactly the same reason and were previously never reconciled at all —
+  //     so a store seeded before German would have kept English area names forever.
+  // Keyed as `string`, not `AreaId`: the store's nav ids are whatever the CMS has
+  //     created, so a lookup by a store id has to be expressible.
+  const canonicalNav = new Map<string, NavNode>(LAUNCH_NAV.map((n) => [n.id, n]));
+  const fillNavLocales = (nodes: NavNode[]): void => {
+    for (const n of nodes) {
+      const canon = canonicalNav.get(n.id);
+      if (canon) {
+        const merged = mergeLocales(n.label, canon.label);
+        if (merged !== n.label) {
+          n.label = merged;
+          structuralChange = true;
+        }
+      }
+      if (n.children) fillNavLocales(n.children);
+    }
+  };
+  fillNavLocales(nav);
 
   // 2. Ensure each launch leaf contains its launch module ids (launch order for
   //    known/new ids; any store-only extras are preserved at the end).

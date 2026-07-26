@@ -15,7 +15,7 @@
  * Coding is one of the hobbies; this is its area.
  */
 
-import { en } from "./i18n.js";
+import { l } from "./i18n.js";
 import type { ModuleDescriptor } from "./modules.js";
 import type { NavNode } from "./nav.js";
 
@@ -92,11 +92,15 @@ export const PREVIEW_PARAM = "preview";
 /** Launch tree. Ids are constrained to {@link AreaId}, so the tree and AREA are
  *  checked against each other by the compiler rather than by convention. */
 export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
-  { id: "home", label: en("Home"), modules: ["hero", "glance", "featured", "guestbook"] },
-  { id: "code", label: en("Code"), modules: ["activity", "coding", "projects"] },
-  { id: "life", label: en("Life"), modules: ["presence", "playtime", "music", "wrapped", "hobbies", "gallery", "now"] },
-  { id: "about", label: en("About"), modules: ["bio", "contact"] },
-  { id: "blog", label: en("Blog"), modules: ["posts"], hidden: true },
+  { id: "home", label: l("Home", "Start"), modules: ["hero", "glance", "featured", "guestbook"] },
+  { id: "code", label: l("Code", "Code"), modules: ["activity", "coding", "projects"] },
+  {
+    id: "life",
+    label: l("Life", "Leben"),
+    modules: ["presence", "playtime", "music", "wrapped", "hobbies", "gallery", "now"],
+  },
+  { id: "about", label: l("About", "Über mich"), modules: ["bio", "contact"] },
+  { id: "blog", label: l("Blog", "Blog"), modules: ["posts"], hidden: true },
 ];
 
 /**
@@ -110,24 +114,24 @@ export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
  */
 export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "hero", kind: "hero" },
-  { id: "glance", kind: "glance", heading: en("At a glance") },
-  { id: "featured", kind: "featured", heading: en("Featured") },
+  { id: "glance", kind: "glance", heading: l("At a glance", "Auf einen Blick") },
+  { id: "featured", kind: "featured", heading: l("Featured", "Ausgewählt") },
   // One stream. A release is an event, and "Recently shipped" was a second
   // lookalike box sorted by the same key — so `highlights` folded in here.
-  { id: "activity", kind: "activity", heading: en("Recent") },
-  { id: "coding", kind: "coding", heading: en("This week") },
-  { id: "projects", kind: "projects", heading: en("Stuff I make") },
-  { id: "presence", kind: "presence", heading: en("Right now") },
-  { id: "playtime", kind: "playtime", heading: en("Time played") },
-  { id: "music", kind: "music", heading: en("Listening") },
-  { id: "wrapped", kind: "wrapped", heading: en("Wrapped") },
-  { id: "hobbies", kind: "hobbies", heading: en("Off the clock") },
-  { id: "gallery", kind: "gallery", heading: en("Snapshots") },
-  { id: "now", kind: "now", heading: en("Lately") },
-  { id: "guestbook", kind: "guestbook", heading: en("Guestbook") },
-  { id: "bio", kind: "bio", heading: en("About") },
-  { id: "contact", kind: "contact", heading: en("Get in touch") },
-  { id: "posts", kind: "posts", heading: en("Blog") },
+  { id: "activity", kind: "activity", heading: l("Recent", "Zuletzt") },
+  { id: "coding", kind: "coding", heading: l("This week", "Diese Woche") },
+  { id: "projects", kind: "projects", heading: l("Stuff I make", "Was ich baue") },
+  { id: "presence", kind: "presence", heading: l("Right now", "Gerade jetzt") },
+  { id: "playtime", kind: "playtime", heading: l("Time played", "Spielzeit") },
+  { id: "music", kind: "music", heading: l("Listening", "Gehört") },
+  { id: "wrapped", kind: "wrapped", heading: l("Wrapped", "Rückblick") },
+  { id: "hobbies", kind: "hobbies", heading: l("Off the clock", "Nach Feierabend") },
+  { id: "gallery", kind: "gallery", heading: l("Snapshots", "Schnappschüsse") },
+  { id: "now", kind: "now", heading: l("Lately", "In letzter Zeit") },
+  { id: "guestbook", kind: "guestbook", heading: l("Guestbook", "Gästebuch") },
+  { id: "bio", kind: "bio", heading: l("About", "Über mich") },
+  { id: "contact", kind: "contact", heading: l("Get in touch", "Kontakt") },
+  { id: "posts", kind: "posts", heading: l("Blog", "Blog") },
 ];
 
 export const LAUNCH_MODULE_IDS: readonly string[] = LAUNCH_MODULES.map((m) => m.id);

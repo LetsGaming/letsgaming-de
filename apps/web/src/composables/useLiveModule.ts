@@ -16,6 +16,10 @@ import { fetchModule } from "../lib/module-api";
  * reactivity would be wasted work. The locale is read from `<html lang>` so a
  * refresh matches what the page was rendered in.
  *
+ * `zone` and `days` are getters, not values: they're read at request time so the
+ * next poll picks up whatever the viewer has since selected, without the caller
+ * having to tear the poller down and stand a new one up on every change.
+ *
  * `kind` guards the swap at runtime: a response whose kind doesn't match (a wrong
  * id landing on another module) is ignored rather than mis-rendered. That runtime
  * check is what justifies the single cast — the fetch returns the module union,
@@ -28,13 +32,14 @@ export function useLiveModule<T>(
   kind: ResolvedModule["kind"],
   initial: T,
   zone?: () => string | undefined,
+  days?: () => number | undefined,
 ) {
   const data = shallowRef<T>(initial);
   let timer: ReturnType<typeof setInterval> | null = null;
 
   async function refresh(): Promise<void> {
     const locale = document.documentElement.lang || "en";
-    const next = await fetchModule(id, locale, zone?.());
+    const next = await fetchModule(id, locale, zone?.(), days?.());
     if (next && next.kind === kind) {
       data.value = next.data as T;
     }

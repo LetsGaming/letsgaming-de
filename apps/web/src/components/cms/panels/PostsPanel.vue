@@ -14,10 +14,10 @@
 import { computed, onMounted, ref } from "vue";
 import SmartLink from "../../ui/SmartLink.vue";
 import { assetRef, MARKDOWN_MIME, POST_PREFIX, parsePost, slugify } from "@lg/core";
-import type { Asset, AssetFolder } from "@lg/core";
+import type { Asset, AssetFolder, Localized } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
-const { cms, flash, layoutAreas, openPicker } = useCmsContext();
+const { cms, flash, layoutAreas, openPicker, pickL } = useCmsContext();
 
 /**
  * A post is a markdown asset that has a public slug.
@@ -150,9 +150,16 @@ function pickLink() {
   }
   linkPickerOpen.value = true;
 }
-function insertLink(area: { id: string; label: string }) {
+/**
+ * Insert a markdown link to an area.
+ *
+ * The link text is the area's name in the locale being edited — area labels are
+ * localized values now, and a German post linking to "Life" rather than "Leben"
+ * is the small inconsistency that makes a translated page read as machine output.
+ */
+function insertLink(area: { id: string; label: Localized }) {
   linkPickerOpen.value = false;
-  insert(`[${area.label}](/${area.id})`);
+  insert(`[${pickL(area.label)}](/${area.id})`);
 }
 
 function previewUrl(): string {
@@ -225,7 +232,7 @@ onMounted(loadList);
             class="posts-item"
             @click="insertLink(area)"
           >
-            <span class="pi-t">{{ area.label }}</span>
+            <span class="pi-t">{{ pickL(area.label) }}</span>
             <span class="pi-s">/{{ area.id }}</span>
           </button>
         </div>

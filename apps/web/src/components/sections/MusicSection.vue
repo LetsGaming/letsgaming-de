@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useT } from "~/composables/useT";
 /**
- * The music module — a fortnight of Spotify listening, from `music_plays`.
+ * The music module — Spotify listening over a chosen window, from `music_plays`.
  *
  * Sibling to `PlaytimeSection`, and built to mirror it: both are the accumulated
  * past, not the live card. The strip + drill wiring is the shared `useLedgerStrip`,
@@ -15,10 +15,16 @@ import { useT } from "~/composables/useT";
  * and you get *that day's artists*, not its raw tracks. Genre and podcast-vs-music
  * are absent by construction — Discord's Spotify presence exposes neither.
  */
-import { computed, ref } from "vue";
-import { type DayRow, type ListKind, type MusicDayResponse, type MusicRankView, type ResolvedModule } from "@lg/core";
+import { computed, ref, watch } from "vue";
+import {
+  type ActivityRange,
+  type DayRow,
+  type ListKind,
+  type MusicDayResponse,
+  type MusicRankView,
+  type ResolvedModule,
+} from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
-import { fmtDay } from "../../lib/calendar";
 import { fetchMusicDay } from "../../lib/day-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
@@ -32,27 +38,54 @@ import StatTile from "../ui/StatTile.vue";
 import Duration from "../ui/Duration.vue";
 import HeatStrip from "../ui/HeatStrip.vue";
 import DrillPanel from "../ui/DrillPanel.vue";
+import ActivityRangePicker from "../ui/ActivityRangePicker.vue";
 
-const { t, plural } = useT();
+const { t, plural, day } = useT();
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
-// Polls `/api/module/:id` so the module refreshes in place, starting from SSR data.
-const { data: liveData } = useLiveModule(props.module.id, "music", props.module.data);
+// How far back the card looks — the twin of Played's picker, with its own stored
+// default so the two can open on different windows. Not persisted; see the picker.
+const range = ref<ActivityRange>(props.module.data.windowDays);
+
+// Polls `/api/module/:id` so the module refreshes in place, starting from SSR data,
+// over `range` — a longer window is rebuilt on the server, not re-sliced here.
+const { data: liveData, refresh } = useLiveModule(
+  props.module.id,
+  "music",
+  props.module.data,
+  undefined,
+  () => range.value,
+);
 const d = computed(() => liveData.value);
+// Pick a new window: re-fetch now rather than waiting out the poll interval.
+watch(range, () => void refresh());
 
 // The clickable fortnight timeline + day drill-in — shared with Playtime. The day
 // response arrives pre-aggregated and pre-capped: `songs`/`artists` already trimmed
 // to maxCount server-side, with the true counts alongside.
 const EMPTY_DAY: MusicDayResponse = { day: "", minutes: 0, trackCount: 0, artistCount: 0, songs: [], artists: [] };
-const { selected, dayData, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
-  useLedgerStrip<MusicDayResponse>({
-    ledger: () => d.value.ledger,
-    fetchDay: (iso) => fetchMusicDay(iso, d.value.timeZone),
-    emptyDay: EMPTY_DAY,
-    title: (day, min) => `${fmtDay(day)} · ${min} min`,
-    timeZone: () => d.value.timeZone,
-  });
-const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
+const {
+  selected,
+  dayData,
+  dayLoading,
+  dayError,
+  dayExpanded,
+  strip,
+  cells,
+  selectedIndex,
+  layout,
+  onSelect,
+  clear,
+} = useLedgerStrip<MusicDayResponse>({
+  ledger: () => d.value.ledger,
+  fetchDay: (iso) => fetchMusicDay(iso, d.value.timeZone),
+  emptyDay: EMPTY_DAY,
+  title: (iso, min) => `${day(iso)} · ${min} min`,
+  // The window the data covers, not the one being requested — see PlaytimeSection.
+  days: () => d.value.windowDays,
+  timeZone: () => d.value.timeZone,
+});
+const stripStart = computed(() => (strip.value[0] ? day(strip.value[0].day) : ""));
 
 // Which list backs the panel (songs or artists).
 const list = ref<ListKind>("songs");
@@ -119,12 +152,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
     </p>
 
     <ModuleCard v-else>
-      <CardHeader
-        as="span"
-        tone="live"
-        :title='t("listening")'
-        :note='selected ? fmtDay(selected) : t("lastFourteenDays")'
-      />
+      <CardHeader as="span" tone="live" :title='t("listening")'>
+        <template #note>
+          <span v-if="selected" class="mu-scope">{{ day(selected) }}</span>
+          <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
+        </template>
+      </CardHeader>
 
       <!-- Stats double as tabs. "time listening" is inert (no list behind it). -->
       <div class="mu-stats">
@@ -152,13 +185,15 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         :cells="cells"
         :selected-index="selectedIndex"
         :start-label="stripStart"
+        :rows="layout.rows"
+        :cell-height="layout.cellHeight"
         @select="onSelect"
       />
 
       <!-- One content region: a top list, or a day's rows (tracks or artists). -->
       <DrillPanel
         :title='t(list === "songs" ? "topSongs" : "topArtists")'
-        :day-title="selected ? fmtDay(selected) : ''"
+        :day-title="selected ? day(selected) : ''"
         :back-label='t(list === "songs" ? "backToTopSongs" : "backToTopArtists")'
         :selected="selected"
         :loading="dayLoading"
@@ -227,6 +262,13 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 .mu-empty {
   color: var(--muted);
   font-size: var(--fs-body);
+}
+/* The drilled-in day replaces the range picker in the header note, so it has to
+   read as the same caption CardHeader would have rendered. */
+.mu-scope {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--live-ink);
 }
 .mu-stats {
   display: grid;

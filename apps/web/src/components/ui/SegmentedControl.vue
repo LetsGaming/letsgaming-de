@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T extends string">
+<script setup lang="ts" generic="T extends string | number">
 /**
  * A small segmented control: two or three mutually exclusive options, the current
  * one filled in.
@@ -15,8 +15,13 @@
  *
  * `size` covers the one real difference between the copies: the settings modal's
  * is a standing control, the heatmap's is a caption-sized note in a card header.
+ *
+ * Values may be numbers as well as strings — the activity-window picker's options
+ * *are* day counts, and stringifying them only to parse them back would put a
+ * conversion on both sides of a control whose whole job is to hand back one of the
+ * values it was given.
  */
-interface Option<V extends string> {
+interface Option<V extends string | number> {
   value: V;
   label: string;
 }

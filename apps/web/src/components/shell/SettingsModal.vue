@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { analyticsAllowed, dntActive, setOptedOut } from "../../lib/track";
 import SmartLink from "../ui/SmartLink.vue";
 import SegmentedControl from "../ui/SegmentedControl.vue";
+import { useT } from "~/composables/useT";
 
 const props = defineProps<{ open: boolean; theme: "dark" | "light"; locale: "en" | "de" }>();
 const emit = defineEmits<{ close: []; "toggle-theme": []; "set-locale": ["en" | "de"] }>();
@@ -13,6 +14,8 @@ const mounted = ref(false);
 onMounted(() => {
   mounted.value = true;
 });
+
+const { t } = useT();
 
 const dnt = ref(false);
 const analyticsOn = ref(true);
@@ -32,10 +35,16 @@ function toggleAnalytics() {
 // The two segmented controls are v-model'd, but the values live in the parent —
 // so these are writable computeds that read the prop and emit on write, rather
 // than local state that would have to be kept in sync with it.
-const THEMES = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-] as const;
+const THEMES = computed(
+  () =>
+    [
+      { value: "light", label: t("themeLight") },
+      { value: "dark", label: t("themeDark") },
+    ] as const,
+);
+// Language names stay in their own language — "Deutsch", never "German". A
+// language switcher that translates its own options is unusable to exactly the
+// person who needs it: someone who can't read the current one.
 const LOCALES = [
   { value: "en", label: "English" },
   { value: "de", label: "Deutsch" },
@@ -77,25 +86,25 @@ watch(
   <Teleport v-if="mounted" to="body">
     <Transition name="fade">
       <div v-if="open" class="overlay" @click.self="emit('close')">
-        <div class="panel" role="dialog" aria-modal="true" aria-label="Settings">
+        <div class="panel" role="dialog" aria-modal="true" :aria-label='t("settings")'>
           <header>
-            <h2>Settings</h2>
-            <button class="x" aria-label="Close" @click="emit('close')">✕</button>
+            <h2>{{ t("settings") }}</h2>
+            <button class="x" :aria-label='t("close")' @click="emit('close')">✕</button>
           </header>
 
           <section>
-            <h3>Appearance</h3>
-            <SegmentedControl v-model="theme" :options="THEMES" label="Theme" />
+            <h3>{{ t("appearance") }}</h3>
+            <SegmentedControl v-model="theme" :options="THEMES" :label='t("theme")' />
           </section>
 
           <section>
-            <h3>Privacy</h3>
+            <h3>{{ t("privacy") }}</h3>
             <div class="row">
               <div class="rowtext">
-                <div class="rowtitle">Anonymous usage analytics</div>
+                <div class="rowtitle">{{ t("analyticsTitle") }}</div>
                 <p class="rowdesc">
-                  Helps me see which sections are useful. No cookies, no IP, no identifier —
-                  just aggregate counts. <SmartLink href="/datenschutz">Details</SmartLink>.
+                  {{ t("analyticsDesc") }}
+                  <SmartLink href="/datenschutz">{{ t("analyticsDetails") }}</SmartLink>.
                 </p>
               </div>
               <button
@@ -104,23 +113,19 @@ watch(
                 :disabled="dnt"
                 role="switch"
                 :aria-checked="analyticsOn"
-                aria-label="Anonymous usage analytics"
+                :aria-label='t("analyticsTitle")'
                 @click="toggleAnalytics"
               >
                 <span class="knob" />
               </button>
             </div>
-            <p v-if="dnt" class="note">
-              Turned off automatically — your browser sends a “Do Not Track” signal, which I respect.
-            </p>
+            <p v-if="dnt" class="note">{{ t("analyticsDnt") }}</p>
           </section>
 
           <section>
-            <h3>Language</h3>
-            <SegmentedControl v-model="locale" :options="LOCALES" label="Language" />
-            <p class="note">
-              Reloads the page in your language. Untranslated bits fall back to English.
-            </p>
+            <h3>{{ t("language") }}</h3>
+            <SegmentedControl v-model="locale" :options="LOCALES" :label='t("language")' />
+            <p class="note">{{ t("languageNote") }}</p>
           </section>
         </div>
       </div>

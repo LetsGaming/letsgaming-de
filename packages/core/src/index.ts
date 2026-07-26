@@ -16,6 +16,7 @@ export * from "./chart.js";
 export * from "./referrer.js";
 export * from "./guestbook.js";
 export * from "./presence.js";
+export * from "./activity-range.js";
 export * from "./list-settings.js";
 export * from "./music.js";
 export * from "./playtime-settings.js";

@@ -1,10 +1,11 @@
 import { computed, ref, toValue, type MaybeRefOrGetter } from "vue";
+import { DEFAULT_ACTIVITY_RANGE, stripLayout } from "@lg/core";
 import { contiguousDays, daysBefore } from "../lib/calendar";
 import { useDayDrill } from "./useDayDrill";
 import type { HeatCell } from "../components/ui/HeatGrid.vue";
 
 /**
- * The clickable fortnight timeline shared by the Listening and Playtime modules.
+ * The clickable day timeline shared by the Listening and Playtime modules.
  *
  * Both grew the identical wiring around {@link useDayDrill}: a contiguous
  * last-N-days strip (empty days zero-filled), heat cells bucketed by the day-max,
@@ -26,8 +27,15 @@ export function useLedgerStrip<T>(opts: {
   emptyDay: T;
   /** A cell's hover title, e.g. `Mon 3 Mar · 40 min`. */
   title: (day: string, minutes: number) => string;
-  /** Window length in days. Default 14 (the fortnight both modules show). */
-  days?: number;
+  /**
+   * Window length in days — reactive, because the viewer picks it. Default 14.
+   *
+   * Only the strip's own extent: the top lists and totals beside it are windowed
+   * server-side by the same number, which arrives on the module data. Passing the
+   * same value to both is what keeps the timeline and the list answering the same
+   * question.
+   */
+  days?: MaybeRefOrGetter<number>;
   /** The zone the ledger is bucketed in — the strip's window and "today" are
    *  computed in it so they line up with the data (owner's by default, the
    *  viewer's when the module is showing local time). */
@@ -48,11 +56,17 @@ export function useLedgerStrip<T>(opts: {
     const get = (t: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === t)?.value ?? "";
     return `${get("year")}-${get("month")}-${get("day")}`;
   });
-  const days = opts.days ?? 14;
+  const days = computed(() => toValue(opts.days) ?? DEFAULT_ACTIVITY_RANGE);
 
   const rows = computed(() => toValue(opts.ledger));
   const maxDay = computed(() => Math.max(1, ...rows.value.map((x) => x.minutes)));
-  const strip = computed(() => contiguousDays(rows.value, daysBefore(todayIso.value, days - 1), todayIso.value));
+  const strip = computed(() =>
+    contiguousDays(rows.value, daysBefore(todayIso.value, days.value - 1), todayIso.value),
+  );
+  // How the strip should be drawn at this length: one row of tall cells for a
+  // fortnight, seven rows of short ones for a year. Derived here rather than in
+  // each section, so Listening and Played can't disagree about when to wrap.
+  const layout = computed(() => stripLayout(days.value));
 
   // Linear quartile bucketing, local to the strip (relative to its own busiest
   // day), which is what makes a quiet fortnight still legible.
@@ -95,6 +109,8 @@ export function useLedgerStrip<T>(opts: {
     cells,
     /** Index of the selected day within the strip, or null. */
     selectedIndex,
+    /** Rows and cell height the strip should render at, for this window length. */
+    layout,
     /** Handle a click on strip cell `i`. */
     onSelect,
     /** Close the drill and reset "show more". */

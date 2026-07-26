@@ -1,29 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { isModuleKind } from "@lg/core";
+import { isModuleKind, LOCALES } from "@lg/core";
 import fallback from "../src/data/fallback-site.json";
 
 /**
- * The committed fixture the site renders when the read API is unreachable.
+ * The committed fixture the site renders when neither the store nor the read API
+ * is reachable.
  *
- * `loadSite()` returns it as `fallback as unknown as SiteView` — a double cast,
- * because importing JSON widens every `kind: "hero"` to `kind: string` and a
- * discriminated union won't take that. The workaround is fine; the consequence
- * isn't. Nothing checks this file against the shape it claims, so it can rot
- * quietly and you'd find out during an outage, which is the one moment it exists
- * for.
+ * `loadSite()` returns it through a double cast, because importing JSON widens
+ * every `kind: "hero"` to `kind: string` and a discriminated union won't take
+ * that. The workaround is fine; the consequence isn't. Nothing checked this file
+ * against the shape it claims, so it rotted quietly — by the time anyone looked it
+ * still named an area that had been renamed several releases earlier — and you'd
+ * find out during an outage, which is the one moment it exists for.
  *
- * These are the checks the double cast switched off. They're the cheap half —
- * the real fix is deleting the fetch this fixture exists to survive (SWEEP §4,
- * "the HTTP hop"): with the store a function call away, there's no network to
- * fall back from.
+ * It's generated from the seed now (`pnpm --filter=@lg/web gen:fallback`) rather
+ * than hand-maintained, which is the real fix for that drift. These checks stay as
+ * the guard that the generator was actually re-run: regenerate and commit, or this
+ * fails.
+ *
+ * Every check runs per locale. The fixture is a *resolved* view, so it carries one
+ * fully-localized copy per language, and "the English one is fine" says nothing
+ * about what a German visitor to a degraded site sees.
  */
-describe("the fallback fixture is still a site", () => {
-  const site = fallback as {
-    locale: string;
-    meta: Record<string, string>;
-    nav: { id: string; label: string; modules: string[] }[];
-    modules: Record<string, { id: string; kind: string }>;
-  };
+type Fixture = {
+  locale: string;
+  meta: Record<string, string>;
+  nav: { id: string; label: string; modules: string[] }[];
+  modules: Record<string, { id: string; kind: string }>;
+};
+
+const fixtures = fallback as unknown as Record<string, Fixture>;
+
+it("carries a resolved view for every shipped locale", () => {
+  for (const locale of LOCALES) expect(Object.keys(fixtures)).toContain(locale);
+});
+
+describe.each(LOCALES)("the %s fallback fixture is still a site", (locale) => {
+  const site = fixtures[locale]!;
+
+  it("declares the locale it was resolved in", () => {
+    expect(site.locale).toBe(locale);
+  });
 
   it("only names module kinds that exist", () => {
     const kinds = Object.values(site.modules).map((m) => m.kind);
@@ -63,4 +80,13 @@ describe("the fallback fixture is still a site", () => {
     };
     expect(walk(site.modules)).toBe(false);
   });
+});
+
+it("actually localizes — the German fixture isn't the English one", () => {
+  // The failure this catches is a generator that resolved both passes in one
+  // locale, which produces a file that satisfies every check above and still
+  // serves English to a German visitor. Nav labels are the cheapest witness: they
+  // are seeded in both languages and at least one of them differs.
+  const labels = (f: Fixture) => f.nav.map((a) => a.label).join("|");
+  expect(labels(fixtures.de!)).not.toBe(labels(fixtures.en!));
 });

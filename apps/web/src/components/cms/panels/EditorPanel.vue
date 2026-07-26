@@ -15,7 +15,7 @@
  * beside the page you're looking at. The Widgets screen folded into one column,
  * which is also why the Layout panel still exists for seeing every area at once.
  */
-import { computed, type Component } from "vue";
+import { computed, watch, type Component } from "vue";
 import type { View } from "../../../composables/useCmsNav";
 import { vSortable } from "../../../composables/sortable";
 import { useCmsContext } from "../../../composables/cmsContext";
@@ -76,6 +76,9 @@ const {
 	previewArea,
 	refreshCanvas,
 	saveLayout,
+	saveModuleMeta,
+	modules,
+	pickL,
 	selectedPanel,
 	setModuleArea,
 	viewSite,
@@ -104,11 +107,40 @@ function open() {
 	editorOpen.value = true;
 	void refreshCanvas();
 }
+
+/**
+ * The selected module's heading, as an editable localized value.
+ *
+ * Headings used to be code-defined and reconciled over on every boot, so there was
+ * nowhere to put this. They're CMS-owned now, and the rail is where it belongs:
+ * it's already the place that says "you are editing this module", and it's the one
+ * editor that works for the synced modules too — those have no content panel, but
+ * "Time played" still has to be sayable in German.
+ *
+ * A descriptor may legitimately have no heading (the hero renders its own), so one
+ * is materialised on selection rather than in a computed — `LocalizedField` edits
+ * its target in place, and it needs an object to write into.
+ */
+const selectedMeta = computed(() => modules.value.find((m) => m.id === canvasSelected.value));
+watch(
+	selectedMeta,
+	(m) => {
+		if (m && !m.heading) m.heading = { en: "" };
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
   <section class="pane editor">
     <div class="editbar">
+      <label v-if="editedArea" class="seo-desc">Page name
+        <LocalizedField :field="editedArea.label" placeholder="The name in the nav, e.g. Life / Leben." />
+        <span class="hint">
+          What this page is called in the nav, in the language you're editing. Saved with the layout.
+        </span>
+      </label>
+
       <label v-if="editedArea" class="seo-desc">Search description
         <LocalizedField :field="editedArea.description" textarea placeholder="One sentence describing this page for search results and link previews." />
         <span class="hint">
@@ -119,7 +151,7 @@ function open() {
 
       <label>Page
         <select v-model="previewArea">
-          <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
+          <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ pickL(a.label) }}</option>
         </select>
       </label>
       <span class="editact">
@@ -150,7 +182,7 @@ function open() {
     >
       <template #actions>
         <select v-model="previewArea" class="lgedit-page-pick">
-          <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ a.label }}</option>
+          <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ pickL(a.label) }}</option>
         </select>
         <button class="lgedit-save" @click="saveLayout">Save layout</button>
       </template>
@@ -164,6 +196,14 @@ function open() {
             <b>{{ moduleHeading(canvasSelected) }}</b>
             <button class="link" title="Deselect" @click="canvasSelect(canvasSelected)">✕</button>
           </div>
+          <label v-if="selectedMeta?.heading" class="railfield">Heading
+            <LocalizedField :field="selectedMeta.heading" />
+            <span class="dim railhint">
+              The text above this section on the page, in the language you're editing.
+            </span>
+          </label>
+          <button class="btn" @click="saveModuleMeta">Save heading</button>
+
           <component :is="editing" v-if="editing" class="railpanel" />
           <p v-else class="dim railnote">
             This module renders synced data — there's nothing to edit by hand. It'll
@@ -181,7 +221,7 @@ function open() {
             :class="{ 'railbox-cur': a.id === previewArea }"
           >
             <li class="railhead">
-              {{ a.label }} <span class="dim">/{{ a.id }}</span>
+              {{ pickL(a.label) }} <span class="dim">/{{ a.id }}</span>
               <span v-if="a.id === previewArea" class="railcur">editing</span>
             </li>
             <li v-for="mid in a.modules" :key="mid" class="modrow">

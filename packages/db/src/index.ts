@@ -1,6 +1,6 @@
 export { zonedParts, zonedDay } from "./tz.js";
 import { openDatabase, DatabaseSync } from "./database.js";
-export { buildSiteView, buildAssetLookup, type BuildSiteViewOptions } from "./site-view.js";
+export { buildSiteView, buildAssetLookup, contactFromEnv, type BuildSiteViewOptions } from "./site-view.js";
 import { analyticsRepo, type AnalyticsRepo } from "./analytics-repo.js";
 import { assetsRepo, type AssetsRepo } from "./assets-repo.js";
 import { contentRepo, type ContentRepo } from "./content-repo.js";

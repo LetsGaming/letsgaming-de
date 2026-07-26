@@ -1,15 +1,17 @@
 import {
   ASSET_WIDTHS,
+  DEFAULT_ACTIVITY_RANGE,
   MUSIC_TOP_LIMIT,
   defaultMusicSettings,
+  defaultPlaytimeSettings,
   defaultWrappedSettings,
   gameMetaKey,
   isHidden,
   wrappedWindow,
-  PLAYTIME_WINDOW_DAYS,
   resolveSiteView,
   SOURCE_TTL,
   sanitizeTimeZone,
+  type ActivityRange,
   type Locale,
   type NavNode,
   type PlaytimeHeatCell,
@@ -47,6 +49,24 @@ export interface BuildSiteViewOptions {
   /** Zone to bucket the observed-activity charts in. Omit for the owner's
    *  configured zone (a visitor asking for their own local time passes theirs). */
   timeZone?: string;
+  /**
+   * The window the accumulated-activity modules (Listening, Played) cover.
+   *
+   * One window for both, on purpose: they sit on facing cards, and two different
+   * spans there invite reading them as one. Omit it and each module opens on its
+   * own CMS-configured default — which is what SSR does, since nobody has asked
+   * for a range yet on a first paint.
+   */
+  windowDays?: ActivityRange;
+  /**
+   * What the contact module can offer. Omit to read it from the environment.
+   *
+   * `relay` is whether the SMTP relay behind `/api/contact` is configured, and
+   * `email` the address to publish when it isn't. Both are deployment facts, not
+   * content, so they arrive the same way the timezone does: an explicit override
+   * for a caller that knows better, otherwise the process environment.
+   */
+  contact?: { relay: boolean; email?: string };
 }
 
 export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): Promise<SiteView> {
@@ -57,6 +77,13 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
   // an env var (edit + redeploy) is the right weight; the aggregation itself takes
   // the zone as a parameter, so per-request overrides still work.
   const timeZone = opts.timeZone ?? sanitizeTimeZone(process.env.TZ);
+  // The window each module is built over: what the caller asked for, else the
+  // module's own CMS default. Resolved separately per module because their
+  // defaults are stored separately — a requested range overrides both at once.
+  const playtimeWindow =
+    opts.windowDays ?? content.playtime?.defaultRange ?? defaultPlaytimeSettings().defaultRange;
+  const musicWindow =
+    opts.windowDays ?? content.music?.defaultRange ?? defaultMusicSettings().defaultRange;
   return resolveSiteView({
     content,
     source: store.source.getAllCurrent(),
@@ -71,12 +98,22 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     guestbook: store.guestbook.listApproved(),
     // The recently-played list over the fortnight — the same window the strip
     // shows, so the list and the timeline answer the same span.
-    playtime: store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)),
+    playtime: store.sessions.playtime("game", isoDaysAgo(playtimeWindow)),
     gameMeta: store.gameMeta.getAll(),
     playHistory: buildPlayHistory(store, timeZone),
+    // Shipped so the resolver can window the all-time ledger it gets, and so each
+    // module can tell the frontend which span it is showing.
+    playtimeWindowDays: playtimeWindow,
+    musicWindowDays: musicWindow,
+    contact: opts.contact ?? contactFromEnv(),
     // The list cap is the CMS-owned maxCount, applied here as the query LIMIT so
     // the resolved view (and the frontend) never sees more than the top N.
-    musicHistory: buildMusicHistory(store, content.music?.maxCount ?? defaultMusicSettings().maxCount, timeZone),
+    musicHistory: buildMusicHistory(
+      store,
+      content.music?.maxCount ?? defaultMusicSettings().maxCount,
+      timeZone,
+      musicWindow,
+    ),
     wrappedHistory: buildWrappedHistory(store, content),
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
@@ -114,8 +151,8 @@ function buildPlayHistory(
  * The music module's data (top songs/artists/albums + a per-day listening strip),
  * the strip bucketed in `timeZone`.
  *
- * The same 14-day window the playtime chart uses, so "listening" and "playing"
- * cover the same fortnight. The per-day drill-in isn't here — it's fetched on click
+ * The same window the playtime chart uses, so "listening" and "playing" cover the
+ * same span whichever range is selected. The per-day drill-in isn't here — it's fetched on click
  * from `/api/music/day`. The zone is shipped so the strip's window and "today"
  * agree with the bucketed days.
  *
@@ -126,6 +163,7 @@ function buildMusicHistory(
   store: Store,
   listLimit: number,
   timeZone: string,
+  windowDays: number,
 ): {
   topSongs: ReturnType<Store["music"]["topSongs"]>;
   topArtists: ReturnType<Store["music"]["topArtists"]>;
@@ -136,7 +174,7 @@ function buildMusicHistory(
   timeZone: string;
   since?: string;
 } {
-  const since = isoDaysAgo(PLAYTIME_WINDOW_DAYS);
+  const since = isoDaysAgo(windowDays);
   const ledger = store.music.dailyTotals(since, timeZone);
   return {
     topSongs: store.music.topSongs(since, listLimit),
@@ -186,6 +224,38 @@ export async function buildAssetLookup(
     map.set(a.id, r);
   }
   return map;
+}
+
+/**
+ * The contact capability, from the environment. Exported because the web app's
+ * fallback path needs it without a store: the fixture is built at commit time, on
+ * a machine whose contact config says nothing about the deployment's.
+ *
+ * Read here rather than passed by every caller because there are five of them —
+ * the read route, the module route, the CMS preview, the web app's SSR, and the
+ * fixture generator — and the one that forgot would silently render the wrong
+ * affordance. The same reasoning (and the same `??` shape) as the timezone above.
+ *
+ * The relay condition mirrors `ServerEnv` exactly: SMTP is configured when it has
+ * both a host and a destination. Duplicated deliberately — `@lg/db` can't import
+ * the server's env module without depending on the server — and it is the sort of
+ * duplication that drifts, so `contact-env.test.ts` asserts the two agree.
+ *
+ * `CONTACT_PUBLIC_EMAIL` falls back to `CONTACT_TO`, which is already the address
+ * the contact form delivers to. Note that this *publishes* it in the page HTML,
+ * where the form kept it private — set `CONTACT_PUBLIC_EMAIL` to an alias if the
+ * relay inbox shouldn't be scrapeable.
+ */
+export function contactFromEnv(): { relay: boolean; email?: string } {
+  // Compose passes an unset `${VAR:-}` through as "", so emptiness is unset.
+  const read = (name: string): string | undefined => {
+    const value = process.env[name]?.trim();
+    return value ? value : undefined;
+  };
+  const to = read("CONTACT_TO");
+  const relay = Boolean(read("SMTP_HOST") && to);
+  const email = read("CONTACT_PUBLIC_EMAIL") ?? to;
+  return { relay, ...(email ? { email } : {}) };
 }
 
 /** "All time" for the heatmap. Before any possible session. */

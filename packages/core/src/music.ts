@@ -1,3 +1,4 @@
+import { DEFAULT_ACTIVITY_RANGE } from "./activity-range.js";
 import {
   LIST_DISPLAY_BOUNDS,
   sanitizeListDisplaySettings,
@@ -21,7 +22,7 @@ export type MusicSettings = ListDisplaySettings;
 export const MUSIC_LIST_BOUNDS = LIST_DISPLAY_BOUNDS;
 
 export function defaultMusicSettings(): MusicSettings {
-  return { initialCount: 5, maxCount: 15 };
+  return { initialCount: 5, maxCount: 15, defaultRange: DEFAULT_ACTIVITY_RANGE };
 }
 
 export function sanitizeMusicSettings(input: unknown): MusicSettings {

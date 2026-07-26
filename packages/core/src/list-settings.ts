@@ -1,17 +1,29 @@
+import { sanitizeActivityRange, type ActivityRange } from "./activity-range.js";
+
 /**
- * CMS-owned "how many rows to show" config, shared by the activity modules.
+ * CMS-owned display config shared by the activity modules.
  *
- * Two knobs, identical in shape for Listening and Playtime (and anything else with a
- * top-N list): `initialCount` rows before "show more", and `maxCount` — the hard cap
- * the list never exceeds. Kept in one place so the coherence rule (initial ≤ max) and
- * the bounds live once; each module supplies its own defaults and stores its own
- * value, so their limits can differ.
+ * Three knobs, identical in shape for Listening and Playtime (and anything else with
+ * a top-N list over a window): `initialCount` rows before "show more", `maxCount` —
+ * the hard cap the list never exceeds — and `defaultRange`, the window the module
+ * opens in. Kept in one place so the coherence rule (initial ≤ max) and the bounds
+ * live once; each module supplies its own defaults and stores its own value, so their
+ * limits and their opening window can differ.
  */
 export interface ListDisplaySettings {
   /** Rows shown before "show more". */
   initialCount: number;
   /** Hard cap on rows the list ever shows. */
   maxCount: number;
+  /**
+   * The window the module opens in, before the viewer picks another.
+   *
+   * Here rather than in a settings type of its own because it is the same kind of
+   * knob as the two above — "what this module shows when you arrive" — and lives
+   * in the same stored row. Each module keeps its own value, so Listening can open
+   * on a fortnight while Played opens on a year.
+   */
+  defaultRange: ActivityRange;
 }
 
 /** Bounds for both counts, in one place so schema and sanitizer agree. */
@@ -35,7 +47,10 @@ export function sanitizeListDisplaySettings(input: unknown, defaults: ListDispla
     maxCount,
     clampCount("initialCount" in obj ? obj.initialCount : undefined, defaults.initialCount),
   );
-  return { initialCount, maxCount };
+  // An unlisted range falls back to the module's default rather than being
+  // rejected: this reads rows written by an older UI that had no range at all.
+  const defaultRange = sanitizeActivityRange(obj.defaultRange, defaults.defaultRange);
+  return { initialCount, maxCount, defaultRange };
 }
 
 /**

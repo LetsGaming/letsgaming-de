@@ -1,5 +1,5 @@
-import { buildSiteView, openStoreReadonly, type Store } from "@lg/db";
-import { DEFAULT_TIMEZONE, type Locale, type SiteView } from "@lg/core";
+import { buildSiteView, contactFromEnv, openStoreReadonly, type Store } from "@lg/db";
+import { contactChannel, DEFAULT_LOCALE, DEFAULT_TIMEZONE, type Locale, type SiteView } from "@lg/core";
 import fallback from "~/data/fallback-site.json";
 
 // `TZ` is the owner's timezone — the default zone SSR resolves the activity charts
@@ -26,7 +26,8 @@ process.env.TZ ??= DEFAULT_TIMEZONE;
  *
  * Three fallbacks, in order: the store handle (opened once, reused), then the HTTP
  * API if the file can't be opened (a container where web can't see the volume),
- * then the committed fixture if even that's unreachable. A page always renders.
+ * then the committed fixture if even that's unreachable. A page always renders,
+ * in the language it was asked for, at every level.
  */
 
 // The read-only store handle, opened lazily and reused across requests. One handle
@@ -54,6 +55,30 @@ function getStore(): Store | null {
 // fine — and the resolve itself is cheap now that it's a local read.
 const TTL_MS = 15_000;
 const cache = new Map<string, { at: number; view: SiteView }>();
+
+/**
+ * Overlay the live contact channel onto a fixture.
+ *
+ * Everything else in the fixture is necessarily frozen — it's committed seed data,
+ * and that's the honest thing to serve when nothing is reachable. The contact
+ * affordance isn't: whether the relay is configured is a property of *this*
+ * process's environment, readable right now, and the fixture's copy records
+ * whatever the machine that generated it happened to have. Serving that would show
+ * a mailto to a deployment with a working form, or worse, no contact route at all
+ * to one that has an address configured.
+ *
+ * Copied rather than mutated: the fixture is a module-level import, so writing
+ * through it would persist across requests and across locales.
+ */
+function withLiveContact(view: SiteView): SiteView {
+  const contact = view.modules.contact;
+  if (contact?.kind !== "contact") return view;
+  const channel = contactChannel(contactFromEnv());
+  return {
+    ...view,
+    modules: { ...view.modules, contact: { ...contact, data: { ...contact.data, channel } } },
+  };
+}
 
 export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
   const cached = cache.get(locale);
@@ -98,13 +123,22 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
   // 3. Committed fixture — a page still renders even with no store and no API.
   //
   // Loud, because reaching here in a served request means the site is showing
-  // committed sample data: the wrong repo counts, the wrong module order, and a
-  // `syncedAt` frozen at whenever the fixture was written. It looks like a working
-  // site, which is exactly what makes it dangerous — nothing 500s, the numbers are
-  // just quietly wrong. Neither DB_PATH nor API_URL is reaching this process.
+  // committed sample data: no synced repos, no observed activity, and content
+  // frozen at whatever the seed says. It looks like a working site, which is
+  // exactly what makes it dangerous — nothing 500s, the numbers are just quietly
+  // absent. Neither DB_PATH nor API_URL is reaching this process.
+  //
+  // Keyed by locale, because the fixture is a *resolved* view: its strings are
+  // already localized, so one fixture can only ever be one language. Serving the
+  // English one to a German visitor was the last place the locale silently didn't
+  // apply. Generated from the seed by `pnpm --filter=@lg/web gen:fallback` rather
+  // than hand-maintained — the hand-written one had drifted to naming an area
+  // that was renamed several releases earlier, and nothing catches that, because
+  // the only way to see this file is to break the database.
   console.error(
     "[web] SERVING THE FALLBACK FIXTURE — no store (DB_PATH) and no API (API_URL). " +
-      "The page will show stale committed data, not live content.",
+      "The page will show committed seed data, not live content.",
   );
-  return fallback as unknown as SiteView;
+  const fixtures = fallback as unknown as Record<Locale, SiteView>;
+  return withLiveContact(fixtures[locale] ?? fixtures[DEFAULT_LOCALE]);
 }

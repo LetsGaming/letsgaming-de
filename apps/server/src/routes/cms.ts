@@ -64,7 +64,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * saves it.
    */
   const applyLayoutOrder = (
-    order: { area: string; modules: string[]; description?: Localized }[],
+    order: { area: string; modules: string[]; description?: Localized; label?: Localized }[],
   ): NavNode[] => {
     const nav = store.ia.getNav();
     const registry = new Set(store.ia.getModules().map((m) => m.id));
@@ -97,6 +97,14 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
         const filled = Object.values(entry.description).some((v) => v?.trim());
         if (filled) node.description = entry.description;
         else delete node.description;
+      }
+      // The nav label. Unlike the description this can't be cleared: a nav node
+      // with no name is a tab you can't read, so an all-empty value is ignored
+      // rather than stored. Only locales the client actually filled are written,
+      // so editing the German half in the CMS can't blank the English one.
+      if (entry.label !== undefined) {
+        const filled = Object.entries(entry.label).filter(([, v]) => v?.trim());
+        if (filled.length) node.label = { ...node.label, ...Object.fromEntries(filled) };
       }
     }
     return nav;
@@ -190,7 +198,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     return { ok: true };
   });
 
-  app.put<{ Body: { initialCount?: number; maxCount?: number } }>(
+  app.put<{ Body: { initialCount?: number; maxCount?: number; defaultRange?: number } }>(
     "/api/cms/music",
     write(schemas.music),
     async (req) => {
@@ -201,7 +209,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     },
   );
 
-  app.put<{ Body: { initialCount?: number; maxCount?: number } }>(
+  app.put<{ Body: { initialCount?: number; maxCount?: number; defaultRange?: number } }>(
     "/api/cms/playtime",
     write(schemas.playtime),
     async (req) => {
@@ -254,6 +262,42 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   // the old two-PUT swap (all ±1 could ever need) doesn't describe the operation:
   // N PUTs can half-succeed and leave an order nobody chose. `PUT /api/cms/layout`
   // already sends the whole order for modules; this is the same shape for images.
+  /**
+   * Module headings and notes — the text above each section on the page.
+   *
+   * These were code-defined in `LAUNCH_MODULES` and reconciled onto every store on
+   * boot, which made them un-editable in practice: a CMS save would survive until
+   * the next restart. `reconcileIa` is additive now (it fills absent locales and
+   * leaves the rest), so this endpoint owns the value once it exists.
+   *
+   * Partial by id: only the modules in the body are touched, and within each, only
+   * the locales that carry text. That's what lets the owner translate one heading
+   * without resending — or risking — the other sixteen.
+   */
+  app.put<{ Body: { modules: { id: string; heading?: Localized; note?: Localized }[] } }>(
+    "/api/cms/modules",
+    write(schemas.moduleMeta),
+    async (req) => {
+      const modules = store.ia.getModules();
+      const byId = new Map(modules.map((m) => [m.id, m]));
+      for (const entry of req.body.modules) {
+        const mod = byId.get(entry.id);
+        if (!mod) throw badRequest(`Unknown module "${entry.id}".`);
+        for (const field of ["heading", "note"] as const) {
+          const value = entry[field];
+          if (value === undefined) continue;
+          const filled = Object.entries(value).filter(([, v]) => v?.trim());
+          // A heading is optional (the hero has none), so an all-empty value is a
+          // real instruction to clear it — unlike a nav label, which can't be.
+          if (filled.length) mod[field] = { ...mod[field], ...Object.fromEntries(filled) } as Localized;
+          else delete mod[field];
+        }
+      }
+      store.ia.setModules(modules);
+      return { ok: true };
+    },
+  );
+
   app.put<{ Body: { module: string; ids: string[] } }>(
     "/api/cms/gallery-order",
     write(schemas.galleryOrder),
@@ -303,7 +347,9 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   // Accepts the full desired placement. A module may sit in at most one area;
   // any registered module left out of every area is "hidden". Can't invent
   // modules, and the result must pass nav-lint (e.g. no empty area).
-  app.put<{ Body: { order: { area: string; modules: string[]; description?: Localized }[] } }>(
+  app.put<{
+    Body: { order: { area: string; modules: string[]; description?: Localized; label?: Localized }[] };
+  }>(
     "/api/cms/layout",
     write(schemas.layout),
     async (req, reply) => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useT } from "~/composables/useT";
 /**
- * The playtime module — a fortnight of what I've been playing, from observed
+ * The playtime module — what I've been playing over a chosen window, from observed
  * `presence_sessions`. Built to mirror `MusicSection`: both are the accumulated
  * past, not the live "Right now" card. Header + total, a top-games list, and a
  * per-day drill-in over a contiguous-fortnight heat strip.
@@ -14,9 +14,9 @@ import { useT } from "~/composables/useT";
  * proxy; a monogram stands in where there's no cover.
  */
 import { computed, onMounted, ref, watch } from "vue";
-import type { PlaytimeDayResponse, ResolvedModule } from "@lg/core";
+import type { ActivityRange, PlaytimeDayResponse, ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "../../lib/api";
-import { fmtDay } from "../../lib/calendar";
+import { weekdayLabels } from "../../lib/calendar";
 import { fetchPlaytimeDay } from "../../lib/day-api";
 import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
@@ -32,8 +32,12 @@ import HeatStrip from "../ui/HeatStrip.vue";
 import HeatGrid, { type HeatCell } from "../ui/HeatGrid.vue";
 import DrillPanel from "../ui/DrillPanel.vue";
 import SegmentedControl from "../ui/SegmentedControl.vue";
+import ActivityRangePicker from "../ui/ActivityRangePicker.vue";
 
-const { t, plural, duration } = useT();
+const { t, plural, duration, day, locale } = useT();
+
+/** The formatter's own weekday names, used only to index the grid — see nowMarker. */
+const EN_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
 
@@ -53,32 +57,55 @@ const requestedZone = computed(() => (mode.value === "local" && viewerZone.value
 // after load (and, for the owner, never).
 const showZoneToggle = computed(() => !!viewerZone.value && viewerZone.value !== ownerZone);
 
+// How far back the card looks. Starts at whatever the CMS configured, which is what
+// SSR already rendered — so the opening view and the first poll agree. Not
+// persisted: a range is a question you ask while reading a card, and storing it
+// would mean SSR rendering a fortnight and the client immediately replacing it.
+const range = ref<ActivityRange>(props.module.data.windowDays);
+
 // Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data —
-// in `requestedZone`, so a flip re-buckets on the server.
+// in `requestedZone` and over `range`, so a flip or a longer window is rebuilt on
+// the server rather than re-sliced here.
 const { data: liveData, refresh } = useLiveModule(
   props.module.id,
   "playtime",
   props.module.data,
   () => requestedZone.value,
+  () => range.value,
 );
 const d = computed(() => liveData.value);
-// Flip owner↔local: re-fetch straight away rather than waiting for the next poll.
-watch(mode, () => void refresh());
+// Flip owner↔local, or pick a new window: re-fetch straight away rather than
+// waiting out the poll interval.
+watch([mode, range], () => void refresh());
 
 // The clickable fortnight timeline + day drill-in — shared with Listening. The
 // strip's window and drill-in run in the data's zone (`d.timeZone`), so a flip
 // moves them with the heatmap. The day response is pre-capped to maxCount, with the
 // true distinct-game total and the day's real minutes alongside.
 const EMPTY_DAY: PlaytimeDayResponse = { day: "", games: [], total: 0, minutes: 0 };
-const { selected, dayData, dayLoading, dayError, dayExpanded, strip, cells, selectedIndex, onSelect, clear } =
-  useLedgerStrip<PlaytimeDayResponse>({
-    ledger: () => d.value.ledger,
-    fetchDay: (iso) => fetchPlaytimeDay(iso, d.value.timeZone),
-    emptyDay: EMPTY_DAY,
-    title: (day, min) => `${fmtDay(day)} · ${min ? duration(min) : t("nothingHere")}`,
-    timeZone: () => d.value.timeZone,
-  });
-const stripStart = computed(() => (strip.value[0] ? fmtDay(strip.value[0].day) : ""));
+const {
+  selected,
+  dayData,
+  dayLoading,
+  dayError,
+  dayExpanded,
+  strip,
+  cells,
+  selectedIndex,
+  layout,
+  onSelect,
+  clear,
+} = useLedgerStrip<PlaytimeDayResponse>({
+  ledger: () => d.value.ledger,
+  fetchDay: (iso) => fetchPlaytimeDay(iso, d.value.timeZone),
+  emptyDay: EMPTY_DAY,
+  title: (iso, min) => `${day(iso)} · ${min ? duration(min) : t("nothingHere")}`,
+  // The window the *data* covers, not the one being requested — mid-fetch the
+  // strip keeps matching the rows beside it rather than jumping ahead.
+  days: () => d.value.windowDays,
+  timeZone: () => d.value.timeZone,
+});
+const stripStart = computed(() => (strip.value[0] ? day(strip.value[0].day) : ""));
 
 // The top-games list. The server caps `recent` at maxCount (the client never sees
 // past the cap); gameCount is the true total, for the headline and "and N more".
@@ -127,7 +154,9 @@ const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
 // it there from the raw sessions (owner's zone by default, the viewer's when the
 // module is flipped to local). So it renders straight, no client re-projection:
 // what you see is an exact, DST-correct grid for whichever zone `d.timeZone` is.
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Monday-first weekday abbreviations in the page's locale. A hardcoded English
+// array before, which put "Mon Tue Wed" down the side of an otherwise German card.
+const DAYS = computed(() => weekdayLabels(locale.value));
 
 // Build the 7×24 grid (Mon-first) from the sparse cells. `%w` is Sun=0, rotate to
 // Mon=0.
@@ -150,7 +179,10 @@ const nowMarker = computed(() => {
     hourCycle: "h23",
   }).formatToParts(new Date());
   const wd = parts.find((p) => p.type === "weekday")?.value ?? "";
-  return { day: DAYS.indexOf(wd), hour: Number(parts.find((p) => p.type === "hour")?.value ?? -1) };
+  // Matched against the English abbreviations the formatter above emits, not the
+  // localized labels: this is an index lookup, and it has to be locale-invariant
+  // or the "now" marker lands on a different cell per language.
+  return { day: EN_DAYS.indexOf(wd), hour: Number(parts.find((p) => p.type === "hour")?.value ?? -1) };
 });
 
 // The card's zone label: "local time" when it is the viewer's (either the toggle is
@@ -158,7 +190,7 @@ const nowMarker = computed(() => {
 // owner's city, so an out-of-zone visitor isn't misled.
 const ownerCity = ownerZone.split("/").pop()?.replace(/_/g, " ") ?? ownerZone;
 const zoneLabel = computed(() =>
-  !showZoneToggle.value || mode.value === "local" ? t("localTime") : `${ownerCity} time`,
+  !showZoneToggle.value || mode.value === "local" ? t("localTime") : t("ownerTime", { city: ownerCity }),
 );
 // Options for the owner/local toggle. The owner's segment is named for the city
 // so an out-of-zone visitor can tell which clock they're reading.
@@ -179,7 +211,7 @@ const heatCells = computed<HeatCell[]>(() => {
       out.push({
         level: heatLevel(min),
         today: day === nowMarker.value.day && hour === nowMarker.value.hour,
-        title: `${DAYS[day]} ${String(hour).padStart(2, "0")}:00 · ${min ? duration(min) : t("nothingHere")}`,
+        title: `${DAYS.value[day]} ${String(hour).padStart(2, "0")}:00 · ${min ? duration(min) : t("nothingHere")}`,
       });
     }
   }
@@ -197,12 +229,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
 
     <div v-else class="pt-cards">
       <ModuleCard>
-      <CardHeader
-        as="span"
-        tone="live"
-        :title='t("played")'
-        :note='selected ? fmtDay(selected) : t("lastFourteenDays")'
-      />
+      <CardHeader as="span" tone="live" :title='t("played")'>
+        <template #note>
+          <span v-if="selected" class="pt-scope">{{ day(selected) }}</span>
+          <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
+        </template>
+      </CardHeader>
 
       <!-- Two inert stats — a play has one dimension (the game), so unlike
            Listening's song/artist tabs there's nothing to switch between. -->
@@ -218,13 +250,15 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         :cells="cells"
         :selected-index="selectedIndex"
         :start-label="stripStart"
+        :rows="layout.rows"
+        :cell-height="layout.cellHeight"
         @select="onSelect"
       />
 
       <!-- One content region: the top-games list, or a day's games. -->
       <DrillPanel
         :title='t("topGames")'
-        :day-title="selected ? fmtDay(selected) : ''"
+        :day-title="selected ? day(selected) : ''"
         :back-label='t("backToTopGames")'
         :selected="selected"
         :loading="dayLoading"
@@ -286,7 +320,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         <CardHeader as="span" :title='t("whenIPlay")'>
           <template #note>
             <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
-            <SegmentedControl v-else v-model="mode" :options="zoneOptions" label="Show times in" size="sm" />
+            <SegmentedControl v-else v-model="mode" :options="zoneOptions" :label='t("showTimesIn")' size="sm" />
           </template>
         </CardHeader>
         <div class="pt-heat">

@@ -13,13 +13,20 @@
  * disagree is a bug that only shows up live. One resolver, one shape.
  */
 
-import { DEFAULT_LOCALE, isLocale, isValidTimeZone, type Locale } from "@lg/core";
+import {
+  DEFAULT_LOCALE,
+  isActivityRange,
+  isLocale,
+  isValidTimeZone,
+  type ActivityRange,
+  type Locale,
+} from "@lg/core";
 import { buildSiteView, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 
 export function registerModuleRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
-  app.get<{ Params: { id: string }; Querystring: { locale?: string; tz?: string } }>(
+  app.get<{ Params: { id: string }; Querystring: { locale?: string; tz?: string; days?: string } }>(
     "/api/module/:id",
     async (req, reply) => {
       const requested = req.query.locale;
@@ -27,10 +34,17 @@ export function registerModuleRoutes(app: FastifyInstance, store: Store, env: Se
       // A visitor may ask for a specific zone (their own local time); an invalid or
       // absent one falls through to the owner's configured zone inside buildSiteView.
       const tz = req.query.tz;
+      // The window the activity modules cover. Omitted (or unrecognised) falls
+      // through to each module's CMS-configured default inside buildSiteView —
+      // the same thing SSR gets, since a first paint has no selection yet. A
+      // closed set, so this can't be turned into "aggregate everything I have".
+      const days = Number(req.query.days);
+      const windowDays: ActivityRange | undefined = isActivityRange(days) ? days : undefined;
       const view = await buildSiteView(store, {
         locale,
         mediaDir: env.mediaDir,
         ...(tz && isValidTimeZone(tz) ? { timeZone: tz } : {}),
+        ...(windowDays ? { windowDays } : {}),
       });
       const module = view.modules[req.params.id];
       if (!module) return reply.code(404).send({ error: "no such module" });

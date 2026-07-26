@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
+import RangeSelect from "../RangeSelect.vue";
 
 // View-only panel. State and the save handler come from the shared CMS context.
-const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, saveMusic } = useCmsContext();
+const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, saveMusic } =
+  useCmsContext();
 
 // A hint, not a block: the server sanitizer pins "always show" down to the max on
 // save, so an over-order pair is harmless — but say so rather than silently fix it.
@@ -43,6 +45,14 @@ const overMax = computed(() => musicInitialCount.value > musicMaxCount.value);
       <p v-if="overMax" class="muted note">
         “Always show” is above the max — it'll be capped to the max when you save.
       </p>
+
+      <h4>Opens on</h4>
+      <p class="muted">
+        The window the card shows when someone arrives. Visitors can pick a different one on the card
+        itself — this only decides where they start. Its own setting, separate from Played, so the
+        two can open on different spans.
+      </p>
+      <RangeSelect v-model="musicDefaultRange" />
 
       <div class="actions"><button class="btn" @click="saveMusic">Save listening</button></div>
     </div>

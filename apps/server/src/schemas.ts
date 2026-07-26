@@ -12,6 +12,7 @@
  */
 
 import {
+  ACTIVITY_RANGES,
   ASSET_REF_PATTERN,
   LOCALES,
   HREF_PATTERN,
@@ -159,6 +160,9 @@ export const schemas = {
     properties: {
       initialCount: { type: "integer", minimum: MUSIC_LIST_BOUNDS.min, maximum: MUSIC_LIST_BOUNDS.max },
       maxCount: { type: "integer", minimum: MUSIC_LIST_BOUNDS.min, maximum: MUSIC_LIST_BOUNDS.max },
+      // The window the module opens in. An enum, not a range: the labels are
+      // translated per value, so an unlisted number has nothing to render as.
+      defaultRange: { type: "integer", enum: [...ACTIVITY_RANGES] },
     },
     additionalProperties: false,
   },
@@ -169,6 +173,7 @@ export const schemas = {
     properties: {
       initialCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
       maxCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
+      defaultRange: { type: "integer", enum: [...ACTIVITY_RANGES] },
     },
     additionalProperties: false,
   },
@@ -268,6 +273,38 @@ export const schemas = {
     additionalProperties: false,
   },
 
+  /**
+   * Module headings and their sub-notes.
+   *
+   * Its own endpoint rather than a field on `layout`, because it answers a
+   * different question: `layout` is *where* modules go, this is *what they're
+   * called*. They're also edited at different moments — you drag a module once and
+   * rename it while writing German — and folding them together would mean every
+   * rename resending the whole placement tree, with `lintNav` gating a change that
+   * can't affect the tree's shape.
+   */
+  moduleMeta: {
+    type: "object",
+    required: ["modules"],
+    properties: {
+      modules: {
+        type: "array",
+        maxItems: 200,
+        items: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", minLength: 1, maxLength: 64 },
+            heading: localized,
+            note: localized,
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    additionalProperties: false,
+  },
+
   layout: {
     type: "object",
     required: ["order"],
@@ -284,6 +321,10 @@ export const schemas = {
             // `preview`: a description is invisible in a rendered preview, so
             // sending it there would be payload nobody reads.
             description: localized,
+            // The area's nav label. Also `layout`-only: the canvas renders one
+            // area at a time and never draws the nav, so a preview has nothing to
+            // show it in.
+            label: localized,
           },
           additionalProperties: false,
         },

@@ -119,7 +119,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   // ── placement state (the shared refs the three concerns operate on) ─────────
   const modules = ref<ModuleDescriptor[]>([]);
   const layoutAreas = ref<
-    { id: string; label: string; modules: string[]; description: Localized }[]
+    { id: string; label: Localized; modules: string[]; description: Localized }[]
   >([]);
   const hiddenModules = ref<string[]>([]);
   const gallery = ref<GalleryRow[]>([]);
@@ -136,13 +136,16 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     gallery.value = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
 
     modules.value = (data.modules ?? []).filter((m) => isModuleKind(m.kind));
-    const leaves: { id: string; label: string; modules: string[]; description: Localized }[] = [];
+    const leaves: { id: string; label: Localized; modules: string[]; description: Localized }[] = [];
     const walk = (nodes: NavNode[]) => {
       for (const n of nodes) {
         if (n.modules) {
           leaves.push({
             id: n.id,
-            label: pickL(n.label),
+            // The whole localized value, not a picked string: the nav label is
+            // editable now, and an editor bound to the resolved English can only
+            // ever write English back.
+            label: n.label ? { ...n.label } : emptyL(),
             modules: [...n.modules],
             // Editable as a full localized value, so the German site gets German
             // descriptions rather than the English ones translated by nobody.
@@ -226,9 +229,31 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   }
 
   const areaOptions = computed(() => [
-    ...layoutAreas.value.map((a) => ({ id: a.id, label: a.label })),
+    ...layoutAreas.value.map((a) => ({ id: a.id, label: pickL(a.label) })),
     { id: "hidden", label: "Hidden" },
   ]);
+
+  /**
+   * Save every module's heading and note.
+   *
+   * Separate from `saveLayout` because it is a separate question — what a section
+   * is called, not where it sits — and because `saveLayout` runs the nav lint,
+   * which has nothing to say about a rename. Sends the whole registry rather than
+   * a diff: seventeen short strings is not worth tracking dirt for, and one
+   * request can't half-succeed the way N of them can.
+   */
+  const saveModuleMeta = () =>
+    guarded(
+      () =>
+        cms.put("modules", {
+          modules: modules.value.map((m) => ({
+            id: m.id,
+            ...(m.heading ? { heading: strip(m.heading) } : {}),
+            ...(m.note ? { note: strip(m.note) } : {}),
+          })),
+        }),
+      "Headings saved",
+    );
 
   const saveLayout = () =>
     guarded(
@@ -238,6 +263,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
             area: a.id,
             modules: a.modules,
             description: strip(a.description),
+            label: strip(a.label),
           })),
         }),
       "Layout saved",
@@ -330,7 +356,14 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     const name = prompt("Name for the new gallery (e.g. Travel):")?.trim();
     if (!name) return;
     await guarded(async () => {
-      const res = await cms.createGallery({ en: name });
+      // Written into the locale being edited as well as English, which the type
+      // requires. A gallery created while editing German used to be German-named
+      // in an `en`-only field, so the German site rendered it via the English
+      // fallback and the German column stayed empty — a translation gap created by
+      // the act of typing German. Both locales start from the typed name; the
+      // editor rail's heading field is where they diverge.
+      const label = { en: name, ...(locale.value === "de" ? { de: name } : {}) };
+      const res = await cms.createGallery(label);
       await loadAll();
       if (res?.id) activeGallery.value = res.id;
     }, "Gallery created");
@@ -436,6 +469,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     dropModule,
     areaOptions,
     saveLayout,
+    saveModuleMeta,
     // gallery
     galleryModules,
     activeGalleryItems,

@@ -1,9 +1,14 @@
 <script setup lang="ts">
 /**
- * The labeled fortnight timeline: a caption row, the shared HeatGrid rendered as a
- * single row, and a start→today axis. The Listening and Playtime modules drew this
- * identically around the same HeatGrid; this is the wrapper, once. Cells and the
- * selected index come from `useLedgerStrip`; clicking a cell emits `select`.
+ * The labeled day timeline: a caption row, the shared HeatGrid, and a start→today
+ * axis. The Listening and Playtime modules drew this identically around the same
+ * HeatGrid; this is the wrapper, once. Cells, the selected index and the layout all
+ * come from `useLedgerStrip`; clicking a cell emits `select`.
+ *
+ * `rows`/`cellHeight` are the layout the window length implies, not a styling
+ * choice: a fortnight is one row of tall cells, and a year wraps to seven rows of
+ * short ones because 365 cells in a line is ~2900px of sideways scroll. Every cell
+ * is still one day at every length, so the drill-in works the same throughout.
  */
 import HeatGrid, { type HeatCell } from "./HeatGrid.vue";
 import { useT } from "~/composables/useT";
@@ -13,8 +18,12 @@ interface Props {
   selectedIndex: number | null;
   /** Label under the left edge — the oldest day shown. */
   startLabel: string;
+  /** Cells per column: 1 is a single strip, 7 wraps into weeks. */
+  rows?: number;
+  /** Fixed cell height in px, so a short strip doesn't balloon. */
+  cellHeight?: number;
 }
-defineProps<Props>();
+withDefaults(defineProps<Props>(), { rows: 1, cellHeight: 30 });
 const emit = defineEmits<{ select: [index: number] }>();
 
 // The captions were `captionLeft`/`captionRight` props with English defaults that
@@ -28,9 +37,9 @@ const { t } = useT();
     <div class="hs-lbl"><span>{{ t("minutesPerDay") }}</span><span>{{ t("clickDayToDrill") }}</span></div>
     <HeatGrid
       :cells="cells"
-      :rows="1"
+      :rows="rows"
       :min-cell="8"
-      :cell-height="30"
+      :cell-height="cellHeight"
       legend
       selectable
       :selected-index="selectedIndex"

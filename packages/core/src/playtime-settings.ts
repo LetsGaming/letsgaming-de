@@ -1,3 +1,4 @@
+import { DEFAULT_ACTIVITY_RANGE } from "./activity-range.js";
 import { sanitizeListDisplaySettings, type ListDisplaySettings } from "./list-settings.js";
 
 /**
@@ -12,7 +13,7 @@ import { sanitizeListDisplaySettings, type ListDisplaySettings } from "./list-se
 export type PlaytimeSettings = ListDisplaySettings;
 
 export function defaultPlaytimeSettings(): PlaytimeSettings {
-  return { initialCount: 5, maxCount: 15 };
+  return { initialCount: 5, maxCount: 15, defaultRange: DEFAULT_ACTIVITY_RANGE };
 }
 
 export function sanitizePlaytimeSettings(input: unknown): PlaytimeSettings {

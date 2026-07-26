@@ -9,10 +9,18 @@
 import type { ResolvedModule } from "@lg/core";
 import { apiUrl } from "./api";
 
-export async function fetchModule(id: string, locale: string, tz?: string): Promise<ResolvedModule | null> {
+export async function fetchModule(
+  id: string,
+  locale: string,
+  tz?: string,
+  days?: number,
+): Promise<ResolvedModule | null> {
   try {
     const params = new URLSearchParams({ locale });
     if (tz) params.set("tz", tz);
+    // Omitted means "the module's configured default", which is what SSR rendered
+    // — so a poll that hasn't been given a range can't silently reset the card.
+    if (days) params.set("days", String(days));
     const res = await fetch(apiUrl(`/api/module/${encodeURIComponent(id)}?${params.toString()}`), {
       headers: { Accept: "application/json" },
     });

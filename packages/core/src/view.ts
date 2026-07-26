@@ -13,6 +13,7 @@
 import type { PlaytimeView } from "./presence.js";
 import type { Tone } from "./content.js";
 import type { Locale } from "./i18n.js";
+import type { ActivityRange } from "./activity-range.js";
 import type { ImageAssetView, GifAssetView } from "./assets.js";
 
 export interface ProjectView {
@@ -231,7 +232,31 @@ export type ResolvedModule =
   | { id: string; kind: "wrapped"; data: SectionMeta & WrappedModuleView }
   | { id: string; kind: "gallery"; data: SectionMeta & { images: GalleryImageView[] } }
   | { id: string; kind: "bio"; data: SectionMeta & { blocks: BioBlock[] } }
-  | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[] } };
+  | { id: string; kind: "contact"; data: SectionMeta & { links: LinkView[]; channel: ContactChannelView } };
+
+/**
+ * How the contact module invites a reply.
+ *
+ * Resolved server-side, because only the server knows whether the relay is
+ * configured — and the module used to render the form unconditionally and find
+ * out on submit, which meant an unconfigured deployment showed a working-looking
+ * form that could only ever answer "not configured" *after* someone had typed a
+ * message into it. The capability is knowable before the page renders; asking it
+ * then is the whole change.
+ *
+ * A union rather than `{ form: boolean; email?: string }` so the precedence lives
+ * in one place. As two independent fields the template has to re-derive "form,
+ * else mailto, else nothing" every time it renders one, and the state that means
+ * nothing at all (`form: false` with no address) is representable but unnamed.
+ */
+export type ContactChannelView =
+  /** The relay is configured — render the form. */
+  | { kind: "form" }
+  /** No relay, but a published address — render a mailto. */
+  | { kind: "mailto"; email: string }
+  /** Neither. The module still renders its links; it just can't offer a reply
+   *  path of its own, and says nothing rather than offering a broken one. */
+  | { kind: "none" };
 
 /**
  * The historical playtime module (features 02 + 03).
@@ -276,6 +301,15 @@ export interface PlaytimeModuleView {
   initialCount: number;
   /** Hard cap on rows the list ever shows, in the main list and the day drill-in. */
   maxCount: number;
+  /**
+   * The window this data covers, in days.
+   *
+   * The card labels itself from this, the strip sizes its window to it, and the
+   * picker shows it as the current selection — so the number the server built the
+   * response with is the number the page displays, rather than three places each
+   * assuming a fortnight.
+   */
+  windowDays: ActivityRange;
 }
 
 /** One row of a music "top" list, ready to render. */
@@ -323,6 +357,8 @@ export interface MusicModuleView {
   /** The most list rows shown — the lists are already capped to this server-side,
    *  so this is the expand target, not a client-side filter. */
   maxCount: number;
+  /** The window this data covers, in days (see PlaytimeModuleView.windowDays). */
+  windowDays: ActivityRange;
 }
 
 /** A nav node with its label already localized (children/modules preserved). */

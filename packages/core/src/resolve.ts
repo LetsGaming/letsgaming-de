@@ -19,6 +19,7 @@ import { defaultMusicSettings } from "./music.js";
 import { defaultWrappedSettings, wrappedWindow } from "./wrapped.js";
 import { defaultPlaytimeSettings } from "./playtime-settings.js";
 import { capList } from "./list-settings.js";
+import { DEFAULT_ACTIVITY_RANGE, type ActivityRange } from "./activity-range.js";
 import { AREA } from "./ia.js";
 import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
 import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
@@ -43,6 +44,7 @@ import {
 } from "./assets.js";
 import type {
   CodingView,
+  ContactChannelView,
   GalleryImageView,
   GuestbookEntryView,
   HighlightView,
@@ -113,6 +115,26 @@ export interface ResolveInput {
     timeZone: string;
     since?: string;
   };
+  /**
+   * The window each accumulated-activity module covers, in days.
+   *
+   * The server has already applied these to whatever it queried with a `since`
+   * (the top lists, the music ledger and its distinct counts). They are passed on
+   * anyway for two things the resolver alone can do: window the *all-time*
+   * playtime ledger it receives, and tell each module which span it is showing so
+   * the card can label itself. Absent → each module's CMS default.
+   */
+  playtimeWindowDays?: ActivityRange;
+  musicWindowDays?: ActivityRange;
+  /**
+   * What the contact module can actually offer, from the host's configuration.
+   *
+   * Not content, and not derivable from the store — whether SMTP is reachable is a
+   * property of the deployment. The resolver stays pure by being *told*; the view
+   * builder reads the environment and passes it in, the way it already does for
+   * the timezone.
+   */
+  contact?: { relay: boolean; email?: string };
   /** Library assets referenced by content, keyed by id (built by the read route). */
   assets?: Map<string, ResolvableAsset>;
   /** Injectable clock for deterministic relative times (tests). */
@@ -171,6 +193,52 @@ const FEED = {
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
 } as const;
+
+/**
+ * Trim an all-time day ledger to the last `days` days.
+ *
+ * Inclusive of today, so `days = 14` is a fortnight ending now — the same window
+ * the strip draws and the same one the server queried the top lists with. Days are
+ * `YYYY-MM-DD` and compare correctly as strings, which is the whole reason the
+ * store emits them that way; no Date parsing per row.
+ *
+ * The cutoff is computed in UTC while the ledger is bucketed in the display zone,
+ * so the boundary day can be off by one either side of midnight. That's deliberate:
+ * the alternative is threading the zone into a pure function to move one edge cell
+ * of a fourteen-cell strip, and the cell in question is the one furthest from
+ * anything anybody is reading.
+ */
+function windowLedger(
+  ledger: { day: string; minutes: number }[],
+  days: number,
+  now: Date,
+): { day: string; minutes: number }[] {
+  const from = new Date(now.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return ledger.filter((d) => d.day >= from);
+}
+
+/**
+ * Pick the contact channel from what the deployment supports.
+ *
+ * The relay wins when it exists, because a form keeps the address off the page.
+ * A published address is the fallback, not a supplement: offering both puts two
+ * ways to do one thing under one heading, and the mailto is the worse of them
+ * whenever the form works.
+ *
+ * A blank or whitespace-only address is treated as absent — Docker Compose passes
+ * an unset `${VAR:-}` through as `""`, so trusting truthiness alone would publish
+ * a `mailto:` with nothing after the colon.
+ *
+ * Exported because the web app's fallback path picks a channel too, from the live
+ * environment rather than the frozen fixture. Written twice, that precedence would
+ * be one edit away from an outage page offering a different contact route than the
+ * live one.
+ */
+export function contactChannel(config: ResolveInput["contact"]): ContactChannelView {
+  if (config?.relay) return { kind: "form" };
+  const email = config?.email?.trim();
+  return email ? { kind: "mailto", email } : { kind: "none" };
+}
 
 export function resolveSiteView(input: ResolveInput): SiteView {
   const locale = input.locale ?? DEFAULT_LOCALE;
@@ -563,7 +631,16 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // stays pure. Absent history is an empty module, not an error — a fresh
         // install has recorded no sessions yet.
         const hist = input.playHistory ?? { ledger: [], heat: [], timeZone: DEFAULT_TIMEZONE };
-        const totalMinutes = hist.ledger.reduce((sum, d) => sum + d.minutes, 0);
+        const settings = content.playtime ?? defaultPlaytimeSettings();
+        const windowDays = input.playtimeWindowDays ?? settings.defaultRange;
+        // The ledger arrives all-time — the strip windows it client-side, and the
+        // weekday×hour heatmap beside it is all-time by design. The headline total
+        // is not: it sits under a note that names a window, so summing the whole
+        // ledger into it made "44h · last 14 days" report every hour ever observed.
+        // Window it here, where the range is known, so the figure and its label
+        // can't disagree.
+        const ledger = windowLedger(hist.ledger, windowDays, now);
+        const totalMinutes = ledger.reduce((sum, d) => sum + d.minutes, 0);
 
         // "Recently played" — every game Discord observed over the window,
         // most-played first. Gated on the same `game` allow-list and hidden-games
@@ -572,7 +649,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // client never sees past the cap), while gameCount stays the true total so
         // the headline and "and N more" are honest.
         const pShow = content.presence?.show ?? defaultPresenceSettings().show;
-        const settings = content.playtime ?? defaultPlaytimeSettings();
         const allRecent = pShow.includes("game")
           ? playtimeRows(input.playtime ?? [], input.gameMeta).filter(
               (g) => !isHidden(g.name, content.presence?.hidden ?? []),
@@ -589,12 +665,13 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             totalHours: Math.round(totalMinutes / 60),
             recent,
             gameCount,
-            ledger: hist.ledger,
+            ledger,
             heat: hist.heat,
             timeZone: hist.timeZone,
             ...(hist.since ? { since: hist.since } : {}),
             initialCount: settings.initialCount,
             maxCount: settings.maxCount,
+            windowDays,
           },
         };
       }
@@ -661,6 +738,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             ...(m?.since ? { since: m.since } : {}),
             initialCount: musicSettings.initialCount,
             maxCount: musicSettings.maxCount,
+            // Already applied server-side (the ledger and the counts are queried
+            // with this `since`); carried so the card can name its own window.
+            windowDays: input.musicWindowDays ?? musicSettings.defaultRange,
           },
         };
       }
@@ -696,7 +776,15 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         return {
           id: descriptor.id,
           kind: "contact",
-          data: { heading, note, links: content.links.map(resolveLink) },
+          data: {
+            heading,
+            note,
+            links: content.links.map(resolveLink),
+            // Decided here, once, rather than left for the template: a configured
+            // relay wins, a published address is the fallback, and neither is a
+            // named state instead of an accident.
+            channel: contactChannel(input.contact),
+          },
         };
     }
   }

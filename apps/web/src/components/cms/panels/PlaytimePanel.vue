@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
+import RangeSelect from "../RangeSelect.vue";
 
 // View-only panel. State and the save handler come from the shared CMS context.
-const { PLAYTIME_LIST_BOUNDS, playtimeInitialCount, playtimeMaxCount, savePlaytime } = useCmsContext();
+const {
+  PLAYTIME_LIST_BOUNDS,
+  playtimeInitialCount,
+  playtimeMaxCount,
+  playtimeDefaultRange,
+  savePlaytime,
+} = useCmsContext();
 
 // A hint, not a block: the server sanitizer pins "always show" down to the max on
 // save, so an over-order pair is harmless — but say so rather than silently fix it.
@@ -44,6 +51,13 @@ const overMax = computed(() => playtimeInitialCount.value > playtimeMaxCount.val
       <p v-if="overMax" class="muted note">
         “Always show” is above the max — it'll be capped to the max when you save.
       </p>
+
+      <h4>Opens on</h4>
+      <p class="muted">
+        The window the card shows when someone arrives. Visitors can pick a different one on the card
+        itself — this only decides where they start, it doesn't limit what they can look at.
+      </p>
+      <RangeSelect v-model="playtimeDefaultRange" />
 
       <div class="actions"><button class="btn" @click="savePlaytime">Save played</button></div>
     </div>

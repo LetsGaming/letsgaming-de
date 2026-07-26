@@ -1,5 +1,9 @@
 import { ref } from "vue";
-import { defaultPlaytimeSettings, LIST_DISPLAY_BOUNDS } from "@lg/core";
+import {
+  defaultPlaytimeSettings,
+  LIST_DISPLAY_BOUNDS,
+  type ActivityRange,
+} from "@lg/core";
 
 /**
  * The Playtime list-display slice of the CMS — the twin of `useMusicSettings`, kept
@@ -26,25 +30,35 @@ export function usePlaytimeSettings({ guarded, cms }: PlaytimeDeps) {
   // The most rows the top-games list and its day drill-in ever show.
   const playtimeMaxCount = ref<number>(d.maxCount);
 
+  /**
+   * The window the module opens in. A viewer can pick another on the card; this is
+   * only what it shows before they do — so changing it moves the landing view, not
+   * what anyone is allowed to look at.
+   */
+  const playtimeDefaultRange = ref<ActivityRange>(d.defaultRange);
+
   const savePlaytime = () =>
     guarded(() =>
       cms.put("playtime", {
         initialCount: playtimeInitialCount.value,
         maxCount: playtimeMaxCount.value,
+        defaultRange: playtimeDefaultRange.value,
       }),
     );
 
   /** Load both counts from the site content the CMS fetched. */
-  function hydrate(p: { initialCount?: number; maxCount?: number } | undefined) {
+  function hydrate(p: { initialCount?: number; maxCount?: number; defaultRange?: ActivityRange } | undefined) {
     const def = defaultPlaytimeSettings();
     playtimeInitialCount.value = p?.initialCount ?? def.initialCount;
     playtimeMaxCount.value = p?.maxCount ?? def.maxCount;
+    playtimeDefaultRange.value = p?.defaultRange ?? def.defaultRange;
   }
 
   return {
     PLAYTIME_LIST_BOUNDS: LIST_DISPLAY_BOUNDS,
     playtimeInitialCount,
     playtimeMaxCount,
+    playtimeDefaultRange,
     savePlaytime,
     hydratePlaytime: hydrate,
   };

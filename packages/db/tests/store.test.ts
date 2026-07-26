@@ -143,6 +143,47 @@ test("reconcileIa adds and places a newly-registered launch module (IA migration
   db.close();
 });
 
+test("reconcileIa adds a missing locale without reverting an edited one", () => {
+  const db = openDatabase(":memory:");
+  seedIfEmpty(db);
+  const ia = iaRepo(db);
+
+  // Simulate a store seeded before German existed, where the owner has since
+  // renamed one module in the CMS. This is the shape of the real production
+  // database on the boot that first ships German.
+  const modules = ia.getModules();
+  const playtime = modules.find((m) => m.id === "playtime");
+  const music = modules.find((m) => m.id === "music");
+  if (!playtime || !music) throw new Error("expected the playtime and music modules");
+  playtime.heading = { en: "Time played" }; // untouched, English-only
+  music.heading = { en: "What's on repeat" }; // renamed by the owner
+  ia.setModules(modules);
+
+  const nav = ia.getNav();
+  const life = nav.find((n) => n.id === "life");
+  if (!life) throw new Error("expected a life area");
+  life.label = { en: "Life" };
+  ia.setNav(nav);
+
+  reconcileIa(db);
+
+  const after = ia.getModules();
+  // The German lands on both...
+  assert.equal(after.find((m) => m.id === "playtime")?.heading?.de, "Spielzeit");
+  assert.equal(after.find((m) => m.id === "music")?.heading?.de, "Gehört");
+  // ...and the edited English survives, where an overwrite would have reverted it.
+  assert.equal(after.find((m) => m.id === "music")?.heading?.en, "What's on repeat");
+  assert.equal(after.find((m) => m.id === "playtime")?.heading?.en, "Time played");
+  // Nav labels reconcile by the same rule.
+  assert.equal(ia.getNav().find((n) => n.id === "life")?.label.de, "Leben");
+  assert.equal(ia.getNav().find((n) => n.id === "life")?.label.en, "Life");
+
+  // Idempotent, and still doesn't clobber the rename on a second boot.
+  reconcileIa(db);
+  assert.equal(ia.getModules().find((m) => m.id === "music")?.heading?.en, "What's on repeat");
+  db.close();
+});
+
 test("reconcileIa migrates an already-seeded store to the new tree (rename, retire, add)", () => {
   const db = openDatabase(":memory:");
   seedIfEmpty(db);

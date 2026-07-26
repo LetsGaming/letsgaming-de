@@ -3,6 +3,9 @@ import { ref } from "vue";
 import BaseForm from "./BaseForm.vue";
 import { useSubmit } from "../../composables/useSubmit";
 import { FIELD_LIMITS } from "@lg/core";
+import { useT } from "~/composables/useT";
+
+const { t } = useT();
 
 const name = ref("");
 const email = ref("");
@@ -16,12 +19,12 @@ const { state, error, submit } = useSubmit({
   onSuccess: () => {
     name.value = email.value = message.value = "";
   },
+  // The 503 is close to unreachable now — the section only renders this form when
+  // the server said the relay is configured. Kept because "close to" isn't
+  // "never": SSR resolved the capability at render time, and a deployment can lose
+  // its relay between that render and a submit minutes later.
   message: (status) =>
-    status === 503
-      ? "The contact form isn't configured yet — email works below."
-      : status === 429
-        ? "Too many messages just now — please try again a little later."
-        : undefined,
+    status === 503 ? t("contactUnconfigured") : status === 429 ? t("contactTooMany") : undefined,
 });
 </script>
 
@@ -29,16 +32,16 @@ const { state, error, submit } = useSubmit({
   <BaseForm
     :state="state"
     :error="error"
-    submit-label="Send message"
-    sending-label="Sending…"
+    :submit-label='t("contactSend")'
+    :sending-label='t("contactSending")'
     @submit="submit"
   >
-    <template #success>Thanks — your message is on its way. I'll get back to you soon.</template>
+    <template #success>{{ t("contactSent") }}</template>
     <div class="grid">
-      <label>Name<input v-model="name" required :maxlength="FIELD_LIMITS.contactName" autocomplete="name" /></label>
-      <label>Email<input v-model="email" type="email" required :maxlength="FIELD_LIMITS.contactEmail" autocomplete="email" /></label>
+      <label>{{ t("contactFormName") }}<input v-model="name" required :maxlength="FIELD_LIMITS.contactName" autocomplete="name" /></label>
+      <label>{{ t("contactFormEmail") }}<input v-model="email" type="email" required :maxlength="FIELD_LIMITS.contactEmail" autocomplete="email" /></label>
     </div>
-    <label>Message<textarea v-model="message" required :maxlength="FIELD_LIMITS.contactMessage" rows="4" /></label>
+    <label>{{ t("contactFormMessage") }}<textarea v-model="message" required :maxlength="FIELD_LIMITS.contactMessage" rows="4" /></label>
     <input v-model="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
   </BaseForm>
 </template>

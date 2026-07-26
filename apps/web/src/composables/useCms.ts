@@ -126,13 +126,21 @@ const now = nowList.items;
 
   // Listening list-display settings — extracted composable (see useMusicSettings).
   const music = useMusicSettings({ guarded, cms });
-  const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, saveMusic, hydrateMusic } = music;
+  const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, saveMusic, hydrateMusic } =
+    music;
   // Playtime list-display settings — its own stored value, so its limits can differ.
   // Wrapped's recurring-display schedule — same shape as the two above.
   const wrapped = useWrappedSettings({ guarded, cms });
 
   const playtime = usePlaytimeSettings({ guarded, cms });
-  const { PLAYTIME_LIST_BOUNDS, playtimeInitialCount, playtimeMaxCount, savePlaytime, hydratePlaytime } = playtime;
+  const {
+    PLAYTIME_LIST_BOUNDS,
+    playtimeInitialCount,
+    playtimeMaxCount,
+    playtimeDefaultRange,
+    savePlaytime,
+    hydratePlaytime,
+  } = playtime;
 
   // Guestbook moderation — extracted composable (see useGuestbookMod).
   const { guestbook, loadingG, loadGuestbook, moderate, removeEntry } = useGuestbookMod({
@@ -292,6 +300,7 @@ const {
   dropModule,
   areaOptions,
   saveLayout,
+  saveModuleMeta,
   galleryModules,
   activeGalleryItems,
   addGalleryAsset,
@@ -335,7 +344,8 @@ const {
 
 
 function areaLabel(id: string): string {
-  return layoutAreas.value.find((a) => a.id === id)?.label ?? id;
+  const area = layoutAreas.value.find((a) => a.id === id);
+  return (area && pickL(area.label)) || id;
 }
 // Dashboard: quick counts + jump-in links (WP-style landing).
 const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
@@ -390,10 +400,12 @@ onMounted(() => {
     MUSIC_LIST_BOUNDS,
     musicInitialCount,
     musicMaxCount,
+    musicDefaultRange,
     saveMusic,
     PLAYTIME_LIST_BOUNDS,
     playtimeInitialCount,
     playtimeMaxCount,
+    playtimeDefaultRange,
     savePlaytime,
     // The Wrapped slice, spread whole: the panel reads every ref plus
     // WRAPPED_BOUNDS off the context, and listing them here too would be a
@@ -429,6 +441,7 @@ onMounted(() => {
     selectedPanel,
     areaOptions,
     saveLayout,
+    saveModuleMeta,
     galleryModules,
     activeGalleryItems,
     addGalleryAsset,

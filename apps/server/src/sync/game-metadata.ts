@@ -1,4 +1,4 @@
-import { gameMetaKey, PLAYTIME_WINDOW_DAYS } from "@lg/core";
+import { gameMetaKey, MAX_ACTIVITY_RANGE } from "@lg/core";
 import { normalizeRawgGame, searchRawgGame, type RawgConfig } from "@lg/sources";
 import type { Store } from "@lg/db";
 
@@ -19,7 +19,7 @@ export async function resolveGameMetadata(
   config: RawgConfig,
   log: (m: string) => void = () => {},
 ): Promise<number> {
-  const names = store.sessions.playtime("game", isoDaysAgo(PLAYTIME_WINDOW_DAYS)).map((e) => e.name);
+  const names = store.sessions.playtime("game", isoDaysAgo(MAX_ACTIVITY_RANGE)).map((e) => e.name);
   const done = store.gameMeta.resolvedKeys();
 
   let resolved = 0;

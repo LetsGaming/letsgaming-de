@@ -347,15 +347,6 @@ export function sanitizeTimeZone(tz: unknown): string {
   return typeof tz === "string" && isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;
 }
 
-/**
- * The window the playtime chart covers.
- *
- * Fourteen days, to match the listening chart's fortnight so "playing" and
- * "listening" answer over the same span. A different window here would put two
- * time ranges on facing cards and invite reading them as one.
- */
-export const PLAYTIME_WINDOW_DAYS = 14;
-
 /** How many rows each music "top" list fetches. The module shows 5 with a
  *  show-more toggle, so a handful past that is enough to make the toggle real
  *  without shipping a long tail nobody expands. */

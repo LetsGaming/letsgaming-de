@@ -1,5 +1,9 @@
 import { ref } from "vue";
-import { defaultMusicSettings, MUSIC_LIST_BOUNDS } from "@lg/core";
+import {
+  defaultMusicSettings,
+  MUSIC_LIST_BOUNDS,
+  type ActivityRange,
+} from "@lg/core";
 
 /**
  * The Listening list-display slice of the CMS.
@@ -28,25 +32,35 @@ export function useMusicSettings({ guarded, cms }: MusicDeps) {
   // The most rows the list ever shows — applied as the query LIMIT server-side.
   const musicMaxCount = ref<number>(d.maxCount);
 
+  /**
+   * The window the module opens in. A viewer can pick another on the card; this is
+   * only what it shows before they do — so changing it moves the landing view, not
+   * what anyone is allowed to look at.
+   */
+  const musicDefaultRange = ref<ActivityRange>(d.defaultRange);
+
   const saveMusic = () =>
     guarded(() =>
       cms.put("music", {
         initialCount: musicInitialCount.value,
         maxCount: musicMaxCount.value,
+        defaultRange: musicDefaultRange.value,
       }),
     );
 
   /** Load both counts from the site content the CMS fetched. */
-  function hydrate(m: { initialCount?: number; maxCount?: number } | undefined) {
+  function hydrate(m: { initialCount?: number; maxCount?: number; defaultRange?: ActivityRange } | undefined) {
     const def = defaultMusicSettings();
     musicInitialCount.value = m?.initialCount ?? def.initialCount;
     musicMaxCount.value = m?.maxCount ?? def.maxCount;
+    musicDefaultRange.value = m?.defaultRange ?? def.defaultRange;
   }
 
   return {
     MUSIC_LIST_BOUNDS,
     musicInitialCount,
     musicMaxCount,
+    musicDefaultRange,
     saveMusic,
     hydrateMusic: hydrate,
   };

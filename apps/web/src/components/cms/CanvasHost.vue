@@ -51,6 +51,11 @@ const emit = defineEmits<{
 /** Per-module boxes, measured from what actually rendered. */
 const boxes = ref<{ id: string; top: number; height: number }[]>([]);
 const root = ref<HTMLElement | null>(null);
+/**
+ * The overlay the boxes are drawn in — and therefore the origin they must be
+ * measured from. See `measure()`.
+ */
+const overlay = ref<HTMLElement | null>(null);
 
 const orderedIds = computed(() => props.site?.nav.find((a) => a.id === props.area)?.modules ?? []);
 
@@ -65,18 +70,72 @@ const orderedIds = computed(() => props.site?.nav.find((a) => a.id === props.are
  * Read from the DOM rather than computed: the point is to outline what actually
  * rendered, and a module that collapsed to nothing is a thing you want to *see* is
  * empty, not a box the overlay invents.
+ *
+ * **Measured against the overlay, not `.panel`.** A box's `top` is used as a
+ * `top:` inside `.lgedit-overlay`, so the overlay's own top is the only origin
+ * that can't be wrong. `.panel` looked equivalent and isn't: it carries no padding
+ * or border, so `.module-section:first-child`'s `margin-top: var(--sp-8)` collapses
+ * *through* it and moves its border box 8px down from the overlay's. Every handle
+ * and tag sat 8px above the section it outlined, forever, because the two elements
+ * were assumed to share a top edge. Anything above `.panel` (a heading, a wrapper
+ * with padding) would add to the same silent constant; measuring from the box we
+ * draw into makes the class of bug unrepresentable.
  */
 async function measure() {
   await nextTick();
   const host = root.value?.querySelector(".panel");
-  if (!host) return void (boxes.value = []);
-  const base = host.getBoundingClientRect().top;
+  const origin = overlay.value;
+  if (!host || !origin) return void (boxes.value = []);
+  const base = origin.getBoundingClientRect().top;
+  const seen: Element[] = [host];
   boxes.value = orderedIds.value.flatMap((id) => {
     const el = host.querySelector(`[id="${CSS.escape(id)}"]`);
     if (!el) return [];
+    seen.push(el);
     const r = el.getBoundingClientRect();
     return [{ id, top: r.top - base, height: r.height }];
   });
+  watchSizes(seen);
+}
+
+/**
+ * Re-measure when the page changes size under us.
+ *
+ * A single measure on `nextTick` describes the layout at one instant, and the
+ * canvas renders the site's *real* sections — which are not done laying out at
+ * that instant. The presence widget is a hydrating island that fills in and grows
+ * after mount; cover art and avatars load later still; web fonts reflow the lot.
+ * Each late growth pushes every section below it down while the overlay stays put,
+ * so the error accumulates downward: the first module still looks about right and
+ * the third is a hundred pixels out.
+ *
+ * A ResizeObserver on the host and each measured section closes that, and window
+ * resize stops being a special case — it's just another thing that changes a size.
+ */
+let ro: ResizeObserver | null = null;
+let observed: Element[] = [];
+let frame = 0;
+
+/** Coalesce a burst of observations into one measure per frame. */
+function scheduleMeasure() {
+  if (frame) return;
+  frame = requestAnimationFrame(() => {
+    frame = 0;
+    void measure();
+  });
+}
+
+/**
+ * Point the observer at the current set of elements — but only when the set has
+ * actually changed. Re-observing unconditionally would loop: `observe()` delivers
+ * an initial observation, which measures, which re-observes, at frame rate.
+ */
+function watchSizes(next: Element[]) {
+  if (!ro) return;
+  if (next.length === observed.length && next.every((el, i) => el === observed[i])) return;
+  ro.disconnect();
+  observed = next;
+  for (const el of next) ro.observe(el);
 }
 
 let dragFrom: number | null = null;
@@ -132,18 +191,25 @@ function onClick(e: MouseEvent) {
 const onKey = (e: KeyboardEvent) => {
   if (e.key === "Escape") emit("close");
 };
-const onResize = () => void measure();
 
 watch(() => [props.site, props.area, props.selected], () => void measure());
 
 onMounted(() => {
-  window.addEventListener("resize", onResize);
+  ro = new ResizeObserver(scheduleMeasure);
   window.addEventListener("keydown", onKey);
   void measure();
+  // Fonts land after first paint and reflow every section under the overlay.
+  // `.catch()` because a browser without the Font Loading API shouldn't take the
+  // editor down with it — the observer still catches the resulting resize.
+  document.fonts?.ready.then(scheduleMeasure).catch(() => {});
 });
 onUnmounted(() => {
-  window.removeEventListener("resize", onResize);
   window.removeEventListener("keydown", onKey);
+  ro?.disconnect();
+  ro = null;
+  observed = [];
+  if (frame) cancelAnimationFrame(frame);
+  frame = 0;
 });
 
 const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
@@ -179,7 +245,7 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
           <p v-else class="lgedit-dim lgedit-wait">Rendering the page…</p>
 
           <!-- Affordances, over the real sections. Never inside them. -->
-          <div v-if="site" class="lgedit-overlay">
+          <div v-if="site" ref="overlay" class="lgedit-overlay">
             <div
               v-for="(b, i) in boxes"
               :key="b.id"

@@ -43,6 +43,23 @@ const EN = {
   theme: "Theme",
   language: "Language",
 
+  // Settings modal. Every string here was hardcoded English, so the one dialog a
+  // German visitor opens to *switch to German* was the loudest untranslated
+  // surface on the site.
+  settings: "Settings",
+  close: "Close",
+  appearance: "Appearance",
+  themeLight: "Light",
+  themeDark: "Dark",
+  // The settings group reuses the footer's `privacy` — same word, same meaning,
+  // and a second key would be two strings to keep saying the same thing.
+  analyticsTitle: "Anonymous usage analytics",
+  analyticsDesc:
+    "Helps me see which sections are useful. No cookies, no IP, no identifier — just aggregate counts.",
+  analyticsDetails: "Details",
+  analyticsDnt: "Turned off automatically — your browser sends a “Do Not Track” signal, which I respect.",
+  languageNote: "Reloads the page in your language. Untranslated bits fall back to English.",
+
   // Generic empty + error states
   nothingHere: "Nothing here yet.",
   loadDayFailed: "Couldn't load that day.",
@@ -85,7 +102,23 @@ const EN = {
   // Music / playtime
   listening: "Listening",
   played: "Played",
-  lastFourteenDays: "last 14 days",
+  // The window a module is showing. `lastDays*` is the card's note — it has to
+  // stand alone, because the picker scrolls out of view; `range*` is the picker
+  // segment itself, abbreviated to fit a card header. One pair per
+  // ACTIVITY_RANGES entry; `ACTIVITY_RANGE_LABELS` maps between them, so a new
+  // range won't compile until both labels exist in both locales.
+  lastDays14: "last 14 days",
+  lastDays30: "last 30 days",
+  lastDays90: "last 3 months",
+  lastDays180: "last 6 months",
+  lastDays365: "last year",
+  range14: "14d",
+  range30: "30d",
+  range90: "3m",
+  range180: "6m",
+  range365: "1y",
+  /** Names the range picker for assistive tech. */
+  rangeLabel: "Time range",
   topSongs: "Top songs",
   topArtists: "Top artists",
   topGames: "Top games",
@@ -95,6 +128,11 @@ const EN = {
   backToTopGames: "← back to top games",
   whenIPlay: "When I play",
   localTime: "Local",
+  /** The owner's clock, when the viewer is in a different zone. `{city}` is the
+   *  IANA zone's city ("Berlin") — a name, so it isn't translated, only framed. */
+  ownerTime: "{city} time",
+  /** Names the owner/local timezone toggle for assistive tech. */
+  showTimesIn: "Show times in",
   timeListening: "time listening",
   timePlayed: "time played",
   emptyWrapped: "Nothing to look back on for this period yet.",
@@ -137,6 +175,19 @@ const EN = {
   /** A bare relative age, for a timestamp that isn't a sync (a post's date). */
   ago: "{age} ago",
 
+  // Contact. The module offers a form when the relay is configured and a mailto
+  // when it isn't, so both paths need copy — the mailto branch is the one an
+  // unconfigured deployment actually shows.
+  contactEmailMe: "Email me",
+  contactFormName: "Name",
+  contactFormEmail: "Email",
+  contactFormMessage: "Message",
+  contactSend: "Send message",
+  contactSending: "Sending…",
+  contactSent: "Thanks — your message is on its way. I'll get back to you soon.",
+  contactUnconfigured: "The contact form isn't set up right now — try email instead.",
+  contactTooMany: "Too many messages just now — please try again a little later.",
+
   // Coding
   codingScope: "{range} · {hours}h tracked",
 } as const;
@@ -155,6 +206,19 @@ const DE: Messages = {
   closeMenu: "Menü schließen",
   theme: "Design",
   language: "Sprache",
+
+  settings: "Einstellungen",
+  close: "Schließen",
+  appearance: "Darstellung",
+  themeLight: "Hell",
+  themeDark: "Dunkel",
+  analyticsTitle: "Anonyme Nutzungsstatistik",
+  analyticsDesc:
+    "Hilft mir zu sehen, welche Bereiche nützlich sind. Keine Cookies, keine IP, keine Kennung — nur zusammengefasste Zahlen.",
+  analyticsDetails: "Details",
+  analyticsDnt:
+    "Automatisch deaktiviert — dein Browser sendet ein „Do Not Track“-Signal, und das respektiere ich.",
+  languageNote: "Lädt die Seite in deiner Sprache neu. Nicht Übersetztes fällt auf Englisch zurück.",
 
   nothingHere: "Hier ist noch nichts.",
   loadDayFailed: "Dieser Tag konnte nicht geladen werden.",
@@ -192,7 +256,17 @@ const DE: Messages = {
 
   listening: "Gehört",
   played: "Gespielt",
-  lastFourteenDays: "letzte 14 Tage",
+  lastDays14: "letzte 14 Tage",
+  lastDays30: "letzte 30 Tage",
+  lastDays90: "letzte 3 Monate",
+  lastDays180: "letzte 6 Monate",
+  lastDays365: "letztes Jahr",
+  range14: "14T",
+  range30: "30T",
+  range90: "3M",
+  range180: "6M",
+  range365: "1J",
+  rangeLabel: "Zeitraum",
   topSongs: "Top-Songs",
   topArtists: "Top-Künstler:innen",
   topGames: "Top-Spiele",
@@ -202,6 +276,8 @@ const DE: Messages = {
   backToTopGames: "← zurück zu den Top-Spielen",
   whenIPlay: "Wann ich spiele",
   localTime: "Lokal",
+  ownerTime: "Zeit in {city}",
+  showTimesIn: "Zeiten anzeigen in",
   timeListening: "Hörzeit",
   timePlayed: "Spielzeit",
   emptyWrapped: "Für diesen Zeitraum gibt es noch nichts zurückzublicken.",
@@ -235,6 +311,16 @@ const DE: Messages = {
   freshNever: "noch nicht synchronisiert",
   freshEmpty: "nichts synchronisiert",
   ago: "vor {age}",
+
+  contactEmailMe: "Schreib mir eine E-Mail",
+  contactFormName: "Name",
+  contactFormEmail: "E-Mail",
+  contactFormMessage: "Nachricht",
+  contactSend: "Nachricht senden",
+  contactSending: "Wird gesendet…",
+  contactSent: "Danke — deine Nachricht ist unterwegs. Ich melde mich bald.",
+  contactUnconfigured: "Das Kontaktformular ist gerade nicht eingerichtet — schreib mir stattdessen eine E-Mail.",
+  contactTooMany: "Gerade zu viele Nachrichten — bitte versuch es etwas später noch einmal.",
 
   codingScope: "{range} · {hours} Std. erfasst",
 };

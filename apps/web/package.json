@@ -11,7 +11,8 @@
     "postinstall": "nuxt prepare",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
-    "lint:tokens": "tsx scripts/lint-tokens.ts"
+    "lint:tokens": "tsx scripts/lint-tokens.ts",
+    "gen:fallback": "tsx scripts/gen-fallback.ts"
   },
   "dependencies": {
     "@fontsource/fredoka": "^5",
