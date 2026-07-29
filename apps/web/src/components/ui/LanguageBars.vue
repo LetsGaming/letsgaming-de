@@ -4,8 +4,12 @@
  * percentage. Shared by the coding module (Wakapi time by language) and the
  * activity module (GitHub linguist) — both rendered exactly this, off the same
  * `langColor`. Purely presentational; the caller passes the ranked languages.
+ *
+ * Name and colour both go through the lookup rather than the source's own string,
+ * so the two modules agree on spelling as well as hue. Wakapi's `Typescript` and
+ * linguist's `TypeScript` are the same language and now render as the same word.
  */
-import { langColor } from "../../lib/icons";
+import { langColor, langName } from "../../lib/icons";
 
 defineProps<{ languages: { name: string; pct: number }[] }>();
 </script>
@@ -13,7 +17,7 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
 <template>
   <div class="lang">
     <div v-for="l in languages" :key="l.name" class="row">
-      <span class="nm">{{ l.name }}</span>
+      <span class="nm">{{ langName(l.name) }}</span>
       <div class="bar"><b :style="{ width: l.pct + '%', background: langColor(l.name) }" /></div>
       <span class="pc">{{ l.pct }}%</span>
     </div>

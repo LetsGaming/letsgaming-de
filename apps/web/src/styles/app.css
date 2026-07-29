@@ -182,7 +182,7 @@ h1 {
   height: 17px;
 }
 .btn-primary {
-  background: var(--live);
+  background: var(--live-solid);
   color: #fff;
   transition: transform var(--dur-press) var(--ease-out);
 }
@@ -565,10 +565,38 @@ footer b {
   }
 }
 
-/* the non-negotiable baseline: reduced motion kills all of it */
+/* The non-negotiable baseline — but "reduced" is not "none".
+ *
+ * This was `* { animation: none; transition: none }`, which is the safe reflex and
+ * slightly too broad: it also removed the colour and opacity fades that carry
+ * meaning. A tab that snaps between --muted and --ink-strong with no crossfade is
+ * harder to follow, not easier, and nothing about a 120ms colour change triggers
+ * vestibular symptoms. What does is movement.
+ *
+ * So: kill every animation (the pulse, the panel fade-in — those are the ones that
+ * loop or travel), kill transforms, and keep colour/opacity/border transitions at a
+ * short fixed duration. Anything that still wants to be fully static under reduced
+ * motion opts in with `.rm-static`. */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation: none !important;
+    scroll-behavior: auto !important;
+    transition-property: color, background-color, border-color, outline-color, opacity,
+      fill, stroke !important;
+    transition-duration: var(--dur-fast) !important;
+  }
+  /* Transforms are deliberately left alone. The only ones on the public site are
+     the 2px press offsets on the buttons and the 3px arrow nudge on a project
+     card — states, not journeys. They no longer animate (transform is off the
+     transition-property list above), so they apply instantly, which is what
+     tactile feedback should do anyway. Resetting them wholesale was the first
+     version of this rule and it also flattened the `translateX(-50%)` that
+     centres the CMS toast.
+
+     Opt out per-element if something genuinely must not transition at all. */
+  .rm-static {
     transition: none !important;
   }
 }

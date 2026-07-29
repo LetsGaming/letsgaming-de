@@ -88,6 +88,10 @@ export interface LayoutEditorDeps {
  *  real answer for synced modules nothing in the CMS edits. */
 const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   hero: "home",
+  /* Built from the nav tree, so its content is edited by editing the nav — there's
+     no panel of its own to open. Renaming an area or writing its description is
+     what changes this module. */
+  areas: null,
   featured: null,
   glance: null,
   activity: null,

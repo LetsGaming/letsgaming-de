@@ -23,7 +23,7 @@ const project = computed(() => props.module.data.project);
   <ModuleSection :id="module.id" :heading="module.data.heading">
     <template #note>
       <Freshness :freshness="module.data.freshness" />
-      <SmartLink class="more" :href="module.data.moreHref" @click="() => trackClick('more')">{{ t("seeAllWork") }}</SmartLink>
+      <SmartLink class="more" :href="module.data.moreHref" @click="() => trackClick('project-more')">{{ t("seeAllWork") }}</SmartLink>
     </template>
     <div class="grid">
       <ProjectCard

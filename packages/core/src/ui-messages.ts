@@ -95,6 +95,36 @@ const EN = {
   newestFirst: "newest first",
   fullActivity: "full activity →",
 
+  // Glance stats. These were literals in `resolve.ts` — the numbers are synced,
+  // but the words around them are chrome, and chrome belongs here. It's why a
+  // German page read "20 public repos · 725 commits this year".
+  // Default heading for the `areas` overview, used when the CMS hasn't set one.
+  areasHeading: "Where to go next",
+  areaModules: "{n} sections",
+  areaModulesOne: "1 section",
+
+  statRepos: "public repos",
+  statCommitsYear: "commits this year",
+  statCommitsAllTime: "commits all-time",
+  statLongestStreak: "longest streak",
+  repoCount: "{n} public repos",
+
+  // Repo card meta.
+  updatedAgo: "updated {age} ago",
+
+  // Activity feed. The verb is chosen from the event type at render time; the
+  // repo name is data. Previously `sources/github` baked the whole English
+  // sentence into the stored event, which put a string no translation could
+  // reach inside the store.
+  eventCommit: "Pushed to {repo}",
+  eventPr: "Opened a PR in {repo}",
+  eventStar: "Starred {repo}",
+  eventRepo: "Created {repo}",
+  eventRelease: "Released {repo} {name}",
+  eventMergedPr: "Merged “{title}” in {repo}",
+  eventGist: "Shared a gist",
+  eventGistNamed: "Shared a gist: {description}",
+
   // Projects / featured
   seeAllWork: "see all my work →",
   allReposGitHub: "all repos on GitHub →",
@@ -251,6 +281,30 @@ const DE: Messages = {
   newestFirst: "neueste zuerst",
   fullActivity: "gesamte Aktivität →",
 
+  areasHeading: "Wo es weitergeht",
+  areaModules: "{n} Bereiche",
+  areaModulesOne: "1 Bereich",
+
+  statRepos: "öffentliche Repos",
+  statCommitsYear: "Commits dieses Jahr",
+  statCommitsAllTime: "Commits insgesamt",
+  statLongestStreak: "längste Serie",
+  repoCount: "{n} öffentliche Repos",
+
+  updatedAgo: "vor {age} aktualisiert",
+
+  // "Push", "PR" and "Repo" stay English: they're the words used in German dev
+  // speech, and translating them ("Zusammenführungsanfrage") would be less
+  // legible to the audience, not more.
+  eventCommit: "Push nach {repo}",
+  eventPr: "PR in {repo} geöffnet",
+  eventStar: "{repo} mit Stern markiert",
+  eventRepo: "{repo} erstellt",
+  eventRelease: "{repo} {name} veröffentlicht",
+  eventMergedPr: "„{title}“ in {repo} gemerged",
+  eventGist: "Gist geteilt",
+  eventGistNamed: "Gist geteilt: {description}",
+
   seeAllWork: "alle Projekte ansehen →",
   allReposGitHub: "alle Repos auf GitHub →",
 
@@ -330,16 +384,18 @@ const DE: Messages = {
  * count to resolve. German and English disagree here in ways a single string
  * can't express (one "Song" vs several "Songs", one "Spiel" vs "Spiele").
  */
-const PLURALS: Record<Locale, Record<"track" | "artist" | "game", Plural>> = {
+const PLURALS: Record<Locale, Record<"track" | "artist" | "game" | "file", Plural>> = {
   en: {
     track: { one: "track", other: "tracks" },
     artist: { one: "artist", other: "artists" },
     game: { one: "game", other: "games" },
+    file: { one: "file", other: "files" },
   },
   de: {
     track: { one: "Song", other: "Songs" },
     artist: { one: "Künstler:in", other: "Künstler:innen" },
     game: { one: "Spiel", other: "Spiele" },
+    file: { one: "Datei", other: "Dateien" },
   },
 };
 
@@ -365,7 +421,7 @@ export function t(
 
 /** The correct plural form of a countable noun for the locale. */
 export function plural(
-  noun: "track" | "artist" | "game",
+  noun: "track" | "artist" | "game" | "file",
   count: number,
   locale: Locale = DEFAULT_LOCALE,
 ): string {

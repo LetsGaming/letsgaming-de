@@ -202,6 +202,26 @@ export interface ActivityView extends SectionMeta {
   sources: string[];
 }
 
+/**
+ * One area, as a card on an overview.
+ *
+ * Everything here already existed: `label` and `description` are CMS-owned on the
+ * nav node, and `description` was previously read only by the `<meta>` tag. It's a
+ * sentence written to tell a stranger what an area is, which is exactly what a
+ * visitor deciding whether to click needs — it just had no on-page reader.
+ */
+export interface AreaCardView {
+  /** The nav node id. */
+  id: string;
+  label: string;
+  /** The area's own sentence. Absent when the CMS hasn't written one. */
+  description?: string;
+  icon?: string;
+  href: string;
+  /** How many modules the area holds — a rough "there's more in here" signal. */
+  moduleCount: number;
+}
+
 export interface SectionMeta {
   /** Present on modules fed by a Source. Absent on CMS-authored ones — local
    *  content can't be stale. */
@@ -213,6 +233,7 @@ export interface SectionMeta {
 /** Discriminated by `kind`; the frontend maps kind -> component. */
 export type ResolvedModule =
   | { id: string; kind: "hero"; data: HeroView }
+  | { id: string; kind: "areas"; data: SectionMeta & { areas: AreaCardView[] } }
   | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null; moreHref: string } }
   | {
       id: string;

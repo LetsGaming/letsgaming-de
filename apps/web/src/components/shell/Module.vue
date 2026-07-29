@@ -2,6 +2,7 @@
 import type { Component } from "vue";
 import type { ResolvedModule } from "@lg/core";
 import HeroSection from "../sections/HeroSection.vue";
+import AreasSection from "../sections/AreasSection.vue";
 import FeaturedSection from "../sections/FeaturedSection.vue";
 import GlanceSection from "../sections/GlanceSection.vue";
 import ActivitySection from "../sections/ActivitySection.vue";
@@ -27,6 +28,7 @@ defineProps<{
 // exhaustive: adding a module kind without a section here is a compile error.
 const sections: Record<ResolvedModule["kind"], Component> = {
   hero: HeroSection,
+  areas: AreasSection,
   featured: FeaturedSection,
   glance: GlanceSection,
   activity: ActivitySection,

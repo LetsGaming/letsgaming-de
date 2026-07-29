@@ -26,6 +26,7 @@ import type { Localized } from "./i18n.js";
  */
 export const MODULE_KIND = {
   hero: "hero",
+  areas: "areas",
   featured: "featured",
   glance: "glance",
   activity: "activity",

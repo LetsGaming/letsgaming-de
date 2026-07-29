@@ -156,7 +156,21 @@ export type GitHubEventType = "commit" | "pr" | "star" | "repo";
 
 export interface GitHubEvent {
   type: GitHubEventType;
-  text: string;
+  /**
+   * The repo this happened to. The sentence a visitor reads is built from
+   * `type` + `repo` at resolve time, so it can be built in their language.
+   */
+  repo?: string;
+  /**
+   * Pre-rendered English sentence — legacy.
+   *
+   * The adapter used to bake "Pushed to letsgaming-de" into the store, which put
+   * a string no translation could reach inside the data. It now writes `repo` and
+   * lets the resolver phrase it. This stays optional and is still read as a
+   * fallback so events cached before the change keep rendering; drop it once the
+   * store has cycled (a sync writes every event fresh, so that's one poll).
+   */
+  text?: string;
   meta?: string;
   /** ISO timestamp. */
   at: string;

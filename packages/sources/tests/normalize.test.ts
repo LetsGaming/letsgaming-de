@@ -68,6 +68,10 @@ test("only known event types survive, mapped to normalized types", () => {
   assert.equal(d.events.length, 1);
   assert.equal(d.events[0]?.type, "commit");
   assert.equal(d.events[0]?.meta, "fix bug");
+  // The adapter stores what happened and to what; the sentence is the resolver's
+  // job, because it's the only layer that knows the reader's language.
+  assert.equal(d.events[0]?.repo, "a");
+  assert.equal(d.events[0]?.text, undefined);
 });
 
 test("contributions pass through per-day", () => {

@@ -154,8 +154,80 @@ export function lift(hex: string, minLightness = MIN_LIGHTNESS): string {
   return l >= minLightness ? hex : toHex(h, s, minLightness);
 }
 
-/** A language's colour, lifted to read on the page. Unknown languages get a
- *  neutral rather than an invented hue: colour is imported, never invented. */
+/**
+ * Resolve a source's spelling to the key both tables below are keyed on.
+ *
+ * The sources disagree about names — Wakapi says "Bash" where linguist says
+ * "Shell" — so every lookup goes through here rather than matching exactly.
+ */
+function langKey(name: string): string {
+  const key = name.trim().toLowerCase();
+  return key in LINGUIST ? key : (ALIASES[key] ?? key);
+}
+
+/**
+ * The canonical spelling of a language, for display.
+ *
+ * Same problem `langColor` already solves, one field over. Wakapi hands back
+ * `Json`, `Typescript`, `Php` — its own sentence-casing of whatever the editor
+ * plugin reported — and GitHub hands back linguist's `JSON`, `TypeScript`, `PHP`.
+ * Both were rendered verbatim, so /code showed "Sprachen: TypeScript" directly
+ * above "Diese Woche: Typescript" and the page disagreed with itself about how
+ * to spell the thing it's about.
+ *
+ * Names are imported for the same reason colours are: `JSON` is an acronym and
+ * `TypeScript` is a trademark, and neither is ours to re-case. An unrecognised
+ * name passes through untouched — better a source's odd spelling than a guess.
+ */
+const DISPLAY: Record<string, string> = {
+  typescript: "TypeScript",
+  javascript: "JavaScript",
+  python: "Python",
+  css: "CSS",
+  scss: "SCSS",
+  html: "HTML",
+  vue: "Vue",
+  svelte: "Svelte",
+  go: "Go",
+  rust: "Rust",
+  java: "Java",
+  kotlin: "Kotlin",
+  swift: "Swift",
+  "c#": "C#",
+  "c++": "C++",
+  c: "C",
+  php: "PHP",
+  ruby: "Ruby",
+  shell: "Shell",
+  lua: "Lua",
+  dart: "Dart",
+  elixir: "Elixir",
+  haskell: "Haskell",
+  zig: "Zig",
+  json: "JSON",
+  yaml: "YAML",
+  toml: "TOML",
+  xml: "XML",
+  markdown: "Markdown",
+  sql: "SQL",
+  dockerfile: "Dockerfile",
+  makefile: "Makefile",
+  powershell: "PowerShell",
+  astro: "Astro",
+  nix: "Nix",
+  "objective-c": "Objective-C",
+  perl: "Perl",
+  r: "R",
+  scala: "Scala",
+  text: "Text",
+  other: "Other",
+};
+
+/** The canonical display spelling, or the source's own if we don't know it. */
+export function langName(name: string): string {
+  return DISPLAY[langKey(name)] ?? name.trim();
+}
+
 /**
  * A language's colour, lifted to read on the page.
  *
@@ -167,7 +239,6 @@ export function lift(hex: string, minLightness = MIN_LIGHTNESS): string {
  * imported, and there's nothing to import from a name nobody recognises.
  */
 export function langColor(name: string): string {
-  const key = name.trim().toLowerCase();
-  const real = LINGUIST[key] ?? LINGUIST[ALIASES[key] ?? ""];
+  const real = LINGUIST[langKey(name)];
   return real ? lift(real) : "#7d7d7d";
 }

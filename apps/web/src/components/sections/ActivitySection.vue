@@ -45,7 +45,7 @@ const contributionCells = computed<HeatCell[]>(() =>
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading">
     <template #note><Freshness :freshness="module.data.freshness" /></template>
-    <StatGrid :columns="4">
+    <StatGrid :columns="4" separation="figures">
       <StatTile
         v-for="(s, i) in module.data.stats"
         :key="i"

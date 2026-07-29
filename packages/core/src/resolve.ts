@@ -14,6 +14,7 @@
 import type { SiteContent, Project, Link } from "./content.js";
 import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
+import { t as uiText, plural as uiPlural, type MessageKey } from "./ui-messages.js";
 import type { ModuleDescriptor } from "./modules.js";
 import { defaultMusicSettings } from "./music.js";
 import { defaultWrappedSettings, wrappedWindow } from "./wrapped.js";
@@ -21,8 +22,14 @@ import { defaultPlaytimeSettings } from "./playtime-settings.js";
 import { capList } from "./list-settings.js";
 import { DEFAULT_ACTIVITY_RANGE, type ActivityRange } from "./activity-range.js";
 import { AREA } from "./ia.js";
-import { collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
-import { SOURCE_LABEL, type GitHubData, type SourceData, type SourceId } from "./source.js";
+import { areaHref, collectModuleIds, targetHref, type NavNode, visibleNav } from "./nav.js";
+import {
+  SOURCE_LABEL,
+  type GitHubData,
+  type GitHubEvent,
+  type SourceData,
+  type SourceId,
+} from "./source.js";
 import type { FreshnessView, PostView, WrappedRankView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
@@ -244,6 +251,14 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const locale = input.locale ?? DEFAULT_LOCALE;
   const now = input.now ?? new Date();
   const L = (v: Parameters<typeof localize>[0]) => localize(v, locale);
+  /**
+   * Chrome text, in the resolved locale. `L` localizes *content* (CMS-authored,
+   * stored as `Localized`); `T` localizes the words this resolver itself emits —
+   * stat labels, repo meta, activity verbs. Those were English literals here,
+   * which is why a German page still said "public repos" and "updated 3w ago".
+   */
+  const T = (key: MessageKey, vars?: Record<string, string | number>) =>
+    uiText(key, locale, vars);
   const { content, source } = input;
   const assets = input.assets ?? new Map<string, ResolvableAsset>();
 
@@ -297,13 +312,24 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     return view;
   };
 
+  /**
+   * The meta line under a repo card: freshness, and a star count only when there
+   * is one to report.
+   *
+   * `★ 0` used to render on every card. A star count is social proof, and printing
+   * it at zero repeats "nobody has starred this" once per card — twelve times on
+   * /code. Omitted below one, the line still carries the useful half.
+   */
+  const repoMeta = (stars: number, pushedAt: string): string[] => [
+    ...(stars > 0 ? [`★ ${stars}`] : []),
+    T("updatedAgo", { age: relativeTime(pushedAt, now) }),
+  ];
+
   const resolveProject = (p: Project): ProjectView => {
     // Enrich meta from synced repo data when a repo link resolves; otherwise use
     // the authored meta verbatim. Keeps stars/freshness honest without a rebuild.
     const repo = p.repo ? repoByName.get(p.repo.toLowerCase()) : undefined;
-    const meta = repo
-      ? [`★ ${repo.stars}`, `updated ${relativeTime(repo.pushedAt, now)} ago`]
-      : p.meta.map(L);
+    const meta = repo ? repoMeta(repo.stars, repo.pushedAt) : p.meta.map(L);
     return {
       id: p.id,
       name: p.name,
@@ -330,7 +356,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       name: r.name,
       tag: r.language ?? "",
       description: r.description ?? "",
-      meta: [`★ ${r.stars}`, `updated ${relativeTime(r.pushedAt, now)} ago`],
+      meta: repoMeta(r.stars, r.pushedAt),
       href: r.url,
       featured: pinnedNames.has(r.name),
     }));
@@ -348,19 +374,35 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     if (!gh) return [];
     const s = gh.stats;
     return [
-      { value: compactNumber(s.repos), label: "public repos" },
-      { value: compactNumber(s.commitsYear), label: "commits this year" },
-      { value: compactNumber(s.commitsAllTime), label: "commits all-time" },
-      { value: compactNumber(s.longestStreakDays), unit: "d", label: "longest streak" },
+      { value: compactNumber(s.repos), label: T("statRepos") },
+      { value: compactNumber(s.commitsYear), label: T("statCommitsYear") },
+      { value: compactNumber(s.commitsAllTime), label: T("statCommitsAllTime") },
+      { value: compactNumber(s.longestStreakDays), unit: "d", label: T("statLongestStreak") },
     ];
   };
+
+  /**
+   * Phrase a GitHub event in the reader's language.
+   *
+   * The adapter stores what happened (`type`) and to what (`repo`); the sentence
+   * is built here. `text` is the pre-localization fallback for events still in the
+   * store from before the change — see `GitHubEvent.text`.
+   */
+  const EVENT_MESSAGE: Record<GitHubEvent["type"], MessageKey> = {
+    commit: "eventCommit",
+    pr: "eventPr",
+    star: "eventStar",
+    repo: "eventRepo",
+  };
+  const eventText = (e: GitHubEvent): string =>
+    e.repo ? T(EVENT_MESSAGE[e.type], { repo: e.repo }) : (e.text ?? "");
 
   /** Merge GitHub releases, merged PRs, and gists into one newest-first feed. */
   const highlightViews = (data: GitHubData): HighlightView[] => {
     const rel = (iso: string) => relativeTime(iso, now);
     const releases: HighlightView[] = (data.releases ?? []).map((r) => ({
       type: "release",
-      text: `Released ${r.repo} ${r.name || r.tagName}`,
+      text: T("eventRelease", { repo: r.repo, name: r.name || r.tagName }),
       meta: r.tagName,
       href: safeHref(r.url),
       at: r.publishedAt,
@@ -368,15 +410,15 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     }));
     const prs: HighlightView[] = (data.mergedPrs ?? []).map((p) => ({
       type: "pr",
-      text: `Merged “${p.title}” in ${p.repo}`,
+      text: T("eventMergedPr", { title: p.title, repo: p.repo }),
       href: safeHref(p.url),
       at: p.mergedAt,
       relative: rel(p.mergedAt),
     }));
     const gists: HighlightView[] = (data.gists ?? []).map((g) => ({
       type: "gist",
-      text: g.description ? `Shared a gist: ${g.description}` : "Shared a gist",
-      meta: `${g.files} file${g.files === 1 ? "" : "s"}`,
+      text: g.description ? T("eventGistNamed", { description: g.description }) : T("eventGist"),
+      meta: `${g.files} ${uiPlural("file", g.files, locale)}`,
       href: safeHref(g.url),
       at: g.updatedAt,
       relative: rel(g.updatedAt),
@@ -412,6 +454,44 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     const note = descriptor.note ? L(descriptor.note) : undefined;
 
     switch (descriptor.kind) {
+      /**
+       * The site's own table of contents.
+       *
+       * Home previewed one area. `glance` and `featured` are both GitHub, so a
+       * visitor who landed on it learned "developer with repos" and was never told
+       * /life existed — the half of the site with the plant sensors and the LED
+       * shelf, and the half that sounds like a person. The nav bar was the only
+       * thing saying otherwise, and a nav bar is wayfinding, not an invitation.
+       *
+       * Built entirely from the nav tree, so it can't drift: add an area in the CMS
+       * and it appears here. Branch nodes are included as themselves — you can't
+       * preview a tab group, but you can point at it.
+       *
+       * The module's own area is skipped. A card on Home linking to Home is furniture.
+       */
+      case "areas": {
+        const self = navView.find((a) => (a.modules ?? []).includes(descriptor.id));
+        return {
+          id: descriptor.id,
+          kind: "areas",
+          data: {
+            heading: heading || T("areasHeading"),
+            note,
+            areas: navView
+              .filter((a) => a.id !== self?.id)
+              .map((a) => ({
+                id: a.id,
+                label: a.label,
+                ...(a.description ? { description: a.description } : {}),
+                ...(a.icon ? { icon: a.icon } : {}),
+                href: areaHref(navView, a.id),
+                moduleCount: a.children
+                  ? a.children.reduce((n, c) => n + (c.modules?.length ?? 0), 0)
+                  : (a.modules?.length ?? 0),
+              })),
+          },
+        };
+      }
       case "hero": {
         const eyebrow = `${content.meta.name} · ${L(content.meta.role)} · ${L(
           content.meta.location,
@@ -462,7 +542,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
               ? {
                   latest: {
                     type: latest.type,
-                    text: latest.text,
+                    text: eventText(latest),
                     at: latest.at,
                     relative: relativeTime(latest.at, now),
                   },
@@ -490,7 +570,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
               ? [
                   ...gh.events.map((e) => ({
                     type: e.type,
-                    text: e.text,
+                    text: eventText(e),
                     meta: e.meta,
                     at: e.at,
                     relative: relativeTime(e.at, now),
@@ -556,7 +636,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           kind: "projects",
           data: {
             heading,
-            note: note ?? (repoCount != null ? `${compactNumber(repoCount)} public repos` : undefined),
+            note:
+              note ??
+              (repoCount != null ? T("repoCount", { n: compactNumber(repoCount) }) : undefined),
             freshness: freshnessOf("github", projectList.length > 0),
             projects: projectList,
             githubUrl,

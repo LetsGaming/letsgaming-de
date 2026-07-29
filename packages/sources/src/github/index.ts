@@ -49,18 +49,19 @@ const EVENT_TYPE: Record<string, GitHubEventType> = {
   CreateEvent: "repo",
 };
 
+/**
+ * Raw event → the two facts the resolver needs: what happened, and to what.
+ *
+ * This used to compose the English sentence here ("Pushed to letsgaming-de") and
+ * store it. Normalizing is for shape, not for phrasing: a sentence written at
+ * ingest is frozen in whatever language the adapter was written in, and the site
+ * ships in two. The words now live in the message catalog and the store keeps
+ * only `type` + `repo`.
+ */
 function normalizeEvent(e: RawEvent): GitHubEvent | null {
   const type = EVENT_TYPE[e.type];
   if (!type) return null;
-  const text =
-    type === "commit"
-      ? `Pushed to ${e.repo}`
-      : type === "pr"
-        ? `Opened a PR in ${e.repo}`
-        : type === "star"
-          ? `Starred ${e.repo}`
-          : `Created ${e.repo}`;
-  return { type, text, ...(e.detail ? { meta: e.detail } : {}), at: e.createdAt };
+  return { type, repo: e.repo, ...(e.detail ? { meta: e.detail } : {}), at: e.createdAt };
 }
 
 export function normalizeGitHub(raw: GitHubRaw): GitHubData {

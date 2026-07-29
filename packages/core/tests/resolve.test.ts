@@ -149,9 +149,7 @@ test("activity merges commits and releases/PRs/gists into one newest-first strea
     stats: { repos: 1, commitsYear: 1, commitsAllTime: 1, longestStreakDays: 1 },
     languages: [],
     contributions: [],
-    events: [
-      { type: "commit", text: "Pushed to c", meta: "m", at: "2026-01-07T00:00:00Z" },
-    ],
+    events: [{ type: "commit", repo: "c", meta: "m", at: "2026-01-07T00:00:00Z" }],
     releases: [
       { repo: "a", name: "R", tagName: "v1", url: "https://x/r", publishedAt: "2026-01-05T00:00:00Z" },
     ],
@@ -179,6 +177,9 @@ test("activity merges commits and releases/PRs/gists into one newest-first strea
     ["pr", "commit", "release", "gist"],
   );
   assert.match(items[0]!.text, /Merged/);
+  // The commit's sentence is phrased at resolve time from type + repo, not read
+  // from the store. Default locale here, so it's the English catalog entry.
+  assert.equal(items[1]?.text, "Pushed to c");
   assert.equal(items[2]?.meta, "v1"); // release tag
   assert.equal(items[3]?.meta, "2 files"); // gist file count
   assert.ok(items[0]!.relative.length > 0); // relative time pre-computed
@@ -517,4 +518,173 @@ test("playtime recently-played is gated on the game category, like the old prese
   const pt = view.modules["playtime"];
   if (!pt || pt.kind !== "playtime") throw new Error("expected playtime");
   assert.deepEqual(pt.data.recent, [], "game disabled → empty shelf");
+});
+
+test("resolver-emitted chrome follows the locale (stat labels, repo meta, event verbs)", () => {
+  // The regression this guards: stat labels, "updated … ago" and the activity
+  // verbs were English literals in the resolver, so a German page rendered
+  // "20 public repos" next to "Auf einen Blick". Content localization already
+  // worked; this is the other half — the words the resolver writes itself.
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p1")],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["glance", "projects"] }];
+  const modules: ModuleDescriptor[] = [
+    { id: "glance", kind: "glance", heading: en("Glance") },
+    { id: "projects", kind: "projects", heading: en("Projects") },
+  ];
+  const github: GitHubData = {
+    stats: { repos: 20, commitsYear: 725, commitsAllTime: 1800, longestStreakDays: 14 },
+    languages: [],
+    contributions: [],
+    events: [{ type: "commit", repo: "letsgaming-de", at: "2026-01-09T00:00:00Z" }],
+    repos: [
+      {
+        name: "starred",
+        description: "",
+        language: "TypeScript",
+        stars: 3,
+        url: "https://x/s",
+        pushedAt: "2026-01-08T00:00:00Z",
+        fork: false,
+      },
+      {
+        name: "unstarred",
+        description: "",
+        language: "TypeScript",
+        stars: 0,
+        url: "https://x/u",
+        pushedAt: "2026-01-08T00:00:00Z",
+        fork: false,
+      },
+    ],
+  };
+  const at = { source: { github }, nav, modules, now: new Date("2026-01-10T00:00:00Z") };
+
+  const de = resolveSiteView({ content, ...at, locale: "de" });
+  const glanceDe = de.modules["glance"];
+  if (!glanceDe || glanceDe.kind !== "glance") throw new Error("expected a glance module");
+  assert.deepEqual(
+    glanceDe.data.stats.map((s) => s.label),
+    ["öffentliche Repos", "Commits dieses Jahr", "Commits insgesamt", "längste Serie"],
+  );
+  assert.equal(glanceDe.data.latest?.text, "Push nach letsgaming-de");
+
+  const projectsDe = de.modules["projects"];
+  if (!projectsDe || projectsDe.kind !== "projects") throw new Error("expected a projects module");
+  assert.equal(projectsDe.data.note, "20 öffentliche Repos");
+  const [starred, unstarred] = projectsDe.data.projects;
+  // A star count is social proof; printing it at zero says the opposite once per
+  // card, so it's omitted below one. Freshness stays either way.
+  assert.deepEqual(starred?.meta, ["★ 3", "vor 2d aktualisiert"]);
+  assert.deepEqual(unstarred?.meta, ["vor 2d aktualisiert"]);
+
+  // Same input, English locale — the numbers don't move, only the words.
+  const enView = resolveSiteView({ content, ...at, locale: "en" });
+  const glanceEn = enView.modules["glance"];
+  if (!glanceEn || glanceEn.kind !== "glance") throw new Error("expected a glance module");
+  assert.equal(glanceEn.data.stats[0]?.label, "public repos");
+  assert.equal(glanceEn.data.stats[0]?.value, glanceDe.data.stats[0]?.value);
+  assert.equal(glanceEn.data.latest?.text, "Pushed to letsgaming-de");
+});
+
+test("events cached before the structured-repo change still render", () => {
+  // `text` is the legacy field: the adapter used to store the English sentence.
+  // Rows written before that change have no `repo`, and must not render blank
+  // while the store cycles.
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p1")],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["glance"] }];
+  const modules: ModuleDescriptor[] = [{ id: "glance", kind: "glance", heading: en("Glance") }];
+  const github: GitHubData = {
+    stats: { repos: 1, commitsYear: 1, commitsAllTime: 1, longestStreakDays: 1 },
+    languages: [],
+    contributions: [],
+    events: [{ type: "commit", text: "Pushed to legacy", at: "2026-01-09T00:00:00Z" }],
+  };
+
+  const view = resolveSiteView({
+    content,
+    source: { github },
+    nav,
+    modules,
+    locale: "de",
+    now: new Date("2026-01-10T00:00:00Z"),
+  });
+  const glance = view.modules["glance"];
+  if (!glance || glance.kind !== "glance") throw new Error("expected a glance module");
+  assert.equal(glance.data.latest?.text, "Pushed to legacy");
+});
+
+test("areas builds the site's table of contents from the nav tree", () => {
+  // Home previewed one area (glance and featured are both GitHub), so this module
+  // exists to say the rest of the site is there. It reads the nav tree rather than
+  // its own content, so adding an area in the CMS can't leave it stale.
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en("a "), highlight: en("b"), after: en(" c") },
+    lede: en("l"),
+    status: { verb: en("building"), now: en("x") },
+    bio: [en("p1")],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [
+    { id: "home", label: en("Home"), modules: ["toc"] },
+    {
+      id: "code",
+      label: { en: "Code", de: "Code" },
+      description: { en: "What I build", de: "Was ich baue" },
+      modules: ["a", "b"],
+    },
+    { id: "life", label: { en: "Life", de: "Leben" }, modules: ["c"] },
+    { id: "draft", label: en("Draft"), modules: ["d"], hidden: true },
+  ];
+  const modules: ModuleDescriptor[] = [
+    { id: "toc", kind: "areas" },
+    { id: "a", kind: "glance" },
+    { id: "b", kind: "projects" },
+    { id: "c", kind: "hobbies" },
+    { id: "d", kind: "bio" },
+  ];
+
+  const view = resolveSiteView({ content, source: {}, nav, modules, locale: "de" });
+  const mod = view.modules["toc"];
+  if (!mod || mod.kind !== "areas") throw new Error("expected an areas module");
+
+  // Its own area is skipped — a card on Home linking to Home is furniture. Hidden
+  // nodes are already gone via visibleNav.
+  assert.deepEqual(
+    mod.data.areas.map((a) => a.id),
+    ["code", "life"],
+  );
+  // Labels and descriptions are CMS-owned and localized like any other content.
+  assert.equal(mod.data.areas[0]?.label, "Code");
+  assert.equal(mod.data.areas[0]?.description, "Was ich baue");
+  assert.equal(mod.data.areas[0]?.moduleCount, 2);
+  // No description written is absent, not empty — the card drops the line.
+  assert.equal(mod.data.areas[1]?.description, undefined);
+  // Real hrefs, so the cards are middle-clickable and crawlable.
+  assert.ok(mod.data.areas.every((a) => a.href.startsWith("/")));
+  // Heading falls back to the catalog in the resolved locale.
+  assert.equal(mod.data.heading, "Wo es weitergeht");
 });

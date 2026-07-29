@@ -269,6 +269,14 @@ export function buildStackedChart(opts: StackedChartOptions): StackedChart {
   const yTicks = yTickVals.map((v) => ({ v, y: +yAt(v).toFixed(1), label: String(v) }));
 
   // X ticks: a readable subset (~6), first and last always shown.
+  //
+  // The last stepped tick and the forced final one used to be pushed
+  // unconditionally, which put them one bucket apart whenever `(n-1) % stepX`
+  // came out small — 72 hourly buckets step by 14, so the axis ended with ticks
+  // at 70 and 71 and rendered "07-27 07h" on top of "07-27 22h21". The final
+  // bucket has to be labelled (it's the edge of the range the reader is
+  // interrogating), so it's the stepped one that gives way: if the two are closer
+  // than half a step, the final tick replaces it rather than crowding it.
   const targetX = Math.min(n, 6);
   const stepX = Math.max(1, Math.round((n - 1) / Math.max(1, targetX - 1)));
   const xTicks: StackedChart["xTicks"] = [];
@@ -276,6 +284,8 @@ export function buildStackedChart(opts: StackedChartOptions): StackedChart {
     xTicks.push({ x: +xAt(i).toFixed(1), label: bucketLabel(buckets[i]!, unit, tz), anchor: "middle" });
   }
   if (n > 1 && (n - 1) % stepX !== 0) {
+    const lastStepped = Math.floor((n - 1) / stepX) * stepX;
+    if (n - 1 - lastStepped < stepX / 2 && xTicks.length > 1) xTicks.pop();
     xTicks.push({ x: +xAt(n - 1).toFixed(1), label: bucketLabel(buckets[n - 1]!, unit, tz), anchor: "end" });
   }
   if (xTicks.length) {

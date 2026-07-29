@@ -20,9 +20,19 @@
 
   /* ── The accent. Sampled off the LED strip on the shelf, photographed on
      /life with the hex in the caption — that's why it's this purple and not
-     the violet-500 the prototype shipped. White passes AA on --live in both
-     themes, so --on-live is fixed. */
+     the violet-500 the prototype shipped. */
   --live: #8b5cf6;
+
+  /* The accent when it has to carry white text. --live itself is 4.23:1 against
+     white here — fine for a 9px dot or a 1px rule, 0.27 short of AA for a 15px
+     button label, and the primary CTA is exactly that. Same hue (258°) and same
+     saturation, two lightness steps down: 4.71:1. Light mode's --live already
+     passes at 7.18:1, so there it aliases straight back.
+
+     One consumer: `.btn-primary`'s fill. Same rule as --glow-live — grep before
+     adding a second, and if a second is genuinely needed, ask first whether that
+     element should be carrying white at all. */
+  --live-solid: #8351f5;
 
   /* Error. Not decoration and not "now": a form that can't say what went wrong
      is broken, and red-for-error is a convention old enough to count as
@@ -176,7 +186,20 @@
   --muted: #6b6494;
 
   --live: #7a24c9; /* white passes AA on this */
+  --live-solid: var(--live); /* 7.18:1 against white — no separate fill needed */
   --live-ink: #6a1eb0; /* AA as text on --surf-0 */
+
+  /* Error, re-derived rather than inherited. The dark values (#ff6b5e / #ff8f85)
+     were written to glow on a near-black ground; against --surf-0 here they land
+     at 2.47:1 and 1.95:1, so the one message a form absolutely has to deliver was
+     the least readable text on the page. This block overrode twenty tokens and
+     skipped these two, which is the usual shape of a retrofitted light theme:
+     the states nobody screenshots get left behind.
+
+     Same convention as dark — --danger is the fill/border, --danger-ink is the
+     text — and both are now checked against --surf-0 through --surf-3. */
+  --danger: #b3261e; /* 5.78:1 on --surf-0; white on it as a fill is 6.54:1 */
+  --danger-ink: #9c1f18; /* 7.09:1 on --surf-0 — error text, so it gets the margin */
 
   --glow-live: 0 0 9px 1px rgba(122, 36, 201, 0.45);
 

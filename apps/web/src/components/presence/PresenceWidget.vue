@@ -114,8 +114,16 @@ const idle = computed(
             <span v-if="!loaded" class="pw-muted">{{ t("presenceLoading") }}</span>
             <span v-else-if="unreachable" class="pw-muted">{{ t("presenceUnknown") }}</span>
           </div>
+          <!--
+            Both quotation marks, and both from the same span class.
+
+            The closing one was simply missing, so a Discord status rendered as
+            an open quote that never resolved. The text is clamped to two lines,
+            which means a long status ends in an ellipsis and the closer is the
+            only thing telling a reader the quote was cut rather than broken.
+          -->
           <div v-if="customStatus" class="pw-cstat">
-            <span class="pw-q">“</span>{{ customStatus }}
+            <span class="pw-q">“</span>{{ customStatus }}<span class="pw-q pw-q-close">”</span>
           </div>
         </div>
       </div>
@@ -312,6 +320,10 @@ const idle = computed(
   font-family: var(--f-d);
   color: color-mix(in srgb, var(--ink) 65%, var(--muted));
   margin-right: 1px;
+}
+.pw-q-close {
+  margin-right: 0;
+  margin-left: 1px;
 }
 
 /* activity */

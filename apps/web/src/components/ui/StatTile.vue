@@ -6,10 +6,11 @@
  * uses the inert form (one list, nothing to switch between).
  *
  * Two sizes, because there were already two of these. `inset` is the compact tile
- * inside a ModuleCard (Listening, Time played, Wrapped); `lead` is the larger
- * standalone tile the Activity and Glance dashboards open with, which lived as a
- * global `.stat` rule and had drifted apart in surface, radius, type scale and
- * shadow. Same component now; the difference is a prop rather than an accident.
+ * inside a ModuleCard (Listening, Time played, Wrapped) — a control, so it keeps its
+ * surface and border. `lead` opens a dashboard (Activity, Glance) and is no longer a
+ * tile at all: a bare figure, separated from its neighbours by a hairline. It lived
+ * as a global `.stat` rule and had drifted apart in surface, radius, type scale and
+ * shadow; same component now, and the difference is a prop rather than an accident.
  */
 interface Props {
   /** The readout. Omit and use the `value` slot for richer content (a Duration). */
@@ -54,12 +55,23 @@ const emit = defineEmits<{ select: [] }>();
   border-radius: var(--r-control);
   padding: var(--sp-12) var(--sp-14);
 }
-/* The former global `.stat`: a lifted card rather than an inset control. */
+/* The former global `.stat`. No longer a card.
+ *
+ * These were four lifted boxes — surface, border, radius, shadow — each holding one
+ * number, and they opened both the home page and /code. Four peer readouts don't
+ * need four containers: a card's job is to say "this is a separate surface", and
+ * saying it four times in a row about four equivalent figures says nothing. It also
+ * spent the page's one elevation signal on its least hierarchical content, so the
+ * stat row landed with the same weight as the hero and the project grid.
+ *
+ * Now: alignment plus a hairline, which is step two of the ladder instead of step
+ * five. The figure gets larger because it no longer competes with a box for
+ * attention, and the row reads as one band rather than four objects — which is
+ * also closer to what it is, a readout off a sync. */
 .st--lead {
-  background: var(--surf-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-  box-shadow: var(--sh-card);
+  padding: var(--sp-2) 0 var(--sp-2) var(--sp-20);
+  border: 0;
+  border-inline-start: 1px solid var(--line-1);
 }
 .st-tab {
   cursor: pointer;
@@ -84,7 +96,11 @@ const emit = defineEmits<{ select: [] }>();
 .st--lead .st-n {
   font-family: var(--f-b);
   font-weight: 700;
-  font-size: 30px;
+  font-size: 34px;
+  letter-spacing: -0.02em;
+  /* Counters, and a row of them read down the column — proportional figures make
+     the digits sit at different widths per tile and the row stops aligning. */
+  font-variant-numeric: tabular-nums;
 }
 /* A <Duration> in the value slot renders its own units; scoped styles don\'t
    reach slotted content, so they need naming explicitly. */
