@@ -215,6 +215,32 @@ export interface MarkdownAssetResponse extends Asset {
   markdown: string;
 }
 
+/** The editor's view of a post: the source, plus the link that shows a draft. */
+export interface MarkdownSourceResponse extends MarkdownAssetResponse {
+  /** Preview token for `/md/<slug>?preview=…`. Absent when PREVIEW_SECRET is unset. */
+  previewToken?: string;
+}
+
+/**
+ * The metadata a PATCH may change, and the string fields it may change by name.
+ *
+ * One definition because there used to be two: the route whitelisted five field
+ * names inline, the client declared the body a `Record<string, unknown>`. Two
+ * lists that can't disagree out loud — anything the client sent and the route
+ * hadn't listed was dropped, and the drop was a 200 with the unchanged asset in
+ * the body. That's how `slug` came to be unpatchable while the CMS spent months
+ * believing it was naming posts.
+ */
+export const ASSET_TEXT_FIELDS = ["filename", "alt", "title", "caption", "description"] as const;
+export type AssetTextField = (typeof ASSET_TEXT_FIELDS)[number];
+
+export interface AssetPatch extends Partial<Record<AssetTextField, string>> {
+  /** Markdown only — the public path under `/md`. Other kinds have no slug. */
+  slug?: string;
+  folderId?: string | null;
+  tags?: string[];
+}
+
 export interface AssetFolderResponse {
   id: string;
   name: string;

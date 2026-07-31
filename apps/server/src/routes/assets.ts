@@ -14,14 +14,16 @@ import type { FastifyInstance } from "fastify";
 import type { Store } from "@lg/db";
 import {
   ASSET_KINDS,
+  ASSET_TEXT_FIELDS,
   classifyAsset,
   isAssetKind,
   parsePost,
   slugify,
   type Asset,
   type AssetKind,
+  type AssetPatch,
 } from "@lg/core";
-import { isValidPreviewToken } from "../preview.js";
+import { isValidPreviewToken, previewToken } from "../preview.js";
 import { createReadStream } from "node:fs";
 import { mkdir, readFile, writeFile, stat, unlink, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -29,7 +31,7 @@ import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type { ServerEnv } from "../env.js";
 import { requireAuth } from "../auth/guard.js";
-import { badRequest, notFound, payloadTooLarge, unsupportedMedia } from "../errors.js";
+import { badRequest, conflict, notFound, payloadTooLarge, unsupportedMedia } from "../errors.js";
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB (covers PDFs)
 const THUMB_WIDTH = 320;
@@ -89,11 +91,40 @@ export async function registerAssetRoutes(
   const variantPath = (hash: string, width: number, fmt: string) =>
     join(variantsDir, `${hash}-w${width}.${fmt}`);
 
+  /**
+   * Is this slug spoken for by a *different* asset?
+   *
+   * `exceptId` is what makes re-saving a post idempotent: the CMS sends the whole
+   * patch every time, so an asset keeping the slug it already owns must not read
+   * as a collision.
+   */
+  const slugTaken = (slug: string, exceptId?: string): boolean => {
+    const owner = store.assets.getBySlug(slug);
+    return owner !== null && owner.id !== exceptId;
+  };
+
   /** A unique markdown slug derived from a preferred base. */
   const uniqueSlug = (base: string): string => {
     let slug = slugify(base);
     let n = 2;
-    while (store.assets.getBySlug(slug)) slug = `${slugify(base)}-${n++}`;
+    while (slugTaken(slug)) slug = `${slugify(base)}-${n++}`;
+    return slug;
+  };
+
+  /**
+   * The slug a PATCH asked for, or a thrown error explaining why it can't have it.
+   *
+   * Suffixing a collision away (what upload does) is right for a file that arrived
+   * without an opinion, and wrong here: an explicit rename that silently lands
+   * somewhere else is the same failure as an explicit rename that silently doesn't
+   * happen. `slug` is a UNIQUE column, so the alternative is a constraint error
+   * surfacing as a 500.
+   */
+  const requestedSlug = (asset: Asset, value: unknown): string => {
+    if (asset.kind !== "markdown") throw badRequest("Only markdown assets have a slug.");
+    if (typeof value !== "string" || !value.trim()) throw badRequest("Slug must be a non-empty string.");
+    const slug = slugify(value);
+    if (slugTaken(slug, asset.id)) throw conflict(`Slug "${slug}" is already taken.`);
     return slug;
   };
 
@@ -280,6 +311,37 @@ export async function registerAssetRoutes(
   });
 
   /**
+   * Read a markdown asset's source for editing.
+   *
+   * The editor used to fetch the public `/api/assets/md/<slug>` and its comment
+   * said drafts were "already gated there by the preview token" — which is true,
+   * and the reason it couldn't open one: nothing mints that token, and the CMS
+   * never sent one. Every post is born `draft: true`, so the editor 404'd on
+   * precisely the posts that only exist to be edited.
+   *
+   * Authenticating the *public* route would have been the smaller diff and the
+   * wrong one: the read path stays free of session concerns. So the editor reads
+   * from the CMS API instead, by id, the same identity it saves against — and the
+   * draft gate on the public path is left exactly as strict as it was.
+   */
+  app.get<{ Params: { id: string } }>("/api/cms/assets/:id/content", guard, async (req) => {
+    const a = store.assets.getById(req.params.id);
+    if (!a) throw notFound("Not found.");
+    if (a.kind !== "markdown") throw badRequest("Only markdown assets have editable content.");
+    const markdown = await readFile(origPath(a.hash, a.ext), "utf8").catch(() => null);
+    if (markdown == null) throw notFound("Not found.");
+    return {
+      ...a,
+      markdown,
+      // Lets the panel's Preview button open a draft. Absent when no secret is
+      // configured, which is the documented "no previews at all" mode.
+      ...(a.slug && env.previewSecret
+        ? { previewToken: previewToken(a.slug, env.previewSecret) }
+        : {}),
+    };
+  });
+
+  /**
    * Rewrite a markdown asset's contents.
    *
    * The library is content-addressed — hash the bytes, dedupe, never store the
@@ -322,20 +384,33 @@ export async function registerAssetRoutes(
     },
   );
 
+  /**
+   * Patch an asset's metadata.
+   *
+   * The field list is `ASSET_TEXT_FIELDS` from core rather than a literal here,
+   * because the literal was half of a contract whose other half lived in the CMS
+   * client — and `slug`, which the CORS config, the store's `update()` and the
+   * editor all assumed was patchable, was in neither half. It was dropped on the
+   * floor and answered 200, so the CMS created posts under the slug the *upload*
+   * had derived from the filename, and then asked for them under the one it
+   * thought it had set.
+   */
   app.patch<{ Params: { id: string }; Body: Record<string, unknown> }>(
     "/api/cms/assets/:id",
     guard,
-    async (req, reply) => {
+    async (req) => {
+      const asset = store.assets.getById(req.params.id);
+      if (!asset) throw notFound("Not found.");
       const b = req.body ?? {};
-      const patch: Partial<Pick<Asset, "filename" | "alt" | "title" | "caption" | "description" | "folderId">> = {};
-      for (const k of ["filename", "alt", "title", "caption", "description"] as const) {
+      const patch: AssetPatch = {};
+      for (const k of ASSET_TEXT_FIELDS) {
         if (typeof b[k] === "string") patch[k] = b[k] as string;
       }
       if ("folderId" in b) patch.folderId = b.folderId === null ? null : String(b.folderId);
-      const updated = store.assets.update(req.params.id, patch);
-      if (!updated) throw notFound("Not found.");
-      if (Array.isArray(b.tags)) store.assets.setTags(req.params.id, b.tags.map(String));
-      return store.assets.getById(req.params.id);
+      if ("slug" in b) patch.slug = requestedSlug(asset, b.slug);
+      store.assets.update(asset.id, patch);
+      if (Array.isArray(b.tags)) store.assets.setTags(asset.id, b.tags.map(String));
+      return store.assets.getById(asset.id);
     },
   );
 

@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### The blog editor can create a post, and open one
+
+- **A post's slug is saved.** `PATCH /api/cms/assets/:id` whitelisted the fields it
+  would accept and `slug` wasn't among them, so the CMS's rename step was dropped
+  and answered `200` with the unchanged asset. Posts kept the slug the *upload* had
+  derived from the filename, never picked up the `blog/` prefix that makes them
+  posts, and so never appeared in the Blog list — while the editor asked for them
+  under the slug it believed it had set and got a 404 that pointed at the reader.
+  The accepted fields are now one list in `@lg/core` that both ends import.
+- **Renaming onto a taken slug is a `409`**, not a silent suffix and not the `500`
+  the UNIQUE column would otherwise produce. Re-saving a post under the slug it
+  already owns is not a collision with itself.
+- **The editor reads drafts.** It used to fetch the public `/md/<slug>` route, which
+  404s a draft without a preview token that nothing mints and the CMS never held —
+  and every new post is born a draft, so the editor could only open posts that no
+  longer needed editing. It now reads by id over the CMS API
+  (`GET /api/cms/assets/:id/content`), which also hands the panel a preview token,
+  so the Preview button opens the draft you're looking at. The public read path is
+  untouched and exactly as strict as it was.
+
 ### Wrapped — a retrospective that shows up on a schedule
 
 - **A periodic look back at what you listened to and played**, in the spirit of

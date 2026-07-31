@@ -16,10 +16,12 @@ import type {
   AssetDetail,
   AssetFolderResponse,
   AssetListResponse,
+  AssetPatch,
   ClearAnalyticsResponse,
   CmsContentResponse,
   GuestbookListResponse,
   MarkdownAssetResponse,
+  MarkdownSourceResponse,
   MeResponse,
   OkIdResponse,
   OkResponse,
@@ -218,13 +220,21 @@ export const cms = {
       body: fd,
     }).then(handle<Asset>);
   },
-  /** Read a markdown asset's source for editing. Public route: the editor needs
-   *  the raw file, and drafts are already gated there by the preview token. */
-  getMarkdown: (slug: string) =>
-    fetch(`${apiBase}/api/assets/md/${encodeURIComponent(slug)}`, {
+  /**
+   * Read a markdown asset's source for editing.
+   *
+   * By id, over the CMS API. The old version fetched the public
+   * `/api/assets/md/<slug>` and justified it with "drafts are already gated there
+   * by the preview token" — the editor holds no such token, and every post the
+   * panel creates is a draft, so it 404'd on all of them. It also meant the one
+   * place that edits a post identified it by slug while every other call used the
+   * id, so an in-flight rename could open the wrong file or nothing at all.
+   */
+  getMarkdown: (id: string) =>
+    fetch(`${apiBase}/api/cms/assets/${id}/content`, {
       headers: headers(false),
       credentials: "include",
-    }).then(handle<MarkdownAssetResponse>),
+    }).then(handle<MarkdownSourceResponse>),
   /** Rewrite a markdown asset's contents. Stable id, new bytes — see the route. */
   putMarkdown: (id: string, markdown: string) =>
     fetch(`${apiBase}/api/cms/assets/${id}/content`, {
@@ -232,14 +242,22 @@ export const cms = {
       headers: headers(true),
       credentials: "include",
       body: JSON.stringify({ markdown }),
-    }).then(handle<OkResponse>),
-  updateAsset: (id: string, patch: Record<string, unknown>) =>
+    }).then(handle<MarkdownAssetResponse>),
+  /**
+   * Patch an asset's metadata. Returns the *stored* asset.
+   *
+   * `patch` was a `Record<string, unknown>` and the return typed `OkResponse`, so
+   * the client could send a field the server doesn't accept and read back a shape
+   * the server doesn't send, and neither was a compile error. `AssetPatch` is the
+   * server's own list; callers should trust the returned asset over what they sent.
+   */
+  updateAsset: (id: string, patch: AssetPatch) =>
     fetch(`${apiBase}/api/cms/assets/${id}`, {
       method: "PATCH",
       headers: headers(),
       credentials: "include",
       body: JSON.stringify(patch),
-    }).then(handle<OkResponse>),
+    }).then(handle<Asset>),
   deleteAsset: (id: string) =>
     fetch(`${apiBase}/api/cms/assets/${id}`, {
       method: "DELETE",

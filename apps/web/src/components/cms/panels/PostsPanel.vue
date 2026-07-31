@@ -50,6 +50,7 @@ interface AssetListResponse {
 const posts = ref<PostAsset[]>([]);
 const current = ref<PostAsset | null>(null);
 const source = ref("");
+const previewToken = ref<string | null>(null);
 const loading = ref(false);
 const saving = ref(false);
 const editor = ref<HTMLTextAreaElement | null>(null);
@@ -66,9 +67,10 @@ async function loadList() {
 async function open(post: PostAsset) {
   loading.value = true;
   try {
-    const doc = (await cms.getMarkdown(post.slug)) as { markdown: string };
+    const doc = await cms.getMarkdown(post.id);
     current.value = post;
     source.value = doc.markdown;
+    previewToken.value = doc.previewToken ?? null;
     dirty.value = false;
   } finally {
     loading.value = false;
@@ -103,9 +105,17 @@ async function create() {
   const body = `---\ntitle: ${name}\ndate: ${today}\ndraft: true\ntags: []\n---\n\n`;
   const file = new File([body], `${slug.split("/").pop()}.md`, { type: MARKDOWN_MIME });
   const created = await cms.uploadAsset(file);
-  await cms.updateAsset(created.id, { slug, title: name });
+  // Open what the server stored, not a local guess at it. This used to spread the
+  // requested slug over the upload response and open *that* — so when the PATCH
+  // dropped the slug the panel went on asking for a post under a name nothing had
+  // ever been saved under, and the 404 pointed at the reader instead of the write.
+  const post = await cms.updateAsset(created.id, { slug, title: name });
   await loadList();
-  await open({ ...created, slug });
+  if (!isPost(post)) {
+    flash("Post created, but the slug didn't stick.");
+    return;
+  }
+  await open(post);
 }
 
 /** Insert at the cursor rather than appending — an editor that only appends
@@ -162,9 +172,18 @@ function insertLink(area: { id: string; label: Localized }) {
   insert(`[${pickL(area.label)}](/${area.id})`);
 }
 
-function previewUrl(): string {
-  return `/md/${current.value?.slug ?? ""}`;
-}
+/**
+ * Where the Preview button points.
+ *
+ * A draft is a 404 on the public path without the token, and every post starts as
+ * one — so the button was only ever useful for posts that no longer needed it.
+ * The token comes from the read, so it's a link to *this* post, not a mode.
+ */
+const previewUrl = computed(() => {
+  const slug = current.value?.slug ?? "";
+  const token = parsed.value.frontmatter.draft ? previewToken.value : null;
+  return `/md/${slug}${token ? `?preview=${token}` : ""}`;
+});
 
 onMounted(loadList);
 </script>
@@ -195,7 +214,7 @@ onMounted(loadList);
         <div class="posts-bar">
           <button class="btn" @click="pickImage">Image</button>
           <button class="btn" @click="pickLink">Link</button>
-          <SmartLink class="btn" :href="previewUrl()" target="_blank">Preview</SmartLink>
+          <SmartLink class="btn" :href="previewUrl" target="_blank">Preview</SmartLink>
           <span class="posts-meta">
             {{ parsed.frontmatter.draft ? "Draft" : "Published" }} ·
             {{ parsed.frontmatter.tags.length }} tag(s)
