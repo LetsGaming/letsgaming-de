@@ -96,3 +96,27 @@ test("exactly one clear range is un-windowed", () => {
   assert.equal(unwindowed.length, 1);
   assert.equal(unwindowed[0]?.id, "all");
 });
+
+/**
+ * Every key a component can emit is a key the ingest will take.
+ *
+ * `project-more` and `glance-more` were emitted by two sections and listed by
+ * neither the type nor the validator, so those clicks were rejected on arrival
+ * and the links read as never used. The type error was real the whole time — it
+ * lived in a template expression, which only `vue-tsc` checks and the Nuxt build
+ * doesn't run, so nothing red showed up until the separate typecheck step.
+ */
+test("analytics: the click allow-list has no dead or missing entries", () => {
+  const sections = new Set(["work", "about"]);
+  // Emitted by the site today. Keep in sync with the trackClick call sites.
+  const emitted = [
+    "contact-cta", "contact-submit", "guestbook-submit", "project", "project-more",
+    "featured", "github-profile", "glance-more", "social", "theme-toggle",
+  ];
+  for (const k of emitted) {
+    assert.ok(validateTrackEvent({ d: "click", k }, sections), `${k} should be accepted`);
+  }
+  // A generic `more` used to sit here unemitted, which typechecks at a call site
+  // and then lands in the CMS as a bucket that can't say which link it counted.
+  assert.equal(validateTrackEvent({ d: "click", k: "more" }, sections), null);
+});

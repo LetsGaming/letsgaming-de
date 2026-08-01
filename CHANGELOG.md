@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Two "see all" links start counting
+
+- **`project-more` and `glance-more` are click actions.** Featured and Glance both
+  emitted them, the allow-list held neither, and the ingest validator drops a click
+  key it doesn't know — so those two links have been reporting zero the whole time,
+  not few. The call sites live in templates, which only `vue-tsc` checks and the
+  Nuxt build doesn't run, so the type error sat on `main` without a red build until
+  the separate typecheck step ran.
+- **The unemitted generic `more` is gone.** Nothing ever sent it, and leaving it in
+  is a trap: it typechecks at a call site, ingests fine, and lands in the CMS as a
+  bucket that can't say which link earned it. A "see all" link gets its own key.
+
 ### The blog editor can create a post, and open one
 
 - **A post's slug is saved.** `PATCH /api/cms/assets/:id` whitelisted the fields it

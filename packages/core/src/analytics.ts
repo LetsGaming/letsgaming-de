@@ -57,18 +57,31 @@ export function sessionTabsBucket(n: number): SessionTabBucket {
   return "4+";
 }
 
-/** Named, allow-listed interactions. Free-text click keys are never accepted. */
+/**
+ * Named, allow-listed interactions. Free-text click keys are never accepted.
+ *
+ * These are the keys the ingest validator admits *and* the ones the components
+ * are allowed to emit, so a key that isn't here is dropped on arrival rather
+ * than stored under a name nothing reads. `project-more` and `glance-more` were
+ * missing while both sections emitted them, which cost those two links their
+ * numbers entirely — the template call sites only fail under `vue-tsc`, and the
+ * Nuxt build doesn't run it.
+ *
+ * A "see all" link gets its own key rather than sharing a generic `more`: the
+ * CMS lists these raw, and one shared bucket can't say which link earned it.
+ */
 export const CLICK_ACTIONS = [
   "contact-cta",
   "contact-submit",
   "guestbook-submit",
   "project",
+  "project-more",
   "featured",
   "github-profile",
+  "glance-more",
   "highlight",
   "social",
   "theme-toggle",
-  "more",
 ] as const;
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 
