@@ -22,9 +22,9 @@
     "test": "node --test --import tsx ./tests/*.test.ts"
   },
   "devDependencies": {
-    "@types/node": "^22",
-    "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "@types/node": "^26",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@lg/core": "workspace:^"
