@@ -88,26 +88,38 @@ export class PresenceSampler {
       // subjects a single `name` column can't hold. Everything else is one
       // subject and stays a session. A track with no id can't be de-duplicated
       // idempotently, so it's dropped rather than risk double-scrobbling.
-      if (category === "music") {
-        if (!activity.sync_id || !activity.details) continue;
-        const albumArtUrl = spotifyAlbumArtUrl(activity);
-        this.store.music.observe({
-          trackId: activity.sync_id,
-          song: activity.details,
-          artist: activity.state?.trim() ?? "",
-          ...(activity.assets?.large_text ? { album: activity.assets.large_text } : {}),
-          ...(albumArtUrl ? { albumArtUrl } : {}),
-          startedAt,
-          seenAt,
-        });
-        recorded++;
-        continue;
-      }
+      // Persistence is local (SQLite), but a throw here — a constraint violation,
+      // an unexpected Lanyard shape — must not escape `sample()`: it's invoked as
+      // `() => void this.sample()` from a cron callback with nothing to await or
+      // catch it, so an unhandled rejection here would crash the whole process
+      // (Node's default `unhandledRejections` mode is `throw`). Same shape as
+      // `SyncRunner.runSource`'s normalize/persist guard: log and keep polling,
+      // don't lose the rest of the site over one bad activity.
+      try {
+        if (category === "music") {
+          if (!activity.sync_id || !activity.details) continue;
+          const albumArtUrl = spotifyAlbumArtUrl(activity);
+          this.store.music.observe({
+            trackId: activity.sync_id,
+            song: activity.details,
+            artist: activity.state?.trim() ?? "",
+            ...(activity.assets?.large_text ? { album: activity.assets.large_text } : {}),
+            ...(albumArtUrl ? { albumArtUrl } : {}),
+            startedAt,
+            seenAt,
+          });
+          recorded++;
+          continue;
+        }
 
-      const name = sessionSubject(category, activity);
-      if (!name) continue;
-      this.store.sessions.observe({ category, name, startedAt, seenAt, startedExact: exact });
-      recorded++;
+        const name = sessionSubject(category, activity);
+        if (!name) continue;
+        this.store.sessions.observe({ category, name, startedAt, seenAt, startedExact: exact });
+        recorded++;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.log(`[presence] FAILED to record ${category} activity: ${message}`);
+      }
     }
 
     return recorded;
@@ -138,7 +150,17 @@ export class PresenceSampler {
       this.log(`[presence] invalid schedule "${this.schedule}", sampling off`);
       return;
     }
-    this.task = cron.schedule(this.schedule, () => void this.sample());
+    this.task = cron.schedule(this.schedule, () => {
+      // Backstop, not the primary guard (that's the try/catch in `sample()`
+      // around persistence). Nothing awaits this cron callback, so an
+      // unhandled rejection anywhere in `sample()` — including the Lanyard
+      // fetch's own try/catch missing a future edge case — would otherwise
+      // crash the process under Node's default `unhandledRejections: throw`.
+      this.sample().catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.log(`[presence] sample() FAILED: ${message}`);
+      });
+    });
     // Retention runs daily — the window is in days, so finer would just re-check
     // the same rows. Independent of the sampler cron so neither blocks the other.
     if (cron.validate(PRUNE_SCHEDULE)) {

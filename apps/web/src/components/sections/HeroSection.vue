@@ -5,10 +5,20 @@ import SmartLink from "../ui/SmartLink.vue";
 import { mdBold } from "../../lib/text";
 import { trackClick } from "../../lib/track";
 import AssetPicture from "../ui/AssetPicture.vue";
+import { useSyncedRelative } from "~/composables/syncedContext";
+import { useT } from "~/composables/useT";
 
 defineProps<{
   module: Extract<ResolvedModule, { kind: "hero" }>;
 }>();
+
+// "It's alive" is the product's whole positioning claim (PRODUCT.md), and the
+// hero's status line — CMS-authored, not synced — can't carry that proof by
+// itself. This is the one real, honest signal of it: reuses the exact copy
+// (freshFresh) and visual language (mono, muted) every other synced value on
+// the site already uses, so it reads as the same kind of fact, not a new one.
+const { t } = useT();
+const syncedRelative = useSyncedRelative();
 
 /**
  * Report the click. Don't intercept it.
@@ -41,7 +51,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
     renders its own root directly and opts out of ModuleSection by design.
   -->
   <section :id="module.id">
-    <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" />
+    <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" loading="eager" />
     <h1>
       {{ module.data.headline.before
       }}<span class="pop">{{ module.data.headline.highlight }}</span
@@ -51,6 +61,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
     <div class="status">
       <span class="dot" /> {{ module.data.status.verb }} <b>{{ module.data.status.now }}</b>
     </div>
+    <p v-if="syncedRelative" class="synced">{{ t("freshFresh", { age: syncedRelative }) }}</p>
     <div class="links">
       <SmartLink
         v-for="l in module.data.links"
@@ -120,6 +131,14 @@ h1 .pop::after {
 .status b {
   color: var(--ink);
   font-weight: 400;
+}
+/* Same typographic convention as Freshness.vue's .fresh (mono + micro + muted):
+ * this is the same kind of fact — a synced value — not a new visual language. */
+.synced {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  margin-top: var(--sp-6);
 }
 @keyframes pulse {
   50% {

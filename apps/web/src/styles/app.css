@@ -237,7 +237,6 @@ h1 {
   text-decoration: none;
   color: inherit;
   display: block;
-  will-change: transform;
 }
 .card:hover {
   box-shadow: var(--sh-anchor);

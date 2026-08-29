@@ -24,7 +24,15 @@ function trim(x: number): string {
   return s.endsWith(".0") ? s.slice(0, -2) : s;
 }
 
-/** Short relative time from an ISO timestamp: "2d", "6d", "1w", "3mo", "2y". */
+/**
+ * Short relative time from an ISO timestamp: "1m", "2d", "6d", "1w", "3mo", "2y".
+ *
+ * Floors at "1m", not "now": every consumer composes this into an "{age} ago"
+ * template (`freshFresh`/`ago` in ui-messages.ts) — "synced now ago" is broken
+ * grammar, and this function stays a bare duration unit (no locale, no phrase)
+ * per its own dependency-free contract, so the fix belongs here, not in every
+ * template that would otherwise need to special-case the sub-minute case.
+ */
 export function relativeTime(iso: string, now: Date = new Date()): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
@@ -34,8 +42,7 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
   const days = Math.floor(hours / 24);
   if (days < 1) {
     if (hours >= 1) return `${hours}h`;
-    if (mins >= 1) return `${mins}m`;
-    return "now";
+    return `${Math.max(1, mins)}m`;
   }
   if (days < 7) return `${days}d`;
   const weeks = Math.floor(days / 7);

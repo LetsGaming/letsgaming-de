@@ -69,6 +69,11 @@ const EN = {
   emptyActivity: "Nothing synced from GitHub yet.",
   emptyCoding: "No coding time synced yet.",
   emptyFeatured: "Nothing pinned right now.",
+  /** Featured's own label, distinguishing an owner-pinned repo from the silent
+   *  most-recent fallback when nothing's pinned — otherwise the single card
+   *  reads as an arbitrary editorial choice rather than a curated one. */
+  featuredPinned: "Pinned",
+  featuredLatest: "Latest",
   emptyProjects: "No projects to show.",
   emptyGallery: "No pictures yet.",
   emptyGuestbook: "No notes yet — be the first to sign.",
@@ -257,6 +262,8 @@ const DE: Messages = {
   emptyActivity: "Noch nichts von GitHub synchronisiert.",
   emptyCoding: "Noch keine Coding-Zeit synchronisiert.",
   emptyFeatured: "Gerade nichts angepinnt.",
+  featuredPinned: "Angepinnt",
+  featuredLatest: "Neueste",
   emptyProjects: "Keine Projekte vorhanden.",
   emptyGallery: "Noch keine Bilder.",
   emptyGuestbook: "Noch keine Einträge — trag dich als Erste:r ein.",

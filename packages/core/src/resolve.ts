@@ -199,6 +199,15 @@ const FEED = {
   projects: 12,
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
+  /**
+   * CTAs in the hero. Unlike Contact (the "how to reach you" section, which
+   * renders every link in `content.links` on purpose), the hero is a first-paint
+   * decision point — the design system's own cognitive-load rule caps a decision
+   * at ≤4 visible options, same as the nav tree's `MAX_CHILDREN`. `content.links`
+   * has no structural limit (it's the CMS's one shared link list, reused by both
+   * sections), so the cap has to live at whichever call site actually needs it.
+   */
+  heroLinks: 4,
 } as const;
 
 /**
@@ -509,7 +518,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             },
             lede: L(content.lede),
             status: { verb: L(content.status.verb), now: L(content.status.now) },
-            links: content.links.map(resolveLink),
+            links: content.links.slice(0, FEED.heroLinks).map(resolveLink),
             ...(avatar && (avatar.kind === "image" || avatar.kind === "gif")
               ? { avatar }
               : {}),
@@ -893,5 +902,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     nav: localizeNav(visibleNav(input.nav)),
     modules,
     syncedAt: input.syncedAt,
+    syncedRelative: input.syncedAt ? relativeTime(input.syncedAt, now) : undefined,
   };
 }

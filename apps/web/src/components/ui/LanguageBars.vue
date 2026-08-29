@@ -44,14 +44,18 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
 .bar {
   flex: 1;
   height: 8px;
-  border-radius: 5px;
+  /* --r-pill clamps to half the 8px height (4px) either way — same rendered
+   * shape as the hardcoded 5px this replaced, since border-radius can't exceed
+   * half a box's own dimension. Using the token instead of a magic number that
+   * was already being silently clamped by the browser. */
+  border-radius: var(--r-pill);
   background: var(--track);
   overflow: hidden;
 }
 .bar b {
   display: block;
   height: 100%;
-  border-radius: 5px;
+  border-radius: var(--r-pill);
 }
 .pc {
   font-family: var(--f-m);

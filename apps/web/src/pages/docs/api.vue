@@ -11,10 +11,22 @@ import type { ApiReference } from "~/lib/openapi";
 import type { DocGroup } from "~/lib/docs";
 import DocsShell from "~/components/docs/DocsShell.vue";
 import SmartLink from "~/components/ui/SmartLink.vue";
+import { plainExcerpt } from "@lg/core";
+import { useSeo } from "~/composables/useSeo";
 
 const { data } = await useFetch<{ ref: ApiReference; tree: DocGroup[] }>("/api/openapi");
 
-useHead(() => ({ title: `API reference — ${data.value?.ref.info.title ?? "API"}` }));
+// Same reasoning as docs/[...slug].vue: English-only, prerendered, no site graphs
+// (this is a document, not the site itself) — mirrored here rather than shared
+// because the source text differs (spec `description`, not rendered doc HTML).
+useSeo({
+  locale: "en",
+  path: "/docs/api",
+  title: `API reference — ${data.value?.ref.info.title ?? "API"}`,
+  description:
+    plainExcerpt(data.value?.ref.info.description ?? "") ||
+    `${data.value?.ref.info.title ?? "API"} reference — letsgaming.de documentation.`,
+});
 
 /**
  * Minimal, safe inline markdown for the spec's authored descriptions (our own

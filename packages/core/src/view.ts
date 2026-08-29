@@ -402,6 +402,10 @@ export interface SiteView {
   modules: Record<string, ResolvedModule>;
   /** ISO timestamp of the last source sync, if any data has been synced. */
   syncedAt?: string;
+  /** Pre-computed short relative age of `syncedAt` (e.g. "8m", "2d") — the
+   *  frontend is a dumb renderer, so this is computed here, not in Vue, the
+   *  same convention every other timestamp in this file follows. */
+  syncedRelative?: string;
 }
 
 /**

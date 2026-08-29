@@ -13,7 +13,7 @@ import {
   type SiteContent,
 } from "@lg/core";
 import type { DB } from "./database.js";
-import { asNumber, mapRow } from "./row-mapper.js";
+import { asNumber, mapRow, transact } from "./row-mapper.js";
 import { contentRepo } from "./content-repo.js";
 import { iaRepo } from "./ia-repo.js";
 
@@ -131,35 +131,48 @@ const NOW: NowItem[] = [
   },
 ];
 
-/** Idempotent: only seeds tables that are empty. Safe to run on every boot. */
+/**
+ * Idempotent: only seeds tables that are empty. Safe to run on every boot.
+ *
+ * Wrapped in a transaction: this is several inserts across site_content,
+ * site_ia, site_presence, and the content-entity tables, and the "already
+ * seeded" guard only checks site_content. Without a transaction, a process
+ * killed mid-seed (OOM, container restart) leaves site_content populated but
+ * site_ia empty — the guard then sees site_content and never retries, and the
+ * store is permanently stuck: reconcileIa's getNav() throws, as does every
+ * other caller of store.ia.getNav() outside that one try/catch (e.g. SSR's
+ * buildSiteView). A transaction makes the boot either fully seed or fully not.
+ */
 export function seedIfEmpty(db: DB): { seeded: boolean } {
   const hasContent =
     (mapRow(db.prepare("SELECT COUNT(*) AS n FROM site_content"), (r) => asNumber(r.n)) ?? 0) > 0;
   if (hasContent) return { seeded: false };
 
-  db.prepare("INSERT INTO site_content (id, meta, headline, lede, status, bio) VALUES (1, ?, ?, ?, ?, ?)").run(
-    JSON.stringify(SEED.meta),
-    JSON.stringify(SEED.headline),
-    JSON.stringify(SEED.lede),
-    JSON.stringify(SEED.status),
-    JSON.stringify(SEED.bio),
-  );
+  return transact(db, () => {
+    db.prepare("INSERT INTO site_content (id, meta, headline, lede, status, bio) VALUES (1, ?, ?, ?, ?, ?)").run(
+      JSON.stringify(SEED.meta),
+      JSON.stringify(SEED.headline),
+      JSON.stringify(SEED.lede),
+      JSON.stringify(SEED.status),
+      JSON.stringify(SEED.bio),
+    );
 
-  db.prepare("INSERT INTO site_ia (id, nav, modules) VALUES (1, ?, ?)").run(
-    JSON.stringify(LAUNCH_NAV),
-    JSON.stringify(LAUNCH_MODULES),
-  );
-  db.prepare("INSERT OR IGNORE INTO site_presence (id, show) VALUES (1, ?)").run(
-    JSON.stringify(defaultPresenceSettings().show),
-  );
+    db.prepare("INSERT INTO site_ia (id, nav, modules) VALUES (1, ?, ?)").run(
+      JSON.stringify(LAUNCH_NAV),
+      JSON.stringify(LAUNCH_MODULES),
+    );
+    db.prepare("INSERT OR IGNORE INTO site_presence (id, show) VALUES (1, ?)").run(
+      JSON.stringify(defaultPresenceSettings().show),
+    );
 
-  const content = contentRepo(db);
-  PROJECTS.forEach((p, i) => content.upsertProject(p, i));
-  HOBBIES.forEach((h, i) => content.upsertHobby(h, i));
-  LINKS.forEach((l, i) => content.upsertLink(l, i));
-  NOW.forEach((n, i) => content.upsertNow(n, i));
+    const content = contentRepo(db);
+    PROJECTS.forEach((p, i) => content.upsertProject(p, i));
+    HOBBIES.forEach((h, i) => content.upsertHobby(h, i));
+    LINKS.forEach((l, i) => content.upsertLink(l, i));
+    NOW.forEach((n, i) => content.upsertNow(n, i));
 
-  return { seeded: true };
+    return { seeded: true };
+  });
 }
 
 /**

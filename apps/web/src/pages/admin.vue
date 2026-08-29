@@ -13,7 +13,15 @@
  */
 import CmsApp from "~/components/cms/CmsApp.vue";
 
-useHead({ title: "CMS — letsgaming.de" });
+// noindex, not a robots.txt Disallow: a Disallow line is world-readable and would
+// itself announce this path to anyone who fetches robots.txt. This only takes
+// effect if the page is somehow discovered (leaked referrer, browser sync), which
+// is the case a Disallow line can't cover — it blocks crawling, not indexing of an
+// already-found URL.
+useHead({
+  title: "CMS — letsgaming.de",
+  meta: [{ name: "robots", content: "noindex, nofollow" }],
+});
 definePageMeta({ layout: "default" });
 </script>
 

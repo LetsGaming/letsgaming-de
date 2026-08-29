@@ -38,6 +38,39 @@ test("resolver localizes to the requested locale and falls back to English per-f
   assert.equal(first?.kind === "text" ? first.text : "", "Deutsche Bio");
 });
 
+test("syncedRelative is derived from syncedAt, and absent when there's been no sync", () => {
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("Germany"), role: en("dev") },
+    headline: { before: en(""), highlight: en(""), after: en("") },
+    lede: en(""),
+    status: { verb: en(""), now: en("") },
+    bio: [],
+    links: [],
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "about", label: en("About"), modules: ["bio"] }];
+  const modules: ModuleDescriptor[] = [{ id: "bio", kind: "bio", heading: en("About") }];
+  const now = new Date("2026-01-01T12:00:00Z");
+
+  const synced = resolveSiteView({
+    content,
+    source: {},
+    nav,
+    modules,
+    locale: "en",
+    syncedAt: "2026-01-01T11:52:00Z", // 8 minutes before `now`
+    now,
+  });
+  assert.equal(synced.syncedAt, "2026-01-01T11:52:00Z");
+  assert.equal(synced.syncedRelative, "8m");
+
+  const neverSynced = resolveSiteView({ content, source: {}, nav, modules, locale: "en", now });
+  assert.equal(neverSynced.syncedAt, undefined);
+  assert.equal(neverSynced.syncedRelative, undefined);
+});
+
 test("resolver folds Wakapi into coding and presence config", () => {
   const content: SiteContent = {
     meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
@@ -234,6 +267,41 @@ test("resolver expands asset refs: hero avatar + SVG link icon", () => {
   assert.equal(gh?.iconSvg, undefined);
   assert.equal(co?.icon, undefined);
   assert.equal(co?.iconSvg, "<svg><path/></svg>");
+});
+
+test("hero caps its CTAs at 4 (a first-paint decision point); Contact renders every link (its whole purpose)", () => {
+  const content: SiteContent = {
+    meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
+    headline: { before: en(""), highlight: en(""), after: en("") },
+    lede: en(""),
+    status: { verb: en(""), now: en("") },
+    bio: [],
+    links: Array.from({ length: 6 }, (_, i) => ({
+      id: `l${i}`,
+      label: en(`Link ${i}`),
+      href: `https://example.com/${i}`,
+    })),
+    projects: [],
+    hobbies: [],
+    now: [],
+  };
+  const nav: NavNode[] = [{ id: "home", label: en("Home"), modules: ["hero", "contact"] }];
+  const modules: ModuleDescriptor[] = [
+    { id: "hero", kind: "hero", heading: en("Home") },
+    { id: "contact", kind: "contact", heading: en("Contact") },
+  ];
+
+  const view = resolveSiteView({ content, source: {}, nav, modules });
+  const hero = view.modules["hero"];
+  const contact = view.modules["contact"];
+  if (!hero || hero.kind !== "hero") throw new Error("expected hero");
+  if (!contact || contact.kind !== "contact") throw new Error("expected contact");
+  assert.equal(hero.data.links.length, 4);
+  assert.deepEqual(
+    hero.data.links.map((l) => l.label),
+    ["Link 0", "Link 1", "Link 2", "Link 3"],
+  );
+  assert.equal(contact.data.links.length, 6); // uncapped — Contact's whole job is "every way to reach me"
 });
 
 test("freshness: data past its source's TTL renders stale, not fresh", () => {

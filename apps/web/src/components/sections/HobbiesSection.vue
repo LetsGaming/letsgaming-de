@@ -44,7 +44,6 @@ defineProps<{
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  will-change: transform;
 }
 .tile:hover {
   box-shadow: var(--sh-anchor);

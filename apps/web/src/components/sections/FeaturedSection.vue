@@ -25,6 +25,7 @@ const project = computed(() => props.module.data.project);
       <Freshness :freshness="module.data.freshness" />
       <SmartLink class="more" :href="module.data.moreHref" @click="() => trackClick('project-more')">{{ t("seeAllWork") }}</SmartLink>
     </template>
+    <p v-if="project" class="picked">{{ t(project.featured ? "featuredPinned" : "featuredLatest") }}</p>
     <div class="grid">
       <ProjectCard
         v-if="project"
@@ -36,3 +37,17 @@ const project = computed(() => props.module.data.project);
     </div>
   </ModuleSection>
 </template>
+
+<style scoped>
+/* Same typographic convention used for every other small "here's the fact"
+ * caption this session (the hero's synced line, Freshness): mono + micro +
+ * muted, so a visitor reads it as a fact, not a new decoration. Without this,
+ * the single card reads as an arbitrary editorial choice rather than either a
+ * deliberate pin or an honest "here's what's newest" fallback. */
+.picked {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  margin-bottom: var(--sp-8);
+}
+</style>

@@ -58,11 +58,15 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
       const code = req.query.code;
       if (!code) return reply.code(400).send({ error: "Missing code." });
 
-      // Exchange the code for an access token.
+      // Exchange the code for an access token. Timeout matches the other
+      // outbound fetches in this codebase (e.g. presence-sampler.ts's Lanyard
+      // call) — a hanging github.com response would otherwise hold this login
+      // request open indefinitely.
       const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+        signal: AbortSignal.timeout(8000),
       });
       const token = (await tokenRes.json()) as { access_token?: string };
       if (!token.access_token) return reply.code(401).send({ error: "Token exchange failed." });
@@ -73,6 +77,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
           Authorization: `bearer ${token.access_token}`,
           "User-Agent": "letsgaming-de-cms",
         },
+        signal: AbortSignal.timeout(8000),
       });
       const user = (await userRes.json()) as { login?: string };
       if (user.login?.toLowerCase() !== allowedLogin.toLowerCase()) {

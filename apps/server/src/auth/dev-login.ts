@@ -40,7 +40,15 @@ export function registerDevLoginRoutes(app: FastifyInstance, env: ServerEnv): vo
 
   app.get("/auth/dev/login", async (req, reply) => {
     // Guard 2 — loopback callers only.
-    if (!LOOPBACK.has(req.ip)) {
+    //
+    // `req.ip` is deliberately NOT used here: it reflects X-Forwarded-For
+    // whenever `TRUST_PROXY` is set, which is a separate toggle from
+    // `NODE_ENV`. A non-production build reachable behind a reverse proxy with
+    // `TRUST_PROXY=true` would let anyone spoof `X-Forwarded-For: 127.0.0.1`
+    // and satisfy this check — a full auth bypass despite guard 1 not firing.
+    // `req.socket.remoteAddress` is the actual TCP peer and ignores proxy
+    // headers entirely, so this guard holds regardless of TRUST_PROXY.
+    if (!LOOPBACK.has(req.socket.remoteAddress ?? "")) {
       return reply.code(403).send({ error: "Dev login is available on loopback only." });
     }
 

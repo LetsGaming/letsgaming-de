@@ -1,0 +1,143 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "24px",
+        "createdAt": "2026-08-27T08:51:19.391Z",
+        "reason": "pre-existing pinned/featured-card title size, a deliberate one-off scale-up not meant to join the shared type ramp"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "17px",
+        "createdAt": "2026-08-27T08:51:19.519Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "13px",
+        "createdAt": "2026-08-27T08:52:51.182Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "14px",
+        "createdAt": "2026-08-27T08:52:51.308Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "20px",
+        "createdAt": "2026-08-27T08:52:51.550Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "11px",
+        "createdAt": "2026-08-27T08:52:51.673Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "12px",
+        "createdAt": "2026-08-27T08:52:51.801Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "15px",
+        "createdAt": "2026-08-27T08:52:51.926Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "16px",
+        "createdAt": "2026-08-27T08:52:52.049Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "4px",
+        "createdAt": "2026-08-27T08:52:52.175Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "6px",
+        "createdAt": "2026-08-27T08:52:52.296Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "9px",
+        "createdAt": "2026-08-27T08:52:52.415Z",
+        "reason": "pre-existing one-off component value (brand/tabs/theme-toggle/docs prose), assessed in /impeccable audit as intentional and correctly excluded from the shared DESIGN.md ramp — not touched by this edit"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "18px",
+        "createdAt": "2026-08-27T08:53:12.301Z",
+        "reason": "pre-existing one-off hobby-tile icon size, not touched by this edit"
+      },
+      {
+        "rule": "side-tab",
+        "value": "border-left: 3px solid var(--line-2)",
+        "files": [
+          "src/styles/app.css"
+        ],
+        "createdAt": "2026-08-27T08:54:00.643Z",
+        "reason": "verified false positive in /impeccable audit: .doc-body blockquote left border using the subtle --line-2 hairline token for standard markdown blockquote typography, not a decorative card accent bar"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "16px",
+        "createdAt": "2026-08-27T09:21:59.387Z",
+        "reason": "pre-existing hero lede clamp() lower bound, not touched by this edit; part of the P3 detector-triage item from the critique"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "24px",
+        "createdAt": "2026-08-27T09:21:59.511Z",
+        "reason": "pre-existing hero avatar image radius, a deliberate one-off larger than the card radius scale, not touched by this edit; part of the P3 detector-triage item from the critique"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "2px",
+        "files": [
+          "src/components/ui/HeatGrid.vue"
+        ],
+        "createdAt": "2026-08-29T21:46:53.231Z",
+        "reason": "HeatGrid contribution-cell/legend-swatch radius on ~9px squares — proportional to object size per the design system's own 'radius scales with the object' rule; --r-chip (8px) would look absurd on a 9px cell"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "10px",
+        "files": [
+          "src/components/ui/HeatGrid.vue"
+        ],
+        "createdAt": "2026-08-29T21:46:53.307Z",
+        "reason": "HeatGrid legend caption, paired with 9px swatches — smaller than --fs-micro (11px) to match the legend's own micro scale, same proportional-to-object reasoning as its radius"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "34px",
+        "files": [
+          "src/components/ui/StatTile.vue"
+        ],
+        "createdAt": "2026-08-29T21:46:53.387Z",
+        "reason": "StatTile's .st--lead variant — the deliberate largest-stat emphasis size, between --fs-h2 (25px) and --fs-display (56px), for the one lead metric in a stat row"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "16px",
+        "files": [
+          "src/components/shell/SettingsModal.vue"
+        ],
+        "createdAt": "2026-08-29T21:46:53.458Z",
+        "reason": "SettingsModal's close-button glyph (.x), sized as an icon not body text — matches the site's ~17px icon-sizing convention used elsewhere (.btn svg)"
+      }
+    ]
+  }
+}

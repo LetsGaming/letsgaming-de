@@ -49,10 +49,20 @@ withDefaults(defineProps<Props>(), { as: "h3", tone: "muted" });
   font-weight: 600;
   font-size: var(--fs-h3);
   color: var(--ink-strong);
+  /* Titles here are synced data (a game name, an artist), not CMS-curated, so
+     length is unpredictable. Truncate rather than wrap or push the sibling
+     note off — a flex item's default min-width is its content size, not 0,
+     so without this a long title would widen the row past its container. */
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .card-header__note {
   font-family: var(--f-m);
   font-size: var(--fs-micro);
+  flex: 0 0 auto;
 }
 .card-header__note.is-muted {
   color: var(--muted);

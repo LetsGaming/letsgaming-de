@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-27T08:40:00.000Z",
+  "title": "Design System: letsgaming.de",
+  "extensions": {
+    "colorMeta": {
+      "shelf-violet": {
+        "role": "primary",
+        "displayName": "Shelf Violet",
+        "canonical": "oklch(64% 0.19 258)",
+        "tonalRamp": [
+          "oklch(15% 0.09 258)",
+          "oklch(25% 0.13 258)",
+          "oklch(35% 0.16 258)",
+          "oklch(45% 0.18 258)",
+          "oklch(55% 0.19 258)",
+          "oklch(64% 0.19 258)",
+          "oklch(75% 0.14 258)",
+          "oklch(88% 0.06 258)"
+        ]
+      },
+      "shelf-violet-solid": {
+        "role": "primary",
+        "displayName": "Shelf Violet, Solid",
+        "canonical": "oklch(56% 0.20 258)",
+        "tonalRamp": [
+          "oklch(14% 0.09 258)",
+          "oklch(23% 0.13 258)",
+          "oklch(32% 0.17 258)",
+          "oklch(42% 0.19 258)",
+          "oklch(50% 0.20 258)",
+          "oklch(56% 0.20 258)",
+          "oklch(68% 0.16 258)",
+          "oklch(82% 0.07 258)"
+        ]
+      },
+      "live-ink": {
+        "role": "primary",
+        "displayName": "Live Ink",
+        "canonical": "oklch(74% 0.14 268)"
+      },
+      "alarm-coral": {
+        "role": "secondary",
+        "displayName": "Alarm Coral",
+        "canonical": "oklch(68% 0.19 20)",
+        "tonalRamp": [
+          "oklch(16% 0.09 20)",
+          "oklch(27% 0.13 20)",
+          "oklch(38% 0.17 20)",
+          "oklch(50% 0.19 20)",
+          "oklch(60% 0.19 20)",
+          "oklch(68% 0.19 20)",
+          "oklch(78% 0.13 20)",
+          "oklch(90% 0.05 20)"
+        ]
+      },
+      "alarm-coral-ink": { "role": "secondary", "displayName": "Alarm Coral Ink", "canonical": "oklch(72% 0.17 20)" },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "oklch(93% 0.02 290)" },
+      "ink-strong": { "role": "neutral", "displayName": "Ink Strong", "canonical": "oklch(100% 0 0)" },
+      "muted": { "role": "neutral", "displayName": "Muted", "canonical": "oklch(63% 0.06 290)" },
+      "void-base": {
+        "role": "neutral",
+        "displayName": "Void Base",
+        "canonical": "oklch(12% 0.03 290)",
+        "tonalRamp": [
+          "oklch(8% 0.02 290)",
+          "oklch(12% 0.03 290)",
+          "oklch(18% 0.04 290)",
+          "oklch(24% 0.05 290)",
+          "oklch(32% 0.05 290)",
+          "oklch(45% 0.05 290)",
+          "oklch(65% 0.04 290)",
+          "oklch(85% 0.02 290)"
+        ]
+      },
+      "surface-one": { "role": "neutral", "displayName": "Surface One", "canonical": "oklch(18% 0.04 290)" },
+      "surface-two": { "role": "neutral", "displayName": "Surface Two", "canonical": "oklch(23% 0.05 290)" },
+      "surface-three": { "role": "neutral", "displayName": "Surface Three", "canonical": "oklch(28% 0.05 290)" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "rgba(255, 255, 255, 0.07)" },
+      "hairline-violet": { "role": "neutral", "displayName": "Hairline Violet", "canonical": "rgba(167, 139, 250, 0.22)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The hero H1 only." },
+      "headline": { "displayName": "Headline", "purpose": "Module section headings (\"Recent\", \"Listening\", \"Coding\")." },
+      "title": { "displayName": "Title", "purpose": "Card titles, one step below Headline." },
+      "body": { "displayName": "Body", "purpose": "Prose and general UI text." },
+      "label": { "displayName": "Label", "purpose": "Metadata and any value sourced from a sync rather than the CMS — mono marks it as machine-sourced." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px rgba(30,20,60,.06), 0 6px 16px rgba(30,20,60,.07)", "purpose": "Resting card elevation (light mode only)." },
+      { "name": "anchor", "value": "0 2px 6px rgba(30,20,60,.08), 0 16px 40px rgba(30,20,60,.1)", "purpose": "The one anchor surface per page, and a card's hover state (light mode only)." },
+      { "name": "glow-live", "value": "0 0 9px 1px rgba(199,125,255,.75)", "purpose": "The live dot's halo. Exactly one other consumer (the freshness dot) — a third would make it atmosphere again." },
+      { "name": "ghost-press", "value": "0 5px 0 #100d20, 0 10px 20px rgba(0,0,0,.2)", "purpose": "Ghost button resting 'pressed key' offset, compresses to 0 1px 0 on :active." }
+    ],
+    "motion": [
+      { "name": "dur-fast", "value": "120ms", "purpose": "Hover transitions — this is interactive." },
+      { "name": "dur-press", "value": "100ms", "purpose": "Touch/press feedback." },
+      { "name": "dur-pulse", "value": "2.4s", "purpose": "The live dot's pulse — the only looping animation in the system." },
+      { "name": "ease-out", "value": "cubic-bezier(0.2, 0.8, 0.25, 1)", "purpose": "Default easing for press/press-release." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per view. Shelf Violet, Solid fill.",
+      "html": "<button class=\"ds-btn-primary\">Get in touch</button>",
+      "css": ".ds-btn-primary { font-family: Inter, system-ui, sans-serif; font-weight: 600; font-size: 15px; padding: 12px 20px; border-radius: 15px; border: none; cursor: pointer; color: #fff; background: #8351f5; display: inline-flex; align-items: center; gap: 9px; transition: transform 100ms cubic-bezier(0.2, 0.8, 0.25, 1); } .ds-btn-primary:active { transform: translateY(2px); } .ds-btn-primary:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; border-radius: 4px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action. A real physical press: the offset shadow compresses on :active like a pressed key.",
+      "html": "<button class=\"ds-btn-ghost\">View on GitHub</button>",
+      "css": ".ds-btn-ghost { font-family: Inter, system-ui, sans-serif; font-weight: 600; font-size: 15px; padding: 12px 20px; border-radius: 15px; border: none; cursor: pointer; color: #ece9f7; background: #231e3e; box-shadow: 0 5px 0 #100d20, 0 10px 20px rgba(0,0,0,.2); display: inline-flex; align-items: center; gap: 9px; } .ds-btn-ghost:active { transform: translateY(4px); box-shadow: 0 1px 0 #100d20, 0 3px 10px rgba(0,0,0,.15); } .ds-btn-ghost:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; border-radius: 4px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "One subject per card — a project, a note, a photo. Never a section or a stream.",
+      "html": "<a class=\"ds-card\" href=\"#\"><span class=\"ds-card-tag\">TypeScript</span><h3 class=\"ds-card-title\">plantcare-tracker</h3><p class=\"ds-card-meta\">Updated 2 days ago</p></a>",
+      "css": ".ds-card { display: block; background: #1a1730; border: 1px solid rgba(255,255,255,.07); border-radius: 14px; padding: 24px; text-decoration: none; color: inherit; transition: box-shadow .3s ease, border-color .3s ease, background .3s ease; } .ds-card:hover { border-color: rgba(167,139,250,.22); background: #231e3e; } .ds-card:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; border-radius: 4px; } .ds-card-tag { font-family: 'Space Mono', ui-monospace, monospace; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #231e3e; color: #ece9f7; display: inline-block; margin-bottom: 12px; } .ds-card-title { font-family: Fredoka, system-ui, sans-serif; font-weight: 600; font-size: 19px; color: #fff; margin: 0 0 6px; } .ds-card-meta { font-family: 'Space Mono', ui-monospace, monospace; font-size: 12px; color: #948cb6; margin: 0; }"
+    },
+    {
+      "name": "Tag / Chip",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Small metadata label. Mono marks it as a synced/machine value.",
+      "html": "<span class=\"ds-tag\">Rust</span>",
+      "css": ".ds-tag { font-family: 'Space Mono', ui-monospace, monospace; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #231e3e; color: #ece9f7; display: inline-block; }"
+    },
+    {
+      "name": "Nav Tab (active)",
+      "kind": "nav",
+      "refersTo": "nav-tab",
+      "description": "Selection is contrast, never the accent hue — consistent with the Purple Means Now rule.",
+      "html": "<div class=\"ds-tabs\"><a class=\"ds-tab ds-tab-active\" href=\"#\">Home</a><a class=\"ds-tab\" href=\"#\">Code</a><a class=\"ds-tab\" href=\"#\">Life</a></div>",
+      "css": ".ds-tabs { display: flex; gap: 6px; background: #1a1730; padding: 6px; border-radius: 16px; border: 1px solid rgba(255,255,255,.07); } .ds-tab { font-family: Inter, system-ui, sans-serif; font-weight: 500; font-size: 14px; color: #948cb6; text-decoration: none; padding: 8px 16px; border-radius: 11px; transition: color .2s ease, background .2s ease; } .ds-tab:hover { color: #ece9f7; } .ds-tab-active { color: #fff; background: #231e3e; } .ds-tab:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; border-radius: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Live Signal",
+    "overview": "Purple means one thing on this site: something is happening right now. That's the whole job description for Shelf Violet — sampled off a real LED strip on a shelf, photographed on /life, not chosen from a swatch — and the system is built to keep it that job alone. A page whose colours mostly come from real, external data (linguist language colours, a game's RAWG cover art, a plant being green because it is) has one invented colour left to protect, and every rule here exists to protect it.\n\nThe feel is quiet, warm, and personal, with a note of precise stats running underneath. This isn't a marketing surface performing confidence — it's one person's homepage that happens to update itself. Warmth comes from restraint (no aurora glow, no stacked gradients, no entrance choreography) rather than decoration; precision shows up as Space Mono numbers that read as 'synced' the instant you see them, and as a strict, documented state model (fresh / stale / empty / failed / never) that refuses to let old data pretend to be current.\n\nControls are tactile and honest: buttons press with translateY, a ghost button's shadow visibly compresses on :active like a real key, and elevation on dark is surface lightness stepping upward — never a shadow pretending to fall on a background too dark to catch one. Nothing performs without a reason; the one thing allowed to glow is the live dot, because it's the one thing that's actually live.",
+    "keyCharacteristics": [
+      "One accent, three named jobs (live data, the one primary action, the focus ring) — never a fourth.",
+      "Colour is imported, not invented — the palette gets richer only because real data does.",
+      "Elevation is surface lightness on dark, shadow on light — never a purple glow standing in for either.",
+      "Freshness is a rendered state, not an assumption — a synced module says its own age.",
+      "Motion has a reason (state change, live-ness, a touch) or it doesn't ship."
+    ],
+    "rules": [
+      { "name": "The Purple Means Now Rule", "body": "The accent has exactly three jobs — live/just-happened data, the one primary action per view, the focus ring — and no others. Not the active nav tab, not a selected setting, not a hover, not a chart series. Selected states use ink-vs-muted contrast, never hue.", "section": "colors" },
+      { "name": "The Imported Colour Rule", "body": "Purple is the only colour this palette invents. Everything else — language colours, game art, presence status — comes from real data. The page gets more colourful in proportion to how much real data it holds, which no house palette can fake.", "section": "colors" },
+      { "name": "The Four Roles Rule", "body": "Fredoka reaches exactly four places — the wordmark, the H1, section headings, and card titles — and stops. It has no body-text design in it; the counters close up past ~16px, so it was never meant to carry prose.", "section": "typography" },
+      { "name": "The One-Anchor Rule", "body": "Surface Three (the highest elevation step) appears at most once per page — the anchor. Never nest a level inside itself; going card → card → card is what it looks like when every level is treated as the same level.", "section": "elevation" },
+      { "name": "The No-Glow-As-Shadow Rule", "body": "Depth is never faked with a colored bloom. The predecessor system used a purple glow to fake lift on dark backgrounds that couldn't cast a real shadow; this system steps surface lightness instead, honestly.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Shelf Violet for exactly three things: live/just-happened data, the one primary action per view, and the focus ring.",
+      "Do express elevation as a surface-lightness step on dark backgrounds; reserve real shadows for light mode.",
+      "Do render a synced module's actual freshness state (fresh/stale/empty/failed/never) — never show old data with no indication of its age.",
+      "Do give every interactive control a real :hover/:active/:focus-visible state; a .card is an <a> and should feel like one.",
+      "Do source colour from real data (language colours, game art) wherever the page has real data to source it from."
+    ],
+    "donts": [
+      "Don't use the accent for a selected tab, an active toggle, a chart series, or anything else that isn't live data, the primary action, or the focus ring.",
+      "Don't fake depth with a colored glow or bloom — that's the exact failure mode this system replaced.",
+      "Don't apply hover/tilt affordances to an element that isn't actually interactive (a plain <div> shouldn't look clickable).",
+      "Don't invent a palette colour. If a new visual need can't be sourced from real data or the existing neutral/accent scale, it doesn't belong here without a real reason.",
+      "Don't let motion run without a job (state change, live-ness, or a touch) — an entrance animation that fires on every element individually is decoration, not communication."
+    ]
+  }
+}

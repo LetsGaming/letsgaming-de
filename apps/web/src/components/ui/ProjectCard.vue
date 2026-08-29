@@ -69,11 +69,28 @@ function onClick() {
   gap: var(--sp-10);
   color: var(--ink-strong);
 }
+/* Repo names are synced from GitHub, not CMS-curated — an unbroken long name
+   (no spaces) would otherwise overflow the flex row, since a flex item's default
+   min-width is its content size, not 0. */
+.ptitle span:first-child,
+.ptitle {
+  min-width: 0;
+}
+.ptitle {
+  overflow-wrap: break-word;
+}
 .desc {
   color: var(--muted);
   font-size: var(--fs-body);
   margin: 11px 0 var(--sp-16);
   max-width: 48ch;
+  /* Repo descriptions are synced, up to 350 chars — clamp so one long
+     description can't blow out this card's height relative to its siblings
+     in the grid. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .arrow {
   margin-left: auto;

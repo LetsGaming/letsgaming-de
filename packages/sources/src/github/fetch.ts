@@ -51,7 +51,12 @@ export interface RawContributionDay {
 
 export interface GitHubRaw {
   login: string;
+  /** The account's true non-fork public repo count (GraphQL `totalCount`). Can
+   *  exceed `repos.length` — see the cap note on the `repositories(...)` query. */
   repositoriesTotal: number;
+  /** The 100 most recently pushed non-fork public repos, not every repo. Used
+   *  for the language mix and repo cards; `repositoriesTotal` is the displayed
+   *  count and does not come from this array's length. */
   repos: RawRepo[];
   /** Repo names pinned on the profile, in pin order. */
   pinned?: string[];
@@ -106,6 +111,14 @@ query($login: String!) {
     pinnedItems(first: 6, types: REPOSITORY) {
       nodes { ... on Repository { name } }
     }
+    # Deliberate top-100-most-recently-pushed cap, same shape as pinnedItems/
+    # pullRequests/gists below. Past 100 non-fork public repos, repositoriesTotal
+    # (totalCount, used for the displayed repo count) and this list diverge:
+    # totalCount still reports every repo, but the list — and everything derived
+    # from it in normalize() (language mix, repo cards) — only reflects the 100
+    # most recently pushed. No cursor pagination on purpose: recency ordering
+    # means an account with more repos than this just shows its most-active
+    # slice, which is what the dashboard wants anyway.
     repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
       totalCount
       nodes {
@@ -129,7 +142,10 @@ query($login: String!) {
       nodes { title url mergedAt repository { name } }
     }
     gists(first: 8, privacy: PUBLIC, orderBy: {field: UPDATED_AT, direction: DESC}) {
-      nodes { description url updatedAt files { name } }
+      # Explicit cap: "files" with no "first" arg falls back to the schema's own
+      # default, which would silently undercount g.files.length below for any
+      # gist with more files than that default.
+      nodes { description url updatedAt files(first: 20) { name } }
     }
     contributionsCollection {
       totalCommitContributions
@@ -191,12 +207,17 @@ export async function fetchGitHub(config: GitHubConfig): Promise<Result<GitHubRa
         publishedAt: rel.publishedAt,
       })),
     ),
-    mergedPrs: (user.pullRequests?.nodes ?? []).map((p) => ({
-      repo: p.repository?.name ?? "",
-      title: p.title,
-      url: p.url,
-      mergedAt: p.mergedAt,
-    })),
+    // A merged PR whose source repo was since deleted/renamed reports
+    // `repository: null` — drop it rather than surface a card with a blank repo
+    // name; a card that can't say what it was merged into isn't useful.
+    mergedPrs: (user.pullRequests?.nodes ?? [])
+      .filter((p): p is typeof p & { repository: { name: string } } => p.repository !== null)
+      .map((p) => ({
+        repo: p.repository.name,
+        title: p.title,
+        url: p.url,
+        mergedAt: p.mergedAt,
+      })),
     gists: (user.gists?.nodes ?? []).map((g) => ({
       description: g.description,
       url: g.url,
@@ -278,12 +299,13 @@ async function fetchEvents(config: GitHubConfig): Promise<RawEvent[]> {
   });
   if (!res.ok) return []; // events are non-critical: a failure just means none shown
   const raw = res.value;
-  return raw.map((e) => ({
-    type: e.type,
-    repo: e.repo?.name?.split("/").pop() ?? e.repo?.name ?? "",
-    createdAt: e.created_at,
-    detail: eventDetail(e),
-  }));
+  // An event whose source repo was since deleted/renamed reports no `repo.name`
+  // — drop it rather than surface a feed card with a blank repo name.
+  return raw.flatMap((e) => {
+    const repoName = e.repo?.name;
+    if (!repoName) return [];
+    return [{ type: e.type, repo: repoName.split("/").pop() ?? repoName, createdAt: e.created_at, detail: eventDetail(e) }];
+  });
 }
 
 interface GitHubRestEvent {

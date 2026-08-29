@@ -10,11 +10,12 @@
  * The `client:idle` directives that used to wrap SiteChrome and SitePanels are
  * gone — this is one Vue app now, so the components simply hydrate with the page.
  */
-import { computed } from "vue";
+import { computed, provide } from "vue";
 import { AREA, type Locale, type SiteView } from "@lg/core";
 import { areaById, areaHref, areaMeta } from "~/lib/area";
 import { useLocale, useT } from "~/composables/useT";
 import { useSeo } from "~/composables/useSeo";
+import { SYNCED_RELATIVE_KEY } from "~/composables/syncedContext";
 import SiteChrome from "./SiteChrome.vue";
 import SitePanels from "./SitePanels.vue";
 import SmartLink from "~/components/ui/SmartLink.vue";
@@ -58,6 +59,11 @@ useSeo({
   // URL, so they're the only ones that may claim hreflang alternates.
   localized: true,
 });
+
+// The hero's own liveness caption ("synced 8m ago") — see syncedContext.ts for
+// why this is provide/inject rather than a prop threaded through Module.vue's
+// uniform sections[module.kind] dispatch.
+provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
 </script>
 
 <template>

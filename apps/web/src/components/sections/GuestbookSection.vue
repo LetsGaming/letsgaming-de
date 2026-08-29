@@ -3,22 +3,39 @@ import { useT } from "~/composables/useT";
 import type { ResolvedModule } from "@lg/core";
 import ModuleSection from "../ui/ModuleSection.vue";
 import GuestbookForm from "../forms/GuestbookForm.vue";
+import ListFooter from "../ui/ListFooter.vue";
+import { useLimitedList } from "~/composables/useLimitedList";
 
 const { t } = useT();
 
-defineProps<{
+const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "guestbook" }>;
 }>();
+
+// The API caps approved entries at 100 (guestbook-repo.ts's listApproved), but a
+// homepage module showing up to 100 cards at once is still a wall, not a glance —
+// same useLimitedList/ListFooter pair the activity modules already use, so the
+// "collapse small, expand to what's on hand" rule lives in one place, not
+// reinvented here. `max` is just the fetched length: there's no further server
+// page beyond the 100-entry fetch, so nothing is left as an "and N more" note.
+const { shown, expanded, moreCount } = useLimitedList({
+  rows: () => props.module.data.entries,
+  initial: 6,
+  max: () => props.module.data.entries.length,
+});
 </script>
 
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
-    <div v-if="module.data.entries.length" class="gb-list">
-      <figure v-for="e in module.data.entries" :key="e.id" class="gb-entry">
-        <blockquote>{{ e.message }}</blockquote>
-        <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
-      </figure>
-    </div>
+    <template v-if="module.data.entries.length">
+      <div class="gb-list">
+        <figure v-for="e in shown" :key="e.id" class="gb-entry">
+          <blockquote>{{ e.message }}</blockquote>
+          <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
+        </figure>
+      </div>
+      <ListFooter :more-count="moreCount" :expanded="expanded" @toggle="expanded = !expanded" />
+    </template>
     <p v-else class="gb-empty">{{ t("emptyGuestbook") }}</p>
     <div><GuestbookForm /></div>
   </ModuleSection>

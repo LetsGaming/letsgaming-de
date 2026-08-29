@@ -126,18 +126,46 @@ export function areaHref(nav: { id: string }[], id: string): string {
   return id === nav[0]?.id ? "/" : `/${id}`;
 }
 
+/** The subset of `NavNode`/`NavView` `targetHref` needs to search. Generic over
+ *  both because it runs on the raw tree (`NavNode`, in the seed/CMS layer) and
+ *  the localized tree (`NavView`, in the resolver) alike. */
+interface NavLike {
+  id: string;
+  modules?: string[];
+  children?: NavLike[];
+}
+
 /**
- * Resolve an in-page target — a module id like `contact`, or an area id — to the
- * URL that shows it.
+ * Resolve an in-page target — a module id like `contact`, or a (possibly
+ * nested) area id — to the URL that shows it.
  *
  * A module lives in exactly one area, so `#contact` is `/about#contact`: a real
  * URL, which a browser can follow, a person can middle-click, and a crawler can
  * index. The site used to answer this with a click handler that called
  * `window.location.assign`, which is an `<a href>` with the useful parts removed.
+ *
+ * Recurses into `children`, unlike a flat `.find()`, because the tree is one
+ * (`nav-lint.ts` allows up to 3 levels): a target inside a branch's nested leaf
+ * must still resolve, not fall through to the inert `#target` fallback. Only the
+ * top-level ancestor is routable (`areaHref` only knows `/${id}` for a top-level
+ * id), so the search carries that ancestor's id down and returns its href, not
+ * the matched (possibly nested) node's own id.
  */
-export function targetHref(nav: { id: string; modules?: string[] }[], target: string): string {
-  const holder = nav.find((a) => (a.modules ?? []).includes(target));
-  if (holder) return `${areaHref(nav, holder.id)}#${target}`;
-  const area = nav.find((a) => a.id === target);
-  return area ? areaHref(nav, area.id) : `#${target}`;
+export function targetHref<T extends NavLike>(nav: T[], target: string): string {
+  const search = (nodes: T[], topId: string): string | undefined => {
+    for (const node of nodes) {
+      if (node.modules?.includes(target)) return `${areaHref(nav, topId)}#${target}`;
+      if (node.id === target) return areaHref(nav, topId);
+      if (node.children?.length) {
+        const found = search(node.children as T[], topId);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+  for (const top of nav) {
+    const found = search([top], top.id);
+    if (found) return found;
+  }
+  return `#${target}`;
 }

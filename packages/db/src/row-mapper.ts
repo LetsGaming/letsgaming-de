@@ -47,6 +47,17 @@ export const json = <T>(v: unknown): T => JSON.parse(String(v)) as T;
 export const SINGLETON_ID = 1;
 
 /**
+ * Depth counter per connection, so `transact` can nest. SQLite errors on a
+ * `BEGIN` issued while already inside a transaction, and `content-repo.ts`'s
+ * `write()` (itself a `transact`) is called from within callers that may
+ * already be inside one (e.g. seeding several content entities as one atomic
+ * boot step). Only the outermost call opens/closes the real transaction;
+ * inner calls just run `fn` — a thrown error still unwinds to the outermost
+ * catch, which is the only one that issues ROLLBACK.
+ */
+const txDepth = new WeakMap<DB, number>();
+
+/**
  * Run `fn` inside a transaction: commit on return, roll back on throw.
  *
  * The BEGIN / try / COMMIT / catch-ROLLBACK-rethrow block was written out eight
@@ -60,14 +71,19 @@ export const SINGLETON_ID = 1;
  * transaction, and therefore no way to interleave a second one by accident.
  */
 export function transact<T>(db: DB, fn: () => T): T {
-  db.exec("BEGIN");
+  const depth = txDepth.get(db) ?? 0;
+  const isOutermost = depth === 0;
+  txDepth.set(db, depth + 1);
+  if (isOutermost) db.exec("BEGIN");
   try {
     const result = fn();
-    db.exec("COMMIT");
+    if (isOutermost) db.exec("COMMIT");
     return result;
   } catch (err) {
-    db.exec("ROLLBACK");
+    if (isOutermost) db.exec("ROLLBACK");
     throw err;
+  } finally {
+    txDepth.set(db, depth);
   }
 }
 
