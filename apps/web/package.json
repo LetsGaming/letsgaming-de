@@ -21,7 +21,7 @@
     "marked": "^18.0.7",
     "nuxt": "^3",
     "sortablejs": "^1.15.7",
-    "vue": "^3.5.40"
+    "vue": "^3.5.41"
   },
   "devDependencies": {
     "@lg/core": "workspace:^",
