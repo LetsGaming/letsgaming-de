@@ -13,10 +13,11 @@ WORKDIR /app
 # --- build: fetch (lockfile-cached) → offline install → build → prune to /prod ---
 FROM base AS build
 
-# Copy dependency manifests first. pnpm fetch needs package.json because
-# pnpm.overrides is part of the dependency configuration.
-# This layer is cached until package.json or pnpm-lock.yaml changes.
-COPY package.json pnpm-lock.yaml ./
+# Copy dependency manifests first. pnpm fetch needs pnpm-workspace.yaml because
+# the workspace overrides are part of the dependency configuration pnpm checks
+# the lockfile against.
+# This layer is cached until package.json, pnpm-lock.yaml, or pnpm-workspace.yaml changes.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm fetch
