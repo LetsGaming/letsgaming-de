@@ -13,6 +13,14 @@ import { basename } from "node:path";
 /** Where docker-compose mounts ACCESS_LOG_DIR inside the container. */
 const LOG_MOUNT = "/logs";
 
+/** Hourly, offset from the hour boundary: game metadata rarely changes, and the
+ * sweep only queries names it hasn't cached yet, so this is near-zero cost once
+ * caught up. */
+const GAME_METADATA_SWEEP_SCHEDULE = "23 * * * *";
+
+/** Every 5 minutes: incremental, idempotent access-log ingest. */
+const ANALYTICS_INGEST_SCHEDULE = "*/5 * * * *";
+
 const env = loadEnv();
 // `TZ` is the owner's timezone — the default zone the observed-activity charts
 // bucket in (the aggregation takes an explicit zone, so visitors can still override
@@ -55,7 +63,7 @@ if (env.rawg) {
       app.log.error(`[rawg] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
     );
   void sweep(); // once at boot, then hourly
-  rawgTask = cron.schedule("23 * * * *", sweep);
+  rawgTask = cron.schedule(GAME_METADATA_SWEEP_SCHEDULE, sweep);
   app.log.info("[rawg] game-metadata sweep scheduled");
 }
 
@@ -143,7 +151,7 @@ if (env.accessLog) {
     }
   };
   runIngest(); // once at boot
-  ingestTask = cron.schedule("*/5 * * * *", runIngest); // then every 5 minutes
+  ingestTask = cron.schedule(ANALYTICS_INGEST_SCHEDULE, runIngest); // then every 5 minutes
   app.log.info(`[analytics] access-log ingest scheduled for ${file}`);
 }
 

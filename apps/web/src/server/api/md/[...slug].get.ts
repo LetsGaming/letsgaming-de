@@ -1,6 +1,10 @@
 import { marked } from "marked";
 import { firstParagraph, parsePost } from "@lg/core";
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * A published Markdown asset (the blog), fetched from the API and rendered.
  *
@@ -33,10 +37,16 @@ export default defineEventHandler(async (event) => {
   // publication date above all. That date used to stay locked in the markdown, so
   // the page had nothing truthful to put in `datePublished`.
   const { frontmatter, body } = parsePost(doc.markdown, slug);
+  // The page renders `doc.title` as the article's one <h1> (see md/[...slug].vue),
+  // so a leading `# Title` in the body that just repeats it would render a second
+  // one. Strip only that exact duplicate — an author's own first heading (a
+  // different H1, or an H1 partway through) is content and stays.
+  const titleHeading = new RegExp(`^\\s*#\\s+${escapeRegExp(doc.title.trim())}\\s*\\n?`);
+  const articleBody = body.replace(titleHeading, "");
   return {
     title: doc.title,
     draft: doc.draft === true,
-    html: await marked.parse(body, { async: true }),
+    html: await marked.parse(articleBody, { async: true }),
     // ISO publication date. `parsePost` falls back to the epoch when a post has no
     // `date:` — passed through as undefined rather than as 1970, since a wrong
     // date in structured data is worse than an absent one.

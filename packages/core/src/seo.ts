@@ -253,6 +253,34 @@ export function articleLd(input: ArticleLdInput): Record<string, unknown> {
   };
 }
 
+/** One crumb in a breadcrumb trail. `url` is absolute — `BreadcrumbList` items
+ *  are `ListItem`s with a full URL, not a site-relative path. */
+export interface BreadcrumbItem {
+  name: string;
+  url: string;
+}
+
+/**
+ * `schema.org/BreadcrumbList` for the trail rendered above a page's content.
+ *
+ * Google uses this to swap the plain URL in a search result for the trail
+ * itself (`letsgaming.de › Docs › ADR › 0005 Source Contract`), which is the
+ * whole benefit of shipping one. Position is 1-based per the spec and derived
+ * from array order, so a caller never has to number its own crumbs.
+ */
+export function breadcrumbLd(items: BreadcrumbItem[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+}
+
 /** Roughly where a meta description stops being shown. Not a hard limit — search
  *  engines rewrite snippets freely — but past this it's certainly truncated. */
 const EXCERPT_MAX = 155;

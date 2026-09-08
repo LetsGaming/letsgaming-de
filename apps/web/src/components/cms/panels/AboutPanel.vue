@@ -20,7 +20,7 @@ const {
             <h3>Bio <span class="muted">(paragraphs, **bold** supported; images are library assets)</span></h3>
             <div v-for="(p, i) in bio" :key="i" class="row">
               <div v-if="bioImageRef(p)" class="bioimg">
-                <img :src="galleryThumb(bioImageRef(p))" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
+                <img :src="galleryThumb(bioImageRef(p))" alt="" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
                 <span class="muted">image</span>
               </div>
               <LocalizedField v-else textarea :rows="2" :field="p" />

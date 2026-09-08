@@ -14,15 +14,15 @@ import { capList, dayRowsFor, type MusicDayResponse } from "@lg/core";
 import { isValidDay, resolveZone } from "./day-request.js";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
-
+import { badRequest } from "../errors.js";
 
 export function registerMusicRoutes(app: FastifyInstance, store: Store): void {
-  app.get<{ Querystring: { day?: string; tz?: string }; Reply: MusicDayResponse | { error: string } }>(
+  app.get<{ Querystring: { day?: string; tz?: string }; Reply: MusicDayResponse }>(
     "/api/music/day",
-    async (req, reply) => {
+    async (req) => {
       const day = req.query.day ?? "";
       if (!isValidDay(day)) {
-        return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
+        throw badRequest("day must be YYYY-MM-DD");
       }
       const zone = resolveZone(req.query.tz);
       // Aggregate the raw plays into both views, then cap each to the module's

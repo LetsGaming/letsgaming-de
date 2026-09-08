@@ -19,6 +19,7 @@
 import { type EngagementDimension, type NavNode, validateTrackEvent } from "@lg/core";
 import type { HourlyHit, Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
+import { badRequest, tooManyRequests } from "../errors.js";
 
 const MAX_EVENTS = 40; // a whole visit fits comfortably; caps abuse
 
@@ -65,7 +66,7 @@ export function registerTrackRoutes(app: FastifyInstance, store: Store): void {
   const limiter = new Limiter();
 
   app.post("/api/pulse", async (req, reply) => {
-    if (!limiter.allow(req.ip)) return reply.code(429).send();
+    if (!limiter.allow(req.ip)) throw tooManyRequests("Too many events.");
 
     // Body arrives as text/plain (sendBeacon, to avoid a CORS preflight) or JSON.
     let parsed: unknown = req.body;
@@ -73,11 +74,11 @@ export function registerTrackRoutes(app: FastifyInstance, store: Store): void {
       try {
         parsed = JSON.parse(parsed);
       } catch {
-        return reply.code(400).send();
+        throw badRequest("Malformed event payload.");
       }
     }
     const events = (parsed as { events?: unknown })?.events;
-    if (!Array.isArray(events)) return reply.code(400).send();
+    if (!Array.isArray(events)) throw badRequest("events must be an array.");
 
     const sectionIds = collectNavIds(store.ia.getNav());
     const bucket = isoHour(new Date());

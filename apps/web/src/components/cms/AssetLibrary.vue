@@ -202,7 +202,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
         <div v-else class="grid">
           <button v-for="a in assets" :key="a.id" class="tile" @click="open(a)">
             <span class="thumb">
-              <img v-if="thumb(a)" :src="thumb(a)" loading="lazy" @error="($event.target as HTMLImageElement).style.display='none'" />
+              <img v-if="thumb(a)" :src="thumb(a)" :alt="a.alt || ''" loading="lazy" @error="($event.target as HTMLImageElement).style.display='none'" />
               <span v-else class="glyph">{{ kindGlyph(a.kind) }}</span>
             </span>
             <span class="tname">{{ a.title || a.filename }}</span>
@@ -214,7 +214,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
       <aside v-if="selected && !pick" class="libedit">
         <div class="editbar"><b>Edit asset</b><button class="link" @click="close">close</button></div>
         <div class="epreview">
-          <img v-if="thumb(selected)" :src="cms.assetUrl(selected.id)" loading="lazy" />
+          <img v-if="thumb(selected)" :src="cms.assetUrl(selected.id)" :alt="selected.alt || ''" loading="lazy" />
           <span v-else class="glyph big">{{ kindGlyph(selected.kind) }}</span>
         </div>
         <label>Filename<input v-model="selected.filename" /></label>

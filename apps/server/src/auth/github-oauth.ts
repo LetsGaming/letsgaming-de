@@ -10,6 +10,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
+import { badRequest, forbidden, unauthorized, unavailable } from "../errors.js";
 import { SESSION_COOKIE } from "./guard.js";
 
 const STATE_COOKIE = "lg_oauth_state";
@@ -19,7 +20,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
   const secureCookie = env.isProduction;
 
   app.get("/auth/github/login", async (_req, reply) => {
-    if (!clientId) return reply.code(503).send({ error: "OAuth not configured." });
+    if (!clientId) throw unavailable("OAuth not configured.");
 
     // CSRF: mint a random state, remember it in a short-lived signed cookie, and
     // require it back on the callback.
@@ -45,18 +46,18 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
   app.get<{ Querystring: { code?: string; state?: string } }>(
     "/auth/github/callback",
     async (req, reply) => {
-      if (!clientId || !clientSecret) return reply.code(503).send({ error: "OAuth not configured." });
+      if (!clientId || !clientSecret) throw unavailable("OAuth not configured.");
 
       // Verify state against the signed cookie, then consume it.
       const raw = req.cookies?.[STATE_COOKIE];
       const unsigned = raw ? req.unsignCookie(raw) : { valid: false, value: null };
       reply.clearCookie(STATE_COOKIE, { path: "/" });
       if (!unsigned.valid || !unsigned.value || unsigned.value !== req.query.state) {
-        return reply.code(400).send({ error: "Invalid OAuth state." });
+        throw badRequest("Invalid OAuth state.");
       }
 
       const code = req.query.code;
-      if (!code) return reply.code(400).send({ error: "Missing code." });
+      if (!code) throw badRequest("Missing code.");
 
       // Exchange the code for an access token. Timeout matches the other
       // outbound fetches in this codebase (e.g. presence-sampler.ts's Lanyard
@@ -69,7 +70,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
         signal: AbortSignal.timeout(8000),
       });
       const token = (await tokenRes.json()) as { access_token?: string };
-      if (!token.access_token) return reply.code(401).send({ error: "Token exchange failed." });
+      if (!token.access_token) throw unauthorized("Token exchange failed.");
 
       // Verify identity — only the single allowed login may proceed.
       const userRes = await fetch("https://api.github.com/user", {
@@ -81,7 +82,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
       });
       const user = (await userRes.json()) as { login?: string };
       if (user.login?.toLowerCase() !== allowedLogin.toLowerCase()) {
-        return reply.code(403).send({ error: "Not authorized for this CMS." });
+        throw forbidden("Not authorized for this CMS.");
       }
 
       // Issue a signed, http-only session cookie. The CMS UI sends it automatically.

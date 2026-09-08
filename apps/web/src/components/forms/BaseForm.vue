@@ -13,12 +13,12 @@ defineEmits<{ submit: [] }>();
 
 <template>
   <form class="form" @submit.prevent="$emit('submit')">
-    <div v-if="state === 'sent'" class="ok"><slot name="success" /></div>
+    <div v-if="state === 'sent'" class="ok" role="status" aria-live="polite"><slot name="success" /></div>
     <template v-else>
       <!-- fields + honeypot supplied by the specific form -->
       <slot />
       <div class="foot">
-        <span v-if="state === 'error'" class="err">{{ error }}</span>
+        <span v-if="state === 'error'" class="err" role="alert">{{ error }}</span>
         <button class="btn btn-primary" type="submit" :disabled="state === 'sending'">
           {{ state === "sending" ? sendingLabel : submitLabel }}
         </button>

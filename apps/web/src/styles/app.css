@@ -24,6 +24,18 @@ body {
 a {
   color: inherit;
 }
+/* In the accessibility tree, off the screen — not `display: none`, which would
+   remove it from that tree too. Used for headings that need to exist for
+   document structure / SEO (one <h1> per page) without a visible slot in the
+   design (Fredoka Display is reserved for the hero H1 only, per DESIGN.md). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .wrap {
   max-width: 940px;
   margin: 0 auto;

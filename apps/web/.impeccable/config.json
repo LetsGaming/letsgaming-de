@@ -137,6 +137,15 @@
         ],
         "createdAt": "2026-08-29T21:46:53.458Z",
         "reason": "SettingsModal's close-button glyph (.x), sized as an icon not body text — matches the site's ~17px icon-sizing convention used elsewhere (.btn svg)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "9px",
+        "files": [
+          "src/components/sections/PlaytimeSection.vue"
+        ],
+        "createdAt": "2026-09-08T06:05:04.982Z",
+        "reason": "PlaytimeSection heat-strip day-axis labels, paired with 13px-tall cell rows — same proportional-to-object micro-label pattern already accepted for HeatGrid's 10px legend caption beside 9px swatches (2026-08-29)"
       }
     ]
   }

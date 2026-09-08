@@ -7,8 +7,8 @@
  * `preview` is forwarded, not validated here: the API owns that decision, so this
  * page can't become a second, laxer gate on the same secret.
  */
-import SmartLink from "~/components/ui/SmartLink.vue";
-import { articleLd, type Locale, type SiteView } from "@lg/core";
+import Breadcrumbs, { type Crumb } from "~/components/ui/Breadcrumbs.vue";
+import { articleLd, breadcrumbLd, type Locale, type SiteView } from "@lg/core";
 import { useSeo } from "~/composables/useSeo";
 import { useRuntimeConfig } from "#imports";
 
@@ -45,6 +45,16 @@ const canonicalPath = computed(() => `/md/${slug.value}`);
 // posts list uses, so a post's description matches its blurb on the index.
 const description = computed(() => data.value?.excerpt || siteData.value?.site.meta.role || "");
 
+// "Blog" has no `href`: there's no index page listing every post (see
+// PostsSection — an area's `posts` module shows its own recent list, not an
+// archive), so a link there would be dead. It still names the section a
+// visitor is in; wire it to a real route if/when a blog index exists.
+const crumbs = computed<Crumb[]>(() => [
+  { label: "letsgaming.de", href: "/" },
+  { label: "Blog" },
+  { label: data.value?.title ?? "Post" },
+]);
+
 useSeo({
   locale: siteData.value?.locale ?? "en",
   path: canonicalPath.value,
@@ -69,6 +79,12 @@ useSeo({
             url: origin,
           },
         }),
+        // "Blog" is left out here too — `BreadcrumbList` items need a real URL,
+        // and inventing one would tell Google a page exists that doesn't.
+        breadcrumbLd([
+          { name: "letsgaming.de", url: origin },
+          { name: data.value.title, url: `${origin}${canonicalPath.value}` },
+        ]),
       ]
     : [],
 });
@@ -76,8 +92,9 @@ useSeo({
 
 <template>
   <main v-if="data" class="md-wrap">
-    <SmartLink class="md-home" href="/blog">← Blog</SmartLink>
+    <Breadcrumbs :items="crumbs" />
     <p v-if="data.draft" class="md-draft">Draft — visible via preview link only.</p>
+    <h1>{{ data.title }}</h1>
     <article class="prose" v-html="data.html" />
   </main>
 </template>

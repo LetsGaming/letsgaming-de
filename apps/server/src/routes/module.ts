@@ -24,11 +24,12 @@ import {
 import { buildSiteView, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
+import { notFound } from "../errors.js";
 
 export function registerModuleRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
   app.get<{ Params: { id: string }; Querystring: { locale?: string; tz?: string; days?: string } }>(
     "/api/module/:id",
-    async (req, reply) => {
+    async (req) => {
       const requested = req.query.locale;
       const locale: Locale = requested && isLocale(requested) ? requested : DEFAULT_LOCALE;
       // A visitor may ask for a specific zone (their own local time); an invalid or
@@ -47,7 +48,7 @@ export function registerModuleRoutes(app: FastifyInstance, store: Store, env: Se
         ...(windowDays ? { windowDays } : {}),
       });
       const module = view.modules[req.params.id];
-      if (!module) return reply.code(404).send({ error: "no such module" });
+      if (!module) throw notFound("no such module");
       return module;
     },
   );

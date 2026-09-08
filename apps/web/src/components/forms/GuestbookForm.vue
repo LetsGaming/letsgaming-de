@@ -3,6 +3,9 @@ import { ref } from "vue";
 import BaseForm from "./BaseForm.vue";
 import { useSubmit } from "../../composables/useSubmit";
 import { FIELD_LIMITS } from "@lg/core";
+import { useT } from "~/composables/useT";
+
+const { t } = useT();
 
 const name = ref("");
 const message = ref("");
@@ -15,10 +18,7 @@ const { state, error, submit } = useSubmit({
   onSuccess: () => {
     name.value = message.value = "";
   },
-  message: (status) =>
-    status === 429
-      ? "That's a few too many just now — please try again a little later."
-      : undefined,
+  message: (status) => (status === 429 ? t("guestbookTooMany") : undefined),
 });
 </script>
 
@@ -27,15 +27,13 @@ const { state, error, submit } = useSubmit({
     <BaseForm
       :state="state"
       :error="error"
-      submit-label="Sign the guestbook"
-      sending-label="Signing…"
+      :submit-label='t("guestbookSend")'
+      :sending-label='t("guestbookSending")'
       @submit="submit"
     >
-      <template #success>
-        Thanks for signing! Your note will appear here once I've had a chance to approve it.
-      </template>
-      <label>Name<input v-model="name" required :maxlength="FIELD_LIMITS.guestbookName" autocomplete="name" /></label>
-      <label>Message<textarea v-model="message" required :maxlength="FIELD_LIMITS.guestbookMessage" rows="3" /></label>
+      <template #success>{{ t("guestbookSent") }}</template>
+      <label>{{ t("guestbookFormName") }}<input v-model="name" required :maxlength="FIELD_LIMITS.guestbookName" autocomplete="name" /></label>
+      <label>{{ t("guestbookFormMessage") }}<textarea v-model="message" required :maxlength="FIELD_LIMITS.guestbookMessage" rows="3" /></label>
       <input v-model="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
     </BaseForm>
   </div>

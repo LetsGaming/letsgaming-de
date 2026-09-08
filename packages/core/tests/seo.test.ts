@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { articleLd, buildSeoTags, personLd, plainExcerpt, websiteLd, type SeoInput } from "../src/seo.js";
+import { articleLd, breadcrumbLd, buildSeoTags, personLd, plainExcerpt, websiteLd, type SeoInput } from "../src/seo.js";
 
 const base: SeoInput = {
   origin: "https://letsgaming.de",
@@ -147,4 +147,21 @@ test("plainExcerpt cuts at a word boundary and marks the truncation", () => {
 
 test("plainExcerpt yields empty string for a body with no prose", () => {
   assert.equal(plainExcerpt("```\nconst x = 1;\n```"), "");
+});
+
+test("breadcrumbLd numbers items 1-based, in array order", () => {
+  const ld = breadcrumbLd([
+    { name: "letsgaming.de", url: "https://letsgaming.de" },
+    { name: "Documentation", url: "https://letsgaming.de/docs" },
+    { name: "ADR 0005", url: "https://letsgaming.de/docs/adr/0005-source-contract" },
+  ]);
+  assert.equal(ld["@type"], "BreadcrumbList");
+  const items = ld.itemListElement as Record<string, unknown>[];
+  assert.equal(items.length, 3);
+  assert.deepEqual(
+    items.map((i) => i.position),
+    [1, 2, 3],
+  );
+  assert.equal(items[0]?.item, "https://letsgaming.de");
+  assert.equal(items[2]?.name, "ADR 0005");
 });

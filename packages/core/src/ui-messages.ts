@@ -67,6 +67,7 @@ const EN = {
 
   // Section-specific empty states
   emptyActivity: "Nothing synced from GitHub yet.",
+  emptyGlance: "Nothing synced from GitHub yet — check back shortly.",
   emptyCoding: "No coding time synced yet.",
   emptyFeatured: "Nothing pinned right now.",
   /** Featured's own label, distinguishing an owner-pinned repo from the silent
@@ -223,6 +224,14 @@ const EN = {
   contactUnconfigured: "The contact form isn't set up right now — try email instead.",
   contactTooMany: "Too many messages just now — please try again a little later.",
 
+  // Guestbook form (the empty-list copy lives with the section, above).
+  guestbookFormName: "Name",
+  guestbookFormMessage: "Message",
+  guestbookSend: "Sign the guestbook",
+  guestbookSending: "Signing…",
+  guestbookSent: "Thanks for signing! Your note will appear here once I've had a chance to approve it.",
+  guestbookTooMany: "That's a few too many just now — please try again a little later.",
+
   // Coding
   codingScope: "{range} · {hours}h tracked",
 } as const;
@@ -260,6 +269,7 @@ const DE: Messages = {
   loadPreviewFailed: "Vorschau konnte nicht erstellt werden.",
 
   emptyActivity: "Noch nichts von GitHub synchronisiert.",
+  emptyGlance: "Noch nichts von GitHub synchronisiert — schau gleich nochmal vorbei.",
   emptyCoding: "Noch keine Coding-Zeit synchronisiert.",
   emptyFeatured: "Gerade nichts angepinnt.",
   featuredPinned: "Angepinnt",
@@ -382,6 +392,13 @@ const DE: Messages = {
   contactSent: "Danke — deine Nachricht ist unterwegs. Ich melde mich bald.",
   contactUnconfigured: "Das Kontaktformular ist gerade nicht eingerichtet — schreib mir stattdessen eine E-Mail.",
   contactTooMany: "Gerade zu viele Nachrichten — bitte versuch es etwas später noch einmal.",
+
+  guestbookFormName: "Name",
+  guestbookFormMessage: "Nachricht",
+  guestbookSend: "Ins Gästebuch eintragen",
+  guestbookSending: "Wird eingetragen…",
+  guestbookSent: "Danke fürs Eintragen! Dein Eintrag erscheint hier, sobald ich ihn freigegeben habe.",
+  guestbookTooMany: "Gerade ein bisschen viele — bitte versuch es etwas später noch einmal.",
 
   codingScope: "{range} · {hours} Std. erfasst",
 };

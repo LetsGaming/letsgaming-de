@@ -29,6 +29,7 @@ import { mkdir, readFile, writeFile, stat, unlink, readdir } from "node:fs/promi
 import { join, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
+import sanitizeHtml from "sanitize-html";
 import type { ServerEnv } from "../env.js";
 import { requireAuth } from "../auth/guard.js";
 import { badRequest, conflict, notFound, payloadTooLarge, unsupportedMedia } from "../errors.js";
@@ -49,21 +50,54 @@ const MIME: Record<string, string> = {
   svg: "image/svg+xml",
   pdf: "application/pdf",
   md: "text/markdown; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
+  csv: "text/csv; charset=utf-8",
+  json: "application/json; charset=utf-8",
+  zip: "application/zip",
 };
 const ID_RE = /^[A-Za-z0-9_-]+$/;
 const HASH_RE = /^[a-f0-9]{64}$/;
 
-/** Strip the obvious script vectors from an SVG before we inline it. */
+// A real parser-based allowlist, not a regex blacklist: sanitize-html walks the
+// parsed tree and keeps only these tags/attributes, so there's no "unquoted
+// on*=" or unusual-whitespace variant to evade it the way a regex could be. Any
+// event-handler attribute (onload, onclick, ...) is absent from the allowlist
+// below and is dropped regardless of how it's written.
+const SVG_ALLOWED_TAGS = [
+  "svg", "g", "path", "circle", "rect", "ellipse", "line", "polyline", "polygon",
+  "defs", "clipPath", "linearGradient", "radialGradient", "stop", "mask", "use",
+  "symbol", "title", "desc", "text", "tspan", "pattern",
+  "filter", "feGaussianBlur", "feOffset", "feMerge", "feMergeNode",
+  "feColorMatrix", "feComposite", "feFlood", "feBlend",
+];
+const SVG_ALLOWED_ATTR = [
+  "xmlns", "xmlns:xlink", "id", "class", "d", "fill", "fill-opacity", "fill-rule", "stroke",
+  "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray",
+  "stroke-opacity", "transform", "points", "cx", "cy", "r", "rx", "ry",
+  "x", "y", "x1", "y1", "x2", "y2", "width", "height", "viewBox",
+  "preserveAspectRatio", "offset", "stop-color", "stop-opacity",
+  "gradientUnits", "gradientTransform", "patternUnits", "patternTransform",
+  "xlink:href", "href", "font-family", "font-size", "font-weight",
+  "text-anchor", "opacity", "clip-path", "mask", "filter",
+  "in", "in2", "result", "stdDeviation", "dx", "dy", "values", "type",
+];
+
+/** Parser-based SVG sanitizer: allowlists tags/attributes, drops everything
+ * else (script, foreignObject, style, event handlers, javascript:/data: URLs)
+ * regardless of quoting or whitespace tricks a regex-based stripper could miss. */
 function sanitizeSvg(svg: string): string {
-  return svg
+  const withoutPreamble = svg
     .replace(/<\?xml[\s\S]*?\?>/gi, "")
-    .replace(/<!DOCTYPE[\s\S]*?>/gi, "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "")
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/(?:xlink:href|href)\s*=\s*"(?:\s*javascript:|\s*data:text\/html)[^"]*"/gi, "")
-    .trim();
+    .replace(/<!DOCTYPE[\s\S]*?>/gi, "");
+  return sanitizeHtml(withoutPreamble, {
+    allowedTags: SVG_ALLOWED_TAGS,
+    allowedAttributes: { "*": SVG_ALLOWED_ATTR },
+    allowedSchemes: ["http", "https"],
+    allowedSchemesByTag: { use: ["http", "https"] },
+    allowProtocolRelative: false,
+    disallowedTagsMode: "discard",
+    parser: { lowerCaseAttributeNames: false },
+  }).trim();
 }
 
 /** Best-effort intrinsic size for an SVG from viewBox / width+height. */
@@ -179,7 +213,12 @@ export async function registerAssetRoutes(
       hash,
       kind,
       ext: storedExt,
-      mime: file.mimetype || MIME[storedExt] || "application/octet-stream",
+      // Never trust the client-declared multipart Content-Type for storage: it's
+      // served back verbatim below (with `inline` disposition for pdf/file), so an
+      // attacker-chosen mimetype (e.g. claiming text/html on a .txt upload) would
+      // become a stored, served Content-Type mismatch. Always derive it from our
+      // own extension→MIME map instead.
+      mime: MIME[storedExt] ?? "application/octet-stream",
       bytes: buf.byteLength,
       ...(width ? { width } : {}),
       ...(height ? { height } : {}),

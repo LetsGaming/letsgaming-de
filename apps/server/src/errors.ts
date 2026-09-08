@@ -25,6 +25,7 @@ export class AppError extends Error {
 
 export const badRequest = (message: string): AppError => new AppError(400, message);
 export const unauthorized = (message = "Unauthorized."): AppError => new AppError(401, message);
+export const forbidden = (message = "Forbidden."): AppError => new AppError(403, message);
 export const notFound = (message = "Not found."): AppError => new AppError(404, message);
 export const conflict = (message: string): AppError => new AppError(409, message);
 export const payloadTooLarge = (message = "File too large."): AppError => new AppError(413, message);

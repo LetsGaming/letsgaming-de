@@ -21,7 +21,7 @@ defineProps<{
       {{ module.data.latest.text }}
       <span class="m">{{ t("ago", { age: module.data.latest.relative }) }}</span>
     </p>
-    <StatGrid :columns="2" separation="figures" class="glance-stats">
+    <StatGrid v-if="module.data.stats.length" :columns="2" separation="figures" class="glance-stats">
       <StatTile
         v-for="(s, i) in module.data.stats"
         :key="i"
@@ -31,6 +31,7 @@ defineProps<{
         :label="s.label"
       />
     </StatGrid>
+    <p v-else-if="!module.data.latest" class="sub">{{ t("emptyGlance") }}</p>
     <SmartLink class="more glance-more" :href="module.data.moreHref" @click="() => trackClick('glance-more')">{{ t("fullActivity") }}</SmartLink>
   </ModuleSection>
 </template>

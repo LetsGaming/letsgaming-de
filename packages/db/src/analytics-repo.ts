@@ -1,6 +1,6 @@
 import type { AnalyticsDimension } from "@lg/core";
 import type { DB } from "./database.js";
-import { asNumber, asText, mapRow, mapRows, transact, type Row } from "./row-mapper.js";
+import { asNumber, asText, mapRow, mapRows, SINGLETON_ID, transact, type Row } from "./row-mapper.js";
 
 // The vocabulary is core's — this file held a second copy of all sixteen, in a
 // different order, and the store is the thing that refuses to record a dimension
@@ -35,6 +35,12 @@ export interface SeriesRow {
 const toAnalyticsRow = (r: Row): AnalyticsRow => ({ key: asText(r.key), count: asNumber(r.count) });
 const toSeriesRow = (r: Row): SeriesRow => ({
   bucket: asText(r.bucket),
+  key: asText(r.key),
+  count: asNumber(r.count),
+});
+/** A row being moved between dimensions during `reclassify` — see there. */
+const toReclassifyRow = (r: Row): { period: string; key: string; count: number } => ({
+  period: asText(r.period),
   key: asText(r.key),
   count: asNumber(r.count),
 });
@@ -90,9 +96,11 @@ export function analyticsRepo(db: DB) {
           ["analytics_hourly", "bucket"],
           ["analytics_daily", "day"],
         ] as const) {
-          const rows = db
-            .prepare(`SELECT ${period} AS period, key, count FROM ${table} WHERE dimension = ?`)
-            .all(from) as { period: string; key: string; count: number }[];
+          const rows = mapRows(
+            db.prepare(`SELECT ${period} AS period, key, count FROM ${table} WHERE dimension = ?`),
+            toReclassifyRow,
+            from,
+          );
           const del = db.prepare(`DELETE FROM ${table} WHERE dimension = ? AND ${period} = ? AND key = ?`);
           const ins = db.prepare(
             `INSERT INTO ${table} (${period}, dimension, key, count) VALUES (?, ?, ?, ?)
@@ -216,22 +224,25 @@ export function analyticsRepo(db: DB) {
      * migration 0012 for why an offset alone isn't enough.
      */
     getClearedThrough(): string | null {
-      const row = db
-        .prepare("SELECT cleared_through FROM analytics_clear_marker WHERE id = 1")
-        .get() as { cleared_through: string } | undefined;
-      return row?.cleared_through ?? null;
+      return (
+        mapRow(
+          db.prepare("SELECT cleared_through FROM analytics_clear_marker WHERE id = ?"),
+          (r) => asText(r.cleared_through),
+          SINGLETON_ID,
+        ) ?? null
+      );
     },
 
     /** Record a deletion watermark, or clear it (an explicit rebuild). */
     setClearedThrough(bucket: string | null): void {
       if (bucket === null) {
-        db.prepare("DELETE FROM analytics_clear_marker WHERE id = 1").run();
+        db.prepare("DELETE FROM analytics_clear_marker WHERE id = ?").run(SINGLETON_ID);
         return;
       }
       db.prepare(
-        `INSERT INTO analytics_clear_marker (id, cleared_through) VALUES (1, ?)
+        `INSERT INTO analytics_clear_marker (id, cleared_through) VALUES (?, ?)
          ON CONFLICT(id) DO UPDATE SET cleared_through = excluded.cleared_through`,
-      ).run(bucket);
+      ).run(SINGLETON_ID, bucket);
     },
 
     clearHourly(fromB: string, toB: string): number {

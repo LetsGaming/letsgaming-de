@@ -29,6 +29,7 @@
 
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
+import { forbidden } from "../errors.js";
 import { SESSION_COOKIE } from "./guard.js";
 
 /** IPv4 loopback, IPv6 loopback, and IPv4-mapped-IPv6 loopback. */
@@ -49,7 +50,7 @@ export function registerDevLoginRoutes(app: FastifyInstance, env: ServerEnv): vo
     // `req.socket.remoteAddress` is the actual TCP peer and ignores proxy
     // headers entirely, so this guard holds regardless of TRUST_PROXY.
     if (!LOOPBACK.has(req.socket.remoteAddress ?? "")) {
-      return reply.code(403).send({ error: "Dev login is available on loopback only." });
+      throw forbidden("Dev login is available on loopback only.");
     }
 
     // The identity the guard would grant after a real OAuth round-trip. Falls back

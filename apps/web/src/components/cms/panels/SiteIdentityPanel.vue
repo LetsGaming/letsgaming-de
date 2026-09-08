@@ -19,7 +19,7 @@ const { galleryThumb, locale, lv, meta, openPicker, saveMeta, setLv, tab } =
             <label>Role<LocalizedField :field="meta.role" /></label>
             <div class="avatarrow">
               <span class="avatarprev">
-                <img v-if="meta.avatar" :src="galleryThumb(meta.avatar)" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
+                <img v-if="meta.avatar" :src="galleryThumb(meta.avatar)" alt="" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
                 <span v-else class="muted">no image</span>
               </span>
               <div>

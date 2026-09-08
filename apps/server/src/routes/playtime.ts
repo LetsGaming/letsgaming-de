@@ -13,15 +13,15 @@ import { capList, gameMetaKey, isHidden, type PlaytimeDayResponse } from "@lg/co
 import { isValidDay, resolveZone } from "./day-request.js";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
-
+import { badRequest } from "../errors.js";
 
 export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void {
-  app.get<{ Querystring: { day?: string; tz?: string }; Reply: PlaytimeDayResponse | { error: string } }>(
+  app.get<{ Querystring: { day?: string; tz?: string }; Reply: PlaytimeDayResponse }>(
     "/api/playtime/day",
-    async (req, reply) => {
+    async (req) => {
       const day = req.query.day ?? "";
       if (!isValidDay(day)) {
-        return reply.code(400).send({ error: "day must be YYYY-MM-DD" });
+        throw badRequest("day must be YYYY-MM-DD");
       }
       const zone = resolveZone(req.query.tz);
       // Hidden games are dropped wherever a name would surface publicly. The
