@@ -66,7 +66,7 @@ function seedGuestbook(store: Store): void {
     { name: "Nina B.", message: "Bin auch Fachinformatikerin, cool das hier zu sehen!", approve: true },
     { name: "Chris", message: "The LED shelf project sounds awesome, got any writeups?", approve: true },
     { name: "Yuki", message: "Stumbled in from GitHub — great use of a self-hosted CMS.", approve: true },
-    { name: "Ben", message: "Servus aus München, schöner Blog!", approve: true },
+    { name: "Benjamin", message: "Schönen guten Tag! Netter Blog.", approve: true },
     { name: "Aisha", message: "This is exactly the kind of personal site the web needs more of.", approve: true },
     { name: "spam-bot9000", message: "CHEAP WATCHES CLICK HERE http://example.invalid", approve: false },
     { name: "Marcel", message: "Hey, gerade erst entdeckt — bin gespannt was als nächstes kommt.", approve: false },

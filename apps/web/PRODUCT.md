@@ -39,6 +39,7 @@ Success means the site never looks like it was abandoned after a month, without 
 - The CMS is deliberately kept small: every proposed feature is measured against "does this project actually need it," not grown toward a general-purpose CMS.
 - Contact form relays to email and stores nothing server-side.
 - No image-generation tool is available in this session, so any new-work visual pass proceeds code-first (comp-first requires image generation, which isn't present here).
+- Wrapped: an opt-in, CMS-scheduled periodic retrospective (Spotify Wrapped-style) built from already-recorded listening and game-session activity — never a separate collection mechanism. Visibility is a recurring window ("every N months, for M weeks, starting from date X") enforced server-side: outside the window the module is absent from the resolved view entirely, never sent-then-hidden, consistent with the project's never-fake-freshness principle.
 
 ## Brand Commitments
 

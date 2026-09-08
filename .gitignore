@@ -39,3 +39,4 @@ dist/
 !.claude/skills/db-migration/
 
 .playwright-mcp/*
+.impeccable/*
