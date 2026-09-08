@@ -44,8 +44,8 @@ function goHome() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 24px;
+  gap: var(--sp-12);
+  padding: var(--sp-24);
   text-align: center;
   background: var(--surf-0);
   color: var(--ink);
@@ -74,8 +74,8 @@ h1 {
 /* Primary button per DESIGN.md: Shelf Violet solid fill, white text, 15px
    radius, 12px/20px padding, translateY(2px) on press. */
 .home {
-  margin-top: 12px;
-  padding: 12px 20px;
+  margin-top: var(--sp-12);
+  padding: var(--sp-12) var(--sp-20);
   border-radius: 15px;
   border: none;
   background: var(--live-solid);

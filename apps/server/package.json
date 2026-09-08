@@ -13,6 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "sync": "tsx src/sync/cli.ts",
+    "seed:mock": "tsx scripts/seed-mock-data.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "analytics": "tsx src/analytics/cli.ts",
     "test": "node --test --import tsx \"tests/**/*.test.ts\"",

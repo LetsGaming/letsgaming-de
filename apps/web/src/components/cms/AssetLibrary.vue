@@ -263,7 +263,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .navsec { display: flex; flex-direction: column; gap: var(--sp-4); }
 .navhead { display: flex; justify-content: space-between; align-items: center; font-family: var(--f-m); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .libnav button { text-align: left; font-size: 13px; padding: 5px var(--sp-8); border-radius: 8px; border: none; background: none; color: var(--ink); cursor: pointer; }
-.libnav button.on { background: var(--ink); color: #fff; }
+.libnav button.on { background: var(--ink); color: var(--ink-strong); }
 .frow { display: flex; align-items: center; }
 .frow button:first-child { flex: 1; }
 .tagcloud { display: flex; flex-wrap: wrap; gap: var(--sp-4); }

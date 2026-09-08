@@ -9,7 +9,7 @@ import {
   sessionTabsBucket,
   transitionKey,
   validateTrackEvent,
-} from "../src/analytics.js";
+} from "../src/engagement.js";
 
 test("dwellBucket maps durations to coarse buckets", () => {
   assert.equal(dwellBucket(0), "<5s");

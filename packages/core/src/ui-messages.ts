@@ -210,6 +210,10 @@ const EN = {
   freshEmpty: "nothing synced",
   /** A bare relative age, for a timestamp that isn't a sync (a post's date). */
   ago: "{age} ago",
+  /** Shown once, above the module list, when several synced modules are
+   *  simultaneously cold — see coldModuleCount in SitePanels.vue. Reframes a
+   *  page that would otherwise read as five separate "nothing here"s. */
+  coldStart: "Still warming up — a few things haven't synced yet.",
 
   // Contact. The module offers a form when the relay is configured and a mailto
   // when it isn't, so both paths need copy — the mailto branch is the one an
@@ -382,6 +386,7 @@ const DE: Messages = {
   freshNever: "noch nicht synchronisiert",
   freshEmpty: "nichts synchronisiert",
   ago: "vor {age}",
+  coldStart: "Noch am Warmlaufen — einiges ist noch nicht synchronisiert.",
 
   contactEmailMe: "Schreib mir eine E-Mail",
   contactFormName: "Name",

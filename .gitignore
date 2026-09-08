@@ -37,3 +37,5 @@ dist/
 .claude/skills/*
 !.claude/skills/api-doc/
 !.claude/skills/db-migration/
+
+.playwright-mcp/*

@@ -1,4 +1,4 @@
-import type { ReferrerRule } from "./referrer.js";
+import type { ReferrerRule } from "./traffic-source.js";
 /**
  * What the API returns.
  *
@@ -34,7 +34,7 @@ import type { SiteContent } from "./content.js";
 import type { GuestbookEntry } from "./guestbook.js";
 import type { ModuleDescriptor } from "./modules.js";
 import type { NavNode } from "./nav.js";
-import type { AnalyticsDimension } from "./analytics.js";
+import type { AnalyticsDimension } from "./engagement.js";
 
 /** Every mutation answers the same way. */
 export interface OkResponse {

@@ -99,7 +99,7 @@ const idle = computed(
     <div class="pw-unit">
       <div class="pw-who">
         <div class="pw-avatar">
-          <img v-if="discordAvatarSrc" :src="discordAvatarSrc" alt="" class="pw-av" />
+          <img v-if="discordAvatarSrc" :src="discordAvatarSrc" alt="" class="pw-av" loading="lazy" />
           <AssetPicture v-else-if="avatar" :view="avatar" class="pw-av" />
           <span v-else>{{ initials }}</span>
           <span class="pw-pip" :class="'pw-s-' + status" />
@@ -137,6 +137,7 @@ const idle = computed(
               :src="activity.art"
               alt=""
               class="pw-art"
+              loading="lazy"
             />
             <span v-else class="pw-art pw-art-ph" />
             <div class="pw-abody">

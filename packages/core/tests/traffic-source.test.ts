@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyReferrer, groupReferrers, sanitizeReferrerRules, sanitizeUtmSource } from "../src/referrer.js";
+import { classifyReferrer, groupReferrers, sanitizeReferrerRules, sanitizeUtmSource } from "../src/traffic-source.js";
 
 test("subdomains of one source collapse to one label", () => {
   for (const h of ["reddit.com", "www.reddit.com", "old.reddit.com", "out.reddit.com"]) {

@@ -160,7 +160,7 @@ a.ev-link:hover .ei {
   background: var(--ink);
 }
 a.ev-link:hover .ei :deep(svg) {
-  color: #fff;
+  color: var(--ink-strong);
 }
 .ev-more {
   margin-top: var(--sp-8);

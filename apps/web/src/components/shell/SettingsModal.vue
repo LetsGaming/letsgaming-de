@@ -240,7 +240,7 @@ section h3 {
 }
 .switch.on .knob {
   transform: translateX(19px);
-  background: #fff;
+  background: var(--ink-strong);
 }
 .switch.disabled {
   opacity: 0.5;

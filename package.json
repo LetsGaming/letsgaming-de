@@ -14,6 +14,8 @@
     "dev": "pnpm -r --filter=./packages/* build && pnpm --parallel --filter=@lg/server --filter=@lg/web dev",
     "dev:server": "pnpm -r --filter=./packages/* build && pnpm --filter=@lg/server dev",
     "dev:web": "pnpm -r --filter=./packages/* build && pnpm --filter=@lg/web dev",
+    "dev:up": "node scripts/dev-up.mjs",
+    "dev:down": "node scripts/dev-down.mjs",
     "sync": "pnpm --filter=@lg/server sync",
     "lint:nav": "pnpm --filter=@lg/core lint:nav",
     "typecheck": "pnpm -r typecheck",
