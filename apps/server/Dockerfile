@@ -12,18 +12,27 @@ WORKDIR /app
 
 # --- build: fetch (lockfile-cached) → offline install → build → prune to /prod ---
 FROM base AS build
-# Populate the store from the lockfile alone. This layer is cached until
-# pnpm-lock.yaml changes — source edits never reach it, so no re-download.
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
+
+# Copy dependency manifests first. pnpm fetch needs package.json because
+# pnpm.overrides is part of the dependency configuration.
+# This layer is cached until package.json or pnpm-lock.yaml changes.
+COPY package.json pnpm-lock.yaml ./
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm fetch
+
 # Now the source; install runs fully offline off the warm store.
 COPY . .
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --offline --frozen-lockfile
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --offline --frozen-lockfile
+
 # core → db → sources → server (each dep built before its consumer).
 RUN pnpm --filter @lg/core build \
  && pnpm --filter @lg/db build \
  && pnpm --filter @lg/sources build \
  && pnpm --filter @lg/server build
+
 # Prune to a self-contained, prod-only tree: built dist + prod deps (incl. the
 # compiled sharp addon), workspace packages resolved in, NO dev deps (tsx,
 # typescript, vitest, happy-dom). CI=1 keeps pnpm non-interactive; --legacy copies
@@ -35,11 +44,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 FROM node:24-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+
 # The deploy root IS the server package, so the entrypoint is dist/index.js.
 COPY --from=build --chown=node:node /prod .
+
 # /data is the mounted store+media volume; owning it here means a fresh named
 # volume inherits node ownership.
 RUN mkdir -p /data && chown node:node /data
+
 USER node
 EXPOSE 8787
 CMD ["node", "dist/index.js"]

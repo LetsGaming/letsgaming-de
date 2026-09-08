@@ -15,15 +15,25 @@ WORKDIR /app
 
 # --- build: fetch (lockfile-cached) → offline install → build ---
 FROM base AS build
-# Fetch first so PUBLIC_API_URL changes below can't invalidate it.
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
+
+# Copy dependency manifests first. pnpm fetch needs package.json because
+# pnpm.overrides is part of the dependency configuration.
+# This layer is cached until package.json or pnpm-lock.yaml changes.
+COPY package.json pnpm-lock.yaml ./
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm fetch
+
 COPY . .
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --offline --frozen-lockfile
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --offline --frozen-lockfile
+
 # Client-facing API URL, baked into the browser bundle. Declared here — after
 # install — so changing it re-runs only the build, not fetch/install.
 ARG PUBLIC_API_URL=""
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
+
 # core → db → web. SSR reads the store directly (imports @lg/db, whose exports
 # point at dist/), so @lg/db must be built before vite resolves it; @lg/db imports
 # @lg/core, hence core → db → web.
@@ -40,17 +50,23 @@ FROM node:24-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
+
 # Kept at 4321 so docker-compose and any reverse proxy stay unchanged.
 ENV PORT=4321
-# Nitro traces its own dependencies into .output, so there is no pnpm deploy step
-# and no node_modules to prune — the output *is* the deployable.
+
+# Nitro traces its own dependencies into .output, so there is no pnpm deploy
+# step and no node_modules to prune — the output *is* the deployable.
 COPY --from=build --chown=node:node /app/apps/web/.output ./
-# Source files the SSR fallback reads when a prerendered page is missed. Paths are
-# explicit rather than cwd-relative, because the server starts from this dir.
+
+# Source files the SSR fallback reads when a prerendered page is missed.
+# Paths are explicit rather than cwd-relative, because the server starts from
+# this directory.
 COPY --from=build --chown=node:node /app/docs /docs
 COPY --from=build --chown=node:node /app/openapi.yml /openapi.yml
+
 ENV DOCS_DIR=/docs
 ENV OPENAPI_PATH=/openapi.yml
+
 USER node
 EXPOSE 4321
 CMD ["node", "server/index.mjs"]
