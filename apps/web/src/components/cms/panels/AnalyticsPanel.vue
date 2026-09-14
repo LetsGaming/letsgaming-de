@@ -43,9 +43,42 @@ const {
 	hoverAt,
 	clearHover,
 	rangeHours,
+	customRange,
+	setCustomRange,
+	clearCustomRange,
 	refreshAnalytics,
 	setRange,
 } = useCmsContext();
+
+/** Custom from/to picker: a disclosure like the referrer-rule editor, open or
+ *  closed independent of whether a custom range is actually active — closing
+ *  it doesn't clear a range already applied. */
+const showCustomRange = ref(false);
+const todayStr = new Date().toISOString().slice(0, 10);
+const customFromInput = ref(customRange.value?.from ?? "");
+const customToInput = ref(customRange.value?.to ?? "");
+
+function applyCustomRange() {
+	setCustomRange(customFromInput.value, customToInput.value);
+	showCustomRange.value = false;
+}
+function clearCustomRangeAndClose() {
+	clearCustomRange();
+	customFromInput.value = "";
+	customToInput.value = "";
+	showCustomRange.value = false;
+}
+
+/** "vs previous 72h" for a preset, "vs previous 6 days" for a custom span —
+ *  the axis caption's comparison line needs a window length either way. */
+const comparisonLabel = computed(() => {
+	if (customRange.value) {
+		const days =
+			Math.round((Date.parse(customRange.value.to) - Date.parse(customRange.value.from)) / 86_400_000) + 1;
+		return `${days} day${days === 1 ? "" : "s"}`;
+	}
+	return `${rangeHours.value}h`;
+});
 
 /**
  * "updated 12s ago" — the panel refreshes itself now, so it has to be able to
@@ -199,13 +232,36 @@ const age = computed(() => {
                   v-for="r in RANGES"
                   :key="r.hours"
                   type="button"
-                  :class="{ on: rangeHours === r.hours }"
-                  :aria-pressed="rangeHours === r.hours"
+                  :class="{ on: !customRange && rangeHours === r.hours }"
+                  :aria-pressed="!customRange && rangeHours === r.hours"
                   @click="setRange(r.hours)"
                 >
                   {{ r.label }}
                 </button>
+                <button
+                  type="button"
+                  :class="{ on: !!customRange }"
+                  :aria-pressed="!!customRange"
+                  :aria-expanded="showCustomRange"
+                  @click="showCustomRange = !showCustomRange"
+                >
+                  {{ customRange ? `${customRange.from} – ${customRange.to}` : "Custom" }}
+                </button>
               </div>
+            </div>
+            <div v-if="showCustomRange" class="customrange">
+              <label>
+                From
+                <input v-model="customFromInput" type="date" :max="todayStr" />
+              </label>
+              <label>
+                To
+                <input v-model="customToInput" type="date" :max="todayStr" />
+              </label>
+              <button type="button" class="btn" @click="applyCustomRange">Apply</button>
+              <button v-if="customRange" type="button" class="btn ghost" @click="clearCustomRangeAndClose">
+                Back to presets
+              </button>
             </div>
             <!-- The plot is wrapped so an HTML tooltip can be positioned over it;
                  SVG can't lay out wrapping text, and a foreignObject would just be
@@ -308,7 +364,7 @@ const age = computed(() => {
               <span>
                 <b>{{ METRIC_LABELS[metric] }}</b> per {{ chart.unit === "hour" ? "hour" : "day" }} (vertical) ·
                 {{ zone === "utc" ? "UTC" : activeZone }} (horizontal)
-                <template v-if="comparison"> · vs previous {{ rangeHours }}h</template>
+                <template v-if="comparison"> · vs previous {{ comparisonLabel }}</template>
                 <template v-else> · no earlier data to compare</template>
               </span>
               <span v-if="loadingA" class="muted">updating…</span>

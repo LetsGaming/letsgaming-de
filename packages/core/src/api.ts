@@ -154,6 +154,20 @@ export interface AnalyticsResponse {
    */
   referrerRules: ReferrerRule[];
   engagement: AnalyticsEngagement;
+  /**
+   * Health of the access-log ingest pipeline. Present only when `ACCESS_LOG`
+   * is configured server-side — absent (not an empty object) is the existing
+   * "not configured at all" case the traffic banner already explains, which
+   * is a different situation from "configured but currently failing."
+   */
+  ingest?: {
+    /** ISO timestamp of the last successful ingest run, or absent if it has
+     *  never succeeded. */
+    lastSuccessAt?: string;
+    /** The most recent attempt's error, present only if that attempt (which
+     *  may postdate `lastSuccessAt`) failed. A later success clears it. */
+    lastError?: string;
+  };
 }
 
 /** Per-metric totals, matching the chart's metric keys. */

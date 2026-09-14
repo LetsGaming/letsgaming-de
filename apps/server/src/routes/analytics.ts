@@ -8,7 +8,7 @@
  * and the owner can clear fine-grained ranges (last hour, last 3 days, …).
  */
 
-import { clearRange, groupReferrers, sanitizeTimeZone } from "@lg/core";
+import { MAX_CUSTOM_RANGE_DAYS, clearRange, groupReferrers, sanitizeTimeZone } from "@lg/core";
 import type { AnalyticsResponse, AnalyticsTotals, ClearAnalyticsResponse } from "@lg/core";
 import { zonedParts, type AnalyticsDimension, type SeriesRow, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
@@ -31,6 +31,11 @@ const BUCKET_MAX = "9999";
 
 function isoHour(d: Date): string {
   return d.toISOString().slice(0, 13);
+}
+
+/** A calendar-day label, shifted by a whole number of days (may be negative). */
+function shiftDay(day: string, deltaDays: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + deltaDays * 24 * HOUR).toISOString().slice(0, 10);
 }
 
 /**
@@ -103,12 +108,41 @@ function fromBucket(from: Date, unit: "hour" | "day"): string {
 }
 
 export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
-  app.get<{ Querystring: { hours?: string; tz?: string; at?: string } }>(
+  app.get<{ Querystring: { hours?: string; tz?: string; at?: string; from?: string; to?: string } }>(
     "/api/cms/analytics",
     { preHandler: requireAuth(env) },
     async (req) => {
-      const hours = Math.min(24 * 400, Math.max(1, Number(req.query.hours) || 720));
-      const unit: "hour" | "day" = hours <= 72 ? "hour" : "day";
+      /**
+       * An arbitrary `from`/`to` span — the "Custom" range picker — as an
+       * alternative to the fixed `hours` presets. Both sides are required
+       * together: a lone `from` or `to` reads as a broken request, not a
+       * partial one, so it's rejected rather than silently guessed at.
+       *
+       * Always whole local calendar days (like the `unit === "day"` case
+       * below), which is why there's no hour-level custom range: a picker
+       * fine enough for "3:00 to 3:00" would need to explain itself, and the
+       * preset ranges already cover every sub-day window worth having.
+       */
+      const dateShape = /^\d{4}-\d{2}-\d{2}$/;
+      const customFrom = dateShape.test(req.query.from ?? "") ? req.query.from! : null;
+      const customTo = dateShape.test(req.query.to ?? "") ? req.query.to! : null;
+      if (Boolean(req.query.from ?? req.query.to) && !(customFrom && customTo)) {
+        throw badRequest("A custom range needs a valid 'from' and 'to' (YYYY-MM-DD), both.");
+      }
+      if (customFrom && customTo && customFrom > customTo) {
+        throw badRequest("'from' must not be after 'to'.");
+      }
+      const customSpanDays =
+        customFrom && customTo
+          ? Math.round((Date.parse(`${customTo}T00:00:00Z`) - Date.parse(`${customFrom}T00:00:00Z`)) / HOUR / 24) + 1
+          : null;
+      if (customSpanDays !== null && customSpanDays > MAX_CUSTOM_RANGE_DAYS) {
+        throw badRequest(`A custom range can't exceed ${MAX_CUSTOM_RANGE_DAYS} days.`);
+      }
+
+      const hours =
+        customSpanDays !== null ? customSpanDays * 24 : Math.min(24 * 400, Math.max(1, Number(req.query.hours) || 720));
+      const unit: "hour" | "day" = customFrom ? "day" : hours <= 72 ? "hour" : "day";
       // Defaults to the owner's zone, not UTC: the dashboard's only reader is the
       // owner, and "yesterday evening" should mean their evening.
       const timeZone = sanitizeTimeZone(req.query.tz);
@@ -151,6 +185,19 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         // different question from the one the range picker is answering.
         prevFromB = "";
         prevToB = "";
+      } else if (customFrom && customTo) {
+        // Whole local days, same as the day-unit preset branch below, but
+        // anchored to the picked dates instead of "back from now" — a custom
+        // range can end in the past, so it can't reuse `windowStart`/`now`.
+        fromB = isoHour(new Date(localDayStartMs(customFrom, timeZone)));
+        toB = isoHour(new Date(localDayStartMs(customTo, timeZone) + 23 * HOUR));
+        // The immediately preceding window of the same length, same as every
+        // other range's comparison — "vs the same number of days before this
+        // custom range started".
+        const prevTo = shiftDay(customFrom, -1);
+        const prevFrom = shiftDay(prevTo, -(customSpanDays! - 1));
+        prevFromB = isoHour(new Date(localDayStartMs(prevFrom, timeZone)));
+        prevToB = isoHour(new Date(localDayStartMs(prevTo, timeZone) + 23 * HOUR));
       } else if (unit === "day") {
         // Whole local days: the axis draws day columns, so the window has to
         // start at a local midnight or the oldest column is a partial day drawn
@@ -169,9 +216,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       }
 
       // Day buckets are local days; hour buckets stay UTC and only their labels
-      // shift client-side.
-      const rangeFrom = at ?? (unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB);
-      const rangeTo = at ?? (unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB);
+      // shift client-side. A custom range echoes the picked dates verbatim —
+      // deriving `rangeTo` from `now` (the preset ranges' assumption, since
+      // they're always "back from now") would be wrong the moment `to` is in
+      // the past.
+      const rangeFrom = at ?? customFrom ?? (unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB);
+      const rangeTo = at ?? customTo ?? (unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB);
 
       const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, fromB, toB);
       const series = (d: AnalyticsDimension) => {
@@ -237,6 +287,10 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
           viewport: top("viewport"),
           theme: top("theme"),
         },
+        // Absent (not an empty object) when no access log is configured at
+        // all — that's the existing, separate "never configured" case the
+        // traffic banner already explains.
+        ...(env.accessLog ? { ingest: store.analytics.getIngestStatus(env.accessLog) } : {}),
       };
       return response;
     },

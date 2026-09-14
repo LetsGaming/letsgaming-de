@@ -113,14 +113,21 @@ export const cms = {
       body: JSON.stringify({ rules }),
     }).then(handle<OkResponse>),
 
-  analytics: (hours?: number, tz?: string, at?: string) => {
+  analytics: (opts: { hours?: number; tz?: string; at?: string; from?: string; to?: string } = {}) => {
     const q = new URLSearchParams();
-    if (hours) q.set("hours", String(hours));
+    // A custom from/to span replaces the rolling `hours` window — the two are
+    // mutually exclusive on the server, so only one is ever sent.
+    if (opts.from && opts.to) {
+      q.set("from", opts.from);
+      q.set("to", opts.to);
+    } else if (opts.hours) {
+      q.set("hours", String(opts.hours));
+    }
     // Narrow everything to one bucket — what a click on the chart sends.
-    if (at) q.set("at", at);
+    if (opts.at) q.set("at", opts.at);
     // Day columns are grouped server-side in this zone — a day boundary is a
     // wall-clock fact, so it can't be a display-time transform.
-    if (tz) q.set("tz", tz);
+    if (opts.tz) q.set("tz", opts.tz);
     return fetch(`${apiBase}/api/cms/analytics?${q}`, {
       headers: headers(false),
       credentials: "include",

@@ -86,6 +86,11 @@ if (env.accessLog) {
   const runIngest = () => {
     try {
       const r = ingestLog(store, file, ownHost);
+      // A run that returns instead of throwing is a working pipeline, even on
+      // a quiet day with zero hits — that's the distinction the CMS dashboard
+      // needs: "nothing happened" (this) vs. "ingest is broken" (the catch
+      // below), which used to look identical from the numbers alone.
+      store.analytics.recordIngestSuccess(file, new Date().toISOString());
       if (r.hits) {
         app.log.info(`[analytics] ingested ${r.linesRead} line(s), ${r.hits} hit(s)`);
       } else if (r.linesRead > 0) {
@@ -102,6 +107,11 @@ if (env.accessLog) {
       }
     } catch (err) {
       const message = (err as Error).message;
+      // Recorded before the diagnostic branching below (which has its own
+      // early returns) so every failure path — ENOENT, EACCES, or anything
+      // else — updates the watermark the CMS dashboard reads, not just the
+      // generic warning at the bottom.
+      store.analytics.recordIngestFailure(file, message);
       // ACCESS_LOG_DIR is the HOST directory; ACCESS_LOG is the path INSIDE the
       // container, under the /logs mount. Both look like paths, and setting them
       // consistently — the intuitive move — is wrong. "ENOENT" is technically

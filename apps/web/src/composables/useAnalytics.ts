@@ -131,7 +131,7 @@ export interface AnalyticsDeps {
   tab: Ref<string>;
   cms: {
     saveReferrerRules: (rules: ReferrerRule[]) => Promise<unknown>;
-    analytics: (hours: number, tz?: string, at?: string) => Promise<AnalyticsResponse>;
+    analytics: (opts: { hours?: number; tz?: string; at?: string; from?: string; to?: string }) => Promise<AnalyticsResponse>;
     clearAnalytics: (range: ClearRangeId) => Promise<unknown>;
   };
   authed: { value: boolean };
@@ -142,6 +142,13 @@ export interface AnalyticsDeps {
 export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps) {
   const analytics = ref<AnalyticsResponse | null>(null);
   const rangeHours = ref(72);
+  /**
+   * An arbitrary from/to span, replacing the `rangeHours` presets while set.
+   * Mutually exclusive with `rangeHours` in what's actually queried — picking
+   * a preset (`setRange`) clears this, and picking a custom range doesn't
+   * touch `rangeHours`, so switching back to presets remembers the last one.
+   */
+  const customRange = ref<{ from: string; to: string } | null>(null);
   /**
    * Which clock the chart is read in.
    *
@@ -162,6 +169,18 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
 
   let analyticsPoll: ReturnType<typeof setInterval> | undefined;
 
+  /** The window currently in effect — a custom span if one's set, else the
+   *  selected preset — plus the reader's zone and, optionally, a drill-down
+   *  bucket. One place that decides which of the two mutually exclusive
+   *  window shapes to send, so the two call sites below can't drift. */
+  function windowArgs(at?: string) {
+    return {
+      ...(customRange.value ? { from: customRange.value.from, to: customRange.value.to } : { hours: rangeHours.value }),
+      tz: activeZone.value,
+      ...(at ? { at } : {}),
+    };
+  }
+
   /**
    * Load the analytics aggregates. A *read*, so deliberately not via `guarded()`:
    * that bumps the preview key on success, which would reload the preview iframe
@@ -173,7 +192,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
   async function loadAnalytics(opts: { quiet?: boolean } = {}) {
     if (!opts.quiet) loadingA.value = true;
     try {
-      analytics.value = await cms.analytics(rangeHours.value, activeZone.value);
+      analytics.value = await cms.analytics(windowArgs());
       // Hydrate the editor from what's actually in effect, unless the owner is
       // mid-edit — clobbering half-typed rules on a background poll would be its
       // own small betrayal.
@@ -227,6 +246,28 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
 
   function setRange(h: number) {
     rangeHours.value = h;
+    // Picking a preset is a way back from a custom span, same as "Reset to
+    // default" is a way back from a pinned card scope.
+    customRange.value = null;
+    refreshAnalytics();
+  }
+
+  /** Switch to an arbitrary from/to span. Validated shape only (`YYYY-MM-DD`,
+   *  `from` not after `to`) — the server is the real authority on the max
+   *  span and rejects anything wider with a flashed error. */
+  function setCustomRange(from: string, to: string) {
+    if (!from || !to || from > to) {
+      flash("Pick a start date on or before the end date.");
+      return;
+    }
+    customRange.value = { from, to };
+    refreshAnalytics();
+  }
+
+  /** Back to the preset ranges — `rangeHours` was never touched, so this
+   *  resumes whichever preset was last selected. */
+  function clearCustomRange() {
+    customRange.value = null;
     refreshAnalytics();
   }
 
@@ -418,7 +459,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     }
     loadingFocus.value = true;
     try {
-      focused.value = await cms.analytics(rangeHours.value, activeZone.value, bucket);
+      focused.value = await cms.analytics(windowArgs(bucket));
     } catch {
       // A failed drill-in shouldn't strand the view on a stale slice.
       focus.value = null;
@@ -446,10 +487,10 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
   }
   // A range or metric change re-lays the axis; a tooltip pinned to the old one
   // would be describing a bucket that's no longer under the pointer.
-  watch([metric, rangeHours], clearHover);
+  watch([metric, rangeHours, customRange], clearHover);
   // A new axis means the focused bucket may not exist any more, and a stale
   // slice under a changed chart is worse than no slice.
-  watch([rangeHours, zone], () => void focusBucket(null));
+  watch([rangeHours, customRange, zone], () => void focusBucket(null));
 
   // Lifecycle: the poll follows the open panel and the tab's visibility. Owning
   // its own watcher and listeners keeps all the timing in one place.
@@ -477,6 +518,9 @@ export function useAnalytics({ tab, cms, authed, flash, guarded }: AnalyticsDeps
     STACK_COLORS,
     analytics,
     rangeHours,
+    customRange,
+    setCustomRange,
+    clearCustomRange,
     metric,
     loadingA,
     clearing,

@@ -195,3 +195,114 @@ test("a malformed bucket is ignored rather than concatenated into a query", asyn
   assert.equal(body.range.at, undefined, "falls back to the whole range");
   assert.equal(body.range.unit, "hour");
 });
+
+// ── custom from/to range ────────────────────────────────────────────────────
+
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+test("a custom range echoes the picked dates, not 'now'", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  const from = isoDay(new Date(now.getTime() - 10 * 24 * HOUR));
+  const to = isoDay(new Date(now.getTime() - 5 * 24 * HOUR));
+  store.analytics.recordHourly([{ bucket: isoHour(new Date(now.getTime() - 7 * 24 * HOUR)), dimension: "path", key: "/old" }]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?from=${from}&to=${to}&tz=UTC`,
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.range.unit, "day");
+  assert.equal(body.range.from, from, "echoes the picked start, not derived from now");
+  assert.equal(body.range.to, to, "echoes the picked end, which is in the past");
+  assert.deepEqual(body.paths.map((r) => r.key), ["/old"]);
+});
+
+test("a custom range compares against the same-length window immediately before it", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  const from = isoDay(new Date(now.getTime() - 10 * 24 * HOUR));
+  const to = isoDay(new Date(now.getTime() - 5 * 24 * HOUR)); // a 6-day span
+  const beforeFrom = new Date(now.getTime() - 16 * 24 * HOUR); // 6 days before `from`
+  store.analytics.recordHourly([{ bucket: isoHour(beforeFrom), dimension: "path", key: "/prior" }]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?from=${from}&to=${to}&tz=UTC`,
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.ok(body.previous, "the preceding window should be summarised");
+});
+
+test("'from' after 'to' is rejected", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?from=2026-02-10&to=2026-02-01&tz=UTC",
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+test("a lone 'from' without a 'to' is rejected rather than silently guessed at", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?from=2026-02-01&tz=UTC",
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+test("a custom range longer than the max span is rejected", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?from=2020-01-01&to=2026-01-01&tz=UTC",
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+// ── 90d/1y presets ──────────────────────────────────────────────────────────
+
+test("the 1y preset reaches data far outside the 30d/90d window", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  // 300 days back: inside a year, but outside every preset that existed
+  // before 90d/1y were added.
+  const old = new Date(now.getTime() - 300 * 24 * HOUR);
+  store.analytics.recordHourly([{ bucket: isoHour(old), dimension: "path", key: "/old-post" }]);
+
+  const res = await app.inject({ method: "GET", url: "/api/cms/analytics?hours=8760&tz=UTC", headers: auth });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.range.unit, "day");
+  assert.deepEqual(body.paths.map((r) => r.key), ["/old-post"]);
+});
+
+test("a bucket click inside a custom range still narrows to just that bucket", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  const from = isoDay(new Date(now.getTime() - 10 * 24 * HOUR));
+  const to = isoDay(new Date(now.getTime() - 5 * 24 * HOUR));
+  const inside = new Date(now.getTime() - 7 * 24 * HOUR);
+  store.analytics.recordHourly([
+    { bucket: isoHour(inside), dimension: "path", key: "/spike" },
+    { bucket: isoHour(inside), dimension: "path", key: "/spike" },
+  ]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?from=${from}&to=${to}&tz=UTC&at=${isoHour(inside)}`,
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.range.at, isoHour(inside));
+  assert.deepEqual(body.paths.map((r) => [r.key, r.count]), [["/spike", 2]]);
+});

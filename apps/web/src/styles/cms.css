@@ -655,6 +655,16 @@
   display: flex;
   gap: var(--sp-12);
 }
+.cms .customrange {
+  margin-bottom: var(--sp-10);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-8);
+}
+.cms .customrange label {
+  flex: 1 1 140px;
+}
 .cms .rules {
   margin-top: var(--sp-8);
   display: grid;

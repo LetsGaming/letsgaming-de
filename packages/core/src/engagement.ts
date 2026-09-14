@@ -129,7 +129,18 @@ export const VIEW_RANGES = [
   { label: "3d", hours: 72 },
   { label: "7d", hours: 168 },
   { label: "30d", hours: 720 },
+  { label: "90d", hours: 2160 },
+  { label: "1y", hours: 8760 },
 ] as const;
+
+/**
+ * Max span (inclusive) for a custom `from`/`to` analytics range, in days.
+ *
+ * Matches the server's existing 400-day clamp on the rolling `hours` window —
+ * one bound, so a custom range can't ask for more history than the preset
+ * ranges could ever reach.
+ */
+export const MAX_CUSTOM_RANGE_DAYS = 400;
 
 /**
  * The engagement dimensions written to `analytics_daily` (alongside the

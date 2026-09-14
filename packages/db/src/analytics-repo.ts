@@ -300,6 +300,44 @@ export function analyticsRepo(db: DB) {
          ON CONFLICT(source) DO UPDATE SET offset = excluded.offset`,
       ).run(source, offset);
     },
+
+    /**
+     * Whether the access-log ingest for `source` is currently healthy.
+     *
+     * `lastSuccessAt` is "the last time this worked" and only ever moves
+     * forward on an actual success. `lastError` is the most recent attempt's
+     * error, present only when that attempt (which may postdate
+     * `lastSuccessAt`) failed — a later success clears it, so its mere
+     * presence already means "still broken as of the last try."
+     */
+    getIngestStatus(source: string): { lastSuccessAt?: string; lastError?: string } {
+      const row = db
+        .prepare("SELECT last_success_at, last_error FROM analytics_state WHERE source = ?")
+        .get(source) as { last_success_at: string | null; last_error: string | null } | undefined;
+      if (!row) return {};
+      return {
+        ...(row.last_success_at != null ? { lastSuccessAt: asText(row.last_success_at) } : {}),
+        ...(row.last_error != null ? { lastError: asText(row.last_error) } : {}),
+      };
+    },
+
+    /** Record a successful ingest run. Clears any prior error — this run just
+     *  proved the pipeline works again. */
+    recordIngestSuccess(source: string, at: string): void {
+      db.prepare(
+        `INSERT INTO analytics_state (source, offset, last_success_at, last_error) VALUES (?, 0, ?, NULL)
+         ON CONFLICT(source) DO UPDATE SET last_success_at = excluded.last_success_at, last_error = NULL`,
+      ).run(source, at);
+    },
+
+    /** Record a failed attempt. Deliberately leaves `last_success_at` alone —
+     *  a failure doesn't change when the pipeline last actually worked. */
+    recordIngestFailure(source: string, error: string): void {
+      db.prepare(
+        `INSERT INTO analytics_state (source, offset, last_error) VALUES (?, 0, ?)
+         ON CONFLICT(source) DO UPDATE SET last_error = excluded.last_error`,
+      ).run(source, error);
+    },
   };
 }
 
