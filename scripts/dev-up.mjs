@@ -91,6 +91,9 @@ function buildWorkspacePackages(log) {
   const result = spawnSync("pnpm", ["-r", "--filter=./packages/*", "build"], {
     cwd: repoRoot,
     stdio: "inherit",
+    // pnpm resolves to a .cmd shim on Windows; spawnSync only finds it via PATH
+    // when a shell does the lookup, so this is needed cross-platform, not just here.
+    shell: true,
   });
   if (result.status !== 0) {
     throw new Error(`workspace package build failed (exit ${result.status})`);

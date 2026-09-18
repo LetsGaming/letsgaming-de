@@ -72,6 +72,7 @@ const {
 	insertAt,
 	insertModule,
 	layoutAreas,
+	locale,
 	moduleHeading,
 	previewArea,
 	refreshCanvas,
@@ -183,6 +184,10 @@ watch(
       <template #actions>
         <select v-model="previewArea" class="lgedit-page-pick">
           <option v-for="a in layoutAreas" :key="a.id" :value="a.id">{{ pickL(a.label) }}</option>
+        </select>
+        <select v-model="locale" class="lgedit-page-pick" title="Editing locale">
+          <option value="en">EN</option>
+          <option value="de">DE</option>
         </select>
         <button class="lgedit-save" @click="saveLayout">Save layout</button>
       </template>

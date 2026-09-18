@@ -142,10 +142,11 @@ query($login: String!) {
       nodes { title url mergedAt repository { name } }
     }
     gists(first: 8, privacy: PUBLIC, orderBy: {field: UPDATED_AT, direction: DESC}) {
-      # Explicit cap: "files" with no "first" arg falls back to the schema's own
-      # default, which would silently undercount g.files.length below for any
-      # gist with more files than that default.
-      nodes { description url updatedAt files(first: 20) { name } }
+      # Explicit cap: Gist.files takes "limit" (it's [GistFile], not a real
+      # connection) — unlike every other field here, "first" doesn't apply.
+      # Omitting it falls back to the schema's own default, which would
+      # silently undercount g.files.length below for any gist with more files.
+      nodes { description url updatedAt files(limit: 20) { name } }
     }
     contributionsCollection {
       totalCommitContributions
