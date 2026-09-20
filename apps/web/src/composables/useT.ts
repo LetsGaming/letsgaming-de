@@ -21,7 +21,7 @@ export function useT() {
   return {
     locale,
     t: (key: MessageKey, vars?: Record<string, string | number>) => t(key, locale.value, vars),
-    plural: (noun: "track" | "artist" | "game", count: number) => plural(noun, count, locale.value),
+    plural: (noun: "track" | "artist" | "game" | "commit", count: number) => plural(noun, count, locale.value),
     /**
      * A duration as plain text, for the places a `<Duration>` can't go: a `title`
      * attribute, an `aria-label`. Same rule and same unit labels as the component,

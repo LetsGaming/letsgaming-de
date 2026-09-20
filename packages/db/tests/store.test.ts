@@ -10,7 +10,16 @@ const sampleGitHub: GitHubData = {
     { name: "TypeScript", pct: 42 },
     { name: "Python", pct: 31 },
   ],
-  contributions: [0, 1, 3, 5, 2, 0, 4, 1],
+  contributions: [
+    { date: "2026-01-01", count: 0 },
+    { date: "2026-01-02", count: 1 },
+    { date: "2026-01-03", count: 3 },
+    { date: "2026-01-04", count: 5 },
+    { date: "2026-01-05", count: 2 },
+    { date: "2026-01-06", count: 0 },
+    { date: "2026-01-07", count: 4 },
+    { date: "2026-01-08", count: 1 },
+  ],
   events: [
     { type: "commit", text: "Pushed 3 commits to plantcare-tracker", at: new Date().toISOString() },
   ],

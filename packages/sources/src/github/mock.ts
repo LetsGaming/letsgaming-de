@@ -8,17 +8,21 @@
  */
 
 import { ok, SOURCE_TTL } from "@lg/core";
-import type { GitHubData, Source } from "@lg/core";
+import type { ContributionDay, GitHubData, Source } from "@lg/core";
 
-/** A stable 182-day contribution ramp so the heatmap looks alive without RNG. */
-function demoContributions(): number[] {
-  const days: number[] = [];
+/** A stable 182-day contribution ramp so the heatmap looks alive without RNG.
+ *  Dated back from "now" (module load time), the same way `daysAgo` below
+ *  dates the other demo fields — this is dev scaffolding, not a source of
+ *  truth, so a process left running for days drifting slightly stale is fine. */
+function demoContributions(): ContributionDay[] {
+  const days: ContributionDay[] = [];
   for (let i = 0; i < 182; i++) {
     // Deterministic pseudo-pattern: weekly rhythm + a slow upward drift.
     const weekday = i % 7;
     const base = weekday === 0 || weekday === 6 ? 0 : 1;
     const wave = Math.round(2 + 2 * Math.sin(i / 9));
-    days.push(Math.max(0, base + (i % 5 === 0 ? wave : weekday === 3 ? wave - 1 : base)));
+    const count = Math.max(0, base + (i % 5 === 0 ? wave : weekday === 3 ? wave - 1 : base));
+    days.push({ date: daysAgo(181 - i).slice(0, 10), count });
   }
   return days;
 }

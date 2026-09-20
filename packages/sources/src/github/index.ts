@@ -73,7 +73,7 @@ export function normalizeGitHub(raw: GitHubRaw): GitHubData {
       longestStreakDays: longestStreak(raw.days),
     },
     languages: normalizeLanguages(raw),
-    contributions: raw.days.map((d) => d.contributionCount),
+    contributions: raw.days.map((d) => ({ date: d.date, count: d.contributionCount })),
     events: raw.events
       .map(normalizeEvent)
       .filter((e): e is GitHubEvent => e !== null)

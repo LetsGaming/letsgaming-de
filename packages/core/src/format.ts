@@ -80,15 +80,24 @@ const HEAT_THRESHOLDS: readonly { atLeast: number; level: HeatLevel }[] = [
  * Bucket per-day contribution intensities into {@link HEAT_LEVELS}. A zero day is
  * always level 0, and a day with any activity is never level 0 — "did he commit
  * at all" is the question the grid answers, so it can't round down to nothing.
+ *
+ * `dates`/`counts` ride along, parallel to `levels`, so a caller can build a
+ * per-cell tooltip ("3 commits on Mon 15 Sep") without re-deriving which
+ * calendar day each bucketed cell was — the shading is a lossy summary, the
+ * raw count and date underneath it are not.
  */
-export function bucketHeat(contributions: number[]): { levels: number[]; total: number } {
-  const total = contributions.reduce((a, b) => a + b, 0);
-  const max = contributions.reduce((a, b) => Math.max(a, b), 0);
-  if (max === 0) return { levels: contributions.map(() => 0), total };
-  const levels = contributions.map((v) => {
+export function bucketHeat(
+  contributions: readonly { date: string; count: number }[],
+): { levels: number[]; dates: string[]; counts: number[]; total: number } {
+  const counts = contributions.map((d) => d.count);
+  const dates = contributions.map((d) => d.date);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const max = counts.reduce((a, b) => Math.max(a, b), 0);
+  if (max === 0) return { levels: counts.map(() => 0), dates, counts, total };
+  const levels = counts.map((v) => {
     if (v <= 0) return 0;
     const ratio = v / max;
     return HEAT_THRESHOLDS.find((t) => ratio > t.atLeast)?.level ?? 1;
   });
-  return { levels, total };
+  return { levels, dates, counts, total };
 }

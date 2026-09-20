@@ -564,7 +564,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // The last 26 weeks, so the calendar stays readable (see FEED.heatDays —
         // .heat in app.css sizes its grid to the same number).
         const windowed = gh ? gh.contributions.slice(-FEED.heatDays) : [];
-        const heat = gh ? bucketHeat(windowed) : { levels: [], total: 0 };
+        const heat = gh ? bucketHeat(windowed) : { levels: [], dates: [], counts: [], total: 0 };
         return {
           id: descriptor.id,
           kind: "activity",

@@ -74,9 +74,15 @@ test("only known event types survive, mapped to normalized types", () => {
   assert.equal(d.events[0]?.text, undefined);
 });
 
-test("contributions pass through per-day", () => {
+test("contributions pass through per-day, date and count both", () => {
   const d = normalizeGitHub(raw);
-  assert.deepEqual(d.contributions, [1, 2, 0, 5, 3]);
+  assert.deepEqual(d.contributions, [
+    { date: "2026-01-01", count: 1 },
+    { date: "2026-01-02", count: 2 },
+    { date: "2026-01-03", count: 0 },
+    { date: "2026-01-04", count: 5 },
+    { date: "2026-01-05", count: 3 },
+  ]);
 });
 
 test("all-time commits and non-fork repos are surfaced", () => {

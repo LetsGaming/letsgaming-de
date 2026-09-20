@@ -81,6 +81,13 @@ export interface SourceSnapshot<Normalized = unknown> {
 // ── Normalized outputs ──────────────────────────────────────────────────────
 // One normalized shape per source. These are the ONLY thing downstream sees.
 
+/** One day of the contribution calendar: which calendar day, and the raw count. */
+export interface ContributionDay {
+  /** YYYY-MM-DD, the account's own calendar day (GitHub's, not the reader's). */
+  date: string;
+  count: number;
+}
+
 /** GitHub, normalized (PROJECT.md §6 "Normalized source output"). */
 export interface GitHubData {
   stats: {
@@ -91,7 +98,7 @@ export interface GitHubData {
   };
   languages: { name: string; pct: number }[];
   /** Per-day contribution intensity, accumulated over time. */
-  contributions: number[];
+  contributions: ContributionDay[];
   events: GitHubEvent[];
   /**
    * Per-repo facts, newest-push first. Drives the Projects section directly

@@ -15,7 +15,7 @@ import StatTile from "../ui/StatTile.vue";
 import { useLimitedList } from "../../composables/useLimitedList";
 import { computed } from "vue";
 
-const { t } = useT();
+const { t, plural, day } = useT();
 const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "activity" }>;
 }>();
@@ -36,10 +36,21 @@ const {
   max: () => allEvents.value.length,
 });
 
-// Levels are bucketed on the server; the grid just needs {level} per day.
-const contributionCells = computed<HeatCell[]>(() =>
-  props.module.data.contributions.levels.map((level) => ({ level })),
-);
+// Levels are bucketed on the server; the grid needs {level, title} per day.
+// The tooltip reads the raw count and calendar date, not the bucketed shade —
+// the same "hover a cell, see the real number" the playtime heatmap already
+// does, via the same HeatGrid `title` mechanism.
+const contributionCells = computed<HeatCell[]>(() => {
+  const { levels, counts, dates } = props.module.data.contributions;
+  return levels.map((level, i) => ({
+    level,
+    title: t("commitsOnDay", {
+      n: counts[i] ?? 0,
+      noun: plural("commit", counts[i] ?? 0),
+      date: day(dates[i] ?? ""),
+    }),
+  }));
+});
 </script>
 
 <template>

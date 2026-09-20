@@ -80,6 +80,11 @@ export interface EventView {
 export interface HeatView {
   /** Per-day level 0..4, oldest first. */
   levels: number[];
+  /** Per-day calendar date (YYYY-MM-DD), parallel to `levels`. */
+  dates: string[];
+  /** Per-day raw contribution count, parallel to `levels` — what a tooltip
+   *  over one cell shows, since the level alone is a bucketed shade. */
+  counts: number[];
   /** Sum of raw contributions in the window, for the "N this year" caption. */
   total: number;
 }

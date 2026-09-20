@@ -95,6 +95,9 @@ const EN = {
   // Activity
   contributions: "Contributions",
   contributionsScope: "last 26 weeks · {n} in the window",
+  // The contribution heatmap's per-cell tooltip — {noun} is already pluralized
+  // via `plural("commit", n)`, so this only places the count and the date.
+  commitsOnDay: "{n} {noun} on {date}",
   languages: "Languages",
   languagesScope: "across all public repos",
   recentEvents: "Recent events",
@@ -296,6 +299,7 @@ const DE: Messages = {
 
   contributions: "Beiträge",
   contributionsScope: "letzte 26 Wochen · {n} im Zeitraum",
+  commitsOnDay: "{n} {noun} am {date}",
   languages: "Sprachen",
   languagesScope: "über alle öffentlichen Repos",
   recentEvents: "Letzte Aktivitäten",
@@ -413,18 +417,22 @@ const DE: Messages = {
  * count to resolve. German and English disagree here in ways a single string
  * can't express (one "Song" vs several "Songs", one "Spiel" vs "Spiele").
  */
-const PLURALS: Record<Locale, Record<"track" | "artist" | "game" | "file", Plural>> = {
+const PLURALS: Record<Locale, Record<"track" | "artist" | "game" | "file" | "commit", Plural>> = {
   en: {
     track: { one: "track", other: "tracks" },
     artist: { one: "artist", other: "artists" },
     game: { one: "game", other: "games" },
     file: { one: "file", other: "files" },
+    commit: { one: "commit", other: "commits" },
   },
   de: {
     track: { one: "Song", other: "Songs" },
     artist: { one: "Künstler:in", other: "Künstler:innen" },
     game: { one: "Spiel", other: "Spiele" },
     file: { one: "Datei", other: "Dateien" },
+    // "Commit" is an established loanword in German dev usage; there's no
+    // native equivalent worth substituting.
+    commit: { one: "Commit", other: "Commits" },
   },
 };
 
@@ -450,7 +458,7 @@ export function t(
 
 /** The correct plural form of a countable noun for the locale. */
 export function plural(
-  noun: "track" | "artist" | "game" | "file",
+  noun: "track" | "artist" | "game" | "file" | "commit",
   count: number,
   locale: Locale = DEFAULT_LOCALE,
 ): string {
