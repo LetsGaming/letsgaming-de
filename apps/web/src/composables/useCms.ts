@@ -71,7 +71,7 @@ const { authed, login, loading, tokenInput, toast, flash, boot, signIn, signOut,
 
 const preview = useCmsPreview();
 const { previewArea, previewKey, showDock, previewSrc, viewSite } = preview;
-const { tab, pick, NAV_GROUPS, VIEW_TITLES } = useCmsNav({
+const { tab, pick, params, setParams, NAV_GROUPS, VIEW_TITLES } = useCmsNav({
   onOpen: (view) => {
     if ((view === "guestbook" || view === "dashboard") && !guestbook.value) void loadGuestbook();
     if (view === "analytics" && !analytics.value) void loadAnalytics();
@@ -163,6 +163,7 @@ const now = nowList.items;
     customRange,
     setCustomRange,
     clearCustomRange,
+    pollFailing,
     metric,
     loadingA,
     clearing,
@@ -187,17 +188,18 @@ const now = nowList.items;
     addReferrerRule,
     removeReferrerRule,
     saveReferrerRules,
-    focus,
-    lists,
-    loadingFocus,
-    focusBucket,
+    at,
+    atLabel,
+    setAt,
     selectAt,
-    activeScope,
-    pinnedScope,
-    showsCard,
-    setScope,
-    resetScope,
-  } = useAnalytics({ tab, cms, authed, flash, guarded });
+    filterDim,
+    filterKey,
+    selectDimension,
+    clearDimensionFilter,
+    filteredComparison,
+    chips,
+    clearFilters,
+  } = useAnalytics({ tab, cms, authed, flash, guarded, params, setParams });
 
 function emptyL(): Localized {
   return { en: "" };
@@ -485,6 +487,7 @@ onMounted(() => {
     customRange,
     setCustomRange,
     clearCustomRange,
+    pollFailing,
     metric,
     loadingA,
     clearing,
@@ -509,16 +512,17 @@ onMounted(() => {
     addReferrerRule,
     removeReferrerRule,
     saveReferrerRules,
-    focus,
-    lists,
-    loadingFocus,
-    focusBucket,
+    at,
+    atLabel,
+    setAt,
     selectAt,
-    activeScope,
-    pinnedScope,
-    showsCard,
-    setScope,
-    resetScope,
+    filterDim,
+    filterKey,
+    selectDimension,
+    clearDimensionFilter,
+    filteredComparison,
+    chips,
+    clearFilters,
     pick,
     previewArea,
     previewKey,

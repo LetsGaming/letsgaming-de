@@ -149,18 +149,36 @@ export function analyticsRepo(db: DB) {
       );
     },
 
-    /** Top keys for an engagement dimension over an inclusive hour-bucket range. */
-    topHourly(dimension: AnalyticsDimension, fromB: string, toB: string, limit = 20): AnalyticsRow[] {
+    /**
+     * Top keys for an engagement dimension over an inclusive hour-bucket range.
+     *
+     * `keys`, when given, narrows to exactly those stored keys (a dimension
+     * filter — see `filterKeys` in the analytics route for why a *label* like a
+     * grouped referrer source has to be expanded to its member keys first).
+     * `keys: []` means "no keys matched" and short-circuits to an empty result
+     * rather than running a query with an empty `IN ()`, which SQLite would
+     * happily execute as "match nothing" but which reads as a bug if left implicit.
+     */
+    topHourly(
+      dimension: AnalyticsDimension,
+      fromB: string,
+      toB: string,
+      limit = 20,
+      keys?: readonly string[],
+    ): AnalyticsRow[] {
+      if (keys && keys.length === 0) return [];
+      const inClause = keys?.length ? ` AND key IN (${keys.map(() => "?").join(",")})` : "";
       return mapRows(
         db.prepare(
           `SELECT key, SUM(count) AS count FROM analytics_hourly
-           WHERE dimension = ? AND bucket BETWEEN ? AND ?
+           WHERE dimension = ? AND bucket BETWEEN ? AND ?${inClause}
            GROUP BY key ORDER BY count DESC LIMIT ?`,
         ),
         toAnalyticsRow,
         dimension,
         fromB,
         toB,
+        ...(keys ?? []),
         limit,
       );
     },
@@ -168,25 +186,29 @@ export function analyticsRepo(db: DB) {
     /**
      * Per-time-bucket, per-key counts for an engagement dimension — the data
      * behind the stacked chart. `unit` picks hourly ("YYYY-MM-DDTHH") or daily
-     * ("YYYY-MM-DD") buckets.
+     * ("YYYY-MM-DD") buckets. `keys` narrows to those stored keys; see `topHourly`.
      */
     seriesHourly(
       dimension: AnalyticsDimension,
       fromB: string,
       toB: string,
       unit: "hour" | "day",
+      keys?: readonly string[],
     ): SeriesRow[] {
+      if (keys && keys.length === 0) return [];
       const bucketExpr = unit === "day" ? "substr(bucket, 1, 10)" : "bucket";
+      const inClause = keys?.length ? ` AND key IN (${keys.map(() => "?").join(",")})` : "";
       return mapRows(
         db.prepare(
           `SELECT ${bucketExpr} AS bucket, key, SUM(count) AS count FROM analytics_hourly
-           WHERE dimension = ? AND bucket BETWEEN ? AND ?
+           WHERE dimension = ? AND bucket BETWEEN ? AND ?${inClause}
            GROUP BY ${bucketExpr}, key ORDER BY bucket ASC`,
         ),
         toSeriesRow,
         dimension,
         fromB,
         toB,
+        ...(keys ?? []),
       );
     },
 

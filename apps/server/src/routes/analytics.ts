@@ -8,7 +8,14 @@
  * and the owner can clear fine-grained ranges (last hour, last 3 days, …).
  */
 
-import { MAX_CUSTOM_RANGE_DAYS, clearRange, groupReferrers, sanitizeTimeZone } from "@lg/core";
+import {
+  ANALYTICS_DIMENSIONS,
+  MAX_CUSTOM_RANGE_DAYS,
+  classifyReferrer,
+  clearRange,
+  groupReferrers,
+  sanitizeTimeZone,
+} from "@lg/core";
 import type { AnalyticsResponse, AnalyticsTotals, ClearAnalyticsResponse } from "@lg/core";
 import { zonedParts, type AnalyticsDimension, type SeriesRow, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
@@ -108,10 +115,34 @@ function fromBucket(from: Date, unit: "hour" | "day"): string {
 }
 
 export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
-  app.get<{ Querystring: { hours?: string; tz?: string; at?: string; from?: string; to?: string } }>(
+  app.get<{
+    Querystring: { hours?: string; tz?: string; at?: string; from?: string; to?: string; dim?: string; key?: string };
+  }>(
     "/api/cms/analytics",
     { preHandler: requireAuth(env) },
     async (req) => {
+      /**
+       * A dimension filter — the click on a row in the CMS ("Referrer: Bing").
+       * Both-or-neither, like `from`/`to`: a lone `dim` or `key` is a broken
+       * request, not a partial one, and a hand-typed deep link with a typo'd
+       * `dim` must fail loudly rather than silently render as unfiltered.
+       *
+       * This replaces what the chart plots and what one headline total counts
+       * (`filtered` below) — it does not narrow the list cards or `engagement`.
+       * The aggregates keep no link between one dimension's rows and another's,
+       * so a filter can only ever be "this dimension's own counts, narrowed to
+       * one key" — see `AnalyticsResponse.filtered`'s doc comment.
+       */
+      const dim = (ANALYTICS_DIMENSIONS as readonly string[]).includes(req.query.dim ?? "")
+        ? (req.query.dim as AnalyticsDimension)
+        : null;
+      const filterKey = typeof req.query.key === "string" && req.query.key.length > 0 && req.query.key.length <= 200
+        ? req.query.key
+        : null;
+      if (Boolean(req.query.dim ?? req.query.key) && !(dim && filterKey)) {
+        throw badRequest("A filter needs a valid 'dim' and a 'key', both.");
+      }
+
       /**
        * An arbitrary `from`/`to` span — the "Custom" range picker — as an
        * alternative to the fixed `hours` presets. Both sides are required
@@ -149,13 +180,15 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const now = new Date();
 
       /**
-       * A single bucket to narrow everything to — what the dashboard sends when
+       * A single bucket to narrow the LISTS to — what the dashboard sends when
        * you click a column in the chart.
        *
-       * The lists underneath the graph used to describe the whole window no
-       * matter what the graph was showing, so a traffic spike was visible and
-       * unexplainable in the same screen. Anchoring to a bucket is all it takes:
-       * the same query, a narrower window.
+       * This used to narrow the whole response, which meant the chart had to be
+       * re-fetched at full range separately to stay put while you looked at one
+       * bucket's lists — a second request, and the second request was never
+       * re-polled, so a drilled-in view silently went stale. Now the chart and
+       * totals always cover the full range (`fromB`/`toB` below); only the list
+       * cards and their totals use the bucket window (`listFromB`/`listToB`).
        *
        * Validated by shape, not trusted: `YYYY-MM-DD` or `YYYY-MM-DDTHH`, and
        * anything else is ignored rather than concatenated into a bucket string.
@@ -171,21 +204,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       let toB: string;
       let prevFromB: string;
       let prevToB: string;
-      if (at) {
-        // One bucket. An hour is itself; a local day spans from its midnight to
-        // the hour before the next one, which is why this can't be a substring.
-        if (at.length === 13) {
-          fromB = at;
-          toB = at;
-        } else {
-          fromB = isoHour(new Date(localDayStartMs(at, timeZone)));
-          toB = isoHour(new Date(localDayStartMs(at, timeZone) + 23 * HOUR));
-        }
-        // No comparison window for a single bucket: "vs the hour before" is a
-        // different question from the one the range picker is answering.
-        prevFromB = "";
-        prevToB = "";
-      } else if (customFrom && customTo) {
+      if (customFrom && customTo) {
         // Whole local days, same as the day-unit preset branch below, but
         // anchored to the picked dates instead of "back from now" — a custom
         // range can end in the past, so it can't reuse `windowStart`/`now`.
@@ -219,11 +238,27 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       // shift client-side. A custom range echoes the picked dates verbatim —
       // deriving `rangeTo` from `now` (the preset ranges' assumption, since
       // they're always "back from now") would be wrong the moment `to` is in
-      // the past.
-      const rangeFrom = at ?? customFrom ?? (unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB);
-      const rangeTo = at ?? customTo ?? (unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB);
+      // the past. This describes the chart's range, independent of `at`.
+      const rangeFrom = customFrom ?? (unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB);
+      const rangeTo = customTo ?? (unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB);
 
-      const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, fromB, toB);
+      // The lists and their totals narrow to the clicked bucket; the chart
+      // above them doesn't — see the comment on `at`.
+      let listFromB = fromB;
+      let listToB = toB;
+      if (at) {
+        // One bucket. An hour is itself; a local day spans from its midnight to
+        // the hour before the next one, which is why this can't be a substring.
+        if (at.length === 13) {
+          listFromB = at;
+          listToB = at;
+        } else {
+          listFromB = isoHour(new Date(localDayStartMs(at, timeZone)));
+          listToB = isoHour(new Date(localDayStartMs(at, timeZone) + 23 * HOUR));
+        }
+      }
+
+      const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, listFromB, listToB);
       const series = (d: AnalyticsDimension) => {
         const rows = store.analytics.seriesHourly(d, fromB, toB, unit === "day" ? "hour" : "hour");
         return unit === "day" ? toLocalDays(rows, timeZone, rangeFrom, rangeTo) : rows;
@@ -231,9 +266,9 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const sumOf = (d: AnalyticsDimension, from: string, to: string) =>
         store.analytics.topHourly(d, from, to).reduce((s, r) => s + r.count, 0);
 
-      // A single bucket has no comparison window — "vs the hour before" answers a
-      // different question from the one the range picker asked.
-      const hasPrev = Boolean(prevFromB && prevToB);
+      // No comparison window for a single bucket: "vs the hour before" is a
+      // different question from the one the range picker is answering.
+      const hasPrev = Boolean(prevFromB && prevToB) && !at;
 
       const previous: AnalyticsTotals = {
         pageviews: hasPrev ? sumOf("path", prevFromB, prevToB) : 0,
@@ -246,6 +281,47 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const hasPrevious = Object.values(previous).some((v) => v > 0);
 
       const referrerRules = store.content.getReferrerRules();
+
+      /**
+       * A referrer *label* ("Reddit") isn't a stored key — `groupReferrers`
+       * folds several raw hosts (and `utm:`-tagged sources) into one label on
+       * read. So filtering by label can't be an equality match against
+       * `analytics_hourly.key`; it has to expand back to the label's member
+       * keys over the window being queried first. Every other dimension's
+       * display key already *is* its stored key.
+       */
+      function filterKeys(dimension: AnalyticsDimension, key: string, from: string, to: string): string[] {
+        if (dimension !== "referrer") return [key];
+        return store.analytics
+          .topHourly("referrer", from, to, 1000)
+          .filter((r) => classifyReferrer(r.key, referrerRules) === key)
+          .map((r) => r.key);
+      }
+
+      let filtered: NonNullable<AnalyticsResponse["filtered"]> | null = null;
+      if (dim && filterKey) {
+        // The chart series covers the full range; the total (like every other
+        // list total) honours `at`. The member-key set can differ between the
+        // two windows — a source relabeled mid-range, say — so each is
+        // resolved separately rather than reused.
+        const rangeKeys = filterKeys(dim, filterKey, fromB, toB);
+        const rawSeries = store.analytics.seriesHourly(dim, fromB, toB, "hour", rangeKeys);
+        const series = unit === "day" ? toLocalDays(rawSeries, timeZone, rangeFrom, rangeTo) : rawSeries;
+
+        const listKeys = filterKeys(dim, filterKey, listFromB, listToB);
+        const total = store.analytics
+          .topHourly(dim, listFromB, listToB, 1000, listKeys)
+          .reduce((s, r) => s + r.count, 0);
+
+        const previousTotal = hasPrev
+          ? store.analytics
+              .topHourly(dim, prevFromB, prevToB, 1000, filterKeys(dim, filterKey, prevFromB, prevToB))
+              .reduce((s, r) => s + r.count, 0)
+          : null;
+
+        filtered = { dimension: dim, key: filterKey, series, total, previous: previousTotal };
+      }
+
       const response: AnalyticsResponse = {
         range: { from: rangeFrom, to: rangeTo, hours, unit, timeZone, ...(at ? { at } : {}) },
         // Log-derived top lists (now hour-bucketed, same pipeline).
@@ -291,6 +367,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         // all — that's the existing, separate "never configured" case the
         // traffic banner already explains.
         ...(env.accessLog ? { ingest: store.analytics.getIngestStatus(env.accessLog) } : {}),
+        ...(filtered ? { filtered } : {}),
       };
       return response;
     },

@@ -640,20 +640,35 @@
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
-.cms .scopebar {
-  grid-column: 1 / -1;
+.cms .filterbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--sp-8);
-  align-items: baseline;
+  margin-bottom: var(--sp-10);
   font-family: var(--f-m);
   font-size: var(--fs-micro);
-  color: var(--muted);
 }
-.cms .scopeacts {
-  display: flex;
-  gap: var(--sp-12);
+.cms .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 3px var(--sp-8);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.cms .chip:hover {
+  border-color: color-mix(in oklab, var(--coral) 40%, var(--line));
+  color: var(--coral);
+}
+/* The explanatory line above the chart when a dimension filter is active —
+   why the six metric tiles below it went quiet. */
+.cms .filternote {
+  margin-bottom: var(--sp-8);
 }
 .cms .customrange {
   margin-bottom: var(--sp-10);
@@ -814,6 +829,18 @@
 .cms .axistip b {
   color: var(--ink);
   font-weight: 500;
+}
+.cms .syncstatus {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  margin-top: var(--sp-6);
+}
+.cms .syncstatus.failed {
+  color: var(--coral);
 }
 .cms .legend {
   display: flex;

@@ -121,12 +121,22 @@ export const VIEW_TITLES: Record<View, string> = {
 const isView = (value: unknown): value is View =>
   typeof value === "string" && VIEWS.includes(value as View);
 
-/** The panel named by the current URL, or the default. Unknown hashes (a stale
- *  bookmark, a renamed panel) fall back rather than rendering nothing. */
-function viewFromHash(): View {
-  if (typeof window === "undefined") return DEFAULT_VIEW;
-  const id = decodeURIComponent(window.location.hash.replace(/^#/, ""));
-  return isView(id) ? id : DEFAULT_VIEW;
+/**
+ * The hash, split into the panel it names and whatever comes after a `?`.
+ *
+ * The panel-only vocabulary above (`isView`) still governs the first part;
+ * the query string is opaque here — only the analytics panel currently reads
+ * one, but routing doesn't need to know that to carry it. Unknown hashes (a
+ * stale bookmark, a renamed panel) fall back to the default view rather than
+ * rendering nothing.
+ */
+function parseHash(): { view: View; params: URLSearchParams } {
+  if (typeof window === "undefined") return { view: DEFAULT_VIEW, params: new URLSearchParams() };
+  const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+  const qi = raw.indexOf("?");
+  const viewPart = qi === -1 ? raw : raw.slice(0, qi);
+  const paramsPart = qi === -1 ? "" : raw.slice(qi + 1);
+  return { view: isView(viewPart) ? viewPart : DEFAULT_VIEW, params: new URLSearchParams(paramsPart) };
 }
 
 export function useCmsNav(opts: {
@@ -142,37 +152,75 @@ export function useCmsNav(opts: {
   onOpen?: (view: View) => void;
 }) {
   const tab = ref<View>(DEFAULT_VIEW);
+  /**
+   * The current hash's query string, e.g. the analytics panel's active
+   * filters. Read synchronously here (not deferred to `onMounted`) so a
+   * composable built later in the same `setup()` — `useAnalytics`, which
+   * decodes its initial filter state from this — sees the real URL rather
+   * than an empty default: `onMounted` callbacks only run after every
+   * composable in the tree has finished its own setup-time code, but the
+   * first analytics load fires from *this* composable's `onMounted` (via
+   * `pick` → `onOpen`), so `useAnalytics` has to already be caught up before
+   * that point, not by the time its own `onMounted` would otherwise run.
+   */
+  const params = ref<URLSearchParams>(parseHash().params);
 
   /**
    * Open a panel.
    *
    * `push` distinguishes a click (a new history entry, so Back returns you) from
    * restoring what the URL already says (no entry — pushing there would trap Back
-   * on the admin page).
+   * on the admin page). An explicit switch also drops any query string: filters
+   * belong to the panel that owns them, not to whatever's clicked next.
    */
   function pick(view: View, push = true) {
+    const changed = view !== tab.value;
     tab.value = view;
     opts.onOpen?.(view);
-    if (push && typeof window !== "undefined" && viewFromHash() !== view) {
+    if (push && typeof window !== "undefined" && parseHash().view !== view) {
       window.location.hash = view;
     }
+    if (push && changed) params.value = new URLSearchParams();
   }
 
-  /** Back/forward, and someone editing the address bar. */
-  function onHashChange() {
-    const next = viewFromHash();
-    if (next !== tab.value) pick(next, false);
+  /**
+   * Write the current panel's query string. `push` adds a history entry (a
+   * drill-in the reader would want Back to undo); the default replaces the
+   * current one (adjusting a range or a zone shouldn't bury Back under every
+   * click). Neither `pushState` nor `replaceState` fires `hashchange` or
+   * `popstate` for the tab that called them, so `params` is updated directly
+   * here rather than waiting on a listener.
+   */
+  function setParams(next: URLSearchParams, push = false) {
+    params.value = next;
+    if (typeof window === "undefined") return;
+    const qs = next.toString();
+    const hash = `#${tab.value}${qs ? `?${qs}` : ""}`;
+    if (push) window.history.pushState(null, "", hash);
+    else window.history.replaceState(null, "", hash);
+  }
+
+  /** Back/forward, and someone editing the address bar. Covers both routes a
+   *  history entry can have been created through: a real hash assignment
+   *  (`hashchange`) and `pushState` (`popstate`) — a reader doesn't know or
+   *  care which produced the entry they're stepping back into. */
+  function onNavigate() {
+    const { view, params: p } = parseHash();
+    if (view !== tab.value) pick(view, false);
+    params.value = p;
   }
 
   onMounted(() => {
     // Restore before boot: the gate may render first, but the panel behind it is
     // already the one the URL names, so signing in lands where you left off.
-    pick(viewFromHash(), false);
-    window.addEventListener("hashchange", onHashChange);
+    pick(parseHash().view, false);
+    window.addEventListener("hashchange", onNavigate);
+    window.addEventListener("popstate", onNavigate);
   });
   onUnmounted(() => {
-    window.removeEventListener("hashchange", onHashChange);
+    window.removeEventListener("hashchange", onNavigate);
+    window.removeEventListener("popstate", onNavigate);
   });
 
-  return { tab, pick, NAV_GROUPS, VIEW_TITLES };
+  return { tab, pick, params, setParams, NAV_GROUPS, VIEW_TITLES };
 }

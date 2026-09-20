@@ -306,3 +306,176 @@ test("a bucket click inside a custom range still narrows to just that bucket", a
   assert.equal(body.range.at, isoHour(inside));
   assert.deepEqual(body.paths.map((r) => [r.key, r.count]), [["/spike", 2]]);
 });
+
+/**
+ * `at` used to narrow the whole response, so the client needed a second
+ * request just to keep the chart at full range — and that second response was
+ * never re-polled, which is how a drilled-in view went stale. Now one request
+ * does both: the chart stays at the full range while the lists (and their
+ * totals) narrow to the clicked bucket.
+ */
+test("a bucket click narrows the lists but leaves the chart at the full range", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  const inside = new Date(now.getTime() - 5 * HOUR);
+  const outside = new Date(now.getTime() - 20 * HOUR);
+  store.analytics.recordHourly([
+    { bucket: isoHour(inside), dimension: "path", key: "/spike" },
+    { bucket: isoHour(outside), dimension: "path", key: "/quiet" },
+  ]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?hours=72&tz=UTC&at=${isoHour(inside)}`,
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.range.at, isoHour(inside));
+  // Lists narrow to the bucket.
+  assert.deepEqual(body.paths.map((r) => r.key), ["/spike"]);
+  // The chart still covers the full 72h range, not just the bucket.
+  const chartBuckets = new Set(body.chart.pageviews.map((r) => r.bucket));
+  assert.ok(chartBuckets.has(isoHour(outside)), "the chart still includes the out-of-bucket hour");
+});
+
+test("a dimension filter combined with `at` has no comparison window", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  const inside = new Date(now.getTime() - 5 * HOUR);
+  store.analytics.recordHourly([{ bucket: isoHour(inside), dimension: "browser", key: "Firefox" }]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/cms/analytics?hours=72&tz=UTC&at=${isoHour(inside)}&dim=browser&key=Firefox`,
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.filtered?.previous, null);
+});
+
+test("a browser filter's series and total match the unfiltered browsers row, and the chart is untouched", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  store.analytics.recordHourly([
+    { bucket: isoHour(now), dimension: "browser", key: "Firefox" },
+    { bucket: isoHour(now), dimension: "browser", key: "Firefox" },
+    { bucket: isoHour(now), dimension: "browser", key: "Chrome" },
+    { bucket: isoHour(now), dimension: "path", key: "/work" },
+  ]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?hours=24&tz=UTC&dim=browser&key=Firefox",
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.filtered?.dimension, "browser");
+  assert.equal(body.filtered?.key, "Firefox");
+  assert.equal(body.filtered?.total, 2);
+  assert.ok(body.filtered!.series.length > 0);
+  assert.equal(
+    body.filtered!.series.reduce((s, r) => s + r.count, 0),
+    2,
+  );
+  // Unfiltered data is untouched by the filter being active.
+  const firefoxRow = body.browsers.find((r) => r.key === "Firefox");
+  assert.equal(firefoxRow?.count, body.filtered?.total);
+  assert.ok(body.chart.pageviews.length > 0, "the chart still plots the selected metric, unaffected");
+});
+
+test("a referrer filter expands a grouped label back to its member hosts", async () => {
+  const { app, store } = await appWithStore();
+  const now = new Date();
+  store.analytics.recordHourly([
+    { bucket: isoHour(now), dimension: "referrer", key: "www.reddit.com" },
+    { bucket: isoHour(now), dimension: "referrer", key: "old.reddit.com" },
+    { bucket: isoHour(now), dimension: "referrer", key: "bing.com" },
+  ]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?hours=24&tz=UTC&dim=referrer&key=Reddit",
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.filtered?.total, 2, "both reddit hosts count toward the 'Reddit' label");
+});
+
+test("a referrer filter honours a custom CMS rule, not just the built-in table", async () => {
+  const store = openStore(":memory:");
+  const env = loadEnv({ CMS_TOKEN: TOKEN, WEB_ORIGIN: "http://localhost:4321" });
+  const app = await buildApp(store, env);
+  store.content.setReferrerRules([{ match: "mycustomforum.example", label: "My Forum" }]);
+  const now = new Date();
+  store.analytics.recordHourly([
+    { bucket: isoHour(now), dimension: "referrer", key: "mycustomforum.example" },
+    { bucket: isoHour(now), dimension: "referrer", key: "mycustomforum.example" },
+  ]);
+
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?hours=24&tz=UTC&dim=referrer&key=My%20Forum",
+    headers: auth,
+  });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.filtered?.total, 2);
+});
+
+test("a referrer filter with no matching source returns an empty series, not an error", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?hours=24&tz=UTC&dim=referrer&key=NoSuchSource",
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as AnalyticsResponse;
+  assert.deepEqual(body.filtered?.series, []);
+  assert.equal(body.filtered?.total, 0);
+});
+
+test("an unknown dimension is rejected, not silently ignored", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?hours=24&dim=nope&key=x",
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+test("a dimension without a key is rejected", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/cms/analytics?hours=24&dim=path",
+    headers: auth,
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+test("ingest status is absent when ACCESS_LOG isn't configured", async () => {
+  const { app } = await appWithStore();
+  const res = await app.inject({ method: "GET", url: "/api/cms/analytics?hours=24", headers: auth });
+  const body = res.json() as AnalyticsResponse;
+  assert.equal(body.ingest, undefined);
+});
+
+test("ingest status reflects the store's watermark when ACCESS_LOG is configured", async () => {
+  const store = openStore(":memory:");
+  const env = loadEnv({
+    CMS_TOKEN: TOKEN,
+    WEB_ORIGIN: "http://localhost:4321",
+    ACCESS_LOG: "/var/log/access.log",
+  });
+  const app = await buildApp(store, env);
+  store.analytics.recordIngestSuccess("/var/log/access.log", "2026-09-18T10:00:00.000Z");
+  store.analytics.recordIngestFailure("/var/log/access.log", "EACCES: permission denied");
+
+  const res = await app.inject({ method: "GET", url: "/api/cms/analytics?hours=24", headers: auth });
+  const body = res.json() as AnalyticsResponse;
+  assert.deepEqual(body.ingest, {
+    lastSuccessAt: "2026-09-18T10:00:00.000Z",
+    lastError: "EACCES: permission denied",
+  });
+});

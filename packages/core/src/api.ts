@@ -168,6 +168,29 @@ export interface AnalyticsResponse {
      *  may postdate `lastSuccessAt`) failed. A later success clears it. */
     lastError?: string;
   };
+  /**
+   * Present when a dimension filter (`dim`/`key`) is active — a click on a row
+   * in the CMS, e.g. "Referrer: Bing".
+   *
+   * A filter replaces what the chart plots and what one headline total counts;
+   * it does not narrow `paths`/`referrers`/`browsers`/... or `engagement`.
+   * `analytics_hourly` stores each dimension as an independent counter with no
+   * link back to the request that produced it (ADR-0007), so "which paths did
+   * Bing visitors read" is not a question the aggregates can answer — only
+   * "how many Bing hits happened, over time" is. `chart`/`previous` above stay
+   * exactly as they'd be with no filter; this is the one new series and total.
+   */
+  filtered?: {
+    dimension: AnalyticsDimension;
+    /** The display key that was filtered to — a referrer's grouped label, or
+     *  the raw stored key for every other dimension. */
+    key: string;
+    series: AnalyticsPoint[];
+    /** Over the list window (bucket-narrowed when `range.at` is set). */
+    total: number;
+    /** `null` when there's no comparison window (same rule as `previous`). */
+    previous: number | null;
+  };
 }
 
 /** Per-metric totals, matching the chart's metric keys. */

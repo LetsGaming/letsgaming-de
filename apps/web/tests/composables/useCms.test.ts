@@ -224,6 +224,158 @@ describe("analytics refresh", () => {
   });
 });
 
+describe("analytics dimension filtering", () => {
+  it("selecting a row sends dim/key on the next request", async () => {
+    const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().selectDimension("referrer", "Bing");
+    await flushPromises();
+
+    const last = load.mock.calls.at(-1)?.[0];
+    expect(last).toMatchObject({ dim: "referrer", key: "Bing" });
+    expect(api().filterDim.value).toBe("referrer");
+    expect(api().filterKey.value).toBe("Bing");
+  });
+
+  it("selecting the same row again clears the filter", async () => {
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().selectDimension("browser", "Firefox");
+    await flushPromises();
+    api().selectDimension("browser", "Firefox");
+    await flushPromises();
+
+    expect(api().filterDim.value).toBeNull();
+    expect(api().filterKey.value).toBeNull();
+  });
+
+  it("a stale response never overwrites a newer one, in either order", async () => {
+    const load = vi.spyOn(cms, "analytics");
+    let resolveFirst!: (v: AnalyticsResponse) => void;
+    load.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveFirst = resolve)),
+    );
+    const { api } = mountCms();
+    api().pick("analytics");
+    // The mount-time load is now in flight, unresolved.
+
+    const second = { ...emptyAnalytics(), range: { ...emptyAnalytics().range, hours: 999 } };
+    load.mockResolvedValueOnce(second);
+    api().refreshAnalytics();
+    await flushPromises();
+    // The second (later) request has already landed.
+    expect(api().analytics.value?.range.hours).toBe(999);
+
+    // The first, slower request resolves last — it must be ignored.
+    resolveFirst(emptyAnalytics());
+    await flushPromises();
+    expect(api().analytics.value?.range.hours).toBe(999);
+  });
+
+  it("changing the range clears a bucket selection but keeps a dimension filter", async () => {
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().setAt("2026-07-17T10");
+    api().selectDimension("os", "Windows");
+    await flushPromises();
+    expect(api().at.value).toBe("2026-07-17T10");
+
+    api().setRange(24 * 7);
+    await flushPromises();
+    expect(api().at.value).toBeNull();
+    expect(api().filterDim.value).toBe("os");
+    expect(api().filterKey.value).toBe("Windows");
+  });
+
+  it("clearing the filter chip drops both params and refetches", async () => {
+    const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().selectDimension("device", "mobile");
+    await flushPromises();
+    expect(api().chips.value.some((c) => c.id === "filter")).toBe(true);
+
+    api().clearDimensionFilter();
+    await flushPromises();
+    expect(api().filterDim.value).toBeNull();
+    expect(api().chips.value.some((c) => c.id === "filter")).toBe(false);
+    const last = load.mock.calls.at(-1)?.[0];
+    expect(last).not.toHaveProperty("dim");
+  });
+});
+
+describe("analytics filters in the URL", () => {
+  it("a deep link with a dimension filter restores it on the very first load", async () => {
+    await withHash("#analytics?hours=168&dim=referrer&key=Bing");
+    const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    await flushPromises();
+
+    expect(api().filterDim.value).toBe("referrer");
+    expect(api().filterKey.value).toBe("Bing");
+    expect(api().rangeHours.value).toBe(168);
+    // The very first request (not a later refetch) already carries it —
+    // proves the restore happened before the mount-time load, not after.
+    const first = load.mock.calls[0]?.[0];
+    expect(first).toMatchObject({ dim: "referrer", key: "Bing", hours: 168 });
+  });
+
+  it("selecting a filter writes it into the hash", async () => {
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().selectDimension("browser", "Firefox");
+    await flushPromises();
+    expect(window.location.hash).toContain("dim=browser");
+    expect(window.location.hash).toContain("key=Firefox");
+  });
+
+  it("an unknown dimension in a hand-typed hash is dropped rather than sent as-is", async () => {
+    await withHash("#analytics?dim=not-a-real-dimension&key=x");
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    await flushPromises();
+
+    expect(api().filterDim.value).toBeNull();
+    expect(api().filterKey.value).toBeNull();
+  });
+
+  it("Back after a filter removes it, and the analytics reload with the prior state", async () => {
+    const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().selectDimension("os", "Windows");
+    await flushPromises();
+    expect(api().filterDim.value).toBe("os");
+
+    // What the browser does on Back for a `pushState` entry: the URL reverts,
+    // `popstate` fires — no `hashchange`, since nothing assigned `location.hash`.
+    window.history.back();
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await flushPromises();
+
+    expect(api().filterDim.value).toBeNull();
+    expect(api().filterKey.value).toBeNull();
+    const last = load.mock.calls.at(-1)?.[0];
+    expect(last).not.toHaveProperty("dim");
+  });
+});
+
 /**
  * Seed the layout + gallery state the way boot() would, so the reorder tests
  * exercise the real handlers rather than a fixture of their own.
