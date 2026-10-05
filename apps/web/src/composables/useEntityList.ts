@@ -82,7 +82,11 @@ export function useEntityList<T extends ListEntity>(opts: EntityListOptions<T>):
     items,
 
     set(next) {
-      items.value = next;
+      // Rows with an unsaved or failed edit keep their local value, including rows the server doesn't have yet.
+      const local = items.value.filter((it) => opts.autosave.isDirty(pathOf(it)));
+      const merged = next.map((it) => local.find((l) => l.id === it.id) ?? it);
+      for (const l of local) if (!merged.some((it) => it.id === l.id)) merged.push(l);
+      items.value = merged;
       for (const item of next) opts.autosave.baseline(pathOf(item), pathOf(item), opts.strip(item));
     },
 
@@ -95,21 +99,28 @@ export function useEntityList<T extends ListEntity>(opts: EntityListOptions<T>):
     remove(index) {
       const item = items.value[index];
       if (!item) return;
+      // The row leaves the reactive list before any await so the deep watcher can't
+      // re-create it while the delete is in flight.
+      items.value.splice(index, 1);
       void opts.guarded(async () => {
-        if (opts.autosave.known(pathOf(item))) {
-          await opts.autosave.flush();
-          await cms.del(pathOf(item));
+        try {
+          if (opts.autosave.known(pathOf(item))) {
+            await opts.autosave.flush();
+            await cms.del(pathOf(item));
+          }
+        } catch (e) {
+          if (!items.value.some((it) => it.id === item.id)) items.value.splice(Math.min(index, items.value.length), 0, item);
+          throw e;
         }
         opts.autosave.forget(pathOf(item));
         // Everything after the hole shifts up. Its new `sort` is written directly
         // so it isn't recorded as an undoable edit of its own.
-        const shifted = items.value.slice(index + 1).map((it, i) => ({ ...it, sort: index + i }));
+        const shifted = items.value.slice(index).map((it, i) => ({ ...it, sort: index + i }));
         for (const it of shifted) {
           const wire = opts.strip(it);
           await cms.put(pathOf(it), wire);
           opts.autosave.baseline(pathOf(it), pathOf(it), wire);
         }
-        items.value.splice(index, 1);
         items.value.forEach((it, i) => (it.sort = i));
       }, "Deleted");
     },
