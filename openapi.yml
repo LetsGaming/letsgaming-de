@@ -579,6 +579,69 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/cms/modules:
+    put:
+      tags: [CMS · Content]
+      summary: Update module headings, notes and settings
+      description: |
+        Partial merge by module id: only the modules in the body are touched, and within each
+        only the fields sent. `settings` is accepted for `featured` modules only (400 otherwise);
+        unknown keys are dropped, `count` is clamped to 1..3 and `repos` is trimmed,
+        de-duplicated and capped at 3.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modules]
+              properties:
+                modules:
+                  type: array
+                  maxItems: 200
+                  items:
+                    type: object
+                    required: [id]
+                    properties:
+                      id: { type: string }
+                      heading: { type: object, additionalProperties: { type: string } }
+                      note: { type: object, additionalProperties: { type: string } }
+                      settings:
+                        type: object
+                        description: Featured module settings.
+                        properties:
+                          mode: { type: string, enum: [auto, manual] }
+                          repos: { type: array, items: { type: string } }
+                          count: { type: number, minimum: 1, maximum: 3 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/github-repos:
+    get:
+      tags: [CMS · Content]
+      summary: Synced GitHub repos (Featured picker)
+      responses:
+        "200":
+          description: Repos from the latest GitHub sync, newest push first. Empty before the first sync.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  repos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        description: { type: string }
+                        language: { type: string }
+                        pinned: { type: boolean }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/cms/meta:
     put:
       tags: [CMS · Content]

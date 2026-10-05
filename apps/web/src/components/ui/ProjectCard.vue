@@ -3,10 +3,6 @@
  * A project, as a card: title + arrow, a language tag coloured by that language,
  * a description, and a row of meta facts. The whole thing is the link.
  *
- * Projects and Featured rendered this identically — same markup, same
- * `langColor()` inline style, same pair of tracking calls — differing only in
- * whether the card spans the grid. That difference is the `feature` prop now.
- *
  * It takes the resolved `ProjectView` whole rather than seven scattered props, so
  * a field added to the contract lands here without touching either caller.
  */
@@ -14,22 +10,17 @@ import { computed } from "vue";
 import type { ClickAction, ProjectView } from "@lg/core";
 import { langColor, icons } from "../../lib/icons";
 import { trackClick, trackProject } from "../../lib/track";
+import { useT } from "~/composables/useT";
 import SmartLink from "./SmartLink.vue";
+
+const { t } = useT();
 
 interface Props {
   project: ProjectView;
-  /**
-   * Force the pinned treatment. The Featured module pins whatever it was given —
-   * it falls back to the first project when none is marked — so it can't rely on
-   * `project.featured`. Elsewhere the project's own flag decides.
-   */
-  feature?: boolean;
   /** Analytics label for the click ("project" / "featured"). */
   event: ClickAction;
 }
 const props = defineProps<Props>();
-
-const pinned = computed(() => props.feature ?? props.project.featured);
 
 // One derivation for both the text and the border, rather than calling langColor
 // twice in the template on every render.
@@ -45,9 +36,10 @@ function onClick() {
 </script>
 
 <template>
-  <SmartLink class="card" :class="{ feature: pinned }" :href="project.href" @click="onClick">
+  <SmartLink class="card" :class="{ feature: project.featured }" :href="project.href" @click="onClick">
     <div class="ptitle">{{ project.name }}<span class="arrow" v-html="icons.arrow" /></div>
     <span class="tag" :style="tagStyle">{{ project.tag }}</span>
+    <span v-if="project.featured" class="pin">{{ t("featuredPinned") }}</span>
     <p class="desc">{{ project.description }}</p>
     <div class="meta"><span v-for="(m, i) in project.meta" :key="i">{{ m }}</span></div>
   </SmartLink>
@@ -78,6 +70,12 @@ function onClick() {
 }
 .ptitle {
   overflow-wrap: break-word;
+}
+.pin {
+  margin-left: var(--sp-8);
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  color: var(--muted);
 }
 .desc {
   color: var(--muted);

@@ -58,6 +58,20 @@ test("languages aggregate and exclude forks", () => {
   assert.equal(d.languages[0]?.name, "TypeScript");
 });
 
+test("pinned repos carry pinnedOrder and image, including ones older than the rest", () => {
+  const old = {
+    name: "old-pin", stargazerCount: 1, isFork: false, pushedAt: "2020-01-01T00:00:00Z",
+    primaryLanguage: null, languages: { edges: [] }, openGraphImageUrl: "img/old",
+  };
+  const d = normalizeGitHub({ ...raw, repos: [...raw.repos, old], pinned: ["old-pin", "a"] });
+  const byName = Object.fromEntries((d.repos ?? []).map((r) => [r.name, r]));
+  assert.deepEqual([byName["old-pin"]?.pinned, byName["old-pin"]?.pinnedOrder], [true, 0]);
+  assert.equal(byName["old-pin"]?.image, "img/old");
+  assert.equal(byName["a"]?.pinnedOrder, 1);
+  assert.equal(d.repos?.at(-1)?.name, "old-pin", "still newest-push first");
+  assert.deepEqual(d.pinned, ["old-pin", "a"]);
+});
+
 test("longest streak is computed from the calendar", () => {
   const d = normalizeGitHub(raw);
   assert.equal(d.stats.longestStreakDays, 2); // days 1,2 then gap, then 4,5

@@ -30,6 +30,7 @@ import {
   lintNav,
   MODULE_KIND,
   parseAssetRef,
+  sanitizeFeaturedSettings,
   sanitizePresenceSettings,
   sanitizeWrappedSettings,
   sanitizeMusicSettings,
@@ -151,6 +152,16 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     content: store.content.getContent(),
     nav: store.ia.getNav(),
     modules: store.ia.getModules(),
+  }));
+
+  // Synced repos, for the Featured picker.
+  app.get("/api/cms/github-repos", guard, async () => ({
+    repos: (store.source.getAllCurrent().github?.repos ?? []).map((r) => ({
+      name: r.name,
+      ...(r.description ? { description: r.description } : {}),
+      ...(r.language ? { language: r.language } : {}),
+      pinned: Boolean(r.pinned),
+    })),
   }));
 
   // ── scalars ──────────────────────────────────────────────────────────────
@@ -275,7 +286,9 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * the locales that carry text. That's what lets the owner translate one heading
    * without resending — or risking — the other sixteen.
    */
-  app.put<{ Body: { modules: { id: string; heading?: Localized; note?: Localized }[] } }>(
+  app.put<{
+    Body: { modules: { id: string; heading?: Localized; note?: Localized; settings?: unknown }[] };
+  }>(
     "/api/cms/modules",
     write(schemas.moduleMeta),
     async (req) => {
@@ -284,6 +297,10 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       for (const entry of req.body.modules) {
         const mod = byId.get(entry.id);
         if (!mod) throw badRequest(`Unknown module "${entry.id}".`);
+        if (entry.settings !== undefined) {
+          if (mod.kind !== MODULE_KIND.featured) throw badRequest(`Module "${entry.id}" has no settings.`);
+          mod.settings = sanitizeFeaturedSettings(entry.settings);
+        }
         for (const field of ["heading", "note"] as const) {
           const value = entry[field];
           if (value === undefined) continue;

@@ -125,7 +125,7 @@
         "kind": "featured",
         "data": {
           "heading": "Featured",
-          "project": null,
+          "projects": [],
           "moreHref": "/code"
         }
       },
@@ -476,7 +476,7 @@
         "kind": "featured",
         "data": {
           "heading": "Ausgewählt",
-          "project": null,
+          "projects": [],
           "moreHref": "/code"
         }
       },

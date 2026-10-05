@@ -93,7 +93,7 @@ export const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
      what changes this module. */
   areas: null,
   teasers: null,
-  featured: null,
+  featured: "featured",
   glance: null,
   activity: null,
   coding: null,

@@ -297,6 +297,17 @@ export const schemas = {
             id: { type: "string", minLength: 1, maxLength: 64 },
             heading: localized,
             note: localized,
+            // Bounds are enforced by `sanitizeFeaturedSettings`, which clamps
+            // rather than rejects; the schema only pins the shape.
+            settings: {
+              type: "object",
+              properties: {
+                mode: { type: "string", enum: ["auto", "manual"] },
+                repos: { type: "array", maxItems: 50, items: { type: "string", maxLength: 100 } },
+                count: { type: "number" },
+              },
+              additionalProperties: false,
+            },
           },
           additionalProperties: false,
         },
