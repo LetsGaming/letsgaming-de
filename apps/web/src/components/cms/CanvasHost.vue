@@ -31,7 +31,15 @@
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { SiteView } from "@lg/core";
+import { KIND_LABELS } from "../../composables/editorHelpers";
+import type { Asset } from "@lg/core";
+import { cms } from "../../lib/cms";
+import type { SectionStat } from "../../lib/sectionStats";
+import { GALLERY_KINDS, hasFiles, resolveDropTarget, runUploads, type UploadItem } from "../../lib/upload";
+import AltPrompt from "./AltPrompt.vue";
+import UploadProgress from "./UploadProgress.vue";
 import SitePanels from "../shell/SitePanels.vue";
+import StatsOverlay from "./StatsOverlay.vue";
 
 const props = defineProps<{
   site: SiteView | null;
@@ -39,13 +47,30 @@ const props = defineProps<{
   areaLabel: string;
   selected?: string;
   loading?: boolean;
+  /** Module ids whose text lacks the current content language. */
+  untranslated?: string[];
+  /** The content language code, for the missing-translation badge. */
+  locale?: string;
+  /** Section analytics to draw over the page; absent when "Show stats" is off. */
+  stats?: {
+    status: "idle" | "loading" | "error" | "ready";
+    stat: SectionStat | null;
+    moduleId: string | null;
+    perPage: boolean;
+    visits: number;
+    rangeLabel: string;
+  } | null;
 }>();
 
 const emit = defineEmits<{
   move: [area: string, from: number, to: number];
   select: [moduleId: string];
   insert: [area: string, index: number];
+  /** An image dropped or pasted on a module finished uploading; place it there. */
+  uploaded: [moduleId: string, asset: Asset];
+  deselect: [];
   close: [];
+  retryStats: [];
 }>();
 
 /** Per-module boxes, measured from what actually rendered. */
@@ -141,12 +166,84 @@ function watchSizes(next: Element[]) {
 let dragFrom: number | null = null;
 const dragOver = ref<number | null>(null);
 
+/** Files dragged in from outside, the module they hover, and per-module upload state. */
+const fileOver = ref<string | null>(null);
+const uploads = ref<Record<string, UploadItem[]>>({});
+const altQueue = ref<{ moduleId: string; asset: Asset }[]>([]);
+const notice = ref("");
+let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+let uploadSeq = 0;
+
+function say(text: string) {
+  notice.value = text;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => (notice.value = ""), 3500);
+}
+
+/** Upload files dropped or pasted onto a module, then hand each asset up for placement. */
+async function takeFiles(moduleId: string, files: File[]) {
+  if (!files.length) return;
+  const target = resolveDropTarget(props.site?.modules[moduleId]?.kind);
+  if (!target.accepts) return say(target.message);
+  if (uploads.value[moduleId]?.some((i) => i.status === "uploading" || i.status === "queued")) return;
+  const first = uploadSeq;
+  uploadSeq += files.length;
+  const assets = await runUploads(files, {
+    send: cms.uploadAssetWithProgress,
+    onChange: (items) => (uploads.value = { ...uploads.value, [moduleId]: items }),
+    allowed: GALLERY_KINDS,
+    firstId: first,
+  });
+  for (const asset of assets) {
+    emit("uploaded", moduleId, asset);
+    altQueue.value.push({ moduleId, asset });
+  }
+  // Failures stay visible in the box; clean successes just disappear.
+  if (uploads.value[moduleId]?.every((i) => i.status === "done")) dismissUploads(moduleId);
+}
+
+function dismissUploads(moduleId: string) {
+  const { [moduleId]: _gone, ...rest } = uploads.value;
+  uploads.value = rest;
+}
+
+/** A file dropped beside a module would otherwise navigate the tab to it. */
+function swallowFileDrop(e: DragEvent) {
+  if (hasFiles(e.dataTransfer)) e.preventDefault();
+}
+
+async function saveAlt(alt: string) {
+  const next = altQueue.value.shift();
+  if (!next) return;
+  try {
+    await cms.updateAsset(next.asset.id, { alt });
+  } catch {
+    say("Couldn't save the alt text.");
+  }
+}
+
+function onPaste(e: ClipboardEvent) {
+  const t = e.target as HTMLElement | null;
+  if (t?.closest?.("input, textarea, select, [contenteditable]")) return;
+  const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+  if (!files.length) return;
+  e.preventDefault();
+  if (!props.selected) return say("Select a Gallery module first, then paste the image.");
+  void takeFiles(props.selected, files);
+}
+
 function onDragStart(i: number, e: DragEvent) {
   dragFrom = i;
   e.dataTransfer?.setData("text/plain", String(i));
   if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
 }
 function onDragOver(i: number, e: DragEvent) {
+  if (hasFiles(e.dataTransfer)) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    fileOver.value = boxes.value[i]?.id ?? null;
+    return;
+  }
   if (dragFrom === null) return;
   // Both, every time. preventDefault() is what marks an element a valid drop target
   // — without it `drop` never fires — and a dropEffect that doesn't match
@@ -156,7 +253,14 @@ function onDragOver(i: number, e: DragEvent) {
   if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
   dragOver.value = i;
 }
-function onDrop(i: number) {
+function onDrop(i: number, e: DragEvent) {
+  if (hasFiles(e.dataTransfer)) {
+    e.preventDefault();
+    fileOver.value = null;
+    const id = boxes.value[i]?.id;
+    if (id) void takeFiles(id, Array.from(e.dataTransfer?.files ?? []));
+    return;
+  }
   if (dragFrom === null) return;
   const from = dragFrom;
   dragFrom = null;
@@ -188,15 +292,16 @@ function onClick(e: MouseEvent) {
   }
 }
 
-const onKey = (e: KeyboardEvent) => {
-  if (e.key === "Escape") emit("close");
-};
+/** A click on bare page, not on a module or an insert line, drops the selection. */
+function onPageClick(e: MouseEvent) {
+  if (!(e.target as Element | null)?.closest?.(".lgedit-mod, .lgedit-gap")) emit("deselect");
+}
 
 watch(() => [props.site, props.area, props.selected], () => void measure());
 
 onMounted(() => {
   ro = new ResizeObserver(scheduleMeasure);
-  window.addEventListener("keydown", onKey);
+  window.addEventListener("paste", onPaste);
   void measure();
   // Fonts land after first paint and reflow every section under the overlay.
   // `.catch()` because a browser without the Font Loading API shouldn't take the
@@ -204,7 +309,8 @@ onMounted(() => {
   document.fonts?.ready.then(scheduleMeasure).catch(() => {});
 });
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKey);
+  window.removeEventListener("paste", onPaste);
+  clearTimeout(noticeTimer);
   ro?.disconnect();
   ro = null;
   observed = [];
@@ -212,7 +318,10 @@ onUnmounted(() => {
   frame = 0;
 });
 
-const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
+const kindLabel = (id: string): string => {
+  const kind = props.site?.modules[id]?.kind;
+  return (kind && KIND_LABELS[kind]) || id;
+};
 </script>
 
 <template>
@@ -228,63 +337,105 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
     one of them was in the way; the fix is `:not(.lgedit-page *)` on that one, in
     cms.css, four rules.
   -->
-  <div ref="root" class="lgedit" @click.capture="onClick">
+  <div ref="root" class="lgedit" @click.capture="onClick" @dragover="swallowFileDrop" @drop="swallowFileDrop">
       <header class="lgedit-bar" @click.stop>
-        <strong>Editing {{ areaLabel }}</strong>
+        <slot name="title"><strong>Editing {{ areaLabel }}</strong></slot>
         <span v-if="loading" class="lgedit-dim">rendering…</span>
         <span class="lgedit-hint">
-          Drag a handle to reorder · click a module to edit it here · <b>+</b> adds one
+          Hover a module for its drag handle · click a module to edit it here · hover between modules to add one · <b>?</b> shortcuts
         </span>
         <span class="lgedit-actions"><slot name="actions" /></span>
-        <button class="lgedit-close" title="Close (Esc)" @click="emit('close')">✕ Close</button>
+        <button class="lgedit-close" title="Close the editor" @click="emit('close')">✕ Close</button>
       </header>
 
       <div class="lgedit-body">
-        <div class="lgedit-page">
-          <SitePanels v-if="site" :site="site" :area="area" />
+        <div class="lgedit-page" @click="onPageClick">
+          <!-- Inert so forms and widgets can't take focus; a click selects the module. -->
+          <div v-if="site" class="lgedit-content" inert>
+            <SitePanels :site="site" :area="area" />
+          </div>
           <p v-else class="lgedit-dim lgedit-wait">Rendering the page…</p>
 
+          <p v-if="notice" class="lgedit-notice" role="status">{{ notice }}</p>
           <!-- Affordances, over the real sections. Never inside them. -->
           <div v-if="site" ref="overlay" class="lgedit-overlay">
+            <StatsOverlay
+              v-if="stats"
+              variant="strip"
+              :status="stats.status"
+              :stat="stats.stat"
+              :visits="stats.visits"
+              :range-label="stats.rangeLabel"
+              :per-page="stats.perPage"
+              @retry="emit('retryStats')"
+            />
             <div
               v-for="(b, i) in boxes"
               :key="b.id"
               class="lgedit-mod"
-              :class="{ sel: selected === b.id, over: dragOver === i, empty: b.height < 8 }"
+              :class="{ sel: selected === b.id, over: dragOver === i, empty: b.height < 8, 'file-over': fileOver === b.id }"
               :style="{ top: b.top + 'px', height: Math.max(b.height, 8) + 'px' }"
               @click="emit('select', b.id)"
               @dragover="onDragOver(i, $event)"
-              @drop="onDrop(i)"
+              @dragleave="fileOver = null"
+              @drop="onDrop(i, $event)"
             >
-              <span
-                class="lgedit-grip"
-                draggable="true"
-                title="Drag to reorder"
-                @dragstart="onDragStart(i, $event)"
-                @dragend="onDragEnd"
-                @click.stop
-                >⠿</span
-              >
-              <span class="lgedit-tag">{{ kindOf(b.id) }}</span>
-              <button
-                class="lgedit-add"
-                title="Add a module here"
-                @click.stop="emit('insert', area, i)"
-              >
-                +
-              </button>
+              <div v-if="uploads[b.id]?.length || altQueue.some((a) => a.moduleId === b.id)" class="lgedit-upl" @click.stop>
+                <UploadProgress :items="uploads[b.id] ?? []" @dismiss="dismissUploads(b.id)" />
+                <AltPrompt
+                  v-if="altQueue[0]?.moduleId === b.id"
+                  :key="altQueue[0].asset.id"
+                  :name="altQueue[0].asset.filename"
+                  @save="saveAlt"
+                  @skip="altQueue.shift()"
+                />
+              </div>
+              <div class="lgedit-toolbar">
+                <span
+                  class="lgedit-grip"
+                  draggable="true"
+                  title="Drag to reorder"
+                  @dragstart="onDragStart(i, $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                  >⠿</span
+                >
+                <span class="lgedit-tag">{{ kindLabel(b.id) }}</span>
+                <span
+                  v-if="untranslated?.includes(b.id)"
+                  class="lgedit-missing"
+                  :title="`No ${(locale ?? '').toUpperCase()} text yet. Showing English.`"
+                  >no {{ (locale ?? "").toUpperCase() }}</span
+                >
+              </div>
+              <StatsOverlay
+                v-if="stats && stats.moduleId === b.id"
+                variant="chips"
+                :status="stats.status"
+                :stat="stats.stat"
+                :visits="stats.visits"
+              />
             </div>
             <button
-              class="lgedit-add end"
-              title="Add a module at the end"
-              :style="{ top: (boxes.at(-1) ? boxes.at(-1)!.top + boxes.at(-1)!.height : 0) + 'px' }"
-              @click="emit('insert', area, boxes.length)"
+              v-for="(b, i) in boxes"
+              :key="'gap-' + b.id"
+              class="lgedit-gap"
+              :style="{ top: b.top + 'px' }"
+              :aria-label="`Add a module before ${kindLabel(b.id)}`"
+              @click.stop="emit('insert', area, i)"
             >
-              +
+              <span class="lgedit-gap-plus">+</span>
+            </button>
+            <button
+              class="lgedit-gap"
+              aria-label="Add a module at the end"
+              :style="{ top: (boxes.at(-1) ? boxes.at(-1)!.top + boxes.at(-1)!.height : 0) + 'px' }"
+              @click.stop="emit('insert', area, boxes.length)"
+            >
+              <span class="lgedit-gap-plus">+</span>
             </button>
           </div>
         </div>
-
         <aside class="lgedit-rail" @click.stop><slot name="rail" /></aside>
       </div>
   </div>

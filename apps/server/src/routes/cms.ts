@@ -30,10 +30,12 @@ import {
   lintNav,
   MODULE_KIND,
   parseAssetRef,
+  sanitizeFeaturedSettings,
   sanitizePresenceSettings,
   sanitizeWrappedSettings,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
+  GuestbookStatus,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -150,6 +152,16 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     content: store.content.getContent(),
     nav: store.ia.getNav(),
     modules: store.ia.getModules(),
+  }));
+
+  // Synced repos, for the Featured picker.
+  app.get("/api/cms/github-repos", guard, async () => ({
+    repos: (store.source.getAllCurrent().github?.repos ?? []).map((r) => ({
+      name: r.name,
+      ...(r.description ? { description: r.description } : {}),
+      ...(r.language ? { language: r.language } : {}),
+      pinned: Boolean(r.pinned),
+    })),
   }));
 
   // ── scalars ──────────────────────────────────────────────────────────────
@@ -271,10 +283,13 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * leaves the rest), so this endpoint owns the value once it exists.
    *
    * Partial by id: only the modules in the body are touched, and within each, only
-   * the locales that carry text. That's what lets the owner translate one heading
-   * without resending — or risking — the other sixteen.
+   * the locales sent. That's what lets the owner translate one heading without
+   * resending, or risking, the other sixteen. Within a field, a non-empty locale
+   * is set and an empty string for a non-English locale removes it.
    */
-  app.put<{ Body: { modules: { id: string; heading?: Localized; note?: Localized }[] } }>(
+  app.put<{
+    Body: { modules: { id: string; heading?: Localized; note?: Localized; settings?: unknown }[] };
+  }>(
     "/api/cms/modules",
     write(schemas.moduleMeta),
     async (req) => {
@@ -283,14 +298,28 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
       for (const entry of req.body.modules) {
         const mod = byId.get(entry.id);
         if (!mod) throw badRequest(`Unknown module "${entry.id}".`);
+        if (entry.settings !== undefined) {
+          if (mod.kind !== MODULE_KIND.featured) throw badRequest(`Module "${entry.id}" has no settings.`);
+          mod.settings = sanitizeFeaturedSettings(entry.settings);
+        }
         for (const field of ["heading", "note"] as const) {
           const value = entry[field];
           if (value === undefined) continue;
-          const filled = Object.entries(value).filter(([, v]) => v?.trim());
+          const entries = Object.entries(value);
           // A heading is optional (the hero has none), so an all-empty value is a
-          // real instruction to clear it — unlike a nav label, which can't be.
-          if (filled.length) mod[field] = { ...mod[field], ...Object.fromEntries(filled) } as Localized;
-          else delete mod[field];
+          // real instruction to clear it, unlike a nav label, which can't be.
+          if (!entries.some(([, v]) => v?.trim())) {
+            delete mod[field];
+            continue;
+          }
+          // A non-empty locale is set; an empty non-English locale removes that
+          // locale. English is required, so an empty `en` keeps the stored one.
+          const next: Record<string, string> = { ...mod[field] };
+          for (const [locale, text] of entries) {
+            if (text?.trim()) next[locale] = text;
+            else if (locale !== "en") delete next[locale];
+          }
+          mod[field] = next as Localized;
         }
       }
       store.ia.setModules(modules);
@@ -450,12 +479,25 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
 
   // ── guestbook moderation ───────────────────────────────────────────────────
   // The queue: pending first (most-suspicious first), then approved/rejected.
-  app.get("/api/cms/guestbook", guard, async () => ({
-    entries: store.guestbook.listForModeration(),
-    pending: store.guestbook.countPending(),
-  }));
+  // `?status=pending|approved|rejected` narrows the list; `all` or no filter is the
+  // combined queue. `counts` is always the full per-status tally, whatever the filter.
+  app.get<{ Querystring: { status?: string } }>("/api/cms/guestbook", guard, async (req) => {
+    const filter = req.query.status;
+    if (filter !== undefined && filter !== "all" && !Object.values(GuestbookStatus).includes(filter as GuestbookStatus)) {
+      throw badRequest("Invalid status filter.");
+    }
+    const counts = store.guestbook.countsByStatus();
+    return {
+      entries:
+        filter === undefined || filter === "all"
+          ? store.guestbook.listForModeration()
+          : store.guestbook.listByStatus(filter as GuestbookStatus),
+      pending: counts.pending,
+      counts,
+    };
+  });
 
-  // Approve or reject one entry. Only these two transitions are allowed.
+  // Approve, reject or unapprove (back to pending) one entry.
   app.post<{ Params: { id: string; action: string } }>(
     "/api/cms/guestbook/:id/:action",
     guard,

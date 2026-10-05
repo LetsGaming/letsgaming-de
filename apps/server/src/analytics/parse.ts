@@ -10,7 +10,7 @@
  */
 
 import type { HourlyHit } from "@lg/db";
-import { UTM_PREFIX, sanitizeUtmSource } from "@lg/core";
+import { UTM_PREFIX, isPairedDimension, pairEntries, sanitizeUtmSource, type PairedDimension } from "@lg/core";
 import { botFamily } from "./agent.js";
 import { probeFamily } from "./probe.js";
 
@@ -127,6 +127,19 @@ function referrerHost(ref: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The pair counters for one page view's hits, so a filter on one dimension can
+ * narrow the others. Only page views have pairs: bot and probe hits carry no path,
+ * browser, OS or device, so they return none.
+ */
+export function pairHitsOf(hits: readonly HourlyHit[]): HourlyHit[] {
+  const first = hits[0];
+  if (!first || first.dimension !== "path") return [];
+  const values: Partial<Record<PairedDimension, string>> = {};
+  for (const h of hits) if (isPairedDimension(h.dimension)) values[h.dimension] = h.key;
+  return pairEntries(values).map((e) => ({ bucket: first.bucket, ...e }));
 }
 
 /** Parse one log line into aggregate hourly hits (or [] if not a page view). */

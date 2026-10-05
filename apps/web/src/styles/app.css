@@ -325,6 +325,9 @@ h1 {
 .doc-nav {
   position: sticky;
   top: 24px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   font-size: 14px;
 }
 /* Docs nav drawer affordances — the bar + close + scrim only appear on mobile
@@ -517,6 +520,7 @@ h1 {
     position: fixed;
     inset: 0 auto 0 0;
     top: 0;
+    max-height: none;
     z-index: 60;
     width: min(280px, 82vw);
     padding: var(--sp-18);

@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { type Autosave, bindAutosave } from "./useAutosave";
 import { defaultWrappedSettings, WRAPPED_BOUNDS, type WrappedSettings } from "@lg/core";
 
 /**
@@ -9,11 +10,10 @@ import { defaultWrappedSettings, WRAPPED_BOUNDS, type WrappedSettings } from "@l
  * use, so input, schema, and sanitizer can't disagree.
  */
 export interface WrappedDeps {
-  guarded: (fn: () => Promise<unknown>) => Promise<void>;
-  cms: { put: (resource: string, body: unknown) => Promise<unknown> };
+  autosave: Autosave;
 }
 
-export function useWrappedSettings({ guarded, cms }: WrappedDeps) {
+export function useWrappedSettings({ autosave }: WrappedDeps) {
   const d = defaultWrappedSettings();
   const wrappedEnabled = ref<boolean>(d.enabled);
   const wrappedEveryMonths = ref<number>(d.everyMonths);
@@ -21,24 +21,27 @@ export function useWrappedSettings({ guarded, cms }: WrappedDeps) {
   const wrappedFromDate = ref<string>(d.fromDate);
   const wrappedTopCount = ref<number>(d.topCount);
 
-  const saveWrapped = () =>
-    guarded(() =>
-      cms.put("wrapped", {
-        enabled: wrappedEnabled.value,
-        everyMonths: wrappedEveryMonths.value,
-        forWeeks: wrappedForWeeks.value,
-        fromDate: wrappedFromDate.value,
-        topCount: wrappedTopCount.value,
-      }),
-    );
+  const confirm = bindAutosave(autosave, {
+    path: "wrapped",
+    label: "Edit Wrapped settings",
+    source: () => ({
+      enabled: wrappedEnabled.value,
+      everyMonths: wrappedEveryMonths.value,
+      forWeeks: wrappedForWeeks.value,
+      fromDate: wrappedFromDate.value,
+      topCount: wrappedTopCount.value,
+    }),
+  });
 
   function hydrate(w: Partial<WrappedSettings> | undefined) {
+    if (autosave.isDirty("wrapped")) return;
     const def = defaultWrappedSettings();
     wrappedEnabled.value = w?.enabled ?? def.enabled;
     wrappedEveryMonths.value = w?.everyMonths ?? def.everyMonths;
     wrappedForWeeks.value = w?.forWeeks ?? def.forWeeks;
     wrappedFromDate.value = w?.fromDate ?? def.fromDate;
     wrappedTopCount.value = w?.topCount ?? def.topCount;
+    confirm();
   }
 
   return {
@@ -48,7 +51,6 @@ export function useWrappedSettings({ guarded, cms }: WrappedDeps) {
     wrappedForWeeks,
     wrappedTopCount,
     wrappedFromDate,
-    saveWrapped,
     hydrateWrapped: hydrate,
   };
 }

@@ -29,10 +29,11 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Nuxt has no `src/` dir — components, pages, layouts and styles sit at the app
 // root, so the scan starts there. Build output and deps are skipped below.
-const SRC = new URL("..", import.meta.url).pathname;
+const SRC = fileURLToPath(new URL("..", import.meta.url));
 const TOKENS = join(SRC, "src/styles/tokens.css");
 const EXT = /\.(css|vue|ts)$/;
 
@@ -79,7 +80,7 @@ const cmsOnly = new Set([...namesIn(cmsBlocks, DEF)].filter((name) => !global.ha
 
 /** Files that actually render inside `.cms`, and so may use those aliases. */
 const inCmsScope = (path: string): boolean =>
-  path.includes("styles/cms.css") || path.includes(`components${sep}cms${sep}`);
+  path.includes(`styles${sep}cms.css`) || path.includes(`components${sep}cms${sep}`);
 
 const violations: string[] = [];
 

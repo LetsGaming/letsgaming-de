@@ -28,23 +28,26 @@ export function toGuestbookStatus(value: unknown): GuestbookStatus {
 }
 
 /**
- * The two moderation transitions, as URL segments (`POST …/:id/:action`).
+ * The moderation transitions, as URL segments (`POST …/:id/:action`).
  *
  * Distinct from the status they produce ("approve" the verb vs "approved" the
  * state) and easy to mix up, which is why both spellings and the mapping between
  * them live here rather than as literals in the route and again in the CMS
- * client. Only these two transitions exist: there's no un-approve, because the
- * queue is a decision log, not a toggle.
+ * client. Three transitions exist: approve, reject, and unapprove (back to
+ * pending).
  */
 export const MODERATION_ACTION = {
   Approve: "approve",
   Reject: "reject",
+  /** Approved -> pending: pulls a published entry back into the queue. */
+  Unapprove: "unapprove",
 } as const;
 export type ModerationAction = (typeof MODERATION_ACTION)[keyof typeof MODERATION_ACTION];
 
 const ACTION_RESULT: Record<ModerationAction, GuestbookStatus> = {
   [MODERATION_ACTION.Approve]: GuestbookStatus.Approved,
   [MODERATION_ACTION.Reject]: GuestbookStatus.Rejected,
+  [MODERATION_ACTION.Unapprove]: GuestbookStatus.Pending,
 };
 
 /** The status an action produces, or null if the value isn't an action at all. */

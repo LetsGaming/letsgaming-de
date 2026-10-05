@@ -65,6 +65,7 @@ function normalizeEvent(e: RawEvent): GitHubEvent | null {
 }
 
 export function normalizeGitHub(raw: GitHubRaw): GitHubData {
+  const pinned = raw.pinned ?? [];
   return {
     stats: {
       repos: raw.repositoriesTotal,
@@ -78,19 +79,25 @@ export function normalizeGitHub(raw: GitHubRaw): GitHubData {
       .map(normalizeEvent)
       .filter((e): e is GitHubEvent => e !== null)
       .slice(0, 8),
-    // Newest-push first (the query orders by PUSHED_AT desc); forks are excluded
-    // at the query, archived repos are dropped here.
+    // Newest-push first; forks are excluded at the query, archived repos are
+    // dropped here. Pinned repos older than the query window are sorted into place.
     repos: raw.repos
       .filter((r) => !r.isFork && !r.isArchived)
-      .map((r) => ({
-        name: r.name,
-        stars: r.stargazerCount,
-        pushedAt: r.pushedAt,
-        url: r.url ?? `https://github.com/${raw.login}/${r.name}`,
-        ...(r.description ? { description: r.description } : {}),
-        ...(r.primaryLanguage?.name ? { language: r.primaryLanguage.name } : {}),
-      })),
-    pinned: raw.pinned ?? [],
+      .sort((a, b) => (b.pushedAt ?? "").localeCompare(a.pushedAt ?? ""))
+      .map((r) => {
+        const pinnedOrder = pinned.indexOf(r.name);
+        return {
+          name: r.name,
+          stars: r.stargazerCount,
+          ...(r.pushedAt ? { pushedAt: r.pushedAt } : {}),
+          url: r.url ?? `https://github.com/${raw.login}/${r.name}`,
+          ...(r.description ? { description: r.description } : {}),
+          ...(r.primaryLanguage?.name ? { language: r.primaryLanguage.name } : {}),
+          ...(r.openGraphImageUrl ? { image: r.openGraphImageUrl } : {}),
+          ...(pinnedOrder >= 0 ? { pinned: true, pinnedOrder } : {}),
+        };
+      }),
+    pinned,
     // GitHub extras: drop incomplete rows, newest-first, capped for a tidy feed.
     releases: (raw.releases ?? [])
       .filter((r): r is typeof r & { publishedAt: string } => Boolean(r.publishedAt))

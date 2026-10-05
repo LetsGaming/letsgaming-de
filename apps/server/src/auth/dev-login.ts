@@ -31,6 +31,7 @@ import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 import { forbidden } from "../errors.js";
 import { SESSION_COOKIE } from "./guard.js";
+import { returnUrl } from "./return-to.js";
 
 /** IPv4 loopback, IPv6 loopback, and IPv4-mapped-IPv6 loopback. */
 const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
@@ -39,7 +40,7 @@ export function registerDevLoginRoutes(app: FastifyInstance, env: ServerEnv): vo
   // Guard 1 — the route simply does not exist in production.
   if (env.isProduction) return;
 
-  app.get("/auth/dev/login", async (req, reply) => {
+  app.get<{ Querystring: { returnTo?: string } }>("/auth/dev/login", async (req, reply) => {
     // Guard 2 — loopback callers only.
     //
     // `req.ip` is deliberately NOT used here: it reflects X-Forwarded-For
@@ -67,8 +68,7 @@ export function registerDevLoginRoutes(app: FastifyInstance, env: ServerEnv): vo
       maxAge: 60 * 60 * 8, // a working day, not OAuth's 30 days
     });
 
-    const origin = env.webOrigin.split(",")[0] ?? "/";
-    return reply.redirect(`${origin}/admin`);
+    return reply.redirect(returnUrl(env.webOrigin, req.query.returnTo));
   });
 
   app.log.warn(

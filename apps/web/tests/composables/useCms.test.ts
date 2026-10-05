@@ -2,8 +2,10 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { cms } from "../../src/lib/cms";
+import { METRIC_SOURCES } from "@lg/core";
 import type { AnalyticsChart, AnalyticsResponse, Localized, SiteContent, SiteView } from "@lg/core";
 import { useCms } from "../../src/composables/useCms";
+import { NAV_GROUPS } from "../../src/composables/useCmsNav";
 
 /**
  * `useCms` is a composable, so it needs a component to live in (onMounted,
@@ -15,6 +17,13 @@ import { useCms } from "../../src/composables/useCms";
  * file leaked them and two tests passed off each other's events.
  */
 const mounted: { unmount: () => void }[] = [];
+
+/** Autosaves go out on a timer; wait past the zero-delay ones. */
+async function settleSaves() {
+  await flushPromises();
+  await new Promise((r) => setTimeout(r, 30));
+  await flushPromises();
+}
 
 function mountCms() {
   let api!: ReturnType<typeof useCms>;
@@ -62,10 +71,37 @@ describe("which panel is open", () => {
   });
 
   it("restores the panel named by the URL on load — the reload complaint", async () => {
-    await withHash("#hobbies");
+    await withHash("#posts");
     const { api } = mountCms();
     await flushPromises();
-    expect(api().tab.value).toBe("hobbies");
+    expect(api().tab.value).toBe("posts");
+  });
+
+  it("sends a bookmark to a removed module page to the editor, or to Settings", async () => {
+    for (const [hash, view] of [
+      ["#hobbies", "editor"],
+      ["#music", "editor"],
+      ["#gallery", "editor"],
+      ["#site", "settings"],
+      ["#presence", "settings"],
+    ] as const) {
+      await withHash(hash);
+      const { api } = mountCms();
+      await flushPromises();
+      expect(api().tab.value, hash).toBe(view);
+    }
+  });
+
+  it("offers exactly seven sidebar entries", () => {
+    expect(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id))).toEqual([
+      "dashboard",
+      "editor",
+      "posts",
+      "library",
+      "guestbook",
+      "analytics",
+      "settings",
+    ]);
   });
 
   it("falls back rather than rendering nothing for a stale or hostile hash", async () => {
@@ -78,21 +114,21 @@ describe("which panel is open", () => {
   it("writes the panel to the URL, so a reload comes back to it", async () => {
     const { api } = mountCms();
     await flushPromises();
-    api().pick("hobbies");
-    expect(window.location.hash).toBe("#hobbies");
+    api().pick("posts");
+    expect(window.location.hash).toBe("#posts");
   });
 
   it("follows back/forward", async () => {
     const { api } = mountCms();
     await flushPromises();
-    api().pick("links");
-    expect(api().tab.value).toBe("links");
+    api().pick("posts");
+    expect(api().tab.value).toBe("posts");
 
     // What the browser does on Back: change the hash, fire the event.
-    window.location.hash = "#now";
+    window.location.hash = "#library";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
     await flushPromises();
-    expect(api().tab.value).toBe("now");
+    expect(api().tab.value).toBe("library");
   });
 });
 
@@ -125,6 +161,10 @@ const emptyAnalytics = (): AnalyticsResponse => ({
   devices: [],
   bots: [],
   probes: [],
+  visits: { total: 0, previous: null, source: "script" },
+  pageviews: { total: 0, previous: null, source: "log" },
+  secondPage: { visits: 0, reached: 0, rate: null, source: "script" },
+  metricSources: METRIC_SOURCES,
   referrerRules: [],
   chart: emptyChart(),
   engagement: {
@@ -224,6 +264,36 @@ describe("analytics refresh", () => {
   });
 });
 
+describe("analytics headline figures", () => {
+  it("takes visits and page views from the whole-range figures, with their own comparison", async () => {
+    vi.spyOn(cms, "analytics").mockResolvedValue({
+      ...emptyAnalytics(),
+      visits: { total: 40, previous: 20, source: "script" },
+      pageviews: { total: 300, previous: 150, source: "log" },
+      previous: { pageviews: 1, sections: 0, clicks: 0, visitLength: 1, bots: 0, probes: 0 },
+    });
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    expect(api().metricTotals.value).toMatchObject({ visitLength: 40, pageviews: 300 });
+    expect(api().comparison.value?.visitLength).toEqual({ delta: 20, pct: 100 });
+    expect(api().tileKeys).toEqual(["visitLength", "pageviews", "sections", "clicks"]);
+  });
+
+  it("remembers the clock picked in Settings across panels", async () => {
+    localStorage.removeItem("lg-cms-analytics-zone");
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().setZone("utc");
+    await flushPromises();
+    expect(localStorage.getItem("lg-cms-analytics-zone")).toBe("utc");
+    localStorage.removeItem("lg-cms-analytics-zone");
+  });
+});
 describe("analytics dimension filtering", () => {
   it("selecting a row sends dim/key on the next request", async () => {
     const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
@@ -478,21 +548,23 @@ describe("gallery reorder", () => {
   beforeEach(seedContent);
 
   it("sends the whole order in one request, not a PUT per image", async () => {
-    const reorder = vi.spyOn(cms, "reorderGallery").mockResolvedValue({ ok: true });
     const put = vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
 
     api().dropGallery({ from: "gallery", to: "gallery", oldIndex: 3, newIndex: 0 });
-    await flushPromises();
+    await settleSaves();
 
-    expect(reorder).toHaveBeenCalledTimes(1);
-    expect(reorder).toHaveBeenCalledWith("gallery", ["img4", "img1", "img2", "img3"]);
-    expect(put).not.toHaveBeenCalled();
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledWith(
+      "gallery-order",
+      { module: "gallery", ids: ["img4", "img1", "img2", "img3"] },
+      expect.anything(),
+    );
   });
 
   it("renumbers sort to the position, so it can't drift from the list", async () => {
-    vi.spyOn(cms, "reorderGallery").mockResolvedValue({ ok: true });
+    vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
 
@@ -506,13 +578,17 @@ describe("gallery reorder", () => {
   });
 
   it("↑/↓ goes through the same path", async () => {
-    const reorder = vi.spyOn(cms, "reorderGallery").mockResolvedValue({ ok: true });
+    const put = vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
 
     api().moveGallery(0, 1);
-    await flushPromises();
-    expect(reorder).toHaveBeenCalledWith("gallery", ["img2", "img1", "img3", "img4"]);
+    await settleSaves();
+    expect(put).toHaveBeenCalledWith(
+      "gallery-order",
+      { module: "gallery", ids: ["img2", "img1", "img3", "img4"] },
+      expect.anything(),
+    );
   });
 });
 

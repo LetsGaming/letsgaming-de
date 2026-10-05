@@ -10,6 +10,8 @@ import { registerDevLoginRoutes } from "./auth/dev-login.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAssetRoutes } from "./routes/assets.js";
 import { registerCmsRoutes } from "./routes/cms.js";
+import { registerCmsStatusRoutes } from "./routes/cms-status.js";
+import type { SyncRunner } from "./sync/runner.js";
 import { registerContactRoutes } from "./routes/contact.js";
 import { registerGuestbookRoutes } from "./routes/guestbook.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -18,11 +20,16 @@ import { registerPresenceRoutes } from "./routes/presence.js";
 import { registerPlaytimeRoutes } from "./routes/playtime.js";
 import { registerMusicRoutes } from "./routes/music.js";
 import { registerModuleRoutes } from "./routes/module.js";
+import { registerReactionRoutes } from "./routes/reactions.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
 
 /** Build the Fastify app with all routes registered. Pure — no listening. */
-export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyInstance> {
+export async function buildApp(
+  store: Store,
+  env: ServerEnv,
+  deps: { runner?: SyncRunner } = {},
+): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: env.logLevel,
@@ -81,12 +88,14 @@ export async function buildApp(store: Store, env: ServerEnv): Promise<FastifyIns
   registerTrackRoutes(app, store);
   registerContactRoutes(app, env);
   registerGuestbookRoutes(app, store);
+  registerReactionRoutes(app, store);
   registerPresenceRoutes(app, env, store);
   registerPlaytimeRoutes(app, store);
   registerMusicRoutes(app, store);
   registerModuleRoutes(app, store, env);
   registerPresenceMediaRoutes(app, store);
   registerCmsRoutes(app, store, env);
+  registerCmsStatusRoutes(app, store, env, deps.runner);
   registerAnalyticsRoutes(app, store, env);
   await registerAssetRoutes(app, store, env);
   registerOAuthRoutes(app, env);

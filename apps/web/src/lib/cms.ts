@@ -30,6 +30,47 @@ import type {
   SiteView,
 } from "@lg/core";
 import { apiBase } from "./api";
+import type { SectionsResponse } from "./sectionStats";
+
+export type GuestbookTab = "pending" | "approved" | "rejected";
+export type GuestbookCounts = Record<GuestbookTab, number>;
+
+export interface SourceStatus {
+  id: string;
+  label: string;
+  kind: "source" | "job" | "analytics";
+  configured: boolean;
+  mock: boolean;
+  schedule: string | null;
+  canSync: boolean;
+  state: "ok" | "error" | "never";
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+}
+
+export interface CmsStatusResponse {
+  sources: SourceStatus[];
+  guestbook: GuestbookCounts;
+  recentEdits: {
+    id: number;
+    savedAt: string;
+    reason: string;
+    label: string;
+    /** Which revision id space `id` belongs to. */
+    kind: "content" | "ia";
+    /** Only content revisions can be passed to `restoreRevision`. */
+    restorable: boolean;
+  }[];
+}
+
+export interface SyncRunResponse {
+  sourceId: string;
+  ok: boolean;
+  mock: boolean;
+  syncedAt: string;
+  error?: string;
+}
 
 const TOKEN_KEY = STORAGE_KEY.cmsToken;
 
@@ -94,8 +135,31 @@ export class AuthError extends Error {
   }
 }
 
+/** Current admin location (path, query, hash) so sign-in returns to it. The
+ *  server re-validates it; SSR and non-admin pages send nothing and get /admin. */
+function returnToQuery(): string {
+  if (typeof window === "undefined") return "";
+  const { pathname, search, hash } = window.location;
+  if (!pathname.startsWith("/admin")) return "";
+  return `?returnTo=${encodeURIComponent(pathname + search + hash)}`;
+}
+
+export type CmsSourceStatus = SourceStatus;
+export type SyncRunResult = SyncRunResponse;
+
+export interface ActivityNameRow {
+  name: string;
+  category: string;
+  sessions: number;
+}
+
 export const cms = {
   base: apiBase,
+
+  activityNames: () =>
+    fetch(`${apiBase}/api/cms/activity-names`, { headers: headers(false), credentials: "include" }).then(
+      handle<{ names: ActivityNameRow[] }>,
+    ),
 
   me: () =>
     fetch(`${apiBase}/api/cms/me`, { headers: headers(false), credentials: "include" }).then(
@@ -105,13 +169,10 @@ export const cms = {
     fetch(`${apiBase}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
       handle<CmsContentResponse>,
     ),
-  saveReferrerRules: (rules: { match: string; label: string }[]) =>
-    fetch(`${apiBase}/api/cms/referrer-rules`, {
-      method: "PUT",
-      headers: headers(true),
-      credentials: "include",
-      body: JSON.stringify({ rules }),
-    }).then(handle<OkResponse>),
+  githubRepos: () =>
+    fetch(`${apiBase}/api/cms/github-repos`, { headers: headers(false), credentials: "include" }).then(
+      handle<{ repos: { name: string; description?: string; language?: string; pinned: boolean }[] }>,
+    ),
 
   analytics: (
     opts: {
@@ -157,17 +218,43 @@ export const cms = {
       body: JSON.stringify({ range }),
     }).then(handle<ClearAnalyticsResponse>),
 
-  guestbook: () =>
-    fetch(`${apiBase}/api/cms/guestbook`, {
+  guestbook: (status?: GuestbookTab | "all") =>
+    fetch(`${apiBase}/api/cms/guestbook${status ? `?status=${status}` : ""}`, {
       headers: headers(false),
       credentials: "include",
-    }).then(handle<GuestbookListResponse>),
+    }).then(handle<GuestbookListResponse & { counts?: GuestbookCounts }>),
   moderate: (id: number, action: ModerationAction) =>
     fetch(`${apiBase}/api/cms/guestbook/${id}/${action}`, {
       method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: "{}",
+    }).then(handle<OkResponse>),
+  /** Hard delete. `keepalive` lets it finish while the page is unloading. */
+  deleteGuestbook: (id: number) =>
+    fetch(`${apiBase}/api/cms/guestbook/${id}`, {
+      method: "DELETE",
       headers: headers(false),
       credentials: "include",
+      keepalive: true,
     }).then(handle<OkResponse>),
+
+  status: () =>
+    fetch(`${apiBase}/api/cms/status`, { headers: headers(false), credentials: "include" }).then(
+      handle<CmsStatusResponse>,
+    ),
+  syncSource: (source: string) =>
+    fetch(`${apiBase}/api/cms/sync/${encodeURIComponent(source)}`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: "{}",
+    }).then(handle<SyncRunResponse>),
+  sections: (area: string, hours: number) =>
+    fetch(`${apiBase}/api/cms/sections?${new URLSearchParams({ area, hours: String(hours) })}`, {
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle<SectionsResponse>),
 
   /** Content history — newest first. */
   revisions: () => fetch(`${apiBase}/api/cms/revisions`, { headers: headers(), credentials: "include" }).then(handle<RevisionListResponse>),
@@ -192,12 +279,14 @@ export const cms = {
   reorderGallery: (module: string, ids: string[]) =>
     cms.put("gallery-order", { module, ids }),
 
-  put: (path: string, body: unknown) =>
+  /** `keepalive` lets a flush on page hide finish after the page is gone. */
+  put: (path: string, body: unknown, opts: { keepalive?: boolean } = {}) =>
     fetch(`${apiBase}/api/cms/${path}`, {
       method: "PUT",
       headers: headers(),
       credentials: "include",
       body: JSON.stringify(body),
+      keepalive: opts.keepalive ?? false,
     }).then(handle<OkResponse>),
 
   del: (path: string) =>
@@ -243,6 +332,32 @@ export const cms = {
       body: fd,
     }).then(handle<Asset>);
   },
+  /** Like `uploadAsset`, with `fetch`-less progress: XHR is the only API that reports upload bytes. */
+  uploadAssetWithProgress: (file: File, onProgress: (fraction: number) => void) =>
+    new Promise<Asset>((resolve, reject) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${apiBase}/api/cms/assets`);
+      xhr.withCredentials = true;
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        if (xhr.status === 401 || xhr.status === 403) return reject(new AuthError());
+        let body: unknown = null;
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          /* non-JSON error page */
+        }
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(body as Asset);
+        reject(new Error((body as { error?: string } | null)?.error ?? `HTTP ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error("Network error."));
+      xhr.send(fd);
+    }),
   /**
    * Read a markdown asset's source for editing.
    *
@@ -300,9 +415,9 @@ export const cms = {
       headers: headers(false),
       credentials: "include",
     }).then(handle<OkResponse>),
-  loginUrl: () => `${apiBase}/auth/github/login`,
+  loginUrl: () => `${apiBase}/auth/github/login${returnToQuery()}`,
   /** Dev-only shortcut. The server only registers this route outside production
    *  and only answers loopback callers; the button that uses it is compiled out
    *  of production builds. */
-  devLoginUrl: () => `${apiBase}/auth/dev/login`,
+  devLoginUrl: () => `${apiBase}/auth/dev/login${returnToQuery()}`,
 };

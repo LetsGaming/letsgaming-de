@@ -21,8 +21,17 @@ export function gameMetaRepo(db: DatabaseSync) {
       resolved_at = excluded.resolved_at
   `);
 
+  const noteImage = db.prepare(`
+    INSERT INTO game_images (name, application_id, large_image)
+    VALUES (?, ?, ?)
+    ON CONFLICT (name) DO UPDATE SET
+      application_id = excluded.application_id,
+      large_image = COALESCE(excluded.large_image, game_images.large_image)
+  `);
+
   return {
-    /** The whole cache as a Map, for the resolver. Keys are already normalized. */
+    /** The whole cache as a Map, for the resolver. Keys are already normalized. A
+     *  Discord-resolved image fills in the cover for games RAWG has none for. */
     getAll(): Map<string, GameMeta> {
       const map = new Map<string, GameMeta>();
       for (const r of mapRows(db.prepare("SELECT name, cover_url, genre FROM game_metadata"), (row: Row) => ({
@@ -35,7 +44,49 @@ export function gameMetaRepo(db: DatabaseSync) {
           ...(r.genre ? { genre: r.genre } : {}),
         });
       }
+      for (const r of mapRows(
+        db.prepare("SELECT name, image_url FROM game_images WHERE image_url IS NOT NULL"),
+        (row: Row) => ({ name: asText(row.name), imageUrl: asText(row.image_url) }),
+      )) {
+        const existing = map.get(r.name);
+        if (existing?.coverUrl) continue;
+        map.set(r.name, { ...existing, coverUrl: r.imageUrl });
+      }
       return map;
+    },
+
+    /** Remember the Discord application behind a game, as seen on an activity.
+     *  Idempotent; never touches an already resolved image. */
+    noteApplication(name: string, applicationId: string, largeImage?: string): void {
+      noteImage.run(gameMetaKey(name), applicationId, largeImage ?? null);
+    },
+
+    /** Games with an application id and no resolved image whose last attempt is
+     *  missing or older than `retryBeforeIso`. */
+    pendingImages(retryBeforeIso: string): { name: string; applicationId: string; largeImage?: string }[] {
+      return mapRows(
+        db.prepare(`
+          SELECT name, application_id, large_image FROM game_images
+          WHERE application_id IS NOT NULL AND image_url IS NULL
+            AND (checked_at IS NULL OR checked_at < ?)
+        `),
+        (r: Row) => ({
+          name: asText(r.name),
+          applicationId: asText(r.application_id),
+          ...(r.large_image == null ? {} : { largeImage: asText(r.large_image) }),
+        }),
+        retryBeforeIso,
+      );
+    },
+
+    /** Persist the first working image URL for a game, or stamp a miss (`null`) so
+     *  it is retried only after the retry window. */
+    putImage(name: string, imageUrl: string | null, nowIso: string): void {
+      db.prepare("UPDATE game_images SET image_url = ?, checked_at = ? WHERE name = ?").run(
+        imageUrl,
+        nowIso,
+        gameMetaKey(name),
+      );
     },
 
     /** Names already resolved (found or not), so the sweep can skip them. */

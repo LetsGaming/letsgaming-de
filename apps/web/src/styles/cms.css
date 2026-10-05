@@ -13,7 +13,21 @@
  * Spacing (padding/margin/gap) uses --sp-*, radii use --r-*, and fills-on-accent
  * use --on-accent; every value equals the pixel it replaced. */
 
+/* Reserve the scrollbar's width on every panel so a long page can't shift the
+   centered layout sideways relative to a short one. */
+html:has(.cms) {
+  scrollbar-gutter: stable;
+}
+
 .cms {
+  /* Type roles: headings use --f-d, UI text and labels --cms-font-ui, values
+     (paths, keys, numbers, durations, code) --cms-font-value. */
+  --cms-font-ui: var(--f-b);
+  --cms-font-value: var(--cms-font-value);
+  --fs-help: 14px;
+  /* Pulled toward --ink from --muted: 5.5:1 or better on the card surfaces in
+     both themes, where --muted alone drops under 4.5:1 on the raised ones. */
+  --help-ink: color-mix(in srgb, var(--muted) 78%, var(--ink));
   max-width: 1120px;
   margin: 0 auto;
   padding: var(--sp-20) var(--sp-18) 80px;
@@ -85,7 +99,7 @@
 }
 .cms .side {
   position: sticky;
-  top: 16px;
+  top: var(--sp-20);
   display: flex;
   flex-direction: column;
   gap: var(--sp-14);
@@ -107,7 +121,7 @@
   gap: var(--sp-2);
 }
 .cms .navlabel {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -119,7 +133,7 @@
   align-items: center;
   gap: var(--sp-6);
   text-align: left;
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 13px;
   padding: 7px var(--sp-10);
   border-radius: 9px;
@@ -132,16 +146,26 @@
   background: var(--purple-wash);
 }
 .cms .side .nav button.on {
-  background: var(--purple);
+  background: var(--live-solid);
   color: var(--on-accent);
+}
+/* The active fill already marks the current item, so a pointer click shows no
+   ring; keyboard focus keeps one, drawn inside the fill. */
+.cms .side .nav button:focus:not(:focus-visible) {
+  outline: none;
+}
+.cms .side .nav button.on:focus-visible {
+  outline-color: var(--on-accent);
+  outline-offset: -3px;
 }
 .cms .ndot {
   margin-left: auto;
   background: var(--coral);
-  color: var(--on-accent);
-  font-size: 10px;
-  min-width: 16px;
-  height: 16px;
+  color: var(--on-coral);
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
   border-radius: var(--r-pill);
   display: inline-flex;
   align-items: center;
@@ -149,7 +173,8 @@
   padding: 0 var(--sp-4);
 }
 .cms .side .nav button.on .ndot {
-  background: var(--on-accent-soft);
+  background: var(--on-accent);
+  color: var(--live-solid);
 }
 .cms .sidefoot {
   display: flex;
@@ -168,14 +193,19 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-12);
+  height: 52px;
+  box-sizing: border-box;
   margin-bottom: var(--sp-18);
-  padding-bottom: var(--sp-12);
   border-bottom: 1px solid var(--line);
 }
 .cms .topbar h2 {
   font-family: var(--f-d);
   font-size: 20px;
   color: var(--ink-strong);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cms .topact {
   display: flex;
@@ -228,7 +258,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-6);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 12px;
   color: var(--muted);
 }
@@ -295,10 +325,25 @@
 .cms .note {
   background: var(--purple-wash);
   border-color: var(--line);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 13px;
   line-height: 1.5;
   color: var(--ink);
+}
+/* The one help-text style: explanatory copy under a heading or beside a control.
+   `:is()` takes the heaviest selector inside it, so this out-ranks each class's
+   own earlier size and color without per-class overrides. */
+.cms .help,
+.cms :is(.note, .editnote, .railnote, .railhint, .lgedit-hint, .filternote, p.muted) {
+  font-size: var(--fs-help);
+  line-height: 1.5;
+}
+.cms .help,
+.cms :is(.editnote, .railnote, .railhint, .lgedit-hint, .filternote, p.muted) {
+  color: var(--help-ink);
+}
+.cms .help {
+  margin: 0;
 }
 /* `:not(.lgedit-page *)` — the canvas, and only the canvas.
    The editor renders the site's real sections, and `.cms .card` (0,2,0) would
@@ -329,7 +374,7 @@
   gap: var(--sp-4);
   font-size: 12px;
   color: var(--muted);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
 }
 .cms label.check {
   flex-direction: row;
@@ -381,14 +426,14 @@
   align-self: flex-start;
 }
 .cms .btn.primary:not(.lgedit-page *) {
-  background: var(--purple);
+  background: var(--live-solid);
 }
 .cms .link {
   background: none;
   border: none;
   color: var(--purple-br);
   cursor: pointer;
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 12px;
 }
 .cms .link.danger {
@@ -436,7 +481,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 12px;
   color: var(--muted);
 }
@@ -502,6 +547,7 @@
 }
 .cms .cols li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   padding: 5px 0;
   border-top: 1px solid var(--line);
@@ -527,7 +573,7 @@
   flex-wrap: wrap;
 }
 .cms .seg button {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 12px;
   color: var(--muted);
   background: var(--card);
@@ -543,6 +589,100 @@
 .cms .seg.ranges button {
   flex-direction: row;
   align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 44px;
+}
+.cms .seg.tiles {
+  flex-wrap: nowrap;
+}
+.cms .seg.tiles button {
+  min-width: 112px;
+  text-align: left;
+}
+.cms .seg .sunit {
+  font-size: var(--fs-micro);
+}
+.cms .quality {
+  margin: var(--sp-10) 0;
+}
+.cms .quality > summary {
+  cursor: pointer;
+  font-family: var(--cms-font-ui);
+  font-size: 13px;
+  padding: var(--sp-6) 0;
+}
+.cms .quality > .cols {
+  margin-top: var(--sp-8);
+}
+.cms .funnels,
+.cms .histos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.cms .funnels > li,
+.cms .histos > li {
+  display: block;
+  padding: var(--sp-6) 0;
+}
+.cms .funnelhead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  font-size: 12px;
+}
+.cms .funnelrow {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: var(--sp-6);
+  font-size: 12px;
+}
+.cms .funnelrow b {
+  text-align: right;
+}
+.cms .funnelrow .bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.cms .funnelrow .bar i {
+  display: block;
+  height: 100%;
+  background: var(--purple-br);
+}
+.cms .histo {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 56px;
+  margin-top: var(--sp-4);
+}
+.cms .histo .col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+.cms .histo .col i {
+  display: block;
+  width: 100%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--purple-br);
+}
+.cms .histo .col small {
+  font-size: 9px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .cms .seg button.on {
   color: var(--ink-strong);
@@ -584,7 +724,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-s);
   box-shadow: var(--sh-2);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
   color: var(--ink);
   pointer-events: none;
@@ -646,7 +786,7 @@
   align-items: center;
   gap: var(--sp-8);
   margin-bottom: var(--sp-10);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: var(--fs-micro);
 }
 .cms .chip {
@@ -712,7 +852,7 @@
 .cms .datatable table {
   width: 100%;
   border-collapse: collapse;
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
 }
 .cms .datatable caption {
@@ -743,17 +883,31 @@
    the sign is in the text, so this reads the same to anyone who can't see it. */
 .cms .sunit em {
   font-style: normal;
+  font-size: 12px;
   margin-left: var(--sp-4);
 }
 .cms .sunit em.up {
-  color: var(--mint);
+  color: var(--delta-up);
 }
 .cms .sunit em.down {
-  color: var(--coral);
+  color: var(--delta-down);
+}
+.cms .secondpage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-8);
+  margin: var(--sp-8) 0 0;
+  font-size: var(--fs-help);
+}
+.cms .secondpage b {
+  font-family: var(--cms-font-value);
+  color: var(--ink-strong);
+  font-size: 18px;
 }
 .cms .medianline {
   margin-top: var(--sp-6);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
 }
 .cms .c-area {
@@ -805,14 +959,14 @@
 }
 .cms .c-ylabel {
   fill: var(--muted);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
   text-anchor: end;
   dominant-baseline: middle;
 }
 .cms .c-xlabel {
   fill: var(--muted);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
   dominant-baseline: hanging;
 }
@@ -821,7 +975,7 @@
   flex-wrap: wrap;
   gap: var(--sp-8);
   justify-content: space-between;
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
   color: var(--muted);
   margin-top: var(--sp-6);
@@ -834,7 +988,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-8);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: var(--fs-micro);
   color: var(--muted);
   margin-top: var(--sp-6);
@@ -847,7 +1001,7 @@
   flex-wrap: wrap;
   gap: var(--sp-10) var(--sp-16);
   margin-top: var(--sp-10);
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 12px;
   color: var(--ink);
 }
@@ -881,20 +1035,49 @@
   color: var(--muted);
   font-weight: 500;
 }
-.cms .clearbar {
+.cms .dangerzone:not(.lgedit-page *) {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+}
+.cms .dangerzone h3 {
+  color: var(--danger-ink);
+}
+.cms .clearrow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-8);
-  margin-top: var(--sp-14);
+}
+.cms .clearconfirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
   padding-top: var(--sp-12);
   border-top: 1px solid var(--line);
-  font-family: var(--f-m);
-  font-size: 12px;
+}
+.cms .clearconfirm input {
+  max-width: 220px;
+}
+.cms .clearactions {
+  display: flex;
+  gap: var(--sp-8);
+}
+.cms .btn.dangerbtn {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+.cms .btn.dangerbtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cms .clearbtn.sel {
+  color: var(--ink);
+  border-color: var(--danger);
 }
 .cms .clearbtn {
-  font-family: var(--f-m);
-  font-size: 12px;
+  font-family: var(--cms-font-ui);
+  font-size: 13px;
   color: var(--muted);
   background: var(--card);
   border: 1px solid var(--line);
@@ -907,8 +1090,8 @@
   border-color: var(--purple-br);
 }
 .cms .clearbtn.danger {
-  color: var(--coral);
-  border-color: color-mix(in srgb, var(--coral) 40%, var(--line));
+  color: var(--danger-ink);
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
 }
 .cms .clearbtn:disabled {
   opacity: 0.5;
@@ -971,7 +1154,7 @@
   word-break: break-word;
 }
 .cms .gb-flags {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: var(--fs-micro);
   color: var(--coral);
 }
@@ -986,7 +1169,7 @@
   font-size: 13px;
 }
 .cms .pill {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: var(--fs-micro);
   padding: var(--sp-2) var(--sp-8);
   border-radius: var(--r-pill);
@@ -1035,7 +1218,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 5vh var(--sp-20);
-  z-index: 50;
+  z-index: 250;
 }
 .cms .pickbox {
   background: var(--bg-base);
@@ -1078,7 +1261,7 @@
   object-fit: cover;
 }
 .cms .fieldlabel {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-ui);
   font-size: 12px;
   color: var(--muted);
   margin-bottom: var(--sp-4);
@@ -1142,7 +1325,7 @@
   font-size: 13px;
 }
 .posts-item .pi-s {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
   color: var(--muted);
 }
@@ -1159,7 +1342,7 @@
   flex-wrap: wrap;
 }
 .posts-meta {
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: var(--fs-micro);
   color: var(--muted);
   margin-left: auto;
@@ -1167,7 +1350,7 @@
 .posts-src {
   flex: 1;
   min-height: 380px;
-  font-family: var(--f-m);
+  font-family: var(--cms-font-value);
   font-size: 13px;
   line-height: 1.6;
   tab-size: 2;
@@ -1324,19 +1507,39 @@ body.is-dragging .cms .glist .gthumb {
 .cms .lgedit-hint {
   font-size: 12px;
   color: var(--muted);
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cms .lgedit-bar > strong,
+.cms .lgedit-pagebtn,
+.cms .lgedit-close {
+  flex: none;
+  white-space: nowrap;
 }
 .cms .lgedit-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--sp-8);
   margin-left: auto;
+}
+.cms .lgedit-actions > * {
+  flex: none;
+}
+@media (max-width: 1500px) {
+  .cms .lgedit-hint {
+    display: none;
+  }
 }
 .cms .lgedit-dim {
   color: var(--muted);
   font-size: 12px;
 }
 .cms .lgedit-page-pick,
-.lgedit-save,
 .lgedit-close {
   font: inherit;
   font-size: 13px;
@@ -1346,12 +1549,14 @@ body.is-dragging .cms .glist .gthumb {
   background: var(--card-2);
   color: var(--ink);
   cursor: pointer;
+  white-space: nowrap;
 }
-.cms .lgedit-save {
-  border-color: var(--ink);
+.cms select.lgedit-page-pick {
+  width: auto;
+  min-width: 9.5em;
+  text-overflow: ellipsis;
 }
-.cms .lgedit-close:hover,
-.cms .lgedit-save:hover {
+.cms .lgedit-close:hover {
   border-color: var(--ink);
 }
 .cms .lgedit-body {
@@ -1361,13 +1566,13 @@ body.is-dragging .cms .glist .gthumb {
   /* minmax(0, 1fr): `1fr` is `minmax(auto, 1fr)`, and `auto` floors a track at its
      content — which is how a canvas once widened its own column past the pane and
      made "Desktop" narrower than "Tablet". */
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   overflow: hidden;
 }
 .cms .lgedit-page {
   position: relative;
   overflow: auto;
-  padding: var(--sp-20) var(--sp-24) 40vh;
+  padding: calc(var(--sp-20) + 24px) var(--sp-24) 40vh;
 }
 .cms .lgedit-wait {
   padding: var(--sp-24);
@@ -1387,9 +1592,12 @@ body.is-dragging .cms .glist .gthumb {
   color: var(--muted);
   font-weight: 600;
 }
+.cms .lgedit-content {
+  display: contents;
+}
 .cms .lgedit-overlay {
   position: absolute;
-  inset: var(--sp-20) var(--sp-24) 40vh;
+  inset: calc(var(--sp-20) + 24px) var(--sp-24) 40vh;
   pointer-events: none;
 }
 .cms .lgedit-mod {
@@ -1423,79 +1631,147 @@ body.is-dragging .cms .glist .gthumb {
 }
 /* A module that rendered to nothing still has to be grabbable, or the only way to
    fix an empty module is to already know it's there. */
+.cms .lgedit-mod.file-over {
+  border-color: var(--ink);
+  border-style: solid;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.cms .lgedit-upl {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  align-items: center;
+  width: min(420px, 92%);
+  cursor: default;
+}
+.cms .lgedit-upl > ul {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: var(--sp-8);
+}
+.cms .lgedit-notice {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  width: max-content;
+  max-width: 90%;
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-16);
+  border-radius: 999px;
+  background: var(--ink-strong);
+  color: var(--surf-0);
+  font-size: 13px;
+}
 .cms .lgedit-mod.empty {
   border-color: var(--line-2);
   background: color-mix(in srgb, var(--ink) 5%, transparent);
 }
-.cms .lgedit-grip,
-.lgedit-tag,
-.cms .lgedit-add {
+.cms .lgedit-toolbar {
   position: absolute;
-  font: 500 11px/1 var(--f-m, monospace);
+  font: 500 11px/1 var(--cms-font-ui);
   color: var(--muted);
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-xs);
-  padding: 3px 5px;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
-/* Visible without hunting.
-   The first version hid every affordance behind `:hover` on the module, so the only
-   way to learn what was draggable was to sweep the whole page with the mouse. An
-   editor's handles are the interface, not a reveal. */
-.lgedit-grip,
-.cms .lgedit-tag {
-  opacity: 0.55;
-}
-.lgedit-add {
+/* Sits above the module's top edge, in the gap between sections, so it never
+   covers module text. A child of the box, so hovering it keeps the box hovered. */
+.cms .lgedit-toolbar {
+  left: 0;
+  bottom: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  border-bottom: 0;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
   opacity: 0;
+  pointer-events: none;
 }
-.cms .lgedit-mod:hover .lgedit-grip,
-.cms .lgedit-mod:hover .lgedit-tag,
-.cms .lgedit-mod:hover .lgedit-add,
-.cms .lgedit-mod.sel .lgedit-grip,
-.cms .lgedit-mod.sel .lgedit-tag,
-.cms .lgedit-mod.sel .lgedit-add {
+.cms .lgedit-mod:hover .lgedit-toolbar,
+.cms .lgedit-mod.sel .lgedit-toolbar {
   opacity: 1;
+  pointer-events: auto;
 }
-/* A grab target you can hit. The drag only starts on the handle, so the handle has
-   to be findable and hittable or the feature isn't there. */
 .cms .lgedit-grip {
-  left: 2px;
-  top: 4px;
   cursor: grab;
   font-size: 16px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   line-height: 1;
 }
 .cms .lgedit-grip:active {
   cursor: grabbing;
 }
-.cms .lgedit-mod:hover .lgedit-grip {
+.cms .lgedit-grip:hover {
   color: var(--ink);
-  border-color: var(--ink);
 }
-.lgedit-tag {
-  right: 4px;
-  top: 4px;
+.cms .lgedit-tag {
+  white-space: nowrap;
 }
-.lgedit-add {
-  left: 50%;
-  transform: translateX(-50%);
-  top: -10px;
+/* Inside the toolbar, beside the kind tag; warm so a gap in the translation reads as a to-do. */
+.cms .lgedit-missing {
+  padding: 1px 4px;
+  color: var(--danger-ink);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-xs);
+  white-space: nowrap;
+}
+/* The insert line: a full-width rule with a centered +, shown on hover or focus.
+   It straddles the boundary between two modules so it's hit by passing over the
+   seam, not by aiming at a 20px button. */
+.cms .lgedit-gap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  margin-top: -7px;
+  padding: 0;
+  border: 0;
+  background: none;
   cursor: pointer;
   pointer-events: auto;
-  line-height: 1;
-  padding: 2px 7px;
+  z-index: 1;
 }
-.cms .lgedit-add:hover {
-  color: var(--ink);
-  border-color: var(--ink);
+.cms .lgedit-gap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--ink);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
-.cms .lgedit-add.end {
+.cms .lgedit-gap-plus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 22px;
+  line-height: 20px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg-base);
+  font: 600 14px/20px var(--cms-font-value);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.cms .lgedit-gap:hover::before,
+.cms .lgedit-gap:focus-visible::before,
+.cms .lgedit-gap:hover .lgedit-gap-plus,
+.cms .lgedit-gap:focus-visible .lgedit-gap-plus {
   opacity: 1;
 }
-
 @media (max-width: 900px) {
   .cms .lgedit-body {
     grid-template-columns: 1fr;
@@ -1505,9 +1781,9 @@ body.is-dragging .cms .glist .gthumb {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cms .lgedit-grip,
-  .cms .lgedit-tag,
-  .cms .lgedit-add {
+  .cms .lgedit-toolbar,
+  .cms .lgedit-gap::before,
+  .cms .lgedit-gap-plus {
     transition: none;
   }
 }
@@ -1598,7 +1874,7 @@ body.is-dragging .cms .glist .gthumb {
    Clicking a module used to switch the CMS's tab behind the editor: the only
    thing selecting did was leave. */
 .cms .lgedit-body:has(.railpanel) {
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 440px;
 }
 .cms .railsel {
   display: flex;
@@ -1623,4 +1899,441 @@ body.is-dragging .cms .glist .gthumb {
   font-size: 12px;
   padding: var(--sp-8) var(--sp-4);
   line-height: 1.5;
+}
+
+/* ── editor shell: rail tabs, module menu, picker, palette ─────────────────── */
+.cms .railtabs {
+  display: flex;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  margin: calc(var(--sp-4) * -1) 0 var(--sp-4);
+}
+.cms .railtabs button {
+  font: inherit;
+  font-size: 13px;
+  padding: var(--sp-6) var(--sp-10);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.cms .railtabs button.on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.cms .railtabs button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cms .lgedit-pagebtn {
+  font: inherit;
+  font-weight: 600;
+  background: none;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-s);
+  color: var(--ink);
+  padding: 3px var(--sp-8);
+  cursor: pointer;
+}
+.cms .lgedit-pagebtn:hover {
+  border-color: var(--ink);
+}
+/* Names wrap instead of truncating; the row keeps its handle and menu in line. */
+.cms .railbox .modrow {
+  align-items: flex-start;
+  position: relative;
+}
+.cms .railbox .modrow .modname {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.cms .modrow.cur {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.cms .tr-missing {
+  flex: none;
+  font-size: var(--fs-micro);
+  color: var(--danger-ink);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-xs);
+  padding: 0 var(--sp-4);
+}
+.cms .modmenu-btn {
+  flex: none;
+  font: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 var(--sp-6);
+  line-height: 1.4;
+}
+.cms .modmenu-btn:hover,
+.cms .modmenu-btn[aria-expanded="true"] {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.cms .modmenu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+  background: var(--card);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+.cms .modmenu h5 {
+  margin: var(--sp-4) var(--sp-6);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  font-weight: 600;
+}
+.cms .modmenu button {
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--r-xs);
+  color: var(--ink);
+  padding: var(--sp-4) var(--sp-8);
+  cursor: pointer;
+}
+.cms .modmenu button:hover,
+.cms .modmenu button:focus-visible {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cms .palette-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: rgb(0 0 0 / 0.45);
+}
+.cms .palette {
+  width: min(560px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-m, var(--r-s));
+  background: var(--card);
+  color: var(--ink);
+  overflow: hidden;
+}
+.cms .palette input {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: var(--sp-12) var(--sp-14);
+  font-size: var(--fs-body);
+  background: transparent;
+  color: inherit;
+}
+.cms .palette ol {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-4);
+  overflow: auto;
+}
+.cms .palette li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  font-size: 14px;
+}
+.cms .palette li.on {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cms .palette li .dim {
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
+.cms .shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-6) var(--sp-14);
+  margin: var(--sp-10) 0 0;
+}
+.cms .shortcuts kbd {
+  font: 500 12px var(--cms-font-value);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xs);
+  padding: 1px var(--sp-6);
+  background: var(--card-2);
+}
+.cms .pagesettings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+
+/* save status: undo/redo and the single autosave chip */
+.cms .savebar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.cms .savebar-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--r-s);
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.cms .savebar-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cms .savechip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 9.5rem;
+  height: 28px;
+  font-size: 13px;
+  white-space: nowrap;
+  border-radius: var(--r-s);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.cms .savechip[data-state="saving"] {
+  color: var(--ink);
+}
+.cms .savechip[data-state="error"] {
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+.cms .savechip-retry {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.cms .saveerr {
+  position: absolute;
+  top: calc(100% + var(--sp-6));
+  right: 0;
+  z-index: 5;
+  max-width: 22rem;
+  padding: var(--sp-6) var(--sp-10);
+  font-size: 13px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--danger);
+  background: var(--card);
+  color: var(--danger-ink);
+}
+/* ── mobile mode ──────────────────────────────────────────────────────────────
+   Below 720px the CMS swaps the builder for the compact editor (MobileEditor),
+   moves the sidebar to a bottom tab bar and keeps every control at touch size. */
+.cms .mobed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.cms .mobed-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-6);
+}
+.cms .mobed-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 0 var(--sp-12);
+  cursor: pointer;
+}
+.cms .mobed-open .modname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cms .mobed-move {
+  min-width: 52px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  cursor: pointer;
+}
+.cms .mobed-move:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cms .mobed-add {
+  display: flex;
+  gap: var(--sp-8);
+}
+.cms .mobed-add select {
+  flex: 1;
+  min-width: 0;
+}
+.cms .mobed-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+  min-width: 0;
+}
+.cms .mobed-sheethead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-width: 0;
+}
+.cms .mobed-sheethead b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cms .mnav {
+  display: none;
+}
+@media (max-width: 719.98px) {
+  .cms {
+    padding: var(--sp-12) var(--sp-14) calc(72px + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+  .cms .desk-only {
+    display: none !important;
+  }
+  .cms .shell,
+  .cms .main,
+  .cms .pane {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .cms .mnav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .cms .mnav button {
+    position: relative;
+    min-height: 56px;
+    min-width: 0;
+    padding: 0 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--cms-font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .cms .mnav button.on {
+    color: var(--ink-strong);
+    box-shadow: inset 0 2px 0 var(--purple-br);
+  }
+  .cms .mnav .ndot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+  }
+  .cms .topbar {
+    height: auto;
+    padding-bottom: var(--sp-8);
+    flex-wrap: wrap;
+    gap: var(--sp-8);
+  }
+  .cms .topact {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .cms .mlocale {
+    width: auto;
+  }
+  .cms .mlocale,
+  .cms .topact .btn,
+  .cms .savebar-btn {
+    min-height: 44px;
+  }
+  .cms .savebar-btn {
+    min-width: 44px;
+  }
+  .cms .gb-tabs {
+    overflow-x: auto;
+  }
+  .cms .gb-tab,
+  .cms .gb-buttons .btn,
+  .cms .seg.ranges button,
+  .cms .btn {
+    min-height: 44px;
+  }
+  .cms .gb-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cms .gb-buttons {
+    flex-wrap: wrap;
+  }
+  .cms .charthead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cms .seg,
+  .cms .seg.tiles {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .cms .seg.tiles button {
+    flex: 1 1 calc(50% - var(--sp-6));
+    min-height: 44px;
+  }
+  .cms .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cms .toast {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+  .cms .pickbox {
+    max-width: 100%;
+  }
 }

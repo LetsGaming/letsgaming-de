@@ -95,6 +95,34 @@ export interface WrappedWindow {
   periodEnd: string;
 }
 
+/** The first cycle boundary, or `null` when Wrapped is off or the date is unusable. */
+function anchorDate(settings: WrappedSettings): Date | null {
+  if (!settings.enabled || !DATE_RE.test(settings.fromDate)) return null;
+  const from = new Date(`${settings.fromDate}T00:00:00.000Z`);
+  return Number.isNaN(from.getTime()) ? null : from;
+}
+
+/** Whole cycles elapsed from `from` to `now` (a partial month doesn't count). */
+function cyclesElapsed(from: Date, now: Date, everyMonths: number): number {
+  let months = (now.getUTCFullYear() - from.getUTCFullYear()) * 12 + (now.getUTCMonth() - from.getUTCMonth());
+  if (now.getUTCDate() < from.getUTCDate()) months -= 1;
+  return Math.floor(months / everyMonths);
+}
+
+/** The window open at `now`, or the start of the next one to open. */
+export type NextWrappedWindow = { kind: "open"; start: string; end: string } | { kind: "next"; start: string };
+
+/** `null` when Wrapped is off or its date is invalid. */
+export function nextWrappedWindow(settings: WrappedSettings, now: Date): NextWrappedWindow | null {
+  const from = anchorDate(settings);
+  if (!from) return null;
+  const open = wrappedWindow(settings, now);
+  if (open) return { kind: "open", start: open.windowStart, end: open.windowEnd };
+  if (now.getTime() < from.getTime()) return { kind: "next", start: isoDate(from) };
+  const cycles = cyclesElapsed(from, now, settings.everyMonths);
+  return { kind: "next", start: isoDate(addMonths(from, (cycles + 1) * settings.everyMonths)) };
+}
+
 /**
  * The window covering `now`, or `null` when the module shouldn't show.
  *
@@ -106,15 +134,10 @@ export interface WrappedWindow {
  * return `null`.
  */
 export function wrappedWindow(settings: WrappedSettings, now: Date): WrappedWindow | null {
-  if (!settings.enabled || !DATE_RE.test(settings.fromDate)) return null;
-  const from = new Date(`${settings.fromDate}T00:00:00.000Z`);
-  if (Number.isNaN(from.getTime()) || now.getTime() < from.getTime()) return null;
+  const from = anchorDate(settings);
+  if (!from || now.getTime() < from.getTime()) return null;
 
-  // Whole months elapsed from `from` to `now` (a partial month doesn't count), then
-  // the most recent boundary is that many months back, rounded down to a cycle.
-  let months = (now.getUTCFullYear() - from.getUTCFullYear()) * 12 + (now.getUTCMonth() - from.getUTCMonth());
-  if (now.getUTCDate() < from.getUTCDate()) months -= 1;
-  const cycles = Math.floor(months / settings.everyMonths);
+  const cycles = cyclesElapsed(from, now, settings.everyMonths);
   const boundary = addMonths(from, cycles * settings.everyMonths);
   const windowEnd = addWeeks(boundary, settings.forWeeks);
 

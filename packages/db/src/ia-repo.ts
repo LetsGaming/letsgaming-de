@@ -1,6 +1,9 @@
 import type { ModuleDescriptor, NavNode } from "@lg/core";
 import type { DB } from "./database.js";
-import { asText, json, mapRow, SINGLETON_ID, transact } from "./row-mapper.js";
+import { asNumber, asText, json, mapRow, mapRows, SINGLETON_ID, transact } from "./row-mapper.js";
+
+/** How many IA revisions to keep; older ones are pruned on write. */
+const IA_REVISION_CAP = 500;
 
 /** Repository for the information architecture (nav tree + module registry). */
 export function iaRepo(db: DB) {
@@ -14,8 +17,36 @@ export function iaRepo(db: DB) {
     return row;
   };
 
-  const writeIa = (nav: string, modules: string) =>
-    db.prepare("UPDATE site_ia SET nav = ?, modules = ? WHERE id = ?").run(nav, modules, SINGLETON_ID);
+  /**
+   * Snapshot the IA as it stands before a write, inside the caller's transaction,
+   * so a rolled-back write leaves no revision. Rows beyond the cap are pruned.
+   * An empty `site_ia` (pre-seed) has nothing to archive.
+   */
+  const archive = (reason: string): void => {
+    const row = mapRow(
+      db.prepare("SELECT nav, modules FROM site_ia WHERE id = ?"),
+      (r) => ({ nav: asText(r.nav), modules: asText(r.modules) }),
+      SINGLETON_ID,
+    );
+    if (!row) return;
+    db.prepare("INSERT INTO site_ia_revisions (saved_at, reason, nav, modules) VALUES (?, ?, ?, ?)").run(
+      new Date().toISOString(),
+      reason,
+      row.nav,
+      row.modules,
+    );
+    db.prepare(
+      "DELETE FROM site_ia_revisions WHERE id <= (SELECT id FROM site_ia_revisions ORDER BY id DESC LIMIT 1 OFFSET ?)",
+    ).run(IA_REVISION_CAP);
+  };
+
+  const writeIa = (reason: string, nav: string | null, modules: string | null) =>
+    transact(db, () => {
+      archive(reason);
+      if (nav !== null) db.prepare("UPDATE site_ia SET nav = ? WHERE id = ?").run(nav, SINGLETON_ID);
+      if (modules !== null)
+        db.prepare("UPDATE site_ia SET modules = ? WHERE id = ?").run(modules, SINGLETON_ID);
+    });
 
   return {
     getNav(): NavNode[] {
@@ -25,12 +56,17 @@ export function iaRepo(db: DB) {
       return json<ModuleDescriptor[]>(read().modules);
     },
     setNav(nav: NavNode[]) {
-      db.prepare("UPDATE site_ia SET nav = ? WHERE id = ?").run(JSON.stringify(nav), SINGLETON_ID);
+      writeIa("nav", JSON.stringify(nav), null);
     },
     setModules(modules: ModuleDescriptor[]) {
-      db.prepare("UPDATE site_ia SET modules = ? WHERE id = ?").run(
-        JSON.stringify(modules),
-        SINGLETON_ID,
+      writeIa("modules", null, JSON.stringify(modules));
+    },
+    /** Newest first. Each revision is the IA as it stood before that write. */
+    listRevisions(limit = 50): { id: number; savedAt: string; reason: string }[] {
+      return mapRows(
+        db.prepare("SELECT id, saved_at, reason FROM site_ia_revisions ORDER BY id DESC LIMIT ?"),
+        (r) => ({ id: asNumber(r.id), savedAt: asText(r.saved_at), reason: asText(r.reason) }),
+        limit,
       );
     },
     /** Register a new module descriptor (e.g. a new gallery instance). No-op if id exists. */
@@ -38,10 +74,7 @@ export function iaRepo(db: DB) {
       const modules = json<ModuleDescriptor[]>(read().modules);
       if (modules.some((m) => m.id === descriptor.id)) return;
       modules.push(descriptor);
-      db.prepare("UPDATE site_ia SET modules = ? WHERE id = ?").run(
-        JSON.stringify(modules),
-        SINGLETON_ID,
-      );
+      writeIa("module-added", null, JSON.stringify(modules));
     },
     /** Remove a module descriptor and any nav leaf reference to it. */
     removeModule(id: string) {
@@ -55,7 +88,7 @@ export function iaRepo(db: DB) {
         }
       };
       strip(nav);
-      transact(db, () => writeIa(JSON.stringify(nav), JSON.stringify(modules)));
+      writeIa("module-removed", JSON.stringify(nav), JSON.stringify(modules));
     },
   };
 }

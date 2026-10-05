@@ -6,30 +6,25 @@ import SmartLink from "../ui/SmartLink.vue";
 // below is tree-shaken out rather than merely hidden.
 const isDev = import.meta.dev;
 import AssetLibrary from "./AssetLibrary.vue";
+import SaveBar from "./SaveBar.vue";
 // Global (un-scoped) admin styles, namespaced under `.cms`. Global rather than
 // scoped so the per-panel child components below are styled by the same rules —
 // see styles/cms.css.
 import "../../styles/cms.css";
-import { provide } from "vue";
+import { computed, provide } from "vue";
 import { CMS_KEY } from "../../composables/cmsContext";
-import AboutPanel from "./panels/AboutPanel.vue";
 import AnalyticsPanel from "./panels/AnalyticsPanel.vue";
 import DashboardPanel from "./panels/DashboardPanel.vue";
 import EditorPanel from "./panels/EditorPanel.vue";
-import GalleryPanel from "./panels/GalleryPanel.vue";
 import GuestbookPanel from "./panels/GuestbookPanel.vue";
-import HobbiesPanel from "./panels/HobbiesPanel.vue";
-import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
 import PostsPanel from "./panels/PostsPanel.vue";
-import PlaytimePanel from "./panels/PlaytimePanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
-import LinksPanel from "./panels/LinksPanel.vue";
-import NowPanel from "./panels/NowPanel.vue";
-import PresencePanel from "./panels/PresencePanel.vue";
-import MusicPanel from "./panels/MusicPanel.vue";
-import WrappedPanel from "./panels/WrappedPanel.vue";
-import SiteIdentityPanel from "./panels/SiteIdentityPanel.vue";
+import SettingsPanel from "./panels/SettingsPanel.vue";
 
+import MobileEditor from "./MobileEditor.vue";
+import { useIsMobile } from "../../composables/useIsMobile";
+
+const isMobile = useIsMobile();
 const context = useCms();
 provide(CMS_KEY, context);
 
@@ -64,10 +59,17 @@ const {
 	viewSite,
 	cms,
 } = context;
+
+const navItems = computed(() => NAV_GROUPS.flatMap((g) => g.items));
+
+/** Pending-count badges by nav id. Add an entry here to badge another sidebar item. */
+const navBadges = computed<Record<string, number>>(() => ({
+	guestbook: guestbook.value?.pending ?? 0,
+}));
 </script>
 
 <template>
-  <div class="cms">
+  <div class="cms" :class="{ mobile: isMobile }">
     <div v-if="loading" class="center muted">Loading…</div>
 
     <!-- LOGIN GATE -->
@@ -88,7 +90,20 @@ const {
 
     <!-- APP -->
     <div v-else class="shell">
-      <aside class="side">
+      <nav v-if="isMobile" class="mnav" aria-label="CMS sections">
+        <button
+          v-for="item in navItems"
+          :key="item.id"
+          type="button"
+          :class="{ on: tab === item.id }"
+          :aria-current="tab === item.id ? 'page' : undefined"
+          @click="pick(item.id)"
+        >
+          {{ item.label }}
+          <span v-if="navBadges[item.id]" class="ndot">{{ navBadges[item.id] }}</span>
+        </button>
+      </nav>
+      <aside v-if="!isMobile" class="side">
         <div class="brand">CMS</div>
         <nav class="nav">
           <div v-for="(g, gi) in NAV_GROUPS" :key="gi" class="navgroup">
@@ -100,14 +115,14 @@ const {
               @click="pick(item.id)"
             >
               {{ item.label }}
-              <span v-if="item.id === 'guestbook' && guestbook?.pending" class="ndot">{{ guestbook.pending }}</span>
+              <span v-if="navBadges[item.id]" class="ndot">{{ navBadges[item.id] }}</span>
             </button>
           </div>
         </nav>
         <div class="sidefoot">
-          <select v-model="locale" title="Editing locale">
-            <option value="en">EN</option>
-            <option value="de">DE</option>
+          <select v-model="locale" title="The language you are writing content in" aria-label="Content language">
+            <option value="en">Content: EN</option>
+            <option value="de">Content: DE</option>
           </select>
           <span class="muted">{{ login }}</span>
           <button class="link" @click="signOut">sign out</button>
@@ -118,6 +133,11 @@ const {
         <div class="topbar">
           <h2>{{ VIEW_TITLES[tab] }}</h2>
           <div class="topact">
+            <SaveBar />
+            <select v-if="isMobile" v-model="locale" class="mlocale" aria-label="Content language">
+              <option value="en">EN</option>
+              <option value="de">DE</option>
+            </select>
             <button class="btn ghost" @click="viewSite">View site ↗</button>
           </div>
         </div>
@@ -126,44 +146,23 @@ const {
         <!-- DASHBOARD -->
         <DashboardPanel v-show="tab === 'dashboard'" />
 
-        <!-- SITE IDENTITY -->
-        <SiteIdentityPanel v-show="tab === 'site'" />
-
-        <!-- HOME INTRO -->
-        <HomeIntroPanel v-show="tab === 'home'" />
-
-        <!-- ABOUT / BIO -->
-        <AboutPanel v-show="tab === 'about'" />
-
-        <!-- PRESENCE -->
-        <PresencePanel v-show="tab === 'presence'" />
-        <MusicPanel v-show="tab === 'music'" />
-        <WrappedPanel v-show="tab === 'wrapped'" />
-        <PlaytimePanel v-show="tab === 'playtime'" />
-
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />
 
-      <EditorPanel v-if="tab === 'editor'" />
+      <template v-if="tab === 'editor'">
+        <MobileEditor v-if="isMobile" />
+        <EditorPanel v-else />
+      </template>
       <PostsPanel v-if="tab === 'posts'" />
-
-      <!-- HOBBIES -->
-      <HobbiesPanel v-show="tab === 'hobbies'" />
-
-      <!-- LINKS -->
-      <LinksPanel v-show="tab === 'links'" />
-
-      <!-- NOW -->
-      <NowPanel v-show="tab === 'now'" />
-
-      <!-- GALLERY (images placed on the site, chosen from the library) -->
-      <GalleryPanel v-show="tab === 'gallery'" />
 
       <!-- GUESTBOOK MODERATION -->
       <GuestbookPanel v-show="tab === 'guestbook'" />
 
       <!-- ANALYTICS -->
       <AnalyticsPanel v-show="tab === 'analytics'" />
+
+      <!-- SETTINGS -->
+      <SettingsPanel v-if="tab === 'settings'" />
 
 
       </main>

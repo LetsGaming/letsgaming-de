@@ -1,3 +1,4 @@
+import type { GroupedRow } from "./analytics-pairs.js";
 import type { ReferrerRule } from "./traffic-source.js";
 /**
  * What the API returns.
@@ -125,7 +126,11 @@ export interface AnalyticsResponse {
     /** Set when the window was narrowed to one bucket (a click on the chart). */
     at?: string;
   };
-  paths: AnalyticsRow[];
+  /**
+   * Grouped by first path segment (`/docs/*` is one `/docs` row). A row with
+   * `children` expands to the stored paths it sums; a row without is a single path.
+   */
+  paths: GroupedRow[];
   referrers: AnalyticsRow[];
   browsers: AnalyticsRow[];
   os: AnalyticsRow[];
@@ -148,6 +153,27 @@ export interface AnalyticsResponse {
    */
   previous?: AnalyticsTotals;
   /**
+   * The two traffic numbers, side by side, each naming where it comes from.
+   *
+   * `visits` is script-confirmed: one completed visit per `session_dwell` beacon,
+   * so it only counts browsers that ran the page's JavaScript. `pageviews` is the
+   * access log, which also counts every client that never runs a script (bots the
+   * user agent doesn't give away, link previews, uptime checks). Visits is the
+   * primary number; the gap between the two is the part nothing can confirm.
+   * Totals cover the whole range (not `range.at`); `previous` is `null` when
+   * there is no comparison window.
+   */
+  visits: TrafficFigure<"script">;
+  pageviews: TrafficFigure<"log">;
+  /**
+   * The landing-page success metric: confirmed visits (one `session_tabs` beacon
+   * each) that touched a second section. `rate` is `reached / visits`, 0..1, or
+   * `null` when the window has no confirmed visits. Same window as `visits`.
+   */
+  secondPage: { visits: number; reached: number; rate: number | null; source: "script" };
+  /** Where every metric tile's number comes from, keyed like `chart` and `previous`. */
+  metricSources: Record<keyof AnalyticsTotals, MetricSource>;
+  /**
    * The custom referrer rules currently in effect, echoed so the dashboard can
    * edit them where they're used. They're applied to `referrers` above before it
    * leaves the server, so the list and the rules can't disagree.
@@ -169,28 +195,49 @@ export interface AnalyticsResponse {
     lastError?: string;
   };
   /**
-   * Present when a dimension filter (`dim`/`key`) is active — a click on a row
-   * in the CMS, e.g. "Referrer: Bing".
+   * Present when a dimension filter (`dim`/`key`) is active, e.g. "Referrer: Bing".
    *
-   * A filter replaces what the chart plots and what one headline total counts;
-   * it does not narrow `paths`/`referrers`/`browsers`/... or `engagement`.
-   * `analytics_hourly` stores each dimension as an independent counter with no
-   * link back to the request that produced it (ADR-0007), so "which paths did
-   * Bing visitors read" is not a question the aggregates can answer — only
-   * "how many Bing hits happened, over time" is. `chart`/`previous` above stay
-   * exactly as they'd be with no filter; this is the one new series and total.
+   * The filter narrows every access-log list except its own (which stays whole so
+   * another row can be picked): `paths`, `referrers`, `browsers`, `os`, `devices`
+   * come back as "page views that also match the filter", from the pair counters
+   * the ingest writes. `chart` and `previous` stay as they would be unfiltered;
+   * `series` below is the filtered dimension's own counts over time.
+   *
+   * The in-page script's lists (`engagement`) cannot be narrowed: a beacon carries
+   * no path, referrer or device, so there is nothing to cross. They stay whole and
+   * are named in `notFilterable` so the UI can say so. `bots` and `probes` are
+   * requests that never count as page views, so under a filter on any other
+   * dimension they are empty rather than unfiltered.
+   *
+   * Pair counters start when the pairing shipped; history before that is filled
+   * by `pnpm analytics:rebuild`.
    */
   filtered?: {
     dimension: AnalyticsDimension;
-    /** The display key that was filtered to — a referrer's grouped label, or
-     *  the raw stored key for every other dimension. */
+    /** The display key that was filtered to: a referrer's grouped label, a path
+     *  group or concrete path, or the raw stored key for every other dimension. */
     key: string;
     series: AnalyticsPoint[];
     /** Over the list window (bucket-narrowed when `range.at` is set). */
     total: number;
     /** `null` when there's no comparison window (same rule as `previous`). */
     previous: number | null;
+    /** The top-level lists that were narrowed by this filter. */
+    narrowed: AnalyticsCardId[];
+    /** The lists left whole because their source can't be crossed with the filter. */
+    notFilterable: { card: AnalyticsCardId | "engagement"; source: MetricSource }[];
   };
+}
+
+export type MetricSource = "script" | "log";
+
+/** The top-level access-log lists a dimension filter can narrow. */
+export type AnalyticsCardId = "paths" | "referrers" | "browsers" | "os" | "devices" | "bots" | "probes";
+
+export interface TrafficFigure<S extends MetricSource> {
+  total: number;
+  previous: number | null;
+  source: S;
 }
 
 /** Per-metric totals, matching the chart's metric keys. */

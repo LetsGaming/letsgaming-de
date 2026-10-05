@@ -18,7 +18,7 @@ info:
     `/api/presence` and `/api/presence/media` exist at all — they are relays, not passthroughs.
 
     ## Two surfaces, two threat models
-    - **Public** (`/api/*`, `/assets/*`, `/media/*`, `/health`) — unauthenticated reads and a
+    - **Public** (`/api/*`, `/assets/*`, `/health`) — unauthenticated reads and a
       few write **relays** (contact, guestbook, engagement). Writes here persist only counters
       or nothing at all, are rate-limited per-IP in memory, and never set a cookie.
     - **CMS** (`/api/cms/*`) — authenticated content editing. A different threat model, kept on
@@ -43,6 +43,11 @@ servers:
   - url: http://localhost:8787
     description: Local Fastify server (`pnpm dev:server`). The site dev server runs separately on :4321.
 
+# Every operation requires a CMS credential unless it declares `security: []`.
+security:
+  - cmsSession: []
+  - cmsBearer: []
+
 tags:
   - name: Site
     description: The resolved site view (SSR reads the store directly; this is the HTTP mirror).
@@ -51,9 +56,11 @@ tags:
   - name: Activity
     description: Accumulated history — playtime and music day drill-ins. Separate concern from presence.
   - name: Media
-    description: Image relays and stored media, served from this origin so no visitor IP leaks upstream.
+    description: Image relays and library assets, served from this origin so no visitor IP leaks upstream.
   - name: Guestbook
     description: Public, pre-moderated guestbook submissions.
+  - name: Reactions
+    description: Anonymous one-click reactions (the hero wave). A global counter, nothing per visitor.
   - name: Contact
     description: Contact relay to email. Stores nothing.
   - name: Engagement
@@ -74,6 +81,8 @@ tags:
     description: Authenticated. Read and clear aggregate analytics.
   - name: CMS · Revisions
     description: Authenticated. Content history and restore.
+  - name: CMS · Status
+    description: Authenticated. Dashboard status, manual sync, editor section stats, recorded activity names.
 
 paths:
   # ─────────────────────────────── Public: read ───────────────────────────────
@@ -129,6 +138,16 @@ paths:
           schema:
             type: string
         - $ref: "#/components/parameters/Locale"
+        - name: tz
+          in: query
+          required: false
+          description: IANA time zone to bucket days in (the visitor's own zone). Invalid or absent falls back to the owner's configured zone.
+          schema: { type: string, example: Europe/Berlin }
+        - name: days
+          in: query
+          required: false
+          description: Window the activity modules cover, in days. Omitted or any value outside the allowed set falls back to the module's CMS-configured default.
+          schema: { type: integer, enum: [14, 30, 90, 180, 365] }
       responses:
         "200":
           description: The resolved module.
@@ -227,7 +246,9 @@ paths:
         `u` can't be used for SSRF.
 
         When there is no usable upstream image, pass `game=<name>` to get a deterministic,
-        labelled SVG tile instead, so the widget always has something tidy to show.
+        labelled SVG tile instead, so the widget always has something tidy to show. With `game`,
+        the cover resolves through the stored fallback chain first (RAWG cover, then the image
+        resolved from the game's Discord activity or application icon) before the tile.
       security: []
       parameters:
         - name: u
@@ -332,28 +353,6 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /media/{file}:
-    get:
-      tags: [Media]
-      summary: A stored media file
-      security: []
-      parameters:
-        - name: file
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: The media bytes.
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   # ─────────────────────────────── Public: relays ─────────────────────────────
   /api/guestbook:
     post:
@@ -384,6 +383,44 @@ paths:
                   pending: { const: true }
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/reactions/wave:
+    get:
+      tags: [Reactions]
+      summary: Read the global wave count
+      security: []
+      responses:
+        "200":
+          description: The current total.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, minimum: 0 }
+    post:
+      tags: [Reactions]
+      summary: Wave (increment the global counter)
+      description: |
+        Adds one to a single global counter and returns the new total. Stores no visitor data:
+        no IP, no identifier, no timestamp. A coarse per-IP rate limit is kept in memory only,
+        keyed by a salted hash of the address with a salt that is random per process, so it
+        resets on restart and cannot be correlated afterwards. The count also rides along in the
+        site view as `modules.hero.data.waves`.
+      security: []
+      responses:
+        "200":
+          description: The new total.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, minimum: 1 }
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -454,20 +491,63 @@ paths:
     get:
       tags: [Auth]
       summary: Begin GitHub OAuth
-      description: Redirects to GitHub with a signed, single-use `state` cookie for CSRF protection.
+      description: |
+        Redirects to GitHub with a signed, single-use `state` cookie for CSRF protection. The
+        validated `returnTo` path is carried in the same signed cookie and used after login.
       security: []
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: |
+            Same-origin path to return to after sign-in. It must start with a single `/`. Anything
+            else (`//host`, `/\host`, absolute URLs), or any value containing a backslash or a
+            control character, falls back to `/admin`.
+          schema: { type: string, default: /admin }
       responses:
         "302":
-          description: Redirect to GitHub's authorization page.
+          description: Redirect to GitHub's authorization page, with the signed `lg_oauth_state` cookie set (10 minutes).
+        "503":
+          description: OAuth is not configured (no client id).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/dev/login:
+    get:
+      tags: [Auth]
+      summary: One-click local development login
+      description: |
+        Mints the same signed session cookie the OAuth flow does, without a GitHub round-trip.
+        The route is **not registered** when `NODE_ENV=production`, so it does not exist on a
+        deployed server. Even when registered it serves loopback callers only (judged by the TCP
+        peer address, not `X-Forwarded-For`).
+      security: []
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: Same-origin path to redirect to, validated exactly as for `/auth/github/login`. Falls back to `/admin`.
+          schema: { type: string, default: /admin }
+      responses:
+        "302":
+          description: Redirect to the web origin plus `returnTo`, with an http-only `lg_session` cookie valid for 8 hours.
+        "403":
+          description: The caller is not on a loopback address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /auth/github/callback:
     get:
       tags: [Auth]
       summary: GitHub OAuth callback
       description: |
-        Verifies `state`, exchanges the code, and — only if the GitHub login matches the allowed
-        login — issues a signed, http-only `lg_session` cookie the CMS uses. Then redirects back
-        to the app.
+        Verifies `state`, exchanges the code, and issues (only if the GitHub login matches the
+        allowed login) a signed, http-only `lg_session` cookie the CMS uses. Then redirects to the
+        web origin plus the `returnTo` path chosen at login (default `/admin`).
       security: []
       parameters:
         - name: code
@@ -480,16 +560,45 @@ paths:
           schema: { type: string }
       responses:
         "302":
-          description: Redirect back to the app (session cookie set on success).
+          description: Redirect back to the app. The `lg_session` cookie (30 days) is set and the state cookie consumed.
+        "400":
+          description: The signed state cookie is missing, invalid or does not match `state`, or `code` is missing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: GitHub did not return an access token for the code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The authenticated GitHub login is not the single allowed CMS login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: OAuth is not configured (no client id or secret).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /auth/logout:
     post:
       tags: [Auth]
       summary: Clear the CMS session
+      description: Clears the `lg_session` cookie. Succeeds whether or not a session existed.
       security: []
       responses:
-        "302":
-          description: Session cookie cleared; redirect.
+        "200":
+          description: Session cookie cleared.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
 
   # ────────────────────────────── CMS · Content ───────────────────────────────
   /api/cms/me:
@@ -525,12 +634,90 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/cms/modules:
+    put:
+      tags: [CMS · Content]
+      summary: Update module headings, notes and settings
+      description: |
+        Partial merge by module id: only the modules in the body are touched, and within each
+        only the fields sent. `heading` and `note` are localized objects (`en` required, only
+        `en`/`de` keys), so a German-only body is rejected with 400. They merge per locale: a
+        non-empty locale is set, and an empty string for a non-English locale removes that
+        locale. An empty `en` keeps the stored English, and a value with every locale empty
+        clears the field. An unknown module id is 400. `settings` is accepted for `featured`
+        modules only (400 otherwise). The schema bounds the shape of `settings` (at most 50
+        `repos`, each up to 100 characters); the sanitizer then trims and de-duplicates `repos`
+        and caps them at 3, and silently clamps `count` to 1..3 rather than rejecting
+        out-of-range values.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modules]
+              additionalProperties: false
+              properties:
+                modules:
+                  type: array
+                  maxItems: 200
+                  items:
+                    type: object
+                    required: [id]
+                    additionalProperties: false
+                    properties:
+                      id: { type: string, minLength: 1, maxLength: 64 }
+                      heading: { $ref: "#/components/schemas/Localized" }
+                      note: { $ref: "#/components/schemas/Localized" }
+                      settings:
+                        type: object
+                        description: Featured module settings.
+                        additionalProperties: false
+                        properties:
+                          mode: { type: string, enum: [auto, manual] }
+                          repos:
+                            type: array
+                            maxItems: 50
+                            items: { type: string, maxLength: 100 }
+                          count: { type: number, description: "Clamped to 1..3 by the sanitizer, not rejected." }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/github-repos:
+    get:
+      tags: [CMS · Content]
+      summary: Synced GitHub repos (Featured picker)
+      responses:
+        "200":
+          description: Repos from the latest GitHub sync, newest push first. Empty before the first sync.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  repos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        description: { type: string }
+                        language: { type: string }
+                        pinned: { type: boolean }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/cms/meta:
     put:
       tags: [CMS · Content]
       summary: Update site identity (name, handle, location, role, avatar)
       requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteMetaBody" }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -541,7 +728,10 @@ paths:
       tags: [CMS · Content]
       summary: Update the hero headline (before / highlight / after)
       requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HeadlineBody" }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -552,18 +742,10 @@ paths:
       tags: [CMS · Content]
       summary: Update the lede (a localized string)
       requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
-      responses:
-        "200": { $ref: "#/components/responses/Ok" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-
-  /api/cms/status:
-    put:
-      tags: [CMS · Content]
-      summary: Update the "currently building" status (verb + now)
-      requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Localized" }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -574,7 +756,12 @@ paths:
       tags: [CMS · Content]
       summary: Update the bio (an array of localized paragraphs)
       requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: "#/components/schemas/Localized" }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -588,9 +775,118 @@ paths:
         The presence allow-list and related toggles: which categories are **shown** (this is what
         drives module enablement on the site), which are **sampled** into history, retention, and
         the hidden-games list. These are read per-request by `/api/presence`, so a change takes
-        effect immediately.
+        effect immediately. Omitted optional fields are filled from the defaults.
       requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [show]
+              additionalProperties: false
+              properties:
+                show:
+                  type: array
+                  uniqueItems: true
+                  items: { $ref: "#/components/schemas/PresenceCategory" }
+                sample:
+                  type: array
+                  uniqueItems: true
+                  items: { $ref: "#/components/schemas/PresenceCategory" }
+                retentionDays:
+                  description: Days of presence history to keep; `null` keeps it forever.
+                  type: [integer, "null"]
+                  enum: [null, 730, 365, 180, 90, 30]
+                hidden:
+                  type: array
+                  maxItems: 200
+                  description: Activity names to hide.
+                  items: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/music:
+    put:
+      tags: [CMS · Content]
+      summary: Update the Listening module's display settings
+      description: Partial body is fine; omitted fields are filled from the defaults. Counts are clamped so `initialCount` never exceeds `maxCount`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListDisplaySettings" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/playtime:
+    put:
+      tags: [CMS · Content]
+      summary: Update the Played module's display settings
+      description: Same shape and bounds as `/api/cms/music`, stored separately so the two modules' limits can differ.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListDisplaySettings" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/wrapped:
+    put:
+      tags: [CMS · Content]
+      summary: Update the Wrapped schedule
+      description: |
+        Stores intent only; the resolver decides visibility from these settings. Partial body is
+        fine; omitted fields are filled from the defaults. Numbers are clamped and an unparseable
+        date is dropped by the sanitizer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                enabled: { type: boolean }
+                everyMonths: { type: integer, minimum: 1, maximum: 24 }
+                forWeeks: { type: integer, minimum: 1, maximum: 12 }
+                fromDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', description: "Schedule anchor, `YYYY-MM-DD`." }
+                topCount: { type: integer, minimum: 3, maximum: 20 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/referrer-rules:
+    put:
+      tags: [CMS · Analytics]
+      summary: Replace the custom referrer rules
+      description: Rules map a referrer match to a source label. They are applied when the analytics dashboard is read, so saving a rule relabels traffic that arrived before it existed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rules]
+              additionalProperties: false
+              properties:
+                rules:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [match, label]
+                    additionalProperties: false
+                    properties:
+                      match: { type: string, minLength: 1, maxLength: 200 }
+                      label: { type: string, minLength: 1, maxLength: 60 }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -673,8 +969,32 @@ paths:
     put:
       tags: [CMS · Layout & Gallery]
       summary: Save module placement
-      description: The whole per-area module order in one request — atomic, so a half-applied order can't be left behind.
-      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      description: |
+        The whole per-area module order in one request, atomic so a half-applied order can't be
+        left behind. Unknown areas or modules, a module placed in two areas, or a result that
+        fails the nav lint (for example an empty area) are 400. Optional per-area `description`
+        and `label` are written only when sent; an all-empty `description` clears it and an
+        all-empty `label` is ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              additionalProperties: false
+              properties:
+                order:
+                  type: array
+                  items:
+                    type: object
+                    required: [area, modules]
+                    additionalProperties: false
+                    properties:
+                      area: { type: string, minLength: 1 }
+                      modules: { type: array, items: { type: string } }
+                      description: { $ref: "#/components/schemas/Localized" }
+                      label: { $ref: "#/components/schemas/Localized" }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -684,8 +1004,26 @@ paths:
     post:
       tags: [CMS · Layout & Gallery]
       summary: Resolve a pending layout (writes nothing)
-      description: Returns the `SiteView` the site *would* render with the given pending order. Used by the editor canvas; persists nothing.
-      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      description: Returns the `SiteView` the site *would* render with the given pending order. Used by the editor canvas; persists nothing. An unknown `locale` falls back to `en`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              additionalProperties: false
+              properties:
+                order:
+                  type: array
+                  items:
+                    type: object
+                    required: [area, modules]
+                    additionalProperties: false
+                    properties:
+                      area: { type: string, minLength: 1 }
+                      modules: { type: array, items: { type: string } }
+                locale: { type: string, enum: [en, de] }
       responses:
         "200":
           description: The resolved preview view.
@@ -746,6 +1084,11 @@ paths:
       parameters: [{ $ref: "#/components/parameters/EntityId" }]
       responses:
         "200": { $ref: "#/components/responses/Ok" }
+        "400":
+          description: Not a gallery module, or the built-in default gallery (which can't be deleted).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # ──────────────────────────────── CMS · Assets ──────────────────────────────
@@ -755,9 +1098,9 @@ paths:
       summary: List assets
       description: The asset library, optionally filtered by folder, tag, kind, or a text query.
       parameters:
-        - { name: folder, in: query, required: false, schema: { type: string } }
+        - { name: folder, in: query, required: false, description: "A folder id, or `root` for assets outside any folder.", schema: { type: string } }
         - { name: tag, in: query, required: false, schema: { type: string } }
-        - { name: kind, in: query, required: false, schema: { type: string, enum: [image, gif, svg, markdown] } }
+        - { name: kind, in: query, required: false, schema: { type: string, enum: [image, svg, gif, pdf, markdown, file] } }
         - { name: q, in: query, required: false, schema: { type: string } }
       responses:
         "200":
@@ -765,6 +1108,7 @@ paths:
           content:
             application/json:
               schema: { type: object, description: "See `AssetListResponse` in `@lg/core`." }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
     post:
       tags: [CMS · Assets]
@@ -784,12 +1128,22 @@ paths:
                   format: binary
       responses:
         "200":
-          description: The created asset (contract `Asset` in `@lg/core`).
+          description: The created asset (contract `Asset` in `@lg/core`), or the existing one when identical bytes were already stored.
           content:
             application/json:
               schema: { type: object, description: "See `Asset` in `@lg/core`." }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "413":
+          description: The file exceeds the size cap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "415":
+          description: Unsupported file type.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/cms/assets/{id}:
     get:
@@ -806,13 +1160,42 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [CMS · Assets]
-      summary: Edit asset metadata (alt, caption, title, slug, tags, folder)
+      summary: Edit asset metadata (filename, alt, title, caption, description, slug, tags, folder)
+      description: |
+        Only the fields sent are changed. Text fields that are not strings are ignored. `slug` is
+        for markdown assets only (400 otherwise, and 400 when empty); a slug already owned by
+        another asset is 409. `tags` replaces the whole tag set. `folderId` may be `null` to move
+        the asset out of any folder.
       parameters: [{ $ref: "#/components/parameters/AssetId" }]
-      requestBody: { $ref: "#/components/requestBodies/JsonBody" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filename: { type: string }
+                alt: { type: string }
+                title: { type: string }
+                caption: { type: string }
+                description: { type: string }
+                slug: { type: string }
+                folderId: { type: [string, "null"] }
+                tags: { type: array, items: { type: string } }
       responses:
-        "200": { $ref: "#/components/responses/Ok" }
+        "200":
+          description: The updated asset (contract `Asset` in `@lg/core`).
+          content:
+            application/json:
+              schema: { type: object, description: "See `Asset` in `@lg/core`." }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The requested slug is already taken by another asset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
     delete:
       tags: [CMS · Assets]
       summary: Delete an asset
@@ -820,8 +1203,36 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/cms/assets/{id}/content:
+    get:
+      tags: [CMS · Assets]
+      summary: Read a markdown asset's source for editing
+      description: |
+        The authenticated counterpart of `/api/assets/md/{slug}`, addressed by id so the editor
+        can open drafts. Returns the asset plus its `markdown` source, and a `previewToken` when
+        the asset has a slug and a preview secret is configured.
+      parameters: [{ $ref: "#/components/parameters/AssetId" }]
+      responses:
+        "200":
+          description: The asset with its markdown source.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: An `Asset` plus `markdown` and, when available, `previewToken`.
+                required: [markdown]
+                properties:
+                  markdown: { type: string }
+                  previewToken: { type: string }
+        "400":
+          description: The asset is not a markdown asset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [CMS · Assets]
       summary: Rewrite a markdown asset's source
@@ -837,9 +1248,24 @@ paths:
               properties:
                 markdown: { type: string }
       responses:
-        "200": { $ref: "#/components/responses/Ok" }
+        "200":
+          description: The updated asset plus its `markdown` source.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: An `Asset` plus `markdown`.
+                required: [markdown]
+                properties:
+                  markdown: { type: string }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: The markdown exceeds the size cap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/cms/assets/folders:
     post:
@@ -865,47 +1291,26 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/cms/assets/folders/{id}:
+    patch:
+      tags: [CMS · Assets]
+      summary: Rename or move an asset folder
+      parameters: [{ $ref: "#/components/parameters/EntityId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                parentId: { type: [string, "null"] }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [CMS · Assets]
       summary: Delete an asset folder
       parameters: [{ $ref: "#/components/parameters/EntityId" }]
-      responses:
-        "200": { $ref: "#/components/responses/Ok" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-
-  /api/cms/media:
-    get:
-      tags: [CMS · Assets]
-      summary: List stored media files
-      responses:
-        "200":
-          description: The media file list.
-          content:
-            application/json:
-              schema: { type: object }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-    post:
-      tags: [CMS · Assets]
-      summary: Upload a media file
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file: { type: string, format: binary }
-      responses:
-        "200": { $ref: "#/components/responses/Ok" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-
-  /api/cms/media/{file}:
-    delete:
-      tags: [CMS · Assets]
-      summary: Delete a media file
-      parameters:
-        - { name: file, in: path, required: true, schema: { type: string } }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -915,30 +1320,52 @@ paths:
     get:
       tags: [CMS · Guestbook]
       summary: The moderation queue
-      description: All guestbook entries with their auto-flag score (which only sorts the queue).
+      description: >
+        Guestbook entries with their auto-flag score (which only sorts the queue). Without `status`
+        (or with `all`) the combined queue is returned, pending first. `counts` is always the full
+        per-status tally regardless of the filter.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected, all] }
       responses:
         "200":
-          description: Pending and moderated entries (contract `GuestbookListResponse` in `@lg/core`).
+          description: Entries plus counts.
           content:
             application/json:
-              schema: { type: object, description: "See `GuestbookListResponse` in `@lg/core`." }
+              schema:
+                type: object
+                required: [entries, pending, counts]
+                properties:
+                  entries: { type: array, items: { type: object, description: "`GuestbookEntry` in `@lg/core`." } }
+                  pending: { type: integer, description: Same as `counts.pending`. }
+                  counts:
+                    type: object
+                    required: [pending, approved, rejected]
+                    properties:
+                      pending: { type: integer }
+                      approved: { type: integer }
+                      rejected: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/cms/guestbook/{id}/{action}:
     post:
       tags: [CMS · Guestbook]
       summary: Moderate an entry
-      description: Approve (make public) or reject a pending entry.
+      description: Approve (make public), reject, or unapprove (return to pending) an entry.
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer } }
         - name: action
           in: path
           required: true
-          schema: { type: string, enum: [approve, reject] }
+          schema: { type: string, enum: [approve, reject, unapprove] }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/cms/guestbook/{id}:
     delete:
@@ -949,32 +1376,146 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ─────────────────────────────── CMS · Analytics ────────────────────────────
   /api/cms/analytics:
     get:
       tags: [CMS · Analytics]
       summary: Aggregate analytics
-      description: Engagement and (if a proxy access log is wired up) traffic aggregates over a window.
+      description: |
+        Engagement (in-page script) and traffic (proxy access log) aggregates over a window.
+
+        `visits` is script-confirmed and `pageviews` comes from the access log, so they differ
+        by every client that never runs JavaScript; each carries its `source`. `paths` is grouped
+        by first path segment, with `children` listing the stored sub-paths of a group.
+
+        A `dim`/`key` filter narrows the other access-log lists (`paths`, `referrers`, `browsers`,
+        `os`, `devices`, `bots`, `probes`) through pair counters written at ingest. The script's
+        `engagement` lists cannot be cross-filtered and are named in `filtered.notFilterable`.
       parameters:
         - name: hours
           in: query
           required: false
-          description: Window size in hours.
-          schema: { type: integer, minimum: 1 }
+          description: Rolling window size in hours (default 720). Clamped to 1..9600 rather than rejected; a non-numeric value falls back to the default. Ignored when `from` and `to` are given.
+          schema: { type: integer }
+        - name: from
+          in: query
+          required: false
+          description: Custom range start, a local calendar day. Requires `to`; the span may not exceed 400 days.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          description: Custom range end (inclusive), a local calendar day. Requires `from`.
+          schema: { type: string, format: date }
+        - name: tz
+          in: query
+          required: false
+          description: IANA time zone day buckets are expressed in. Defaults to the owner's zone.
+          schema: { type: string, example: Europe/Berlin }
+        - name: at
+          in: query
+          required: false
+          description: Narrow the lists (not the chart) to one bucket, `YYYY-MM-DD` or `YYYY-MM-DDTHH`.
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}(T\d{2})?$' }
+        - name: dim
+          in: query
+          required: false
+          description: Dimension to filter by. Requires `key`.
+          schema:
+            type: string
+            enum: [path, referrer, browser, os, device, bot, probe, tab, exit, transition, dwell, scroll, session_tabs, session_dwell, click, project, viewport, theme]
+        - name: key
+          in: query
+          required: false
+          description: Display key to filter to (a referrer's grouped label, a path group such as `/docs` or one stored path, or the raw key). Requires `dim`.
+          schema: { type: string, maxLength: 200 }
       responses:
         "200":
           description: The analytics response (contract `AnalyticsResponse` in `@lg/core`).
           content:
             application/json:
-              schema: { type: object, description: "See `AnalyticsResponse` in `@lg/core`." }
+              schema:
+                type: object
+                description: "See `AnalyticsResponse` in `@lg/core`."
+                properties:
+                  visits: { $ref: "#/components/schemas/TrafficFigure" }
+                  pageviews: { $ref: "#/components/schemas/TrafficFigure" }
+                  secondPage:
+                    type: object
+                    description: |
+                      Landing-page success metric over the same window as `visits`. `visits` counts completed
+                      visits (one `session_tabs` beacon each), `reached` those that touched two or more
+                      sections, `rate` is `reached / visits` (0 to 1) or null when there are no visits.
+                    required: [visits, reached, rate, source]
+                    properties:
+                      visits: { type: integer }
+                      reached: { type: integer }
+                      rate: { type: [number, "null"] }
+                      source: { type: string, enum: [script] }
+                  metricSources:
+                    type: object
+                    description: Where each metric tile's number comes from.
+                    additionalProperties: { type: string, enum: [script, log] }
+                  paths:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, count]
+                      properties:
+                        key: { type: string }
+                        count: { type: integer }
+                        children:
+                          type: array
+                          description: Stored sub-paths summed into this group; absent for a single path.
+                          items:
+                            type: object
+                            required: [key, count]
+                            properties:
+                              key: { type: string }
+                              count: { type: integer }
+                  filtered:
+                    type: object
+                    description: Present when `dim`/`key` is active.
+                    properties:
+                      dimension: { type: string }
+                      key: { type: string }
+                      series:
+                        type: array
+                        description: The filtered dimension's own counts over time, covering the full range.
+                        items:
+                          type: object
+                          required: [bucket, key, count]
+                          properties:
+                            bucket: { type: string, description: "Time bucket, an hour (`YYYY-MM-DDTHH`) or a local day (`YYYY-MM-DD`) depending on `range.unit`." }
+                            key: { type: string }
+                            count: { type: integer }
+                      total: { type: integer }
+                      previous: { type: [integer, "null"] }
+                      narrowed:
+                        type: array
+                        description: Top-level lists narrowed by the filter.
+                        items: { type: string }
+                      notFilterable:
+                        type: array
+                        description: Lists left whole because their source cannot be crossed with the filter.
+                        items:
+                          type: object
+                          properties:
+                            card: { type: string }
+                            source: { type: string, enum: [script, log] }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/cms/analytics/clear:
     post:
       tags: [CMS · Analytics]
       summary: Clear analytics
-      description: Deletes aggregate analytics for a named range.
+      description: |
+        Deletes aggregate analytics for a named range. Windowed ranges delete hour-bucketed
+        engagement counters; `all` also wipes the log-derived day stats. The deletion is made
+        durable by advancing a watermark so a rotated access log is not re-ingested.
       requestBody:
         required: true
         content:
@@ -983,14 +1524,194 @@ paths:
               type: object
               required: [range]
               properties:
-                range: { type: string }
+                range:
+                  type: string
+                  enum: [hour, 24h, 3d, 7d, all]
       responses:
         "200":
           description: Cleared (contract `ClearAnalyticsResponse` in `@lg/core`).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Ok" }
+              schema:
+                type: object
+                required: [ok, removed]
+                properties:
+                  ok: { const: true }
+                  removed: { type: integer, minimum: 0, description: Number of aggregate rows deleted. }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ──────────────────────────────── CMS · Status ──────────────────────────────
+  /api/cms/status:
+    put:
+      tags: [CMS · Content]
+      summary: Update the "currently building" status (verb + now)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HeroStatusBody" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      tags: [CMS · Status]
+      summary: Dashboard status
+      description: >
+        Per-job sync status (sources, presence sampler, metadata sweeps, analytics ingest), guestbook
+        counts by status, and the ten most recent content edits.
+      responses:
+        "200":
+          description: Status snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sources, guestbook, recentEdits]
+                properties:
+                  sources:
+                    type: array
+                    description: >
+                      Always lists github, wakapi, presence, game-metadata, game-images and analytics,
+                      including never-synced and unconfigured ones.
+                    items:
+                      type: object
+                      required: [id, label, kind, configured, mock, schedule, canSync, state, lastSuccessAt, lastErrorAt, lastError]
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+                        kind: { type: string, enum: [source, job, analytics] }
+                        configured: { type: boolean }
+                        mock: { type: boolean, description: Running on the deterministic mock source. }
+                        schedule: { type: [string, "null"], description: "Cron expression, sources only." }
+                        canSync: { type: boolean, description: "True when POST /api/cms/sync/{source} accepts this id." }
+                        state: { type: string, enum: [ok, error, never], description: "`error` when the latest attempt failed." }
+                        lastSuccessAt: { type: [string, "null"], format: date-time }
+                        lastErrorAt: { type: [string, "null"], format: date-time }
+                        lastError: { type: [string, "null"] }
+                  guestbook:
+                    type: object
+                    required: [pending, approved, rejected]
+                    properties:
+                      pending: { type: integer }
+                      approved: { type: integer }
+                      rejected: { type: integer }
+                  recentEdits:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, savedAt, reason, label, kind, restorable]
+                      properties:
+                        id: { type: integer, description: "Revision id within the id space named by `kind`. Only `content` ids are valid for /api/cms/revisions." }
+                        kind: { type: string, enum: [content, ia], description: "`ia` rows are layout and section-heading edits, archived separately." }
+                        restorable: { type: boolean, description: "True only for `content` rows." }
+                        savedAt: { type: string, format: date-time }
+                        reason: { type: string, description: "Raw table/column name, `restore:<id>`, or `ia:<nav|modules|module-added|module-removed>` for layout edits." }
+                        label: { type: string, description: Human-readable label for `reason`. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/sync/{source}:
+    post:
+      tags: [CMS · Status]
+      summary: Sync one source now
+      description: >
+        Runs a registered source immediately and records the outcome. A trigger that arrives while the
+        same source is already syncing joins that run and returns its result.
+      parameters:
+        - { name: source, in: path, required: true, schema: { type: string, enum: [github, wakapi] } }
+      responses:
+        "200":
+          description: The sync result. A failed sync is still 200 with `ok:false` and `error`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sourceId, ok, mock, syncedAt]
+                properties:
+                  sourceId: { type: string }
+                  ok: { type: boolean }
+                  mock: { type: boolean }
+                  syncedAt: { type: string, format: date-time }
+                  error: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: The sync worker is not running. }
+
+  /api/cms/sections:
+    get:
+      tags: [CMS · Status]
+      summary: Section stats for the editor overlay
+      description: >
+        Per-nav-node stats from the in-page tracker only (`source: script`). Tracking granularity is
+        the nav node, so modules inside one area share that area's numbers (`modules` lists them).
+        Median dwell is approximated from the dwell buckets as the midpoint of the bucket holding the
+        50th percentile (<5s 2.5s, 5-15s 10s, 15-30s 22.5s, 30-60s 45s, 1-3m 120s, 3-10m 390s,
+        10m+ 900s). Reach is the share of completed visits whose scroll reached 25% of the section,
+        capped at 1; null when there are no completed visits in the window.
+      parameters:
+        - { name: area, in: query, required: false, schema: { type: string }, description: Nav node id; returns it and its descendants. Omit for every node. }
+        - { name: hours, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 8760, default: 168 } }
+      responses:
+        "200":
+          description: Section stats.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [source, hours, from, to, visits, sections]
+                properties:
+                  source: { type: string, enum: [script] }
+                  hours: { type: integer }
+                  from: { type: string, description: Inclusive UTC hour bucket (YYYY-MM-DDTHH). }
+                  to: { type: string }
+                  visits: { type: integer, description: Completed visits in the window. }
+                  sections:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, modules, views, medianDwellSeconds, medianDwellBucket, reach, depth]
+                      properties:
+                        key: { type: string, description: Nav node id. }
+                        modules: { type: array, items: { type: string } }
+                        views: { type: integer }
+                        medianDwellSeconds: { type: [number, "null"] }
+                        medianDwellBucket: { type: [string, "null"] }
+                        reach: { type: [number, "null"], minimum: 0, maximum: 1 }
+                        depth:
+                          type: object
+                          description: Raw scroll milestone counts.
+                          properties:
+                            "25": { type: integer }
+                            "50": { type: integer }
+                            "75": { type: integer }
+                            "100": { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/activity-names:
+    get:
+      tags: [CMS · Status]
+      summary: Recorded activity names
+      description: Distinct names from observed presence sessions, most-seen first, for the hidden-activities tag input.
+      responses:
+        "200":
+          description: Names.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [names]
+                properties:
+                  names:
+                    type: array
+                    items:
+                      type: object
+                      required: [name, category, sessions]
+                      properties:
+                        name: { type: string }
+                        category: { $ref: "#/components/schemas/PresenceCategory" }
+                        sessions: { type: integer }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # ─────────────────────────────── CMS · Revisions ────────────────────────────
@@ -1038,6 +1759,7 @@ paths:
                 properties:
                   ok: { const: true }
                   listsDiffer: { type: boolean }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -1058,11 +1780,6 @@ components:
       description: |
         `Authorization: Bearer <CMS_TOKEN>` — a fallback for scripts and first-time setup. Prefer
         the OAuth session for interactive use.
-
-  # The whole `/api/cms/*` surface accepts either credential.
-  security:
-    - cmsSession: []
-    - cmsBearer: []
 
   parameters:
     Locale:
@@ -1149,6 +1866,14 @@ components:
             $ref: "#/components/schemas/Error"
 
   schemas:
+    TrafficFigure:
+      type: object
+      description: A traffic total with where it was measured.
+      required: [total, previous, source]
+      properties:
+        total: { type: integer }
+        previous: { type: [integer, "null"], description: "Same figure over the preceding window; null when there is none." }
+        source: { type: string, enum: [script, log] }
     Ok:
       type: object
       description: A bare success acknowledgement.
@@ -1157,6 +1882,61 @@ components:
         ok:
           const: true
       additionalProperties: false
+
+    Localized:
+      type: object
+      description: A human-authored string per locale. English is required; only `en` and `de` keys are accepted.
+      required: [en]
+      additionalProperties: false
+      properties:
+        en: { type: string }
+        de: { type: string }
+
+    PresenceCategory:
+      type: string
+      enum: [game, streaming, music, podcast, watching, custom]
+
+    SiteMetaBody:
+      type: object
+      required: [name, handle, location, role]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1 }
+        handle: { type: string, minLength: 1 }
+        location: { $ref: "#/components/schemas/Localized" }
+        role: { $ref: "#/components/schemas/Localized" }
+        avatar:
+          type: string
+          description: An `asset:<id>` reference, or an empty string for no avatar.
+          pattern: '^(asset:[A-Za-z0-9_-]+)?$'
+
+    HeadlineBody:
+      type: object
+      required: [before, highlight, after]
+      additionalProperties: false
+      properties:
+        before: { $ref: "#/components/schemas/Localized" }
+        highlight: { $ref: "#/components/schemas/Localized" }
+        after: { $ref: "#/components/schemas/Localized" }
+
+    HeroStatusBody:
+      type: object
+      required: [verb, now]
+      additionalProperties: false
+      properties:
+        verb: { $ref: "#/components/schemas/Localized" }
+        now: { $ref: "#/components/schemas/Localized" }
+
+    ListDisplaySettings:
+      type: object
+      additionalProperties: false
+      properties:
+        initialCount: { type: integer, minimum: 1, maximum: 50 }
+        maxCount: { type: integer, minimum: 1, maximum: 50 }
+        defaultRange:
+          type: integer
+          description: The window (in days) the module opens in.
+          enum: [14, 30, 90, 180, 365]
 
     OkId:
       type: object
@@ -1221,7 +2001,7 @@ components:
       properties:
         category:
           type: string
-          enum: [game, streaming, music, watching, custom]
+          enum: [game, streaming, music, podcast, watching, custom]
         title:
           type: string
         subtitle:

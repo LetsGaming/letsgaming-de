@@ -756,3 +756,56 @@ test("areas builds the site's table of contents from the nav tree", () => {
   // Heading falls back to the catalog in the resolved locale.
   assert.equal(mod.data.heading, "Wo es weitergeht");
 });
+
+// ── featured ─────────────────────────────────────────────────────────────────
+
+const featuredGh: GitHubData = {
+  stats: { repos: 4, commitsYear: 0, commitsAllTime: 0, longestStreakDays: 0 },
+  languages: [],
+  contributions: [],
+  events: [],
+  repos: [
+    { name: "new", stars: 0, pushedAt: "2026-01-04T00:00:00Z", url: "u/new" },
+    { name: "p2", stars: 1, pushedAt: "2026-01-03T00:00:00Z", url: "u/p2", pinned: true, pinnedOrder: 1, image: "i/p2" },
+    { name: "p1", stars: 2, pushedAt: "2025-01-01T00:00:00Z", url: "u/p1", pinned: true, pinnedOrder: 0 },
+  ],
+};
+
+function featuredProjects(settings: ModuleDescriptor["settings"], gh: GitHubData = featuredGh): string[] {
+  const view = resolveSiteView({
+    ...baseInput,
+    source: { github: gh },
+    nav: [{ id: "home", label: en("Home"), modules: ["featured"] }],
+    modules: [{ id: "featured", kind: "featured", ...(settings ? { settings } : {}) }],
+  });
+  const m = view.modules["featured"];
+  assert.equal(m?.kind, "featured");
+  return m?.kind === "featured" ? m.data.projects.map((p) => p.name) : [];
+}
+
+test("featured auto: pinned repos in pin order, even when older than unpinned ones", () => {
+  assert.deepEqual(featuredProjects(undefined), ["p1", "p2"]);
+  assert.deepEqual(featuredProjects({ mode: "auto", repos: [], count: 1 }), ["p1"]);
+});
+
+test("featured auto with nothing pinned falls back to the most recent repos", () => {
+  const unpinned: GitHubData = {
+    ...featuredGh,
+    repos: featuredGh.repos!.map(({ name, stars, pushedAt, url }) => ({ name, stars, pushedAt, url })),
+  };
+  assert.deepEqual(featuredProjects({ mode: "auto", repos: [], count: 2 }, unpinned), ["new", "p2"]);
+});
+
+test("featured manual: chosen order, skipping vanished repos, auto when none resolve", () => {
+  assert.deepEqual(featuredProjects({ mode: "manual", repos: ["new", "gone", "P1"], count: 3 }), ["new", "p1"]);
+  assert.deepEqual(featuredProjects({ mode: "manual", repos: ["gone"], count: 3 }), ["p1", "p2"]);
+});
+
+test("featured keeps working on snapshots that only carry the pinned name list", () => {
+  const legacy: GitHubData = {
+    ...featuredGh,
+    repos: featuredGh.repos!.map(({ name, stars, pushedAt, url }) => ({ name, stars, pushedAt, url })),
+    pinned: ["p2", "p1"],
+  };
+  assert.deepEqual(featuredProjects(undefined, legacy), ["p2", "p1"]);
+});

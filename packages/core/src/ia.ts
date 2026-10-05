@@ -40,6 +40,8 @@ export const STORAGE_KEY = {
   lang: "lang",
   /** localStorage — the visitor's analytics opt-out (a functional preference). */
   analyticsOptout: "lg-analytics-optout",
+  /** localStorage: the visitor already waved; only disables the button. */
+  waved: "lg-waved",
   /** sessionStorage — CMS bearer token, tab-scoped on purpose (SEC-05). */
   cmsToken: "cms_token",
 } as const;
@@ -92,7 +94,7 @@ export const PREVIEW_PARAM = "preview";
 /** Launch tree. Ids are constrained to {@link AreaId}, so the tree and AREA are
  *  checked against each other by the compiler rather than by convention. */
 export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
-  { id: "home", label: l("Home", "Start"), modules: ["hero", "glance", "featured", "guestbook"] },
+  { id: "home", label: l("Home", "Start"), modules: ["hero", "teasers", "glance", "featured", "guestbook"] },
   { id: "code", label: l("Code", "Code"), modules: ["activity", "coding", "projects"] },
   {
     id: "life",
@@ -114,6 +116,7 @@ export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
  */
 export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "hero", kind: "hero" },
+  { id: "teasers", kind: "teasers", heading: l("Jump in", "Reinschauen") },
   { id: "glance", kind: "glance", heading: l("At a glance", "Auf einen Blick") },
   { id: "featured", kind: "featured", heading: l("Featured", "Ausgewählt") },
   // One stream. A release is an event, and "Recently shipped" was a second

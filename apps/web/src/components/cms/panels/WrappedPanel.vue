@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
+import { nextWrappedWindow } from "@lg/core";
+import { formatDate } from "../../../lib/cmsInspector";
+import HelpTip from "../HelpTip.vue";
+import ToggleSwitch from "../ToggleSwitch.vue";
 
 // View-only panel. State and the save handler come from the shared CMS context.
 const {
@@ -10,35 +14,48 @@ const {
   wrappedForWeeks,
   wrappedFromDate,
   wrappedTopCount,
-  saveWrapped,
 } = useCmsContext();
 
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+// The browser's own locale, so the sentence matches what the date input shows.
+const tag = typeof navigator === "undefined" ? undefined : navigator.language;
 
-// Echo the schedule back in prose, so the effect of the numbers is legible.
 const summary = computed(() =>
   wrappedEnabled.value
     ? `Shows for ${plural(wrappedForWeeks.value, "week")} every ${plural(wrappedEveryMonths.value, "month")}, ` +
-      `starting ${wrappedFromDate.value || "—"} — each window sums up the ${plural(wrappedEveryMonths.value, "month")} just ended.`
-    : "Off — the module never appears.",
+      `starting ${wrappedFromDate.value ? formatDate(wrappedFromDate.value, tag) : "(pick a date)"}. ` +
+      `Each window sums up the ${plural(wrappedEveryMonths.value, "month")} just ended.`
+    : "Off: the module never appears.",
 );
+
+const nextWindow = computed(() => {
+  const w = nextWrappedWindow(
+    {
+      enabled: wrappedEnabled.value,
+      everyMonths: wrappedEveryMonths.value,
+      forWeeks: wrappedForWeeks.value,
+      fromDate: wrappedFromDate.value,
+      topCount: wrappedTopCount.value,
+    },
+    new Date(),
+  );
+  if (!w) return null;
+  return w.kind === "open"
+    ? `Showing now, until ${formatDate(w.end, tag)}`
+    : `Next window: ${formatDate(w.start, tag)}`;
+});
 </script>
 
 <template>
   <section class="pane">
     <div class="card">
-      <h3>Wrapped <span class="muted">(Life → “Wrapped”)</span></h3>
-      <p class="muted">
-        A periodic retrospective — top songs, artists, and games over a past stretch, in the spirit
-        of Spotify Wrapped, built from what's already recorded. It appears only inside a window on the
-        schedule below; the rest of the time the section isn't on the page at all. Hidden games are
-        left out, the same as everywhere else.
+      <h3>Wrapped</h3>
+      <p class="help">
+        A periodic look back at your top songs, artists and games.
+        <HelpTip text="It appears only inside a window on the schedule below; the rest of the time the section is not on the page at all. It is built from what is already recorded, and hidden games are left out as everywhere else." />
       </p>
 
-      <label class="wrow">
-        <input type="checkbox" v-model="wrappedEnabled" />
-        <span><b>Enable Wrapped</b><span class="muted"> — off by default</span></span>
-      </label>
+      <ToggleSwitch v-model="wrappedEnabled" class="wtoggle">Enable Wrapped</ToggleSwitch>
 
       <div class="wgrid" :class="{ off: !wrappedEnabled }">
         <div class="wfield">
@@ -52,7 +69,7 @@ const summary = computed(() =>
               :max="WRAPPED_BOUNDS.everyMonths.max"
               :disabled="!wrappedEnabled"
             />
-            <span class="muted">months</span>
+            <span class="help">months</span>
           </div>
         </div>
 
@@ -67,7 +84,7 @@ const summary = computed(() =>
               :max="WRAPPED_BOUNDS.forWeeks.max"
               :disabled="!wrappedEnabled"
             />
-            <span class="muted">weeks</span>
+            <span class="help">weeks</span>
           </div>
         </div>
 
@@ -87,14 +104,14 @@ const summary = computed(() =>
               :max="WRAPPED_BOUNDS.topCount.max"
               :disabled="!wrappedEnabled"
             />
-            <span class="muted">per list</span>
+            <span class="help">per list</span>
           </div>
         </div>
       </div>
 
-      <p class="muted note">{{ summary }}</p>
+      <p class="help wsummary">{{ summary }}</p>
+      <p v-if="nextWindow" class="help wnext">{{ nextWindow }}</p>
 
-      <div class="actions"><button class="btn" @click="saveWrapped">Save Wrapped</button></div>
     </div>
   </section>
 </template>
@@ -106,12 +123,8 @@ const summary = computed(() =>
   color: var(--muted);
   font-weight: 600;
 }
-.wrow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-8);
+.wtoggle {
   margin: var(--sp-12) 0;
-  cursor: pointer;
 }
 .wgrid {
   display: grid;
@@ -141,8 +154,11 @@ const summary = computed(() =>
 .wdate {
   width: auto;
 }
-.note {
-  font-size: var(--fs-micro);
+.wsummary {
   margin-top: var(--sp-16);
+}
+.wnext {
+  margin-top: var(--sp-4);
+  font-weight: 600;
 }
 </style>

@@ -133,6 +133,23 @@ export function sessionsRepo(db: DatabaseSync) {
       );
     },
 
+    /** The most recently seen activities of a category, newest first, one row per
+     *  name. Callers filter hidden names, so ask for more than they need. */
+    recent(category: PresenceCategory, limit: number): { name: string; at: string }[] {
+      return mapRows(
+        db.prepare(`
+          SELECT name, MAX(last_seen_at) AS at FROM presence_sessions
+          WHERE category = ?
+          GROUP BY name
+          ORDER BY at DESC
+          LIMIT ?
+        `),
+        (r: Row) => ({ name: asText(r.name), at: asText(r.at) }),
+        category,
+        limit,
+      );
+    },
+
     /**
      * When a category is played, as a weekday × hour grid, in `timeZone`.
      *
@@ -221,6 +238,21 @@ export function sessionsRepo(db: DatabaseSync) {
       return [...acc.entries()]
         .map(([name, v]) => ({ name, minutes: Math.round(v.ms / 60000), sessions: v.sessions, exact: v.exact }))
         .sort((a, b) => b.minutes - a.minutes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    },
+
+    /** Distinct recorded activity names with their session counts, most-seen first. */
+    activityNames(): { name: string; category: PresenceCategory; sessions: number }[] {
+      return mapRows(
+        db.prepare(
+          `SELECT name, category, COUNT(*) AS sessions FROM presence_sessions
+           GROUP BY category, name ORDER BY sessions DESC, name ASC`,
+        ),
+        (r: Row) => ({
+          name: asText(r.name),
+          category: asText(r.category) as PresenceCategory,
+          sessions: asNumber(r.sessions),
+        }),
+      );
     },
 
     /** Drop sessions older than a cutoff. Nothing calls this yet; the table is

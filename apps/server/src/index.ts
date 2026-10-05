@@ -4,7 +4,9 @@ import { getStore } from "./store.js";
 import { PRESENCE_SAMPLE_SCHEDULE, DEFAULT_TIMEZONE } from "@lg/core";
 import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
+import { skipWhileRunning, tracked } from "./sync/tracked.js";
 import { resolveGameMetadata } from "./sync/game-metadata.js";
+import { resolveGameImages } from "./sync/game-images.js";
 import { ingestLog } from "./analytics/ingest.js";
 import cron from "node-cron";
 import { existsSync, statSync } from "node:fs";
@@ -18,6 +20,9 @@ const LOG_MOUNT = "/logs";
  * caught up. */
 const GAME_METADATA_SWEEP_SCHEDULE = "23 * * * *";
 
+/** Every 15 minutes, so a newly seen game gets its image soon after first play. */
+const GAME_IMAGES_SWEEP_SCHEDULE = "*/15 * * * *";
+
 /** Every 5 minutes: incremental, idempotent access-log ingest. */
 const ANALYTICS_INGEST_SCHEDULE = "*/5 * * * *";
 
@@ -28,8 +33,6 @@ const env = loadEnv();
 // single-user site, so an env var (edit + redeploy) is the right weight.
 process.env.TZ ??= DEFAULT_TIMEZONE;
 const store = getStore(env.dbPath);
-
-const app = await buildApp(store, env);
 
 // The sync worker lives in-process (§10: one container for API + CMS + sync).
 const runner = new SyncRunner(
@@ -43,6 +46,7 @@ const runner = new SyncRunner(
   (msg) => app.log.info(msg),
   env.retainHourlyDays,
 );
+const app = await buildApp(store, env, { runner });
 runner.start();
 
 // Presence is polled on its own schedule, not as a source: a source's newest
@@ -59,13 +63,23 @@ let rawgTask: ReturnType<typeof cron.schedule> | undefined;
 if (env.rawg) {
   const rawg = env.rawg;
   const sweep = () =>
-    resolveGameMetadata(store, rawg, (m) => app.log.info(m)).catch((e) =>
+    tracked(store, "game-metadata", () => resolveGameMetadata(store, rawg, (m) => app.log.info(m))).catch((e) =>
       app.log.error(`[rawg] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
     );
   void sweep(); // once at boot, then hourly
   rawgTask = cron.schedule(GAME_METADATA_SWEEP_SCHEDULE, sweep);
   app.log.info("[rawg] game-metadata sweep scheduled");
 }
+
+// Discord-hosted game images (activity art, then the application icon). Only
+// games without a resolved image are looked up, and a miss waits a week.
+const sweepGameImages = skipWhileRunning(() =>
+  tracked(store, "game-images", () => resolveGameImages(store, (m) => app.log.info(m))).catch((e) =>
+    app.log.error(`[game-images] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
+  ),
+);
+void sweepGameImages();
+const gameImagesTask = cron.schedule(GAME_IMAGES_SWEEP_SCHEDULE, sweepGameImages);
 
 // Traffic analytics: if an access log is configured, ingest it in-process on a
 // schedule (incremental + idempotent) so path/referrer/browser/OS/device stats
@@ -171,6 +185,7 @@ const shutdown = async (signal: string) => {
   sampler.stop();
   ingestTask?.stop();
   rawgTask?.stop();
+  gameImagesTask.stop();
   await app.close();
   store.close();
   process.exit(0);

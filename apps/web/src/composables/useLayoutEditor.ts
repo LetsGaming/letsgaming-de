@@ -1,4 +1,4 @@
-import { computed, ref, shallowRef, watch, type Ref } from "vue";
+import { computed, nextTick, ref, shallowRef, watch, type Ref } from "vue";
 import {
   assetRef,
   parseAssetRef,
@@ -14,6 +14,8 @@ import {
 } from "@lg/core";
 import { AuthError } from "../lib/cms";
 import type { SortableMove } from "./sortable";
+import { KIND_LABELS } from "./editorHelpers";
+import { type Autosave, bindAutosave } from "./useAutosave";
 
 /**
  * Layout + gallery + canvas — one composable, because they're one tangle.
@@ -68,6 +70,7 @@ export interface LayoutEditorDeps {
   previewArea: Ref<string>;
   flash: (msg: string) => void;
   guarded: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  autosave: Autosave;
   /** Pick a localized string for the current editor locale. */
   pickL: (l?: Localized) => string;
   /** Re-fetch everything (after create/delete gallery, which changes the modules). */
@@ -77,7 +80,6 @@ export interface LayoutEditorDeps {
     del: (path: string) => Promise<unknown>;
     preview: (order: { area: string; modules: string[] }[], locale: string) => Promise<SiteView>;
     assetUrl: (id: string, variant: string) => string;
-    reorderGallery: (module: string, ids: string[]) => Promise<unknown>;
     createGallery: (name: Localized) => Promise<{ id?: string } | undefined>;
     deleteGallery: (id: string) => Promise<unknown>;
   };
@@ -86,13 +88,14 @@ export interface LayoutEditorDeps {
 /** Which panel edits a module's content. `Record<ModuleKind, …>` on purpose: a
  *  new kind shouldn't compile until it says where clicking it lands. `null` is a
  *  real answer for synced modules nothing in the CMS edits. */
-const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
+export const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   hero: "home",
   /* Built from the nav tree, so its content is edited by editing the nav — there's
      no panel of its own to open. Renaming an area or writing its description is
      what changes this module. */
   areas: null,
-  featured: null,
+  teasers: null,
+  featured: "featured",
   glance: null,
   activity: null,
   coding: null,
@@ -101,13 +104,9 @@ const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   now: "now",
   guestbook: "guestbook",
   gallery: "gallery",
-  presence: "presence",
-  // Playtime shares presence's Discord settings — one set of knobs.
-  playtime: "presence",
-  // Music too: it's driven by the same presence sampler (the Spotify category is
-  // toggled in the same allow-list), so it lands on the presence panel.
-  music: "presence",
-  // Wrapped gets its own panel: its schedule has nothing to do with the sampler.
+  presence: null,
+  playtime: "playtime",
+  music: "music",
   wrapped: "wrapped",
   bio: "about",
   contact: "links",
@@ -118,7 +117,7 @@ const DEFAULT_GALLERY_ID = "gallery";
 const PREVIEW_PARAM = "preview";
 
 export function useLayoutEditor(deps: LayoutEditorDeps) {
-  const { locale, authed, tab, previewArea, flash, guarded, pickL, loadAll, cms } = deps;
+  const { locale, authed, tab, previewArea, flash, guarded, autosave, pickL, loadAll, cms } = deps;
 
   // ── placement state (the shared refs the three concerns operate on) ─────────
   const modules = ref<ModuleDescriptor[]>([]);
@@ -129,17 +128,64 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   const gallery = ref<GalleryRow[]>([]);
   const activeGallery = ref<string>(DEFAULT_GALLERY_ID);
 
+  const galleryKey = (id: string) => `gallery/${id}`;
+  const moduleKey = (id: string) => `modules/${id}`;
+  const orderKey = (moduleId: string) => `gallery-order/${moduleId}`;
+  /** A gallery's image ids in display order: the shape `PUT /gallery-order` takes. */
+  const orderOf = (moduleId: string) => ({
+    module: moduleId,
+    ids: gallery.value
+      .filter((g) => g.module === moduleId)
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+      .map((g) => g.id),
+  });
+  const confirmOrder = (moduleId: string) => autosave.baseline(orderKey(moduleId), "gallery-order", orderOf(moduleId));
+  const filled = (l?: Localized) => !!l && Object.values(l).some((v) => v?.trim());
+  /** Whether a module had a heading/note when loaded. The server reads an
+   *  all-empty one as "clear it", so one that existed must still be sent when emptied. */
+  const hadText = new Map<string, { heading: boolean; note: boolean }>();
+
+  /** `PUT /modules` reads an empty `de` as "remove the German text", so unlike
+   *  `strip` it must be sent rather than dropped. */
+  const withDe = (l: Localized): Localized => ({ en: l.en, de: l.de ?? "" });
+
+  /** One module's heading and note, in the partial shape `PUT /modules` merges by id. */
+  function modulePayload(m: ModuleDescriptor) {
+    const had = hadText.get(m.id);
+    return {
+      modules: [
+        {
+          id: m.id,
+          ...(m.heading && (filled(m.heading) || had?.heading) ? { heading: withDe(m.heading) } : {}),
+          ...(m.note && (filled(m.note) || had?.note) ? { note: withDe(m.note) } : {}),
+        },
+      ],
+    };
+  }
+
   /** Friendly heading for a module id (falls back to the id). */
   function moduleHeading(id: string): string {
     const m = modules.value.find((x) => x.id === id);
-    return (m && pickL(m.heading)) || id;
+    return (m && (pickL(m.heading) || KIND_LABELS[m.kind])) || id;
   }
 
   /** Rebuild the placement state from freshly-loaded content. */
   function hydrate(data: { modules?: ModuleDescriptor[]; nav?: NavNode[]; content?: { gallery?: GalleryRow[] } }) {
-    gallery.value = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
+    // Rows and headings with an unsaved or failed edit keep their local value.
+    const fresh = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
+    const localRows = gallery.value.filter((g) => autosave.isDirty(galleryKey(g.id)));
+    const mergedRows = fresh.map((g) => localRows.find((l) => l.id === g.id) ?? g);
+    for (const l of localRows) if (!mergedRows.some((g) => g.id === l.id)) mergedRows.push(l);
+    gallery.value = mergedRows;
+    for (const g of fresh) autosave.baseline(galleryKey(g.id), galleryKey(g.id), strip(g));
 
-    modules.value = (data.modules ?? []).filter((m) => isModuleKind(m.kind));
+    const priorModules = modules.value;
+    modules.value = (data.modules ?? [])
+      .filter((m) => isModuleKind(m.kind))
+      .map((m) => {
+        const local = autosave.isDirty(moduleKey(m.id)) ? priorModules.find((x) => x.id === m.id) : undefined;
+        return local ? { ...m, heading: local.heading, note: local.note } : m;
+      });
     const leaves: { id: string; label: Localized; modules: string[]; description: Localized }[] = [];
     const walk = (nodes: NavNode[]) => {
       for (const n of nodes) {
@@ -160,8 +206,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       }
     };
     walk(data.nav ?? []);
-    layoutAreas.value = leaves;
-    const placed = new Set(leaves.flatMap((l) => l.modules));
+    if (!autosave.isDirty("layout")) {
+      layoutAreas.value = leaves;
+      confirmLayout();
+    }
+    const placed = new Set(layoutAreas.value.flatMap((l) => l.modules));
     hiddenModules.value = modules.value.map((m) => m.id).filter((id) => !placed.has(id));
     const firstGallery = modules.value.find((m) => m.kind === MODULE_KIND.gallery);
     if (
@@ -169,6 +218,12 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       !modules.value.some((m) => m.id === activeGallery.value && m.kind === MODULE_KIND.gallery)
     ) {
       activeGallery.value = firstGallery.id;
+    }
+    for (const m of modules.value) {
+      if (m.kind === MODULE_KIND.gallery) confirmOrder(m.id);
+      if (autosave.isDirty(moduleKey(m.id))) continue;
+      hadText.set(m.id, { heading: filled(m.heading), note: filled(m.note) });
+      autosave.baseline(moduleKey(m.id), "modules", modulePayload(m));
     }
   }
 
@@ -227,6 +282,18 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     moveModuleTo(at.listId, at.index, target, moduleList(target)?.length ?? 0);
   }
 
+  /** Nudge a module one slot within its page. Hidden has no order, so it's a no-op there. */
+  function nudgeModule(mid: string, dir: -1 | 1) {
+    const at = findModule(mid);
+    if (!at || at.listId === HIDDEN_LIST) return;
+    const len = moduleList(at.listId)?.length ?? 0;
+    const j = at.index + dir;
+    if (j < 0 || j >= len) return;
+    moveModuleTo(at.listId, at.index, at.listId, j);
+  }
+
+  const hideModule = (mid: string) => setModuleArea(mid, HIDDEN_LIST);
+
   /** Dropping a module into an area (or Hidden) at a given position. */
   function dropModule(move: SortableMove) {
     moveModuleTo(move.from, move.oldIndex, move.to, move.newIndex);
@@ -238,40 +305,48 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   ]);
 
   /**
-   * Save every module's heading and note.
-   *
-   * Separate from `saveLayout` because it is a separate question — what a section
-   * is called, not where it sits — and because `saveLayout` runs the nav lint,
-   * which has nothing to say about a rename. Sends the whole registry rather than
-   * a diff: seventeen short strings is not worth tracking dirt for, and one
-   * request can't half-succeed the way N of them can.
+   * Headings and notes autosave one module at a time, apart from the layout: what a
+   * section is called and where it sits are separate questions, and the layout save
+   * runs the nav lint, which has nothing to say about a rename.
    */
-  const saveModuleMeta = () =>
-    guarded(
-      () =>
-        cms.put("modules", {
-          modules: modules.value.map((m) => ({
-            id: m.id,
-            ...(m.heading ? { heading: strip(m.heading) } : {}),
-            ...(m.note ? { note: strip(m.note) } : {}),
-          })),
-        }),
-      "Headings saved",
-    );
+  let moduleGesture = 0;
+  watch(
+    modules,
+    () => {
+      const group = `modules:${++moduleGesture}`;
+      for (const m of modules.value) {
+        autosave.edit(moduleKey(m.id), modulePayload(m), { path: "modules", label: "Edit heading", group });
+      }
+    },
+    { deep: true },
+  );
 
-  const saveLayout = () =>
-    guarded(
-      () =>
-        cms.put("layout", {
-          order: layoutAreas.value.map((a) => ({
-            area: a.id,
-            modules: a.modules,
-            description: strip(a.description),
-            label: strip(a.label),
-          })),
-        }),
-      "Layout saved",
-    );
+  // An invalid layout (an empty page) is refused by the server and stays unsaved.
+  const confirmLayout = bindAutosave(autosave, {
+    path: "layout",
+    label: "Edit layout",
+    delay: 300,
+    source: () => ({
+      order: layoutAreas.value.map((a) => ({
+        area: a.id,
+        modules: a.modules,
+        description: strip(a.description),
+        label: strip(a.label),
+      })),
+    }),
+  });
+
+  let galleryGesture = 0;
+  watch(
+    gallery,
+    () => {
+      const group = `gallery:${++galleryGesture}`;
+      for (const g of gallery.value) {
+        autosave.edit(galleryKey(g.id), strip(g), { path: galleryKey(g.id), label: "Edit gallery image", group });
+      }
+    },
+    { deep: true },
+  );
 
   // ── gallery: multiple instances, each a gallery module ──────────────────────
 
@@ -280,11 +355,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     gallery.value.filter((g) => g.module === activeGallery.value),
   );
 
-  function addGalleryAsset(assetId: string, target = activeGallery.value) {
+  function addGalleryAsset(assetId: string, target = activeGallery.value): Promise<void> {
     const ref = assetRef(assetId);
     if (gallery.value.some((g) => g.asset === ref && g.module === target)) {
       flash("Already in this gallery.");
-      return;
+      return Promise.resolve();
     }
     const item: GalleryRow = {
       id: newId("img"),
@@ -294,10 +369,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       sort: gallery.value.filter((g) => g.module === target).length,
     };
     gallery.value.push(item);
-    void guarded(() => cms.put(`gallery/${item.id}`, strip(item)), "Added to gallery");
+    // Callers re-resolve the canvas next, so the row must be on the server first.
+    return nextTick()
+      .then(() => autosave.flush())
+      .then(() => confirmOrder(target));
   }
-
-  const saveGalleryItem = (g: GalleryRow) => guarded(() => cms.put(`gallery/${g.id}`, strip(g)));
 
   // Reusable asset picker (modal).
   const pickerOpen = ref(false);
@@ -323,14 +399,16 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   const galleryThumb = (ref: string) => cms.assetUrl(assetIdOf(ref), "w320.webp");
 
   function removeGalleryItem(id: string) {
+    autosave.forget(galleryKey(id));
+    const owner = gallery.value.find((g) => g.id === id)?.module;
     gallery.value = gallery.value.filter((g) => g.id !== id);
+    if (owner) confirmOrder(owner);
     void guarded(() => cms.del(`gallery/${id}`), "Removed");
   }
 
   /**
-   * Move an image within the active gallery, and persist the whole order. Reorder
-   * the list, send the list; the server renumbers, normalizing `sort` to 0..n-1
-   * on every move (the old swap-two-and-PUT-both only held while adjacent).
+   * Move an image within the active gallery. Every row's `sort` is renumbered and
+   * the rows that changed autosave together as one undoable step.
    */
   function reorderGalleryTo(fromIdx: number, toIdx: number) {
     const items = [...activeGalleryItems.value];
@@ -338,12 +416,18 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     if (!moved) return;
     items.splice(Math.max(0, Math.min(toIdx, items.length)), 0, moved);
 
-    const ids = items.map((g) => g.id);
-    items.forEach((g, i) => (g.sort = i));
+    items.forEach((g, i) => {
+      g.sort = i;
+      autosave.adopt(galleryKey(g.id), { sort: i });
+    });
     const rest = gallery.value.filter((g) => g.module !== activeGallery.value);
     gallery.value = [...rest, ...items];
-
-    void guarded(() => cms.reorderGallery(activeGallery.value, ids), "Reordered");
+    // One request carries the whole order, so it can't half-succeed.
+    autosave.edit(orderKey(activeGallery.value), orderOf(activeGallery.value), {
+      path: "gallery-order",
+      label: "Reorder gallery",
+      delay: 0,
+    });
   }
 
   function moveGallery(i: number, dir: -1 | 1) {
@@ -356,9 +440,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     reorderGalleryTo(move.oldIndex, move.newIndex);
   }
 
-  async function createGallery() {
-    const name = prompt("Name for the new gallery (e.g. Travel):")?.trim();
-    if (!name) return;
+  /** Creates a (hidden) gallery module and resolves with its id. */
+  async function createGallery(nameArg: string): Promise<string | undefined> {
+    const name = nameArg.trim();
+    if (!name) return undefined;
+    let created: string | undefined;
     await guarded(async () => {
       // Written into the locale being edited as well as English, which the type
       // requires. A gallery created while editing German used to be German-named
@@ -369,8 +455,9 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       const label = { en: name, ...(locale.value === "de" ? { de: name } : {}) };
       const res = await cms.createGallery(label);
       await loadAll();
-      if (res?.id) activeGallery.value = res.id;
+      if (res?.id) activeGallery.value = created = res.id;
     }, "Gallery created");
+    return created;
   }
 
   function deleteGallery(id: string) {
@@ -399,17 +486,42 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   /** Re-resolve the pending layout for the canvas — server-side, because it
    *  renders real sections that need a real SiteView. `/api/cms/preview` writes
    *  nothing. */
-  async function refreshCanvas() {
+  let refreshing: Promise<void> | null = null;
+  let refreshAgain = false;
+  async function refreshCanvas(): Promise<void> {
     if (!authed.value) return;
+    // A request already in flight may have read state from before the change that
+    // asked for this one, so one more pass runs when it settles.
+    if (refreshing) {
+      refreshAgain = true;
+      return refreshing;
+    }
     canvasLoading.value = true;
+    refreshing = (async () => {
+      do {
+        refreshAgain = false;
+        try {
+          canvasSite.value = await cms.preview(layoutOrder(), locale.value);
+        } catch (e) {
+          if (e instanceof AuthError) authed.value = false;
+          else flash((e as Error).message || "Couldn't render the preview.");
+        }
+      } while (refreshAgain);
+    })();
     try {
-      canvasSite.value = await cms.preview(layoutOrder(), locale.value);
-    } catch (e) {
-      if (e instanceof AuthError) authed.value = false;
-      else flash((e as Error).message || "Couldn't render the preview.");
+      await refreshing;
     } finally {
+      refreshing = null;
       canvasLoading.value = false;
     }
+  }
+
+  let canvasTimer: ReturnType<typeof setTimeout> | undefined;
+  /** After a save or undo/redo: re-resolve the canvas once the burst settles. */
+  function scheduleCanvasRefresh(delay = 250) {
+    if (tab.value !== "editor") return;
+    clearTimeout(canvasTimer);
+    canvasTimer = setTimeout(() => void refreshCanvas(), delay);
   }
 
   function canvasMove(area: string, oldIndex: number, newIndex: number) {
@@ -422,6 +534,10 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     canvasSelected.value = canvasSelected.value === moduleId ? undefined : moduleId;
   }
 
+  const canvasDeselect = () => {
+    canvasSelected.value = undefined;
+  };
+
   const selectedPanel = computed<string | null>(() => {
     const id = canvasSelected.value;
     if (!id) return null;
@@ -431,10 +547,6 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
 
   const insertAt = ref<{ area: string; index: number } | null>(null);
   function canvasInsert(area: string, index: number) {
-    if (!hiddenModules.value.length) {
-      flash("Nothing unplaced to add — every module is already on a page.");
-      return;
-    }
     insertAt.value = { area, index };
   }
   function insertModule(mid: string) {
@@ -453,6 +565,17 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     if (tab.value === "editor") void refreshCanvas();
   });
 
+  // The rail must never show a module the canvas isn't displaying.
+  watch(
+    [previewArea, () => layoutAreas.value.find((a) => a.id === previewArea.value)?.modules.join()],
+    () => {
+      const id = canvasSelected.value;
+      if (!id) return;
+      const page = layoutAreas.value.find((a) => a.id === previewArea.value);
+      if (!page?.modules.includes(id)) canvasSelected.value = undefined;
+    },
+  );
+
   const previewKeyBump = ref(0);
 
   return {
@@ -470,15 +593,14 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     moveModuleTo,
     moveModule,
     setModuleArea,
+    nudgeModule,
+    hideModule,
     dropModule,
     areaOptions,
-    saveLayout,
-    saveModuleMeta,
     // gallery
     galleryModules,
     activeGalleryItems,
     addGalleryAsset,
-    saveGalleryItem,
     pickerOpen,
     pickerOnly,
     openPicker,
@@ -497,8 +619,10 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     canvasSelected,
     canvasLoading,
     refreshCanvas,
+    scheduleCanvasRefresh,
     canvasMove,
     canvasSelect,
+    canvasDeselect,
     selectedPanel,
     insertAt,
     canvasInsert,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 /**
  * A ranked list row: rank · art (or a lettered monogram) · name + optional
  * subtitle · a value. The shared row of the Listening and Playtime modules — their
@@ -19,16 +19,26 @@ interface Props {
 }
 const props = withDefaults(defineProps<Props>(), { fallback: "•" });
 
-// First letter/digit of the name, for the monogram fallback. Pure, local.
+// First letter/digit of the name, for the monogram fallback. Pure, local. The
+// `g` flag strips every leading symbol ("[Game]" -> "G"), not just the first.
 const mono = computed(
-  () => props.name.replace(/[^\p{L}\p{N}]/u, "").charAt(0).toUpperCase() || props.fallback,
+  () => props.name.replace(/[^\p{L}\p{N}]/gu, "").charAt(0).toUpperCase() || props.fallback,
+);
+
+// A broken image URL shows the monogram instead of a broken-image icon.
+const artFailed = ref(false);
+watch(
+  () => props.art,
+  () => {
+    artFailed.value = false;
+  },
 );
 </script>
 
 <template>
   <div class="rr" :class="{ 'rr-1': highlight }">
     <span class="rr-rank">{{ rank }}</span>
-    <img v-if="art" class="rr-art" :src="art" alt="" loading="lazy" />
+    <img v-if="art && !artFailed" class="rr-art" :src="art" alt="" loading="lazy" @error="artFailed = true" />
     <span v-else class="rr-art rr-mono">{{ mono }}</span>
     <span class="rr-body">
       <span class="rr-name">{{ name }}</span>

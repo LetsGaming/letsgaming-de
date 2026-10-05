@@ -40,6 +40,11 @@
      being a state rather than a style. */
   --danger: #ff6b5e;
   --danger-ink: #ff8f85;
+
+  /* Period-over-period change in the analytics tiles: text, so each theme
+     carries its own 4.5:1 pair instead of reusing the fill colours. */
+  --delta-up: #38d6a6;
+  --delta-down: #ff8f85;
   --live-ink: #a78bfa;
   --on-live: #fff;
 
@@ -160,6 +165,9 @@
 
   /* ── Spacing (2px grid). Unchanged from the prototype: the values were already
      the ones in use, and spacing doesn't differ between themes. */
+  /* Width every module's content (forms, grids) may fill; the page cap itself is .wrap. */
+  --module-content-width: 100%;
+
   --sp-2: 2px;
   --sp-4: 4px;
   --sp-6: 6px;
@@ -200,6 +208,8 @@
      text — and both are now checked against --surf-0 through --surf-3. */
   --danger: #b3261e; /* 5.78:1 on --surf-0; white on it as a fill is 6.54:1 */
   --danger-ink: #9c1f18; /* 7.09:1 on --surf-0 — error text, so it gets the margin */
+  --delta-up: #0a6b4f;
+  --delta-down: #9c1f18;
 
   --glow-live: 0 0 9px 1px rgba(122, 36, 201, 0.45);
 
@@ -240,6 +250,10 @@
    dense on purpose. Everything else (colour, elevation, motion, the accent rule)
    is shared, so the two surfaces can't drift apart. */
 .cms {
+  /* Type roles: headings use --f-d, UI text and labels --cms-font-ui, values
+     (paths, keys, numbers, durations, code) --cms-font-value. */
+  --cms-font-ui: var(--f-b);
+  --cms-font-value: var(--f-m);
   --r-anchor: 14px;
   --r-card: 10px;
   --r-control: 8px;
@@ -290,5 +304,6 @@
   --sh-2: var(--sh-anchor);
   --mint: #38d6a6;
   --coral: #ff7a5e;
+  --on-coral: #1b0b08; /* text on a --coral fill, 7.8:1 */
   --sun: #ffc64b;
 }

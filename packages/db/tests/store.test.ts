@@ -846,3 +846,15 @@ test("game metadata cache: put, read-all, and skip-set round-trip", () => {
   assert.deepEqual(store.gameMeta.getAll().get("palworld"), { genre: "Survival" });
   store.close();
 });
+
+test("sync status: success clears the error, failure keeps the last success", () => {
+  const s = openStore(":memory:");
+  s.syncStatus.recordSuccess("github", "2026-01-01T00:00:00Z");
+  s.syncStatus.recordFailure("github", "2026-01-02T00:00:00Z", "boom");
+  assert.deepEqual(s.syncStatus.all(), [
+    { source: "github", lastSuccessAt: "2026-01-01T00:00:00Z", lastErrorAt: "2026-01-02T00:00:00Z", lastError: "boom" },
+  ]);
+  s.syncStatus.recordSuccess("github", "2026-01-03T00:00:00Z");
+  assert.equal(s.syncStatus.all()[0]?.lastError, null);
+  s.close();
+});

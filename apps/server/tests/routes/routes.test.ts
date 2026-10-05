@@ -148,6 +148,53 @@ test("cms presence: the category allow-list validates and persists", async () =>
   await app.close();
 });
 
+test("cms modules: featured settings are sanitized, merged partially, and refused elsewhere", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+  const put = (modules: unknown[]) =>
+    app.inject({ method: "PUT", url: "/api/cms/modules", headers: auth, payload: { modules } });
+
+  const ok = await put([{ id: "featured", settings: { mode: "manual", repos: ["a", "b", "c", "d"], count: 9 } }]);
+  assert.equal(ok.statusCode, 200);
+  // A heading-only save leaves the settings alone.
+  await put([{ id: "featured", heading: { en: "Selected" } }]);
+  const content = (await app.inject({ method: "GET", url: "/api/cms/content", headers: auth })).json();
+  const featured = content.modules.find((m: { id: string }) => m.id === "featured");
+  assert.deepEqual(featured.settings, { mode: "manual", repos: ["a", "b", "c"], count: 3 });
+  assert.equal(featured.heading.en, "Selected");
+
+  assert.equal((await put([{ id: "hero", settings: { mode: "auto" } }])).statusCode, 400);
+  assert.equal((await put([{ id: "featured", settings: { mode: "bogus" } }])).statusCode, 400);
+  await app.close();
+});
+
+test("cms modules: an empty non-English locale removes it, English stays required", async () => {
+  const app = await enabledApp();
+  const auth = { authorization: `Bearer ${TOKEN}` };
+  const put = (heading: unknown) =>
+    app.inject({ method: "PUT", url: "/api/cms/modules", headers: auth, payload: { modules: [{ id: "featured", heading }] } });
+  const headingNow = async () => {
+    const content = (await app.inject({ method: "GET", url: "/api/cms/content", headers: auth })).json();
+    return content.modules.find((m: { id: string }) => m.id === "featured").heading;
+  };
+
+  assert.equal((await put({ en: "Selected", de: "Ausgewaehlt" })).statusCode, 200);
+  assert.deepEqual(await headingNow(), { en: "Selected", de: "Ausgewaehlt" });
+
+  assert.equal((await put({ en: "Selected", de: "" })).statusCode, 200);
+  assert.deepEqual(await headingNow(), { en: "Selected" });
+
+  // An empty English alone never wipes the stored English.
+  await put({ en: "Selected", de: "Wieder" });
+  assert.equal((await put({ en: "", de: "Wieder" })).statusCode, 200);
+  assert.deepEqual(await headingNow(), { en: "Selected", de: "Wieder" });
+
+  // All-empty still clears the field.
+  assert.equal((await put({ en: "", de: "" })).statusCode, 200);
+  assert.equal(await headingNow(), undefined);
+  await app.close();
+});
+
 test("cms gallery: references a library asset, resolves to a picture, and deletes", async () => {
   const app = await enabledApp();
   const auth = { authorization: `Bearer ${TOKEN}` };

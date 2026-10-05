@@ -9,8 +9,10 @@ import { musicRepo } from "./music-repo.js";
 import { wrappedRepo, type WrappedRepo } from "./wrapped-repo.js";
 import { sessionsRepo } from "./sessions-repo.js";
 import { gameMetaRepo } from "./game-meta-repo.js";
+import { reactionsRepo } from "./reactions-repo.js";
 import { iaRepo, type IaRepo } from "./ia-repo.js";
 import { sourceRepo, type SourceRepo } from "./source-repo.js";
+import { syncStatusRepo, type SyncStatusRepo } from "./sync-status-repo.js";
 import { seedIfEmpty, reconcileIa } from "./seed.js";
 
 export * from "./database.js";
@@ -18,6 +20,7 @@ export * from "./migrate.js";
 export * from "./row-mapper.js";
 export * from "./content-repo.js";
 export * from "./source-repo.js";
+export * from "./sync-status-repo.js";
 export * from "./ia-repo.js";
 export * from "./analytics-repo.js";
 export * from "./assets-repo.js";
@@ -27,10 +30,12 @@ export * from "./seed.js";
 export type SessionsRepo = ReturnType<typeof sessionsRepo>;
 export type MusicRepo = ReturnType<typeof musicRepo>;
 export type GameMetaRepo = ReturnType<typeof gameMetaRepo>;
+export type ReactionsRepo = ReturnType<typeof reactionsRepo>;
 
 export interface Store {
   content: ContentRepo;
   source: SourceRepo;
+  syncStatus: SyncStatusRepo;
   ia: IaRepo;
   analytics: AnalyticsRepo;
   assets: AssetsRepo;
@@ -39,6 +44,7 @@ export interface Store {
   music: MusicRepo;
   wrapped: WrappedRepo;
   gameMeta: GameMetaRepo;
+  reactions: ReactionsRepo;
   close(): void;
 }
 
@@ -81,6 +87,7 @@ function storeFrom(db: ReturnType<typeof openDatabase>): Store {
   return {
     content: contentRepo(db),
     source: sourceRepo(db),
+    syncStatus: syncStatusRepo(db),
     ia: iaRepo(db),
     analytics: analyticsRepo(db),
     assets: assetsRepo(db),
@@ -89,6 +96,7 @@ function storeFrom(db: ReturnType<typeof openDatabase>): Store {
     music: musicRepo(db),
     wrapped: wrappedRepo(db),
     gameMeta: gameMetaRepo(db),
+    reactions: reactionsRepo(db),
     close: () => db.close(),
   };
 }

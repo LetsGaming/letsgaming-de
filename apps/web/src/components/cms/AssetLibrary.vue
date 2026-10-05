@@ -2,6 +2,8 @@
 import { computed, ref, onMounted } from "vue";
 import type { Asset, AssetFolder, AssetKind, AssetUsage, AssetVariant } from "@lg/core";
 import { cms } from "../../lib/cms";
+import { allowedFor, hasFiles, runUploads, type UploadItem } from "../../lib/upload";
+import UploadProgress from "./UploadProgress.vue";
 
 /**
  * `Asset` and `AssetFolder` are core's — they were re-declared here field for
@@ -46,10 +48,17 @@ const q = ref("");
 const selected = ref<Detail | null>(null);
 const tagText = ref("");
 const loading = ref(false);
+const hasFilters = computed(() => !!(q.value.trim() || (!props.only && activeKind.value) || activeTag.value || activeFolder.value !== "all"));
 const uploading = ref(false);
 const toast = ref("");
 
-const KINDS = ["image", "svg", "gif", "pdf", "markdown", "file"];
+const KIND_CHIPS: { value: AssetKind | ""; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "image", label: "Images" },
+  { value: "svg", label: "SVG" },
+  { value: "pdf", label: "PDF" },
+  { value: "markdown", label: "Markdown" },
+];
 function flash(m: string) { toast.value = m; setTimeout(() => (toast.value = ""), 1800); }
 function humanSize(b: number) { return b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`; }
 function thumb(a: Asset) { return a.kind === "image" || a.kind === "gif" ? cms.assetUrl(a.id, "w320.webp") : ""; }
@@ -80,15 +89,21 @@ onMounted(() => {
 });
 
 const dragging = ref(false);
+const uploadItems = ref<UploadItem[]>([]);
+let uploadSeq = 0;
 async function uploadFiles(files: File[]) {
-  if (!files.length) return;
+  if (!files.length || uploading.value) return;
   uploading.value = true;
+  const first = uploadSeq;
+  uploadSeq += files.length;
   try {
-    for (const f of files) await cms.uploadAsset(f);
-    flash(`Uploaded ${files.length} file${files.length > 1 ? "s" : ""}`);
-    await load();
-  } catch {
-    flash("Upload failed.");
+    const ok = await runUploads(files, {
+      send: cms.uploadAssetWithProgress,
+      onChange: (items) => (uploadItems.value = items),
+      allowed: allowedFor(props.only),
+      firstId: first,
+    });
+    if (ok.length) await load();
   } finally {
     uploading.value = false;
   }
@@ -98,8 +113,19 @@ async function onUpload(e: Event) {
   await uploadFiles(Array.from(input.files ?? []));
   input.value = "";
 }
+function onDragOver(e: DragEvent) {
+  if (!hasFiles(e.dataTransfer)) return;
+  e.preventDefault();
+  dragging.value = true;
+}
+function onDragLeave(e: DragEvent) {
+  // Leaving into a child still counts as inside the library.
+  if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) dragging.value = false;
+}
 function onDrop(e: DragEvent) {
   dragging.value = false;
+  if (!hasFiles(e.dataTransfer)) return;
+  e.preventDefault();
   void uploadFiles(Array.from(e.dataTransfer?.files ?? []));
 }
 
@@ -160,9 +186,9 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
   <div
     class="lib"
     :class="{ dragging }"
-    @dragover.prevent="dragging = true"
-    @dragleave.prevent="dragging = false"
-    @drop.prevent="onDrop"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
   >
     <div v-if="dragging" class="droplay">Drop files to upload</div>
     <div class="libtools">
@@ -171,11 +197,19 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
         <input type="file" multiple :accept="acceptAttr" :disabled="uploading" hidden @change="onUpload" />
       </label>
       <input v-model="q" class="search" placeholder="Search filename, title, alt…" @keyup.enter="load" />
-      <select v-if="!only" v-model="activeKind" @change="load">
-        <option value="">All types</option>
-        <option v-for="k in KINDS" :key="k" :value="k">{{ k }}</option>
-      </select>
+      <div v-if="!only" class="chips" role="group" aria-label="Filter by type">
+        <button
+          v-for="c in KIND_CHIPS"
+          :key="c.value"
+          type="button"
+          class="chip"
+          :class="{ on: activeKind === c.value }"
+          :aria-pressed="activeKind === c.value"
+          @click="setKind(c.value)"
+        >{{ c.label }}</button>
+      </div>
     </div>
+    <UploadProgress :items="uploadItems" @dismiss="uploadItems = []" />
 
     <div class="libbody">
       <aside class="libnav">
@@ -198,7 +232,10 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 
       <div class="libmain">
         <div v-if="loading" class="muted">Loading…</div>
-        <div v-else-if="!assets.length" class="muted">Nothing here yet. Upload something to start your library.</div>
+        <label v-else-if="!assets.length" class="emptydrop" :class="{ over: dragging }">
+          <span>{{ hasFilters ? "No assets match these filters." : "Drop files here or choose files" }}</span>
+          <input v-if="!hasFilters" type="file" multiple :accept="acceptAttr" :disabled="uploading" hidden @change="onUpload" />
+        </label>
         <div v-else class="grid">
           <button v-for="a in assets" :key="a.id" class="tile" @click="open(a)">
             <span class="thumb">
@@ -253,17 +290,22 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 <style scoped>
 .lib { display: flex; flex-direction: column; gap: var(--sp-12); position: relative; }
 .lib.dragging { outline: 2px dashed var(--ink); outline-offset: 6px; border-radius: 12px; }
-.droplay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: var(--surf-2); border-radius: 12px; font-family: var(--f-m); color: var(--ink-strong); pointer-events: none; }
+.droplay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: var(--surf-2); border-radius: 12px; font-family: var(--cms-font-ui); color: var(--ink-strong); pointer-events: none; }
 .libtools { display: flex; gap: var(--sp-10); align-items: center; flex-wrap: wrap; }
 .libtools .search { flex: 1; min-width: 160px; }
+.chips { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-1); background: none; color: var(--ink); cursor: pointer; }
+.chip.on { background: var(--live-solid); color: var(--on-live); border-color: var(--live-solid); }
+.emptydrop { display: flex; align-items: center; justify-content: center; min-height: 180px; border: 2px dashed var(--line-1); border-radius: 12px; color: var(--muted); font-size: 14px; cursor: pointer; text-align: center; padding: var(--sp-16); }
+.emptydrop:hover, .emptydrop.over { border-color: var(--ink); color: var(--ink); }
 .up { cursor: pointer; }
 .up input { position: absolute; width: 0; height: 0; }
 .libbody { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: var(--sp-16); align-items: start; }
 .libnav { display: flex; flex-direction: column; gap: var(--sp-16); }
 .navsec { display: flex; flex-direction: column; gap: var(--sp-4); }
-.navhead { display: flex; justify-content: space-between; align-items: center; font-family: var(--f-m); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.navhead { display: flex; justify-content: space-between; align-items: center; font-family: var(--cms-font-ui); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .libnav button { text-align: left; font-size: 13px; padding: 5px var(--sp-8); border-radius: 8px; border: none; background: none; color: var(--ink); cursor: pointer; }
-.libnav button.on { background: var(--ink); color: var(--ink-strong); }
+.libnav button.on { background: var(--live-solid); color: var(--on-live); }
 .frow { display: flex; align-items: center; }
 .frow button:first-child { flex: 1; }
 .tagcloud { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
@@ -273,7 +315,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .tile:hover { border-color: var(--ink); }
 .thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--surf-2); border-radius: 8px; overflow: hidden; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
-.glyph { font-family: var(--f-m); font-size: 12px; color: var(--muted); font-weight: 700; }
+.glyph { font-family: var(--cms-font-ui); font-size: 12px; color: var(--muted); font-weight: 700; }
 .glyph.big { font-size: 20px; }
 .tname { font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tmeta { font-size: 11px; color: var(--muted); }
@@ -281,7 +323,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .editbar { display: flex; justify-content: space-between; align-items: center; }
 .epreview { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--surf-2); border-radius: 10px; overflow: hidden; }
 .epreview img { width: 100%; height: 100%; object-fit: contain; }
-.libedit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--f-m); font-size: 11px; color: var(--muted); }
+.libedit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--cms-font-ui); font-size: 11px; color: var(--muted); }
 .libedit input, .libedit textarea, .libedit select { font-family: var(--f-b); font-size: 13px; color: var(--ink); }
 .usage { font-size: 12px; }
 .usage ul { margin: var(--sp-4) 0 0; padding-left: var(--sp-18); }

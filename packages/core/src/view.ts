@@ -23,7 +23,10 @@ export interface ProjectView {
   description: string;
   meta: string[];
   href: string;
+  /** Pinned on the owner's GitHub profile. */
   featured: boolean;
+  /** Preview image URL, when the source has one. */
+  image?: string;
 }
 
 export interface LinkView {
@@ -196,6 +199,23 @@ export interface HeroView {
   links: LinkView[];
   /** Optional portrait/avatar, resolved from meta.avatar. */
   avatar?: ImageAssetView | GifAssetView;
+  /** True when a Show switch is on, i.e. polling `/api/presence` may show something. */
+  presenceEnabled: boolean;
+  /** The newest finished activity, shown when nothing is live. Only ever a
+   *  category whose Show switch is on and whose name isn't hidden. */
+  lastActivity?: { kind: "game" | "music"; name: string; at: string; relative: string };
+  /** Global count of waves. */
+  waves: number;
+}
+
+/** One card of the home page's teaser grid: a preview that links into an area. */
+export interface TeaserView {
+  /** The area the card points at. */
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+  href: string;
 }
 
 export interface ActivityView extends SectionMeta {
@@ -238,8 +258,9 @@ export interface SectionMeta {
 /** Discriminated by `kind`; the frontend maps kind -> component. */
 export type ResolvedModule =
   | { id: string; kind: "hero"; data: HeroView }
+  | { id: string; kind: "teasers"; data: SectionMeta & { teasers: TeaserView[] } }
   | { id: string; kind: "areas"; data: SectionMeta & { areas: AreaCardView[] } }
-  | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null; moreHref: string } }
+  | { id: string; kind: "featured"; data: SectionMeta & { projects: ProjectView[]; moreHref: string } }
   | {
       id: string;
       kind: "glance";

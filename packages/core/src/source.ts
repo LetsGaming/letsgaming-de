@@ -149,14 +149,20 @@ export interface GitHubGist {
 export interface GitHubRepo {
   name: string;
   stars: number;
-  /** ISO timestamp of the last push. */
-  pushedAt: string;
+  /** ISO timestamp of the last push. Absent for repos that were never pushed to. */
+  pushedAt?: string;
   /** Repo description, if any. */
   description?: string;
   /** Canonical GitHub URL for the repo. */
   url: string;
   /** Primary language, if GitHub reports one. */
   language?: string;
+  /** Pinned on the owner's GitHub profile. */
+  pinned?: boolean;
+  /** Position on the profile (0 = first pin). Present only when `pinned`. */
+  pinnedOrder?: number;
+  /** Social preview image URL (GitHub's `openGraphImageUrl`). */
+  image?: string;
 }
 
 export type GitHubEventType = "commit" | "pr" | "star" | "repo";

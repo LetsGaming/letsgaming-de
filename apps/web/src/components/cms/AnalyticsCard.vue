@@ -12,8 +12,8 @@
  * then say how many the cap hid" stays one implementation. The alternative was an
  * eighth copy of it inside the CMS.
  */
-import { computed } from "vue";
-import type { AnalyticsDimension, AnalyticsRow } from "@lg/core";
+import { computed, ref } from "vue";
+import type { AnalyticsDimension, GroupedRow } from "@lg/core";
 import { useLimitedList } from "../../composables/useLimitedList";
 import ListFooter from "../ui/ListFooter.vue";
 
@@ -26,7 +26,10 @@ const props = withDefaults(
     /** Longer explanation for `note`, shown as a hover tooltip rather than
      *  flowing into the heading. */
     noteTitle?: string;
-    rows?: AnalyticsRow[];
+    /** A row with `children` is a group (e.g. /docs) that expands to the rows it sums. */
+    rows?: GroupedRow[];
+    /** Display text for a key, e.g. a stored `home>work` shown as "home -> work". */
+    format?: (key: string) => string;
     /** Shown in place of the list when there's nothing. */
     empty?: string;
     /** How many before "show more". */
@@ -41,6 +44,14 @@ const props = withDefaults(
 );
 
 defineEmits<{ select: [key: string] }>();
+
+const open = ref(new Set<string>());
+function toggle(key: string) {
+  const next = new Set(open.value);
+  if (!next.delete(key)) next.add(key);
+  open.value = next;
+}
+const label = (key: string) => props.format?.(key) ?? key;
 
 const rows = computed(() => props.rows ?? []);
 const {
@@ -62,25 +73,49 @@ const {
     <ul v-if="shown.length">
       <li v-for="r in shown" :key="r.key">
         <!-- A native button, not a `role="option"` span: it gets Tab/Enter/
-             Space and `aria-pressed` toggle semantics for free, with no
-             roving-tabindex to manage. Non-selectable cards (no `dimension`)
-             render the same content unwrapped, exactly as before. -->
-        <button
-          v-if="dimension"
-          type="button"
-          class="rowpick"
-          :aria-pressed="r.key === selectedKey"
-          @click="$emit('select', r.key)"
-        >
-          <!-- `title` because the value is truncated: a scanner path can be 80
-               characters, and the point of showing it is being able to read it. -->
-          <span class="rowkey" :title="r.key">{{ r.key }}</span>
-          <b>{{ r.count }}</b>
-        </button>
+             Space and `aria-pressed` toggle semantics for free. Non-selectable
+             cards (no `dimension`) render the same content unwrapped. -->
+        <div v-if="dimension" class="rowline">
+          <button
+            v-if="r.children?.length"
+            type="button"
+            class="rowtoggle"
+            :aria-expanded="open.has(r.key)"
+            :aria-label="`${open.has(r.key) ? 'Collapse' : 'Expand'} ${r.key}`"
+            @click="toggle(r.key)"
+          >
+            <span aria-hidden="true">{{ open.has(r.key) ? "▾" : "▸" }}</span>
+          </button>
+          <button
+            type="button"
+            class="rowpick"
+            :aria-pressed="r.key === selectedKey"
+            @click="$emit('select', r.key)"
+          >
+            <!-- `title` because the value is truncated: a scanner path can be 80
+                 characters, and the point of showing it is being able to read it. -->
+            <span class="rowkey" :title="r.key">{{ label(r.key) }}</span>
+            <span v-if="r.children?.length" class="muted rowhint">{{ r.children.length }} paths</span>
+            <b>{{ r.count }}</b>
+          </button>
+        </div>
         <template v-else>
-          <span class="rowkey" :title="r.key">{{ r.key }}</span>
+          <span class="rowkey" :title="r.key">{{ label(r.key) }}</span>
           <b>{{ r.count }}</b>
         </template>
+        <ul v-if="r.children?.length && open.has(r.key)" class="subrows">
+          <li v-for="ch in r.children" :key="ch.key">
+            <button
+              type="button"
+              class="rowpick"
+              :aria-pressed="ch.key === selectedKey"
+              @click="$emit('select', ch.key)"
+            >
+              <span class="rowkey" :title="ch.key">{{ ch.key }}</span>
+              <b>{{ ch.count }}</b>
+            </button>
+          </li>
+        </ul>
       </li>
     </ul>
     <p v-else-if="empty" class="muted">{{ empty }}</p>
@@ -103,6 +138,37 @@ const {
 /* A selectable row's `<li>` holds one `<button>` instead of the bare span+b
    pair, so the flex/space-between the `<li>` itself provides (cms.css) has to
    move onto the button — it's the thing filling the row now. */
+.rowline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+}
+.rowtoggle {
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 0 4px;
+  min-width: 24px;
+  min-height: 24px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.rowhint {
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+}
+.subrows {
+  display: block;
+  width: 100%;
+  margin: 2px 0 0 var(--sp-16);
+  padding: 0;
+}
+.subrows > li {
+  border-top: 0;
+  padding: 2px 0;
+  font-size: 12px;
+}
 .rowpick {
   display: flex;
   align-items: center;

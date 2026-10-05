@@ -70,11 +70,8 @@ const EN = {
   emptyGlance: "Nothing synced from GitHub yet — check back shortly.",
   emptyCoding: "No coding time synced yet.",
   emptyFeatured: "Nothing pinned right now.",
-  /** Featured's own label, distinguishing an owner-pinned repo from the silent
-   *  most-recent fallback when nothing's pinned — otherwise the single card
-   *  reads as an arbitrary editorial choice rather than a curated one. */
+  /** Badge on a repo pinned on the owner's GitHub profile. */
   featuredPinned: "Pinned",
-  featuredLatest: "Latest",
   emptyProjects: "No projects to show.",
   emptyGallery: "No pictures yet.",
   emptyGuestbook: "No notes yet — be the first to sign.",
@@ -194,6 +191,7 @@ const EN = {
   presenceNoActivity: "No activity to display right now",
   presenceNothing: "Nothing to show here right now.",
   presenceSrcMusic: "Listening to Spotify",
+  presenceSrcPodcast: "Listening to a podcast",
   presenceSrcGame: "Playing",
   presenceSrcWatching: "Watching",
   presenceSrcStreaming: "Streaming",
@@ -206,6 +204,26 @@ const EN = {
   // Freshness — a synced module's own age. One key per FreshnessState, so the
   // component maps the state to a key instead of branching five ways in its
   // template. `{age}` is the pre-computed short relative ("8m", "2d").
+  // Hero live status, call to action and wave. `{parts}` is the live activities
+  // joined with a separator; `{age}` is the pre-computed short relative.
+  heroRightNow: "Right now: {parts}",
+  heroPlaying: "playing {name}",
+  heroListening: "listening to {name}",
+  heroLastPlayed: "Last played {name} {age} ago",
+  heroLastListened: "Last listened to {name} {age} ago",
+  heroCtaCode: "See what I'm building",
+  waveButton: "Wave",
+  waveLabel: "Wave hello",
+  waveCount: "{n} waves",
+  waveDone: "Waved",
+  waveLimited: "Too many waves for now, try again later.",
+
+  // Teaser cards on the home page.
+  teasersHeading: "Jump in",
+  teaserHoursWeek: "{n} h played this week",
+  teaserTopArtist: "Top artist: {name}",
+  teaserLatest: "{text} · {age} ago",
+
   freshFresh: "synced {age} ago",
   freshStale: "{age} old",
   freshFailed: "sync failed · showing {age} old",
@@ -280,7 +298,6 @@ const DE: Messages = {
   emptyCoding: "Noch keine Coding-Zeit synchronisiert.",
   emptyFeatured: "Gerade nichts angepinnt.",
   featuredPinned: "Angepinnt",
-  featuredLatest: "Neueste",
   emptyProjects: "Keine Projekte vorhanden.",
   emptyGallery: "Noch keine Bilder.",
   emptyGuestbook: "Noch keine Einträge — trag dich als Erste:r ein.",
@@ -376,6 +393,7 @@ const DE: Messages = {
   presenceNoActivity: "Gerade keine Aktivität",
   presenceNothing: "Hier gibt es gerade nichts zu sehen.",
   presenceSrcMusic: "Hört Spotify",
+  presenceSrcPodcast: "Hört einen Podcast",
   presenceSrcGame: "Spielt",
   presenceSrcWatching: "Schaut",
   presenceSrcStreaming: "Streamt",
@@ -383,6 +401,23 @@ const DE: Messages = {
   minutesPerDay: "Minuten pro Tag",
   clickDayToDrill: "Tag anklicken für Details",
   today: "heute",
+
+  heroRightNow: "Gerade jetzt: {parts}",
+  heroPlaying: "spielt {name}",
+  heroListening: "hört {name}",
+  heroLastPlayed: "Zuletzt gespielt: {name} vor {age}",
+  heroLastListened: "Zuletzt gehört: {name} vor {age}",
+  heroCtaCode: "Das baue ich gerade",
+  waveButton: "Winken",
+  waveLabel: "Hallo winken",
+  waveCount: "{n}-mal gewinkt",
+  waveDone: "Gewinkt",
+  waveLimited: "Gerade zu oft gewinkt, versuch es später erneut.",
+
+  teasersHeading: "Reinschauen",
+  teaserHoursWeek: "{n} Std. diese Woche gespielt",
+  teaserTopArtist: "Top-Künstler: {name}",
+  teaserLatest: "{text} · vor {age}",
 
   freshFresh: "vor {age} synchronisiert",
   freshStale: "{age} alt",

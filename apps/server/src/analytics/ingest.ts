@@ -4,9 +4,9 @@
  * them. Idempotent across runs; safe to schedule.
  */
 
-import type { Store } from "@lg/db";
+import type { HourlyHit, Store } from "@lg/db";
 import { openSync, readSync, statSync, closeSync } from "node:fs";
-import { lineToHits } from "./parse.js";
+import { lineToHits, pairHitsOf } from "./parse.js";
 
 export interface IngestResult {
   file: string;
@@ -56,7 +56,7 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
       offset += bytes;
       buffer += chunk.toString("utf8", 0, bytes);
       let nl: number;
-      const batch = [];
+      const batch: HourlyHit[] = [];
       while ((nl = buffer.indexOf("\n")) !== -1) {
         const line = buffer.slice(0, nl);
         buffer = buffer.slice(nl + 1);
@@ -68,11 +68,13 @@ export function ingestLog(store: Store, file: string, ownHost?: string): IngestR
             if (clearedThrough && hit.bucket < clearedThrough) continue;
             batch.push(hit);
           }
+          const pairs = pairHitsOf(hits).filter((p) => !clearedThrough || p.bucket >= clearedThrough);
+          batch.push(...pairs);
         }
       }
       if (batch.length) {
         store.analytics.recordHourly(batch);
-        hitCount += batch.length;
+        hitCount += batch.filter((h) => !h.dimension.startsWith("x:")).length;
       }
     }
   } finally {
