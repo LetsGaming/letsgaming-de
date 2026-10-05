@@ -1524,7 +1524,7 @@ body.is-dragging .cms .glist .gthumb {
   /* minmax(0, 1fr): `1fr` is `minmax(auto, 1fr)`, and `auto` floors a track at its
      content — which is how a canvas once widened its own column past the pane and
      made "Desktop" narrower than "Tablet". */
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   overflow: hidden;
 }
 .cms .lgedit-page {
@@ -1593,8 +1593,7 @@ body.is-dragging .cms .glist .gthumb {
   border-color: var(--line-2);
   background: color-mix(in srgb, var(--ink) 5%, transparent);
 }
-.cms .lgedit-toolbar,
-.cms .lgedit-add {
+.cms .lgedit-toolbar {
   position: absolute;
   font: 500 11px/1 var(--f-m, monospace);
   color: var(--muted);
@@ -1617,13 +1616,8 @@ body.is-dragging .cms .glist .gthumb {
   opacity: 0;
   pointer-events: none;
 }
-.cms .lgedit-add {
-  opacity: 0;
-}
 .cms .lgedit-mod:hover .lgedit-toolbar,
-.cms .lgedit-mod:hover .lgedit-add,
-.cms .lgedit-mod.sel .lgedit-toolbar,
-.cms .lgedit-mod.sel .lgedit-add {
+.cms .lgedit-mod.sel .lgedit-toolbar {
   opacity: 1;
   pointer-events: auto;
 }
@@ -1642,23 +1636,62 @@ body.is-dragging .cms .glist .gthumb {
 .cms .lgedit-tag {
   white-space: nowrap;
 }
-.cms .lgedit-add {
-  left: 50%;
-  transform: translateX(-50%);
-  top: -10px;
+/* Inside the toolbar, beside the kind tag; warm so a gap in the translation reads as a to-do. */
+.cms .lgedit-missing {
+  padding: 1px 4px;
+  color: var(--danger-ink);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-xs);
+  white-space: nowrap;
+}
+/* The insert line: a full-width rule with a centered +, shown on hover or focus.
+   It straddles the boundary between two modules so it's hit by passing over the
+   seam, not by aiming at a 20px button. */
+.cms .lgedit-gap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  margin-top: -7px;
+  padding: 0;
+  border: 0;
+  background: none;
   cursor: pointer;
   pointer-events: auto;
-  line-height: 1;
-  padding: 2px 7px;
+  z-index: 1;
 }
-.cms .lgedit-add:hover {
-  color: var(--ink);
-  border-color: var(--ink);
+.cms .lgedit-gap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--ink);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
-.cms .lgedit-add.end {
+.cms .lgedit-gap-plus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 22px;
+  line-height: 20px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg-base);
+  font: 600 14px/20px var(--f-m, monospace);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.cms .lgedit-gap:hover::before,
+.cms .lgedit-gap:focus-visible::before,
+.cms .lgedit-gap:hover .lgedit-gap-plus,
+.cms .lgedit-gap:focus-visible .lgedit-gap-plus {
   opacity: 1;
 }
-
 @media (max-width: 900px) {
   .cms .lgedit-body {
     grid-template-columns: 1fr;
@@ -1669,7 +1702,8 @@ body.is-dragging .cms .glist .gthumb {
 }
 @media (prefers-reduced-motion: reduce) {
   .cms .lgedit-toolbar,
-  .cms .lgedit-add {
+  .cms .lgedit-gap::before,
+  .cms .lgedit-gap-plus {
     transition: none;
   }
 }
@@ -1760,7 +1794,7 @@ body.is-dragging .cms .glist .gthumb {
    Clicking a module used to switch the CMS's tab behind the editor: the only
    thing selecting did was leave. */
 .cms .lgedit-body:has(.railpanel) {
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 440px;
 }
 .cms .railsel {
   display: flex;
@@ -1785,4 +1819,186 @@ body.is-dragging .cms .glist .gthumb {
   font-size: 12px;
   padding: var(--sp-8) var(--sp-4);
   line-height: 1.5;
+}
+
+/* ── editor shell: rail tabs, module menu, picker, palette ─────────────────── */
+.cms .railtabs {
+  display: flex;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  margin: calc(var(--sp-4) * -1) 0 var(--sp-4);
+}
+.cms .railtabs button {
+  font: inherit;
+  font-size: 13px;
+  padding: var(--sp-6) var(--sp-10);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.cms .railtabs button.on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.cms .railtabs button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cms .lgedit-pagebtn {
+  font: inherit;
+  font-weight: 600;
+  background: none;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-s);
+  color: var(--ink);
+  padding: 3px var(--sp-8);
+  cursor: pointer;
+}
+.cms .lgedit-pagebtn:hover {
+  border-color: var(--ink);
+}
+/* Names wrap instead of truncating; the row keeps its handle and menu in line. */
+.cms .railbox .modrow {
+  align-items: flex-start;
+  position: relative;
+}
+.cms .railbox .modrow .modname {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.cms .modrow.cur {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.cms .tr-missing {
+  flex: none;
+  font-size: var(--fs-micro);
+  color: var(--danger-ink);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-xs);
+  padding: 0 var(--sp-4);
+}
+.cms .modmenu-btn {
+  flex: none;
+  font: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 var(--sp-6);
+  line-height: 1.4;
+}
+.cms .modmenu-btn:hover,
+.cms .modmenu-btn[aria-expanded="true"] {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.cms .modmenu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+  background: var(--card);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+.cms .modmenu h5 {
+  margin: var(--sp-4) var(--sp-6);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  font-weight: 600;
+}
+.cms .modmenu button {
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--r-xs);
+  color: var(--ink);
+  padding: var(--sp-4) var(--sp-8);
+  cursor: pointer;
+}
+.cms .modmenu button:hover,
+.cms .modmenu button:focus-visible {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cms .palette-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: rgb(0 0 0 / 0.45);
+}
+.cms .palette {
+  width: min(560px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-m, var(--r-s));
+  background: var(--card);
+  color: var(--ink);
+  overflow: hidden;
+}
+.cms .palette input {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: var(--sp-12) var(--sp-14);
+  font-size: var(--fs-body);
+  background: transparent;
+  color: inherit;
+}
+.cms .palette ol {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-4);
+  overflow: auto;
+}
+.cms .palette li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  font-size: 14px;
+}
+.cms .palette li.on {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cms .palette li .dim {
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
+.cms .shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-6) var(--sp-14);
+  margin: var(--sp-10) 0 0;
+}
+.cms .shortcuts kbd {
+  font: 500 12px var(--f-m, monospace);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xs);
+  padding: 1px var(--sp-6);
+  background: var(--card-2);
+}
+.cms .pagesettings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
 }

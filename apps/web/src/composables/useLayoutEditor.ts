@@ -224,6 +224,18 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     moveModuleTo(at.listId, at.index, target, moduleList(target)?.length ?? 0);
   }
 
+  /** Nudge a module one slot within its page. Hidden has no order, so it's a no-op there. */
+  function nudgeModule(mid: string, dir: -1 | 1) {
+    const at = findModule(mid);
+    if (!at || at.listId === HIDDEN_LIST) return;
+    const len = moduleList(at.listId)?.length ?? 0;
+    const j = at.index + dir;
+    if (j < 0 || j >= len) return;
+    moveModuleTo(at.listId, at.index, at.listId, j);
+  }
+
+  const hideModule = (mid: string) => setModuleArea(mid, HIDDEN_LIST);
+
   /** Dropping a module into an area (or Hidden) at a given position. */
   function dropModule(move: SortableMove) {
     moveModuleTo(move.from, move.oldIndex, move.to, move.newIndex);
@@ -419,6 +431,10 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     canvasSelected.value = canvasSelected.value === moduleId ? undefined : moduleId;
   }
 
+  const canvasDeselect = () => {
+    canvasSelected.value = undefined;
+  };
+
   const selectedPanel = computed<string | null>(() => {
     const id = canvasSelected.value;
     if (!id) return null;
@@ -478,6 +494,8 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     moveModuleTo,
     moveModule,
     setModuleArea,
+    nudgeModule,
+    hideModule,
     dropModule,
     areaOptions,
     saveLayout,
@@ -507,6 +525,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     refreshCanvas,
     canvasMove,
     canvasSelect,
+    canvasDeselect,
     selectedPanel,
     insertAt,
     canvasInsert,

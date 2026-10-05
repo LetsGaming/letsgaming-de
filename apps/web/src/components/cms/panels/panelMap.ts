@@ -15,11 +15,11 @@ import SiteIdentityPanel from "./SiteIdentityPanel.vue";
 import WrappedPanel from "./WrappedPanel.vue";
 
 /**
- * The panel that edits each kind of module.
+ * The panel that edits each kind of module, mounted in the editor rail's Selected tab.
  *
  * The same components the CMS's own nav mounts: they take everything from
- * `cmsContext`, so rendering one beside the page it changes shares no state.
- * Every non-null value of `PANEL_FOR_KIND` must be a key here.
+ * `cmsContext`, so rendering one beside the page it changes costs nothing and shares
+ * no state. Every non-null value of `PANEL_FOR_KIND` must be a key here.
  */
 export const PANEL: Partial<Record<View, Component>> = {
   site: SiteIdentityPanel,

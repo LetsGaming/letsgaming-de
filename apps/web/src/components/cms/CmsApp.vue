@@ -106,9 +106,9 @@ const {
           </div>
         </nav>
         <div class="sidefoot">
-          <select v-model="locale" title="Editing locale">
-            <option value="en">EN</option>
-            <option value="de">DE</option>
+          <select v-model="locale" title="The language you are writing content in" aria-label="Content language">
+            <option value="en">Content: EN</option>
+            <option value="de">Content: DE</option>
           </select>
           <span class="muted">{{ login }}</span>
           <button class="link" @click="signOut">sign out</button>

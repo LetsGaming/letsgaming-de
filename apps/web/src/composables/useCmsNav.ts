@@ -66,7 +66,7 @@ const DEFAULT_VIEW: View = "dashboard";
 // Grouped left-nav, so it's obvious what each screen edits (a small WP/Typo3 shape).
 export const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
   { label: "", items: [{ id: "dashboard", label: "Dashboard" }] },
-  { label: "", items: [{ id: "editor", label: "Editor" }] },
+  { label: "", items: [{ id: "editor", label: "Pages" }] },
   {
     label: "Content",
     items: [
@@ -109,7 +109,7 @@ export const VIEW_TITLES: Record<View, string> = {
   hobbies: "Hobbies",
   links: "Links",
   now: "Right now",
-  editor: "Editor — arrange and write",
+  editor: "Pages",
   posts: "Blog",
   library: "Asset library",
   gallery: "Gallery",
