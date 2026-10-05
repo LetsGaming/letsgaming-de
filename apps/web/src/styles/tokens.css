@@ -160,6 +160,9 @@
 
   /* ── Spacing (2px grid). Unchanged from the prototype: the values were already
      the ones in use, and spacing doesn't differ between themes. */
+  /* Width every module's content (forms, grids) may fill; the page cap itself is .wrap. */
+  --module-content-width: 100%;
+
   --sp-2: 2px;
   --sp-4: 4px;
   --sp-6: 6px;
