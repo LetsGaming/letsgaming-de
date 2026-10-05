@@ -11,6 +11,7 @@ import type { Source } from "@lg/core";
 import type { Store } from "@lg/db";
 import { getSources, type SourcesEnv } from "@lg/sources";
 import cron, { type ScheduledTask } from "node-cron";
+import { recordOutcome } from "./tracked.js";
 
 export interface SyncResult {
   sourceId: string;
@@ -23,6 +24,7 @@ export interface SyncResult {
 export class SyncRunner {
   private readonly registered: ReturnType<typeof getSources>;
   private tasks: ScheduledTask[] = [];
+  private readonly inflight = new Map<string, Promise<SyncResult>>();
 
   constructor(
     private readonly store: Store,
@@ -45,8 +47,36 @@ export class SyncRunner {
     }
   }
 
-  /** Run one source now: fetch, normalize, persist. Never throws — reports. */
-  async runSource(source: Source, mock: boolean): Promise<SyncResult> {
+  /** Registered sources, for the CMS status screen and manual triggers. */
+  listSources(): { id: string; schedule: string; mock: boolean }[] {
+    return this.registered.map(({ source, mock }) => ({ id: source.id, schedule: source.schedule, mock }));
+  }
+
+  /** Trigger one registered source by id; undefined when no such source is registered. */
+  runById(id: string): Promise<SyncResult> | undefined {
+    const found = this.registered.find(({ source }) => source.id === id);
+    return found && this.runSource(found.source, found.mock);
+  }
+
+  /**
+   * Run one source now: fetch, normalize, persist, and record the outcome in
+   * `sync_status`. Never throws. A trigger that arrives while the same source is
+   * already running joins that run instead of starting a second one.
+   */
+  runSource(source: Source, mock: boolean): Promise<SyncResult> {
+    const running = this.inflight.get(source.id);
+    if (running) return running;
+    const run = this.execute(source, mock)
+      .then((result) => {
+        recordOutcome(this.store, source.id, result.ok ? undefined : (result.error ?? "unknown error"), result.syncedAt);
+        return result;
+      })
+      .finally(() => this.inflight.delete(source.id));
+    this.inflight.set(source.id, run);
+    return run;
+  }
+
+  private async execute(source: Source, mock: boolean): Promise<SyncResult> {
     const syncedAt = new Date().toISOString();
 
     // A failed fetch is expected (slow/down upstream): log it and keep the

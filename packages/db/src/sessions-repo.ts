@@ -223,6 +223,21 @@ export function sessionsRepo(db: DatabaseSync) {
         .sort((a, b) => b.minutes - a.minutes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     },
 
+    /** Distinct recorded activity names with their session counts, most-seen first. */
+    activityNames(): { name: string; category: PresenceCategory; sessions: number }[] {
+      return mapRows(
+        db.prepare(
+          `SELECT name, category, COUNT(*) AS sessions FROM presence_sessions
+           GROUP BY category, name ORDER BY sessions DESC, name ASC`,
+        ),
+        (r: Row) => ({
+          name: asText(r.name),
+          category: asText(r.category) as PresenceCategory,
+          sessions: asNumber(r.sessions),
+        }),
+      );
+    },
+
     /** Drop sessions older than a cutoff. Nothing calls this yet; the table is
      *  tiny (one row per session, not per poll) and the whole point is history. */
     prune(beforeIso: string): number {

@@ -74,6 +74,8 @@ tags:
     description: Authenticated. Read and clear aggregate analytics.
   - name: CMS · Revisions
     description: Authenticated. Content history and restore.
+  - name: CMS · Status
+    description: Authenticated. Dashboard status, manual sync, editor section stats, recorded activity names.
 
 paths:
   # ─────────────────────────────── Public: read ───────────────────────────────
@@ -927,30 +929,52 @@ paths:
     get:
       tags: [CMS · Guestbook]
       summary: The moderation queue
-      description: All guestbook entries with their auto-flag score (which only sorts the queue).
+      description: >
+        Guestbook entries with their auto-flag score (which only sorts the queue). Without `status`
+        (or with `all`) the combined queue is returned, pending first. `counts` is always the full
+        per-status tally regardless of the filter.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected, all] }
       responses:
         "200":
-          description: Pending and moderated entries (contract `GuestbookListResponse` in `@lg/core`).
+          description: Entries plus counts.
           content:
             application/json:
-              schema: { type: object, description: "See `GuestbookListResponse` in `@lg/core`." }
+              schema:
+                type: object
+                required: [entries, pending, counts]
+                properties:
+                  entries: { type: array, items: { type: object, description: "`GuestbookEntry` in `@lg/core`." } }
+                  pending: { type: integer, description: Same as `counts.pending`. }
+                  counts:
+                    type: object
+                    required: [pending, approved, rejected]
+                    properties:
+                      pending: { type: integer }
+                      approved: { type: integer }
+                      rejected: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/cms/guestbook/{id}/{action}:
     post:
       tags: [CMS · Guestbook]
       summary: Moderate an entry
-      description: Approve (make public) or reject a pending entry.
+      description: Approve (make public), reject, or unapprove (return to pending) an entry.
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer } }
         - name: action
           in: path
           required: true
-          schema: { type: string, enum: [approve, reject] }
+          schema: { type: string, enum: [approve, reject, unapprove] }
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/cms/guestbook/{id}:
     delete:
@@ -1094,6 +1118,164 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # ─────────────────────────────── CMS · Revisions ────────────────────────────
+  /api/cms/status:
+    get:
+      tags: [CMS · Status]
+      summary: Dashboard status
+      description: >
+        Per-job sync status (sources, presence sampler, metadata sweeps, analytics ingest), guestbook
+        counts by status, and the ten most recent content edits.
+      responses:
+        "200":
+          description: Status snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sources, guestbook, recentEdits]
+                properties:
+                  sources:
+                    type: array
+                    description: >
+                      Always lists github, wakapi, presence, game-metadata, game-images and analytics,
+                      including never-synced and unconfigured ones.
+                    items:
+                      type: object
+                      required: [id, label, kind, configured, mock, schedule, canSync, state, lastSuccessAt, lastErrorAt, lastError]
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+                        kind: { type: string, enum: [source, job, analytics] }
+                        configured: { type: boolean }
+                        mock: { type: boolean, description: Running on the deterministic mock source. }
+                        schedule: { type: [string, "null"], description: Cron expression, sources only. }
+                        canSync: { type: boolean, description: True when POST /api/cms/sync/{source} accepts this id. }
+                        state: { type: string, enum: [ok, error, never], description: "`error` when the latest attempt failed." }
+                        lastSuccessAt: { type: [string, "null"], format: date-time }
+                        lastErrorAt: { type: [string, "null"], format: date-time }
+                        lastError: { type: [string, "null"] }
+                  guestbook:
+                    type: object
+                    required: [pending, approved, rejected]
+                    properties:
+                      pending: { type: integer }
+                      approved: { type: integer }
+                      rejected: { type: integer }
+                  recentEdits:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, savedAt, reason, label]
+                      properties:
+                        id: { type: integer, description: Revision id (see /api/cms/revisions). }
+                        savedAt: { type: string, format: date-time }
+                        reason: { type: string, description: "Raw table/column name, or `restore:<id>`." }
+                        label: { type: string, description: Human-readable label for `reason`. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/sync/{source}:
+    post:
+      tags: [CMS · Status]
+      summary: Sync one source now
+      description: >
+        Runs a registered source immediately and records the outcome. A trigger that arrives while the
+        same source is already syncing joins that run and returns its result.
+      parameters:
+        - { name: source, in: path, required: true, schema: { type: string, enum: [github, wakapi] } }
+      responses:
+        "200":
+          description: The sync result. A failed sync is still 200 with `ok:false` and `error`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sourceId, ok, mock, syncedAt]
+                properties:
+                  sourceId: { type: string }
+                  ok: { type: boolean }
+                  mock: { type: boolean }
+                  syncedAt: { type: string, format: date-time }
+                  error: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: The sync worker is not running. }
+
+  /api/cms/sections:
+    get:
+      tags: [CMS · Status]
+      summary: Section stats for the editor overlay
+      description: >
+        Per-nav-node stats from the in-page tracker only (`source: script`). Tracking granularity is
+        the nav node, so modules inside one area share that area's numbers (`modules` lists them).
+        Median dwell is approximated from the dwell buckets as the midpoint of the bucket holding the
+        50th percentile (<5s 2.5s, 5-15s 10s, 15-30s 22.5s, 30-60s 45s, 1-3m 120s, 3-10m 390s,
+        10m+ 900s). Reach is the share of completed visits whose scroll reached 25% of the section,
+        capped at 1; null when there are no completed visits in the window.
+      parameters:
+        - { name: area, in: query, required: false, schema: { type: string }, description: Nav node id; returns it and its descendants. Omit for every node. }
+        - { name: hours, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 8760, default: 168 } }
+      responses:
+        "200":
+          description: Section stats.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [source, hours, from, to, visits, sections]
+                properties:
+                  source: { type: string, enum: [script] }
+                  hours: { type: integer }
+                  from: { type: string, description: Inclusive UTC hour bucket (YYYY-MM-DDTHH). }
+                  to: { type: string }
+                  visits: { type: integer, description: Completed visits in the window. }
+                  sections:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, modules, views, medianDwellSeconds, medianDwellBucket, reach, depth]
+                      properties:
+                        key: { type: string, description: Nav node id. }
+                        modules: { type: array, items: { type: string } }
+                        views: { type: integer }
+                        medianDwellSeconds: { type: [number, "null"] }
+                        medianDwellBucket: { type: [string, "null"] }
+                        reach: { type: [number, "null"], minimum: 0, maximum: 1 }
+                        depth:
+                          type: object
+                          description: Raw scroll milestone counts.
+                          properties:
+                            "25": { type: integer }
+                            "50": { type: integer }
+                            "75": { type: integer }
+                            "100": { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/cms/activity-names:
+    get:
+      tags: [CMS · Status]
+      summary: Recorded activity names
+      description: Distinct names from observed presence sessions, most-seen first, for the hidden-activities tag input.
+      responses:
+        "200":
+          description: Names.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [names]
+                properties:
+                  names:
+                    type: array
+                    items:
+                      type: object
+                      required: [name, category, sessions]
+                      properties:
+                        name: { type: string }
+                        category: { type: string }
+                        sessions: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/cms/revisions:
     get:
       tags: [CMS · Revisions]
