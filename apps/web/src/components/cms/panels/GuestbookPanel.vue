@@ -109,7 +109,7 @@ const updated = computed(() => {
 }
 .gb-count {
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: 12px;
   margin-left: var(--sp-4);
 }
 .gb-del {
