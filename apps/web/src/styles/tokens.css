@@ -243,6 +243,10 @@
    dense on purpose. Everything else (colour, elevation, motion, the accent rule)
    is shared, so the two surfaces can't drift apart. */
 .cms {
+  /* Type roles: headings use --f-d, UI text and labels --cms-font-ui, values
+     (paths, keys, numbers, durations, code) --cms-font-value. */
+  --cms-font-ui: var(--f-b);
+  --cms-font-value: var(--f-m);
   --r-anchor: 14px;
   --r-card: 10px;
   --r-control: 8px;

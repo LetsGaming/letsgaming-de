@@ -290,7 +290,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 <style scoped>
 .lib { display: flex; flex-direction: column; gap: var(--sp-12); position: relative; }
 .lib.dragging { outline: 2px dashed var(--ink); outline-offset: 6px; border-radius: 12px; }
-.droplay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: var(--surf-2); border-radius: 12px; font-family: var(--f-m); color: var(--ink-strong); pointer-events: none; }
+.droplay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: var(--surf-2); border-radius: 12px; font-family: var(--cms-font-ui); color: var(--ink-strong); pointer-events: none; }
 .libtools { display: flex; gap: var(--sp-10); align-items: center; flex-wrap: wrap; }
 .libtools .search { flex: 1; min-width: 160px; }
 .chips { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
@@ -303,7 +303,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .libbody { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: var(--sp-16); align-items: start; }
 .libnav { display: flex; flex-direction: column; gap: var(--sp-16); }
 .navsec { display: flex; flex-direction: column; gap: var(--sp-4); }
-.navhead { display: flex; justify-content: space-between; align-items: center; font-family: var(--f-m); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.navhead { display: flex; justify-content: space-between; align-items: center; font-family: var(--cms-font-ui); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .libnav button { text-align: left; font-size: 13px; padding: 5px var(--sp-8); border-radius: 8px; border: none; background: none; color: var(--ink); cursor: pointer; }
 .libnav button.on { background: var(--live-solid); color: var(--on-live); }
 .frow { display: flex; align-items: center; }
@@ -315,7 +315,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .tile:hover { border-color: var(--ink); }
 .thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--surf-2); border-radius: 8px; overflow: hidden; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
-.glyph { font-family: var(--f-m); font-size: 12px; color: var(--muted); font-weight: 700; }
+.glyph { font-family: var(--cms-font-ui); font-size: 12px; color: var(--muted); font-weight: 700; }
 .glyph.big { font-size: 20px; }
 .tname { font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tmeta { font-size: 11px; color: var(--muted); }
@@ -323,7 +323,7 @@ function setTag(t: string) { activeTag.value = activeTag.value === t ? "" : t; v
 .editbar { display: flex; justify-content: space-between; align-items: center; }
 .epreview { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--surf-2); border-radius: 10px; overflow: hidden; }
 .epreview img { width: 100%; height: 100%; object-fit: contain; }
-.libedit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--f-m); font-size: 11px; color: var(--muted); }
+.libedit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--cms-font-ui); font-size: 11px; color: var(--muted); }
 .libedit input, .libedit textarea, .libedit select { font-family: var(--f-b); font-size: 13px; color: var(--ink); }
 .usage { font-size: 12px; }
 .usage ul { margin: var(--sp-4) 0 0; padding-left: var(--sp-18); }
