@@ -67,6 +67,18 @@ test("hero: an internal primary CTA leads and the CMS links step back to seconda
   assert.equal(links.find((l) => l.id === "gh")?.primary, false);
 });
 
+test("hero: injecting the CTA never drops an authored link (4 CMS links)", () => {
+  const links = hero({
+    content: content({
+      links: ["a", "b", "c", "d"].map((id) => ({ id, label: en(id), href: `https://x.test/${id}` })),
+    }),
+  }).links;
+  assert.deepEqual(
+    links.map((l) => l.id),
+    ["hero-explore", "a", "b", "c", "d"],
+  );
+});
+
 test("hero: a CMS link that already points at Code or Life is left alone", () => {
   const links = hero({
     content: content({ links: [{ id: "mine", label: en("Mine"), href: "#life", primary: true }] }),
