@@ -53,6 +53,7 @@ const VIEWS = [
   "music",
   "playtime",
   "wrapped",
+  "featured",
   "guestbook",
   "analytics",
   "settings",
@@ -103,6 +104,7 @@ export const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }
 export const VIEW_TITLES: Record<View, string> = {
   dashboard: "Dashboard",
   wrapped: "Wrapped",
+  featured: "Featured",
   site: "Site identity",
   home: "Home intro",
   about: "About / bio",

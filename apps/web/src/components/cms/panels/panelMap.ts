@@ -1,6 +1,7 @@
 import type { Component } from "vue";
 import type { View } from "../../../composables/useCmsNav";
 import AboutPanel from "./AboutPanel.vue";
+import FeaturedPanel from "./FeaturedPanel.vue";
 import GalleryPanel from "./GalleryPanel.vue";
 import GuestbookPanel from "./GuestbookPanel.vue";
 import HobbiesPanel from "./HobbiesPanel.vue";
@@ -35,4 +36,5 @@ export const PANEL: Partial<Record<View, Component>> = {
   music: MusicPanel,
   playtime: PlaytimePanel,
   wrapped: WrappedPanel,
+  featured: FeaturedPanel,
 };

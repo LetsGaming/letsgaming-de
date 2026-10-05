@@ -675,17 +675,6 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  /api/cms/status:
-    put:
-      tags: [CMS · Content]
-      summary: Update the "currently building" status (verb + now)
-      requestBody:
-        $ref: "#/components/requestBodies/JsonBody"
-      responses:
-        "200": { $ref: "#/components/responses/Ok" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-
   /api/cms/bio:
     put:
       tags: [CMS · Content]
@@ -1222,6 +1211,15 @@ paths:
 
   # ─────────────────────────────── CMS · Revisions ────────────────────────────
   /api/cms/status:
+    put:
+      tags: [CMS · Content]
+      summary: Update the "currently building" status (verb + now)
+      requestBody:
+        $ref: "#/components/requestBodies/JsonBody"
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     get:
       tags: [CMS · Status]
       summary: Dashboard status
@@ -1251,8 +1249,8 @@ paths:
                         kind: { type: string, enum: [source, job, analytics] }
                         configured: { type: boolean }
                         mock: { type: boolean, description: Running on the deterministic mock source. }
-                        schedule: { type: [string, "null"], description: Cron expression, sources only. }
-                        canSync: { type: boolean, description: True when POST /api/cms/sync/{source} accepts this id. }
+                        schedule: { type: [string, "null"], description: "Cron expression, sources only." }
+                        canSync: { type: boolean, description: "True when POST /api/cms/sync/{source} accepts this id." }
                         state: { type: string, enum: [ok, error, never], description: "`error` when the latest attempt failed." }
                         lastSuccessAt: { type: [string, "null"], format: date-time }
                         lastErrorAt: { type: [string, "null"], format: date-time }
