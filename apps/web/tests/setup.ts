@@ -27,3 +27,14 @@ const NuxtLinkStub = defineComponent({
 });
 
 config.global.stubs = { NuxtLink: NuxtLinkStub };
+
+/**
+ * The test DOM implements `sendBeacon` as a real network request, so mounting any
+ * area fires tracking beacons at the API port and the refused connection surfaces as
+ * an unhandled rejection. The beacon is fire-and-forget in production; here it is
+ * simply accepted.
+ */
+Object.defineProperty(globalThis.navigator, "sendBeacon", {
+  configurable: true,
+  value: () => true,
+});
