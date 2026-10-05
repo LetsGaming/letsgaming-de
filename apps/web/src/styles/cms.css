@@ -1198,7 +1198,7 @@ html:has(.cms) {
   align-items: flex-start;
   justify-content: center;
   padding: 5vh var(--sp-20);
-  z-index: 50;
+  z-index: 250;
 }
 .cms .pickbox {
   background: var(--bg-base);
