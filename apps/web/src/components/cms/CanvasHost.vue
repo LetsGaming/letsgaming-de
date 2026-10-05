@@ -31,7 +31,9 @@
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { ModuleKind, SiteView } from "@lg/core";
+import type { SectionStat } from "../../lib/sectionStats";
 import SitePanels from "../shell/SitePanels.vue";
+import StatsOverlay from "./StatsOverlay.vue";
 
 const props = defineProps<{
   site: SiteView | null;
@@ -43,6 +45,15 @@ const props = defineProps<{
   untranslated?: string[];
   /** The content language code, for the missing-translation badge. */
   locale?: string;
+  /** Section analytics to draw over the page; absent when "Show stats" is off. */
+  stats?: {
+    status: "idle" | "loading" | "error" | "ready";
+    stat: SectionStat | null;
+    moduleId: string | null;
+    perPage: boolean;
+    visits: number;
+    rangeLabel: string;
+  } | null;
 }>();
 
 const emit = defineEmits<{
@@ -51,6 +62,7 @@ const emit = defineEmits<{
   insert: [area: string, index: number];
   deselect: [];
   close: [];
+  retryStats: [];
 }>();
 
 /** Per-module boxes, measured from what actually rendered. */
@@ -278,6 +290,16 @@ const kindLabel = (id: string): string => {
 
           <!-- Affordances, over the real sections. Never inside them. -->
           <div v-if="site" ref="overlay" class="lgedit-overlay">
+            <StatsOverlay
+              v-if="stats"
+              variant="strip"
+              :status="stats.status"
+              :stat="stats.stat"
+              :visits="stats.visits"
+              :range-label="stats.rangeLabel"
+              :per-page="stats.perPage"
+              @retry="emit('retryStats')"
+            />
             <div
               v-for="(b, i) in boxes"
               :key="b.id"
@@ -306,6 +328,13 @@ const kindLabel = (id: string): string => {
                   >no {{ (locale ?? "").toUpperCase() }}</span
                 >
               </div>
+              <StatsOverlay
+                v-if="stats && stats.moduleId === b.id"
+                variant="chips"
+                :status="stats.status"
+                :stat="stats.stat"
+                :visits="stats.visits"
+              />
             </div>
             <button
               v-for="(b, i) in boxes"

@@ -18,7 +18,8 @@ import type {
   Status,
 } from "@lg/core";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { useCmsNav, type View } from "./useCmsNav";
+import { useCmsNav } from "./useCmsNav";
+import { useDashboard } from "./useDashboard";
 import { useCmsSession } from "./useCmsSession";
 import { useCmsPreview } from "./useCmsPreview";
 import { cms } from "../lib/cms";
@@ -62,8 +63,9 @@ export function useCms() {
 const session = useCmsSession({
   loadContent: async () => {
     await loadAll();
-    // Warm the dashboard's badge (cheap, cached after).
+    // Warm the sidebar badge and whichever panel the URL restored.
     void loadGuestbook();
+    void dashboard.loadVisits();
   },
   onSaved: () => preview.invalidate(),
 });
@@ -73,7 +75,11 @@ const preview = useCmsPreview();
 const { previewArea, previewKey, showDock, previewSrc, viewSite } = preview;
 const { tab, pick, params, setParams, NAV_GROUPS, VIEW_TITLES } = useCmsNav({
   onOpen: (view) => {
-    if ((view === "guestbook" || view === "dashboard") && !guestbook.value) void loadGuestbook();
+    if (view === "guestbook" && authed.value) void loadGuestbook({ quiet: !!guestbook.value });
+    if (view === "dashboard" && authed.value) {
+      void dashboard.loadVisits();
+      void loadStatus({ quiet: true });
+    }
     if (view === "analytics" && !analytics.value) void loadAnalytics();
     preview.followView(view);
   },
@@ -143,12 +149,8 @@ const now = nowList.items;
   } = playtime;
 
   // Guestbook moderation — extracted composable (see useGuestbookMod).
-  const { guestbook, loadingG, loadGuestbook, moderate, removeEntry } = useGuestbookMod({
-    cms,
-    authed,
-    flash,
-    guarded,
-  });
+  const gbMod = useGuestbookMod({ cms, authed, tab, flash, guarded });
+  const { guestbook, loadingG, loadGuestbook, loadStatus } = gbMod;
 
   // Analytics dashboard — extracted composable (see useAnalytics). Owns its own
   // poll lifecycle; we hand it the shared `tab` ref so it knows when it's showing.
@@ -357,14 +359,16 @@ function areaLabel(id: string): string {
   const area = layoutAreas.value.find((a) => a.id === id);
   return (area && pickL(area.label)) || id;
 }
-// Dashboard: quick counts + jump-in links (WP-style landing).
-const dashStats = computed<{ label: string; n: number; to: View }[]>(() => [
-  { label: "Hobbies", n: hobbies.value.length, to: "hobbies" },
-  { label: "Links", n: links.value.length, to: "links" },
-  { label: "Right-now items", n: now.value.length, to: "now" },
-  { label: "Gallery images", n: gallery.value.length, to: "gallery" },
-  { label: "Modules", n: modules.value.length, to: "editor" },
-]);
+const dashboard = useDashboard({
+  cms,
+  authed,
+  flash,
+  loadStatus,
+  pages: layoutAreas,
+  areaLabel,
+  goPage: (id) => (previewArea.value = id as typeof previewArea.value),
+  pick: (v) => pick(v),
+});
 
 // Start/stop the analytics poll as the panel opens and closes. A watcher rather
 // than a hook inside AnalyticsPanel, because the panel is `v-show` — it stays
@@ -421,11 +425,8 @@ onMounted(() => {
     // WRAPPED_BOUNDS off the context, and listing them here too would be a
     // second place to keep in sync.
     ...wrapped,
-    guestbook,
-    loadingG,
-    loadGuestbook,
-    moderate,
-    removeEntry,
+    ...gbMod,
+    ...dashboard,
     emptyL,
     lv,
     setLv,
@@ -541,7 +542,6 @@ onMounted(() => {
     previewSrc,
     areaLabel,
     viewSite,
-    dashStats,
     cms,
   };
 }

@@ -30,6 +30,38 @@ import type {
   SiteView,
 } from "@lg/core";
 import { apiBase } from "./api";
+import type { SectionsResponse } from "./sectionStats";
+
+export type GuestbookTab = "pending" | "approved" | "rejected";
+export type GuestbookCounts = Record<GuestbookTab, number>;
+
+export interface SourceStatus {
+  id: string;
+  label: string;
+  kind: "source" | "job" | "analytics";
+  configured: boolean;
+  mock: boolean;
+  schedule: string | null;
+  canSync: boolean;
+  state: "ok" | "error" | "never";
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+}
+
+export interface CmsStatusResponse {
+  sources: SourceStatus[];
+  guestbook: GuestbookCounts;
+  recentEdits: { id: number; savedAt: string; reason: string; label: string }[];
+}
+
+export interface SyncRunResponse {
+  sourceId: string;
+  ok: boolean;
+  mock: boolean;
+  syncedAt: string;
+  error?: string;
+}
 
 const TOKEN_KEY = STORAGE_KEY.cmsToken;
 
@@ -170,17 +202,43 @@ export const cms = {
       body: JSON.stringify({ range }),
     }).then(handle<ClearAnalyticsResponse>),
 
-  guestbook: () =>
-    fetch(`${apiBase}/api/cms/guestbook`, {
+  guestbook: (status?: GuestbookTab | "all") =>
+    fetch(`${apiBase}/api/cms/guestbook${status ? `?status=${status}` : ""}`, {
       headers: headers(false),
       credentials: "include",
-    }).then(handle<GuestbookListResponse>),
+    }).then(handle<GuestbookListResponse & { counts?: GuestbookCounts }>),
   moderate: (id: number, action: ModerationAction) =>
     fetch(`${apiBase}/api/cms/guestbook/${id}/${action}`, {
       method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: "{}",
+    }).then(handle<OkResponse>),
+  /** Hard delete. `keepalive` lets it finish while the page is unloading. */
+  deleteGuestbook: (id: number) =>
+    fetch(`${apiBase}/api/cms/guestbook/${id}`, {
+      method: "DELETE",
       headers: headers(false),
       credentials: "include",
+      keepalive: true,
     }).then(handle<OkResponse>),
+
+  status: () =>
+    fetch(`${apiBase}/api/cms/status`, { headers: headers(false), credentials: "include" }).then(
+      handle<CmsStatusResponse>,
+    ),
+  syncSource: (source: string) =>
+    fetch(`${apiBase}/api/cms/sync/${encodeURIComponent(source)}`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: "{}",
+    }).then(handle<SyncRunResponse>),
+  sections: (area: string, hours: number) =>
+    fetch(`${apiBase}/api/cms/sections?${new URLSearchParams({ area, hours: String(hours) })}`, {
+      headers: headers(false),
+      credentials: "include",
+    }).then(handle<SectionsResponse>),
 
   /** Content history — newest first. */
   revisions: () => fetch(`${apiBase}/api/cms/revisions`, { headers: headers(), credentials: "include" }).then(handle<RevisionListResponse>),

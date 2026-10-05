@@ -23,6 +23,7 @@ import {
 	writeLastPage,
 	type PaletteItem,
 } from "../../../composables/editorHelpers";
+import { STATS_RANGES, useSectionStats } from "../../../composables/useSectionStats";
 import CanvasHost from "../CanvasHost.vue";
 import CommandPalette from "../CommandPalette.vue";
 import LocalizedField from "../LocalizedField.vue";
@@ -70,6 +71,20 @@ const goPage = (id: string) => (previewArea.value = id as AreaId);
 const railView = ref<RailView>("structure");
 const paletteOpen = ref(false);
 const helpOpen = ref(false);
+
+const sectionStats = useSectionStats(previewArea);
+const statsProp = computed(() =>
+	sectionStats.on.value
+		? {
+				status: sectionStats.status.value,
+				stat: sectionStats.placement.value.strip,
+				moduleId: sectionStats.placement.value.moduleId,
+				perPage: sectionStats.placement.value.perPage,
+				visits: sectionStats.data.value?.visits ?? 0,
+				rangeLabel: STATS_RANGES.find((r) => r.hours === sectionStats.hours.value)?.label ?? "",
+			}
+		: null,
+);
 
 const editedArea = computed(
 	() => layoutAreas.value.find((a) => a.id === previewArea.value) ?? layoutAreas.value[0],
@@ -197,6 +212,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       :loading="canvasLoading"
       :untranslated="untranslated"
       :locale="locale"
+      :stats="statsProp"
+      @retry-stats="sectionStats.reload"
       @move="canvasMove"
       @select="canvasSelect"
       @deselect="showStructure"
@@ -217,6 +234,17 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         <select v-model="locale" class="lgedit-page-pick" aria-label="Content language" title="The language you are writing content in">
           <option value="en">Content: EN</option>
           <option value="de">Content: DE</option>
+        </select>
+        <button
+          class="lgedit-page-pick"
+          :aria-pressed="sectionStats.on.value"
+          title="Show views, median time and reach for this page"
+          @click="sectionStats.on.value = !sectionStats.on.value"
+        >
+          {{ sectionStats.on.value ? "Hide stats" : "Show stats" }}
+        </button>
+        <select v-if="sectionStats.on.value" v-model.number="sectionStats.hours.value" class="lgedit-page-pick" aria-label="Stats range">
+          <option v-for="r in STATS_RANGES" :key="r.hours" :value="r.hours">{{ r.label }}</option>
         </select>
         <button class="lgedit-page-pick" title="Command palette (Ctrl+K)" @click="paletteOpen = true">Ctrl+K</button>
         <button class="lgedit-save" @click="saveLayout">Save layout</button>
