@@ -29,6 +29,8 @@ import LocalizedField from "../LocalizedField.vue";
 import ModuleMenu from "../ModuleMenu.vue";
 import ModulePicker from "../ModulePicker.vue";
 import ShortcutSheet from "../ShortcutSheet.vue";
+import SyncedInspector from "../SyncedInspector.vue";
+import { SYNCED_INFO } from "../../../lib/cmsInspector";
 import { PANEL } from "./panelMap";
 
 const {
@@ -269,10 +271,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           </label>
           <button class="btn" @click="saveModuleMeta">Save heading</button>
 
+          <SyncedInspector v-if="selectedMeta && SYNCED_INFO[selectedMeta.kind]" :kind="selectedMeta.kind" class="railpanel" />
           <component :is="inspector" v-if="inspector" class="railpanel" />
-          <p v-else class="dim railnote">
-            This module renders synced data. There's nothing to edit by hand; it updates
-            itself on the next sync.
+          <p v-else-if="!selectedMeta || !SYNCED_INFO[selectedMeta.kind]" class="dim railnote">
+            Nothing to edit here beyond the heading above.
           </p>
         </template>
 

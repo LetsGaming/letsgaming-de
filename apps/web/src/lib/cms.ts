@@ -103,8 +103,58 @@ function returnToQuery(): string {
   return `?returnTo=${encodeURIComponent(pathname + search + hash)}`;
 }
 
+export interface CmsSourceStatus {
+  id: string;
+  label: string;
+  kind: "source" | "job" | "analytics";
+  configured: boolean;
+  mock: boolean;
+  schedule: string | null;
+  canSync: boolean;
+  state: "ok" | "error" | "never";
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+}
+
+export interface CmsStatusResponse {
+  sources: CmsSourceStatus[];
+  guestbook: { pending: number; approved: number; rejected: number };
+  recentEdits: { id: number; label: string; [k: string]: unknown }[];
+}
+
+export interface SyncRunResult {
+  sourceId: string;
+  ok: boolean;
+  mock: boolean;
+  syncedAt: string;
+  error?: string;
+}
+
+export interface ActivityNameRow {
+  name: string;
+  category: string;
+  sessions: number;
+}
+
 export const cms = {
   base: apiBase,
+
+  status: () =>
+    fetch(`${apiBase}/api/cms/status`, { headers: headers(false), credentials: "include" }).then(
+      handle<CmsStatusResponse>,
+    ),
+  syncSource: (source: string) =>
+    fetch(`${apiBase}/api/cms/sync/${encodeURIComponent(source)}`, {
+      method: "POST",
+      headers: headers(),
+      credentials: "include",
+      body: "{}",
+    }).then(handle<SyncRunResult>),
+  activityNames: () =>
+    fetch(`${apiBase}/api/cms/activity-names`, { headers: headers(false), credentials: "include" }).then(
+      handle<{ names: ActivityNameRow[] }>,
+    ),
 
   me: () =>
     fetch(`${apiBase}/api/cms/me`, { headers: headers(false), credentials: "include" }).then(
