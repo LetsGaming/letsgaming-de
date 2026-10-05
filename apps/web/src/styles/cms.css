@@ -13,7 +13,17 @@
  * Spacing (padding/margin/gap) uses --sp-*, radii use --r-*, and fills-on-accent
  * use --on-accent; every value equals the pixel it replaced. */
 
+/* Reserve the scrollbar's width on every panel so a long page can't shift the
+   centered layout sideways relative to a short one. */
+html:has(.cms) {
+  scrollbar-gutter: stable;
+}
+
 .cms {
+  --fs-help: 14px;
+  /* Pulled toward --ink from --muted: 5.5:1 or better on the card surfaces in
+     both themes, where --muted alone drops under 4.5:1 on the raised ones. */
+  --help-ink: color-mix(in srgb, var(--muted) 78%, var(--ink));
   max-width: 1120px;
   margin: 0 auto;
   padding: var(--sp-20) var(--sp-18) 80px;
@@ -85,7 +95,7 @@
 }
 .cms .side {
   position: sticky;
-  top: 16px;
+  top: var(--sp-20);
   display: flex;
   flex-direction: column;
   gap: var(--sp-14);
@@ -132,8 +142,17 @@
   background: var(--purple-wash);
 }
 .cms .side .nav button.on {
-  background: var(--purple);
+  background: var(--live-solid);
   color: var(--on-accent);
+}
+/* The active fill already marks the current item, so a pointer click shows no
+   ring; keyboard focus keeps one, drawn inside the fill. */
+.cms .side .nav button:focus:not(:focus-visible) {
+  outline: none;
+}
+.cms .side .nav button.on:focus-visible {
+  outline-color: var(--on-accent);
+  outline-offset: -3px;
 }
 .cms .ndot {
   margin-left: auto;
@@ -168,14 +187,19 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-12);
+  height: 52px;
+  box-sizing: border-box;
   margin-bottom: var(--sp-18);
-  padding-bottom: var(--sp-12);
   border-bottom: 1px solid var(--line);
 }
 .cms .topbar h2 {
   font-family: var(--f-d);
   font-size: 20px;
   color: var(--ink-strong);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cms .topact {
   display: flex;
@@ -299,6 +323,21 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--ink);
+}
+/* The one help-text style: explanatory copy under a heading or beside a control.
+   `:is()` takes the heaviest selector inside it, so this out-ranks each class's
+   own earlier size and color without per-class overrides. */
+.cms .help,
+.cms :is(.note, .editnote, .railnote, .lgedit-hint, .filternote, p.muted) {
+  font-size: var(--fs-help);
+  line-height: 1.5;
+}
+.cms .help,
+.cms :is(.editnote, .railnote, .lgedit-hint, .filternote, p.muted) {
+  color: var(--help-ink);
+}
+.cms .help {
+  margin: 0;
 }
 /* `:not(.lgedit-page *)` — the canvas, and only the canvas.
    The editor renders the site's real sections, and `.cms .card` (0,2,0) would
@@ -881,20 +920,49 @@
   color: var(--muted);
   font-weight: 500;
 }
-.cms .clearbar {
+.cms .dangerzone:not(.lgedit-page *) {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+}
+.cms .dangerzone h3 {
+  color: var(--danger-ink);
+}
+.cms .clearrow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-8);
-  margin-top: var(--sp-14);
+}
+.cms .clearconfirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-8);
   padding-top: var(--sp-12);
   border-top: 1px solid var(--line);
-  font-family: var(--f-m);
-  font-size: 12px;
+}
+.cms .clearconfirm input {
+  max-width: 220px;
+}
+.cms .clearactions {
+  display: flex;
+  gap: var(--sp-8);
+}
+.cms .btn.dangerbtn {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+.cms .btn.dangerbtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cms .clearbtn.sel {
+  color: var(--ink);
+  border-color: var(--danger);
 }
 .cms .clearbtn {
   font-family: var(--f-m);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   background: var(--card);
   border: 1px solid var(--line);
@@ -907,8 +975,8 @@
   border-color: var(--purple-br);
 }
 .cms .clearbtn.danger {
-  color: var(--coral);
-  border-color: color-mix(in srgb, var(--coral) 40%, var(--line));
+  color: var(--danger-ink);
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
 }
 .cms .clearbtn:disabled {
   opacity: 0.5;

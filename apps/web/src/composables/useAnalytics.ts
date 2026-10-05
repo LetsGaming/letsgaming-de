@@ -465,7 +465,6 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
   }
 
   async function clearRange(range: ClearRangeId, label: string) {
-    if (!confirm(`Delete analytics for ${label}? This can't be undone.`)) return;
     clearing.value = true;
     // The endpoint answers with how many rows it removed, and that number is the
     // only confirmation an irreversible delete gets. It used to be discarded,
