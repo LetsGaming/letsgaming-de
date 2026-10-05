@@ -1,4 +1,11 @@
-import type { AnalyticsDimension } from "@lg/core";
+import {
+  PAIR_KEY_CAP_PER_HOUR,
+  pairDimension,
+  pairSide,
+  type AnalyticsDimension,
+  type PairDimension,
+  type PairedDimension,
+} from "@lg/core";
 import type { DB } from "./database.js";
 import { asNumber, asText, mapRow, mapRows, SINGLETON_ID, transact, type Row } from "./row-mapper.js";
 
@@ -13,10 +20,13 @@ export interface AnalyticsHit {
   key: string;
 }
 
+/** A dimension the store holds: a counted one, or a pair of page-view dimensions. */
+export type StoredDimension = AnalyticsDimension | PairDimension;
+
 /** One engagement hit, bucketed by UTC hour ("YYYY-MM-DDTHH"). */
 export interface HourlyHit {
   bucket: string;
-  dimension: AnalyticsDimension;
+  dimension: StoredDimension;
   key: string;
 }
 
@@ -56,6 +66,16 @@ export function analyticsRepo(db: DB) {
      ON CONFLICT(bucket, dimension, key) DO UPDATE SET count = count + 1`,
   );
 
+  // A pair is written only if its key already exists this hour or the hour still
+  // has room under the cap; see PAIR_KEY_CAP_PER_HOUR.
+  const bumpPair = db.prepare(
+    `INSERT INTO analytics_hourly (bucket, dimension, key, count)
+     SELECT ?1, ?2, ?3, 1
+     WHERE EXISTS (SELECT 1 FROM analytics_hourly WHERE bucket = ?1 AND dimension = ?2 AND key = ?3)
+        OR (SELECT COUNT(*) FROM analytics_hourly WHERE bucket = ?1 AND dimension = ?2) < ?4
+     ON CONFLICT(bucket, dimension, key) DO UPDATE SET count = count + 1`,
+  );
+
   return {
     /** Apply a batch of day-bucketed hits atomically (log-derived). */
     record(hits: AnalyticsHit[]) {
@@ -67,8 +87,46 @@ export function analyticsRepo(db: DB) {
     /** Apply a batch of hour-bucketed engagement hits atomically. */
     recordHourly(hits: HourlyHit[]) {
       transact(db, () => {
-        for (const h of hits) bumpHour.run(h.bucket, h.dimension, h.key);
+        for (const h of hits) {
+          if (h.dimension.startsWith("x:")) bumpPair.run(h.bucket, h.dimension, h.key, PAIR_KEY_CAP_PER_HOUR);
+          else bumpHour.run(h.bucket, h.dimension, h.key);
+        }
       });
+    },
+
+    /**
+     * Counts of `target` over page views that also had one of `keys` as their
+     * `filter` value, from the pair counters. The pair stores both values in one
+     * key, so each side is cut out of it with `instr` on the separator.
+     */
+    topCross(
+      filter: PairedDimension,
+      keys: readonly string[],
+      target: PairedDimension,
+      fromB: string,
+      toB: string,
+      limit = 1000,
+    ): AnalyticsRow[] {
+      if (keys.length === 0 || filter === target) return [];
+      const pair = pairDimension(filter, target);
+      const [first, second] = [
+        `substr(key, 1, instr(key, char(1)) - 1)`,
+        `substr(key, instr(key, char(1)) + 1)`,
+      ];
+      const [filterExpr, targetExpr] = pairSide(pair, filter) === "a" ? [first, second] : [second, first];
+      return mapRows(
+        db.prepare(
+          `SELECT ${targetExpr} AS key, SUM(count) AS count FROM analytics_hourly
+           WHERE dimension = ? AND bucket BETWEEN ? AND ? AND ${filterExpr} IN (${keys.map(() => "?").join(",")})
+           GROUP BY ${targetExpr} ORDER BY count DESC LIMIT ?`,
+        ),
+        toAnalyticsRow,
+        pair,
+        fromB,
+        toB,
+        ...keys,
+        limit,
+      );
     },
 
     /**
@@ -132,6 +190,17 @@ export function analyticsRepo(db: DB) {
         to,
         limit,
       );
+    },
+
+    /** Exact total of a dimension over an inclusive hour-bucket range (no top-N cut-off). */
+    sumHourly(dimension: StoredDimension, fromB: string, toB: string): number {
+      const row = db
+        .prepare(
+          `SELECT COALESCE(SUM(count), 0) AS total FROM analytics_hourly
+           WHERE dimension = ? AND bucket BETWEEN ? AND ?`,
+        )
+        .get(dimension, fromB, toB) as { total: number | bigint };
+      return Number(row.total);
     },
 
     /** Total counts per day for a log dimension (coarse trend line). */
@@ -227,7 +296,7 @@ export function analyticsRepo(db: DB) {
      * Beacon dimensions are never passed here — they come from the browser, not
      * the log, and re-reading a log cannot rebuild them.
      */
-    clearDimensions(dimensions: readonly AnalyticsDimension[]): number {
+    clearDimensions(dimensions: readonly StoredDimension[]): number {
       let removed = 0;
       transact(db, () => {
         for (const table of ["analytics_hourly", "analytics_daily"] as const) {

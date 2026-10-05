@@ -33,7 +33,7 @@ const coldModuleCount = computed(
 const showColdStart = computed(() => coldModuleCount.value >= COLD_START_THRESHOLD);
 
 onMounted(() => {
-  useSiteState().initSite(props.site.nav);
+  useSiteState().initSite(props.site.nav, props.area);
   // Deep link within this area. Cross-area hashes don't need handling any more:
   // the area is the URL, so the server already sent the right page.
   const target = decodeURIComponent(window.location.hash.replace(/^#/, ""));

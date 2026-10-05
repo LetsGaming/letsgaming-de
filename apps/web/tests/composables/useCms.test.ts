@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { cms } from "../../src/lib/cms";
+import { METRIC_SOURCES } from "@lg/core";
 import type { AnalyticsChart, AnalyticsResponse, Localized, SiteContent, SiteView } from "@lg/core";
 import { useCms } from "../../src/composables/useCms";
 
@@ -125,6 +126,9 @@ const emptyAnalytics = (): AnalyticsResponse => ({
   devices: [],
   bots: [],
   probes: [],
+  visits: { total: 0, previous: null, source: "script" },
+  pageviews: { total: 0, previous: null, source: "log" },
+  metricSources: METRIC_SOURCES,
   referrerRules: [],
   chart: emptyChart(),
   engagement: {

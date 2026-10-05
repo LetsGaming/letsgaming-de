@@ -1,6 +1,6 @@
 import { AREA, DEFAULT_THEME, isTheme, otherTheme, STORAGE_KEY } from "@lg/core";
 import type { Locale, NavView, Theme } from "@lg/core";
-import { initTracking, trackClick } from "~/lib/track";
+import { initTracking, trackClick, trackSwitch } from "~/lib/track";
 
 /**
  * Client-side site preferences — currently just the theme.
@@ -43,13 +43,17 @@ export function useSiteState() {
    * no-flash script already applied rather than re-deciding, so the two can't
    * disagree mid-hydration. Starts tracking exactly once.
    */
-  function initSite(nav: NavView[]): void {
+  function initSite(nav: NavView[], area?: string): void {
     if (!import.meta.client) return;
     const applied = document.documentElement.dataset.theme;
     theme.value = isTheme(applied) ? applied : DEFAULT_THEME;
+    const section = area ?? nav[0]?.id ?? AREA.home;
     if (!trackingStarted.value) {
-      initTracking(nav[0]?.id ?? AREA.home, theme.value);
+      initTracking(section, theme.value);
       trackingStarted.value = true;
+    } else {
+      // A client-side route change mounts the next area: close out the one before.
+      trackSwitch(section);
     }
   }
 

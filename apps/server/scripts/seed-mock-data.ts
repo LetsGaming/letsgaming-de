@@ -37,6 +37,9 @@ import {
   DWELL_BUCKETS,
   GuestbookStatus,
   LAUNCH_NAV,
+  PAIRED_DIMENSIONS,
+  pairEntries,
+  type PairedDimension,
   SCROLL_DEPTHS,
   THEMES,
   VIEWPORT_BUCKETS,
@@ -208,7 +211,7 @@ function seedMusicPlays(store: Store): void {
  */
 function seedAnalytics(store: Store): void {
   const sections = LAUNCH_NAV.filter((n) => !n.hidden).map((n) => n.id);
-  const paths = ["/", "/code", "/life", "/about", "/datenschutz"];
+  const paths = ["/", "/code", "/life", "/about", "/datenschutz", "/docs", "/docs/api", "/docs/guides/extending", "/docs/concepts/the-cms"];
   const referrers = [
     "direct", "direct", "direct",
     "github.com", "www.reddit.com", "news.ycombinator.com",
@@ -256,12 +259,18 @@ function seedAnalytics(store: Store): void {
       // Traffic: page views plus their referrer/browser/os/device split.
       const views = Math.round(int(1, 6) * activity * (0.5 + rand()));
       for (let i = 0; i < views; i++) {
-        push(hits, bucket, "path", pick(paths));
+        const view: Partial<Record<PairedDimension, string>> = {
+          path: pick(paths),
+          browser: pick(browsers),
+          os: pick(osList),
+          device: pick(devices),
+        };
+        if (rand() < 0.7) view.referrer = pick(referrers);
+        for (const dimension of PAIRED_DIMENSIONS) {
+          if (view[dimension]) push(hits, bucket, dimension, view[dimension]);
+        }
+        for (const pair of pairEntries(view)) hits.push({ bucket, ...pair });
         pageviews++;
-        if (rand() < 0.7) push(hits, bucket, "referrer", pick(referrers));
-        push(hits, bucket, "browser", pick(browsers));
-        push(hits, bucket, "os", pick(osList));
-        push(hits, bucket, "device", pick(devices));
       }
 
       // Engagement: beacon-derived visits across the SPA's sections.
