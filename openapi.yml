@@ -588,6 +588,10 @@ paths:
         only the fields sent. `settings` is accepted for `featured` modules only (400 otherwise);
         unknown keys are dropped, `count` is clamped to 1..3 and `repos` is trimmed,
         de-duplicated and capped at 3.
+
+        `heading` and `note` merge per locale: a non-empty locale is set, and an empty string
+        for a non-English locale removes that locale. English is required, so an empty `en`
+        keeps the stored English. A value with every locale empty clears the field.
       requestBody:
         required: true
         content:
