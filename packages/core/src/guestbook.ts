@@ -28,7 +28,7 @@ export function toGuestbookStatus(value: unknown): GuestbookStatus {
 }
 
 /**
- * The two moderation transitions, as URL segments (`POST …/:id/:action`).
+ * The moderation transitions, as URL segments (`POST …/:id/:action`).
  *
  * Distinct from the status they produce ("approve" the verb vs "approved" the
  * state) and easy to mix up, which is why both spellings and the mapping between
@@ -39,12 +39,15 @@ export function toGuestbookStatus(value: unknown): GuestbookStatus {
 export const MODERATION_ACTION = {
   Approve: "approve",
   Reject: "reject",
+  /** Approved -> pending: pulls a published entry back into the queue. */
+  Unapprove: "unapprove",
 } as const;
 export type ModerationAction = (typeof MODERATION_ACTION)[keyof typeof MODERATION_ACTION];
 
 const ACTION_RESULT: Record<ModerationAction, GuestbookStatus> = {
   [MODERATION_ACTION.Approve]: GuestbookStatus.Approved,
   [MODERATION_ACTION.Reject]: GuestbookStatus.Rejected,
+  [MODERATION_ACTION.Unapprove]: GuestbookStatus.Pending,
 };
 
 /** The status an action produces, or null if the value isn't an action at all. */

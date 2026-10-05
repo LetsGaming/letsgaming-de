@@ -10,6 +10,10 @@ import {
 } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { ServerEnv } from "../env.js";
+import { recordOutcome } from "./tracked.js";
+
+/** The `sync_status` row for the Lanyard poll. */
+const SAMPLER_JOB = "presence";
 
 /**
  * Poll Discord presence and accumulate what was played.
@@ -54,11 +58,13 @@ export class PresenceSampler {
         `https://api.lanyard.rest/v1/users/${encodeURIComponent(this.env.discordUserId)}`,
         { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) },
       );
-      if (!res.ok) return 0;
+      if (!res.ok) throw new Error(`Lanyard answered HTTP ${res.status}`);
       const body = (await res.json()) as { success?: boolean; data?: LanyardData };
-      if (!body.success || !body.data) return 0;
+      if (!body.success || !body.data) throw new Error("Lanyard returned no data");
       data = body.data;
-    } catch {
+      recordOutcome(this.store, SAMPLER_JOB);
+    } catch (err) {
+      recordOutcome(this.store, SAMPLER_JOB, err instanceof Error ? err.message : String(err));
       // A poll that fails is a poll that didn't happen. There's nothing to write
       // and nothing to correct later — an outage is a gap in the record, and the
       // record says so by being a floor.

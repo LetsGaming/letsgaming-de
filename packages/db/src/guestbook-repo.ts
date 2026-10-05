@@ -71,6 +71,36 @@ export function guestbookRepo(db: DB) {
       );
     },
 
+    /** One status's entries: pending most-suspicious first, the others newest first. */
+    listByStatus(status: GuestbookStatus, limit = 200): GuestbookEntry[] {
+      return mapRows(
+        db.prepare(
+          `SELECT * FROM guestbook WHERE status = ?
+           ORDER BY CASE WHEN status = ? THEN score ELSE 0 END DESC, created_at DESC LIMIT ?`,
+        ),
+        toEntry,
+        status,
+        GuestbookStatus.Pending,
+        limit,
+      );
+    },
+
+    /** Entry count per status; every status is present, zero when empty. */
+    countsByStatus(): Record<GuestbookStatus, number> {
+      const counts = {
+        [GuestbookStatus.Pending]: 0,
+        [GuestbookStatus.Approved]: 0,
+        [GuestbookStatus.Rejected]: 0,
+      } as Record<GuestbookStatus, number>;
+      for (const r of mapRows(
+        db.prepare("SELECT status, COUNT(*) AS n FROM guestbook GROUP BY status"),
+        (row) => ({ status: toGuestbookStatus(row.status), n: asNumber(row.n) }),
+      )) {
+        counts[r.status] += r.n;
+      }
+      return counts;
+    },
+
     /** Count entries awaiting a decision (for a CMS badge). */
     countPending(): number {
       return (

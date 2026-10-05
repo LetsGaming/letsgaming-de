@@ -34,6 +34,7 @@ import {
   sanitizeWrappedSettings,
   sanitizeMusicSettings,
   sanitizePlaytimeSettings,
+  GuestbookStatus,
   statusForAction,
   type Locale,
 } from "@lg/core";
@@ -450,12 +451,25 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
 
   // ── guestbook moderation ───────────────────────────────────────────────────
   // The queue: pending first (most-suspicious first), then approved/rejected.
-  app.get("/api/cms/guestbook", guard, async () => ({
-    entries: store.guestbook.listForModeration(),
-    pending: store.guestbook.countPending(),
-  }));
+  // `?status=pending|approved|rejected` narrows the list; `all` or no filter is the
+  // combined queue. `counts` is always the full per-status tally, whatever the filter.
+  app.get<{ Querystring: { status?: string } }>("/api/cms/guestbook", guard, async (req) => {
+    const filter = req.query.status;
+    if (filter !== undefined && filter !== "all" && !Object.values(GuestbookStatus).includes(filter as GuestbookStatus)) {
+      throw badRequest("Invalid status filter.");
+    }
+    const counts = store.guestbook.countsByStatus();
+    return {
+      entries:
+        filter === undefined || filter === "all"
+          ? store.guestbook.listForModeration()
+          : store.guestbook.listByStatus(filter as GuestbookStatus),
+      pending: counts.pending,
+      counts,
+    };
+  });
 
-  // Approve or reject one entry. Only these two transitions are allowed.
+  // Approve, reject or unapprove (back to pending) one entry.
   app.post<{ Params: { id: string; action: string } }>(
     "/api/cms/guestbook/:id/:action",
     guard,

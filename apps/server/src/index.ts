@@ -4,6 +4,7 @@ import { getStore } from "./store.js";
 import { PRESENCE_SAMPLE_SCHEDULE, DEFAULT_TIMEZONE } from "@lg/core";
 import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
+import { tracked } from "./sync/tracked.js";
 import { resolveGameMetadata } from "./sync/game-metadata.js";
 import { resolveGameImages } from "./sync/game-images.js";
 import { ingestLog } from "./analytics/ingest.js";
@@ -33,8 +34,6 @@ const env = loadEnv();
 process.env.TZ ??= DEFAULT_TIMEZONE;
 const store = getStore(env.dbPath);
 
-const app = await buildApp(store, env);
-
 // The sync worker lives in-process (§10: one container for API + CMS + sync).
 const runner = new SyncRunner(
   store,
@@ -47,6 +46,7 @@ const runner = new SyncRunner(
   (msg) => app.log.info(msg),
   env.retainHourlyDays,
 );
+const app = await buildApp(store, env, { runner });
 runner.start();
 
 // Presence is polled on its own schedule, not as a source: a source's newest
@@ -63,7 +63,7 @@ let rawgTask: ReturnType<typeof cron.schedule> | undefined;
 if (env.rawg) {
   const rawg = env.rawg;
   const sweep = () =>
-    resolveGameMetadata(store, rawg, (m) => app.log.info(m)).catch((e) =>
+    tracked(store, "game-metadata", () => resolveGameMetadata(store, rawg, (m) => app.log.info(m))).catch((e) =>
       app.log.error(`[rawg] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
     );
   void sweep(); // once at boot, then hourly
@@ -74,7 +74,7 @@ if (env.rawg) {
 // Discord-hosted game images (activity art, then the application icon). Only
 // games without a resolved image are looked up, and a miss waits a week.
 const sweepGameImages = () =>
-  resolveGameImages(store, (m) => app.log.info(m)).catch((e) =>
+  tracked(store, "game-images", () => resolveGameImages(store, (m) => app.log.info(m))).catch((e) =>
     app.log.error(`[game-images] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
   );
 void sweepGameImages();
