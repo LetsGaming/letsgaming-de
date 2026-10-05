@@ -164,13 +164,6 @@ export const cms = {
     fetch(`${apiBase}/api/cms/github-repos`, { headers: headers(false), credentials: "include" }).then(
       handle<{ repos: { name: string; description?: string; language?: string; pinned: boolean }[] }>,
     ),
-  saveReferrerRules:(rules: { match: string; label: string }[]) =>
-    fetch(`${apiBase}/api/cms/referrer-rules`, {
-      method: "PUT",
-      headers: headers(true),
-      credentials: "include",
-      body: JSON.stringify({ rules }),
-    }).then(handle<OkResponse>),
 
   analytics: (
     opts: {
@@ -277,12 +270,14 @@ export const cms = {
   reorderGallery: (module: string, ids: string[]) =>
     cms.put("gallery-order", { module, ids }),
 
-  put: (path: string, body: unknown) =>
+  /** `keepalive` lets a flush on page hide finish after the page is gone. */
+  put: (path: string, body: unknown, opts: { keepalive?: boolean } = {}) =>
     fetch(`${apiBase}/api/cms/${path}`, {
       method: "PUT",
       headers: headers(),
       credentials: "include",
       body: JSON.stringify(body),
+      keepalive: opts.keepalive ?? false,
     }).then(handle<OkResponse>),
 
   del: (path: string) =>

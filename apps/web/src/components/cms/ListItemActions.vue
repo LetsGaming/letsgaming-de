@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T">
 /**
- * The per-row controls of an editable CMS list: move up, move down, delete, save.
+ * The per-row controls of an editable CMS list: move up, move down, delete.
  *
  * Three panels (Now, Links, Hobbies) carried this same four-button row, identical
  * down to the arrow glyphs and the `:disabled` bounds arithmetic — the classic
@@ -17,7 +17,6 @@ interface EditableList<T> {
   items: { value: T[] };
   moveTo: (from: number, to: number) => void;
   remove: (index: number) => void;
-  save: (item: T) => void;
 }
 
 const props = defineProps<{
@@ -39,5 +38,4 @@ const props = defineProps<{
     @click="props.list.moveTo(index, index + 1)"
   >↓</button>
   <button class="link danger" @click="props.list.remove(index)">delete</button>
-  <button class="btn" @click="props.list.save(props.item)">Save</button>
 </template>

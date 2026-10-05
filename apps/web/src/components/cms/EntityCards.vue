@@ -19,7 +19,6 @@ interface EditableList<I extends ListEntity> {
   add: () => void;
   moveTo: (from: number, to: number) => void;
   remove: (index: number) => void;
-  save: (item: I) => void;
 }
 
 defineProps<{

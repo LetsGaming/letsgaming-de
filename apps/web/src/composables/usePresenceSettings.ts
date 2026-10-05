@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { type Autosave, bindAutosave } from "./useAutosave";
 import { PRESENCE_CATEGORIES, RETENTION_OPTIONS, type PresenceCategory } from "@lg/core";
 
 /**
@@ -27,15 +28,11 @@ const PRESENCE_COPY: Record<PresenceCategory, { label: string; hint: string }> =
 const PRESENCE_OPTIONS: { key: PresenceCategory; label: string; hint: string }[] =
   PRESENCE_CATEGORIES.map((key) => ({ key, ...PRESENCE_COPY[key] }));
 
-/** Shared write helpers the settings slice needs from the parent CMS. */
 export interface PresenceDeps {
-  /** Run a mutation with the CMS's error/toast handling. */
-  guarded: (fn: () => Promise<unknown>) => Promise<void>;
-  /** The CMS API client (its `put` takes a resource + body). */
-  cms: { put: (resource: string, body: unknown) => Promise<unknown> };
+  autosave: Autosave;
 }
 
-export function usePresenceSettings({ guarded, cms }: PresenceDeps) {
+export function usePresenceSettings({ autosave }: PresenceDeps) {
   // DISPLAY axis: what the live widget reveals.
   const presenceShow = ref<PresenceCategory[]>([]);
   function togglePresence(key: PresenceCategory) {
@@ -58,15 +55,16 @@ export function usePresenceSettings({ guarded, cms }: PresenceDeps) {
   // per line — the panel splits/joins so the ref stays a clean string[].
   const presenceHidden = ref<string[]>([]);
 
-  const savePresence = () =>
-    guarded(() =>
-      cms.put("presence", {
-        show: presenceShow.value,
-        sample: presenceSample.value,
-        retentionDays: presenceRetention.value,
-        hidden: presenceHidden.value,
-      }),
-    );
+  const confirm = bindAutosave(autosave, {
+    path: "presence",
+    label: "Edit presence settings",
+    source: () => ({
+      show: presenceShow.value,
+      sample: presenceSample.value,
+      retentionDays: presenceRetention.value,
+      hidden: presenceHidden.value,
+    }),
+  });
 
   /** Load the four fields from the site content the CMS fetched. */
   function hydrate(p: {
@@ -79,6 +77,7 @@ export function usePresenceSettings({ guarded, cms }: PresenceDeps) {
     presenceSample.value = p?.sample ?? p?.show ?? [];
     presenceRetention.value = p?.retentionDays ?? null;
     presenceHidden.value = p?.hidden ?? [];
+    confirm();
   }
 
   return {
@@ -90,7 +89,6 @@ export function usePresenceSettings({ guarded, cms }: PresenceDeps) {
     presenceHidden,
     togglePresence,
     toggleSample,
-    savePresence,
     hydratePresence: hydrate,
   };
 }

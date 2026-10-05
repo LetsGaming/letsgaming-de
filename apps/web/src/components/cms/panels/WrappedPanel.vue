@@ -13,7 +13,6 @@ const {
   wrappedForWeeks,
   wrappedFromDate,
   wrappedTopCount,
-  saveWrapped,
 } = useCmsContext();
 
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
@@ -112,7 +111,6 @@ const nextWindow = computed(() => {
       <p class="help wsummary">{{ summary }}</p>
       <p v-if="nextWindow" class="help wnext">{{ nextWindow }}</p>
 
-      <div class="actions"><button class="btn" @click="saveWrapped">Save Wrapped</button></div>
     </div>
   </section>
 </template>

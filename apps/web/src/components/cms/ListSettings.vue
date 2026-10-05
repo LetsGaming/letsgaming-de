@@ -15,9 +15,7 @@ const props = defineProps<{
   bounds: { min: number; max: number };
   /** Implementation detail for the "?" next to the row cap. */
   capDetail: string;
-  saveLabel: string;
 }>();
-const emit = defineEmits<{ save: [] }>();
 
 const initialCount = defineModel<number>("initialCount", { required: true });
 const maxCount = defineModel<number>("maxCount", { required: true });
@@ -58,7 +56,6 @@ const overMax = computed(() => initialCount.value > maxCount.value);
     </div>
     <p v-if="overMax" class="help lsnote">“Always show” is above the max, so it is capped to the max on save.</p>
     <p class="help lsnote">{{ summary }}</p>
-    <div class="actions"><button class="btn" @click="emit('save')">{{ saveLabel }}</button></div>
   </div>
 </template>
 

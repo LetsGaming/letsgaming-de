@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { AuthError } from "../lib/cms";
+import { type Autosave, bindAutosave } from "./useAutosave";
 import {
   ANALYTICS_DIMENSIONS,
   DWELL_BUCKETS,
@@ -204,7 +205,6 @@ export interface AnalyticsDeps {
   /** Which panel is open — the poll runs only while this is "analytics". */
   tab: Ref<string>;
   cms: {
-    saveReferrerRules: (rules: ReferrerRule[]) => Promise<unknown>;
     analytics: (opts: {
       hours?: number;
       tz?: string;
@@ -219,12 +219,13 @@ export interface AnalyticsDeps {
   authed: { value: boolean };
   flash: (msg: string) => void;
   guarded: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  autosave: Autosave;
   /** The CMS hash's query string, and how to write it — see `UrlFilters`. */
   params: Ref<URLSearchParams>;
   setParams: (next: URLSearchParams, push?: boolean) => void;
 }
 
-export function useAnalytics({ tab, cms, authed, flash, guarded, params, setParams }: AnalyticsDeps) {
+export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, params, setParams }: AnalyticsDeps) {
   const analytics = ref<AnalyticsResponse | null>(null);
 
   /**
@@ -351,8 +352,9 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
       // Hydrate the editor from what's actually in effect, unless the owner is
       // mid-edit — clobbering half-typed rules on a background poll would be its
       // own small betrayal.
-      if (!savingRules.value && !referrerRules.value.some((r) => !r.match || !r.label)) {
+      if (!autosave.hasUnsaved() && !referrerRules.value.some((r) => !r.match || !r.label)) {
         referrerRules.value = result.referrerRules.map((r) => ({ ...r }));
+        confirmRules();
       }
       analyticsAt.value = Date.now();
     } catch (e) {
@@ -442,27 +444,28 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
    * this is where you find out you need one: an unrecognised host showing up in
    * the list is the prompt to name it.
    *
-   * Saving refetches, since the grouping happens server-side on read — which is
+   * Saving refetches the analytics, since the grouping happens server-side on read — which is
    * also why a new rule relabels traffic that arrived before it existed.
    */
   const referrerRules = ref<ReferrerRule[]>([]);
-  const savingRules = ref(false);
+
+  /** Only complete rules are sent; a half-typed row stays local until it has both fields. */
+  const confirmRules = bindAutosave(autosave, {
+    path: "referrer-rules",
+    label: "Edit referrer rules",
+    source: () => ({
+      rules: referrerRules.value
+        .filter((r) => r.match.trim() && r.label.trim())
+        .map((r) => ({ match: r.match.trim(), label: r.label.trim() })),
+    }),
+    after: () => void loadAnalytics({ quiet: true }),
+  });
 
   function addReferrerRule() {
     referrerRules.value.push({ match: "", label: "" });
   }
   function removeReferrerRule(i: number) {
     referrerRules.value.splice(i, 1);
-  }
-  async function saveReferrerRules() {
-    savingRules.value = true;
-    await guarded(async () => {
-      const rules = referrerRules.value.filter((r) => r.match.trim() && r.label.trim());
-      await cms.saveReferrerRules(rules);
-      referrerRules.value = rules;
-      await loadAnalytics();
-    }, "Referrer rules saved.");
-    savingRules.value = false;
   }
 
   /** Switching clocks re-groups day columns server-side, so it's a refetch. */
@@ -755,10 +758,8 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
     METRIC_SOURCES,
     medianVisitLength,
     referrerRules,
-    savingRules,
     addReferrerRule,
     removeReferrerRule,
-    saveReferrerRules,
     metricKeys,
     RANGES,
     CLEARS,

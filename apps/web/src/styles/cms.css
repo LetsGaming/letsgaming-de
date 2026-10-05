@@ -1499,7 +1499,6 @@ body.is-dragging .cms .glist .gthumb {
   font-size: 12px;
 }
 .cms .lgedit-page-pick,
-.lgedit-save,
 .lgedit-close {
   font: inherit;
   font-size: 13px;
@@ -1510,11 +1509,7 @@ body.is-dragging .cms .glist .gthumb {
   color: var(--ink);
   cursor: pointer;
 }
-.cms .lgedit-save {
-  border-color: var(--ink);
-}
-.cms .lgedit-close:hover,
-.cms .lgedit-save:hover {
+.cms .lgedit-close:hover {
   border-color: var(--ink);
 }
 .cms .lgedit-body {
@@ -2039,4 +2034,69 @@ body.is-dragging .cms .glist .gthumb {
   display: flex;
   flex-direction: column;
   gap: var(--sp-10);
+}
+
+/* save status: undo/redo and the single autosave chip */
+.cms .savebar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.cms .savebar-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--r-s);
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.cms .savebar-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cms .savechip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 9.5rem;
+  height: 28px;
+  font-size: 13px;
+  white-space: nowrap;
+  border-radius: var(--r-s);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.cms .savechip[data-state="saving"] {
+  color: var(--ink);
+}
+.cms .savechip[data-state="error"] {
+  border-color: var(--danger);
+  color: var(--danger-ink);
+}
+.cms .savechip-retry {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.cms .saveerr {
+  position: absolute;
+  top: calc(100% + var(--sp-6));
+  right: 0;
+  z-index: 5;
+  max-width: 22rem;
+  padding: var(--sp-6) var(--sp-10);
+  font-size: 13px;
+  border-radius: var(--r-s);
+  border: 1px solid var(--danger);
+  background: var(--card);
+  color: var(--danger-ink);
 }

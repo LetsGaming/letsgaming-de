@@ -30,6 +30,7 @@ import LocalizedField from "../LocalizedField.vue";
 import ModuleMenu from "../ModuleMenu.vue";
 import ModulePicker from "../ModulePicker.vue";
 import ShortcutSheet from "../ShortcutSheet.vue";
+import SaveBar from "../SaveBar.vue";
 import SyncedInspector from "../SyncedInspector.vue";
 import { SYNCED_INFO } from "../../../lib/cmsInspector";
 import { PANEL } from "./panelMap";
@@ -62,10 +63,9 @@ const {
 	pickL,
 	previewArea,
 	refreshCanvas,
-	saveLayout,
-	saveModuleMeta,
 	selectedPanel,
 	setModuleArea,
+	undo,
 	viewSite,
 } = useCmsContext();
 
@@ -167,7 +167,8 @@ const paletteItems = computed<PaletteItem[]>(() => [
 		group: "Module" as const,
 		run: () => selectFromTree(m.id),
 	})),
-	{ id: "act:save", label: "Save layout", group: "Action", run: () => void saveLayout() },
+	{ id: "act:undo", label: undo.undoLabel.value ? `Undo: ${undo.undoLabel.value}` : "Undo", group: "Action", run: () => void undo.undo() },
+	{ id: "act:redo", label: undo.redoLabel.value ? `Redo: ${undo.redoLabel.value}` : "Redo", group: "Action", run: () => void undo.redo() },
 	{ id: "act:locale", label: `Switch content language to ${locale.value === "en" ? "DE" : "EN"}`, group: "Action", run: toggleLocale },
 	{ id: "act:site", label: "Open site in a new tab", group: "Action", run: viewSite },
 	{ id: "act:page", label: "Page settings", group: "Action", run: () => (railView.value = "page") },
@@ -178,7 +179,8 @@ const modalOpen = computed(() => paletteOpen.value || helpOpen.value || !!insert
 
 function onKey(e: KeyboardEvent) {
 	const action = shortcutFor(e);
-	if (!action) return;
+	// Undo and redo are handled once, app-wide, by the CMS context.
+	if (!action || action === "undo" || action === "redo") return;
 	if (action === "palette") {
 		e.preventDefault();
 		paletteOpen.value = !paletteOpen.value;
@@ -262,7 +264,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           <option v-for="r in STATS_RANGES" :key="r.hours" :value="r.hours">{{ r.label }}</option>
         </select>
         <button class="lgedit-page-pick" title="Command palette (Ctrl+K)" @click="paletteOpen = true">Ctrl+K</button>
-        <button class="lgedit-save" @click="saveLayout">Save layout</button>
+        <SaveBar />
       </template>
 
       <template #rail>
@@ -297,7 +299,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
               Shown in search results and when the page is shared. Empty falls back to the site-wide description.
             </span>
           </label>
-          <button class="btn" @click="saveLayout">Save layout</button>
         </div>
 
         <!-- Selected: the inspector, beside the page it changes. -->
@@ -310,7 +311,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             <LocalizedField :field="selectedMeta.heading" />
             <span class="dim railhint">The text above this section on the page, in the content language.</span>
           </label>
-          <button class="btn" @click="saveModuleMeta">Save heading</button>
 
           <SyncedInspector v-if="selectedMeta && SYNCED_INFO[selectedMeta.kind]" :kind="selectedMeta.kind" class="railpanel" />
           <component :is="inspector" v-if="inspector" class="railpanel" />

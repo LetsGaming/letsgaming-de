@@ -1,30 +1,24 @@
-import { ref, type Ref } from "vue";
+import { ref, watch, type Ref } from "vue";
 import { cms } from "../lib/cms";
+import type { Autosave } from "./useAutosave";
 
 /**
  * A CMS-owned list, with its CRUD.
  *
  * The server already had this. `registerCrud<T extends { id: string }>({ path,
- * schema, upsert, remove })` — one helper, and every list entity is four lines.
- * The client, for the same three entities, hand-wrote three panels and forty-odd
- * bindings inside a 1,263-line composable, and its generic halves (`move`,
- * `delItem`) took `any[]`. So the abstraction existed on one side of the boundary
- * and the other side paid for it twice: once in volume, once in types.
+ * schema, upsert, remove })` is one helper and every list entity is four lines.
+ * This is the client's half: one typed list helper instead of three panels with
+ * their own copies of the same handlers.
  *
- * Two things this fixes beyond the duplication:
+ * It's shaped like the operation, not the button. `moveTo(from, to)` is what
+ * actually happens; the up and down arrows are callers that pass `i, i±1`, and
+ * drag passes whatever it likes.
  *
- * **It's typed.** `move(arr: any[], …)` meant `arr[i].sort = i` and
- * `cms.put(\`${kind}/${arr[i].id}\`)` were unchecked — a list with no `sort`, or a
- * typo'd kind, compiled fine and failed at runtime against a live API.
- *
- * **It's shaped like the operation, not the button.** `move(arr, i, dir)` is a
- * ±1 button's signature: it swaps neighbours and PUTs both. Drag can't use it,
- * which is exactly how `moveModule` and `moveGallery` ended up with the same
- * problem and had to be rewritten. `moveTo(from, to)` is what actually happens;
- * ↑/↓ is a caller that passes `i, i±1`.
+ * Edits are never saved by a button. A deep watcher hands every row to the
+ * autosave, which saves what changed and skips what didn't.
  */
 
-/** The shape every CMS list entity shares — the client's half of the contract
+/** The shape every CMS list entity shares: the client's half of the contract
  *  the server states as `T extends { id: string }`. */
 export interface ListEntity {
   id: string;
@@ -33,68 +27,90 @@ export interface ListEntity {
 
 export interface EntityList<T extends ListEntity> {
   items: Ref<T[]>;
-  /** Replace the whole list (on load). */
+  /** Replace the whole list (on load) and record each row as server-confirmed. */
   set: (next: T[]) => void;
   add: () => void;
-  save: (item: T) => void;
   remove: (index: number) => void;
-  /** Move the item at `from` to `to`. The operation; ↑/↓ and drag both call it. */
+  /** Move the item at `from` to `to`. The operation; arrows and drag both call it. */
   moveTo: (from: number, to: number) => void;
 }
 
 export interface EntityListOptions<T extends ListEntity> {
-  /** API path segment — also the reason string in the content archive. */
+  /** API path segment, also the reason string in the content archive. */
   kind: string;
+  /** Singular name for the undo label, e.g. "hobby". */
+  noun: string;
   /** A blank entity, for `add`. */
   blank: (index: number) => T;
   /** Strip client-only fields before the wire (the composable's `strip`). */
   strip: (item: T) => unknown;
   /** Run a write with the CMS's error/toast handling. */
   guarded: (fn: () => Promise<void>, ok?: string) => Promise<void>;
+  autosave: Autosave;
+}
+
+/** A row with nothing typed yet. Autosaving it would put an empty row on the live site. */
+function hasText(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  return Object.entries(node as Record<string, unknown>).some(([k, v]) => {
+    if (k === "en" || k === "href") return typeof v === "string" && v.trim() !== "";
+    return hasText(v);
+  });
 }
 
 export function useEntityList<T extends ListEntity>(opts: EntityListOptions<T>): EntityList<T> {
   const items = ref<T[]>([]) as Ref<T[]>;
-  const put = (item: T) => cms.put(`${opts.kind}/${item.id}`, opts.strip(item));
+  const pathOf = (item: T) => `${opts.kind}/${item.id}`;
+  let gesture = 0;
 
-  /** Persist only what moved. A reorder used to PUT both swapped neighbours;
-   *  moving item 0 to the end would PUT two rows and leave the other eight with
-   *  stale `sort`, which `ORDER BY sort, id` then resolves by id — silently. */
-  const persistFrom = (start: number) =>
-    opts.guarded(async () => {
-      for (let i = start; i < items.value.length; i++) {
-        const item = items.value[i];
-        if (!item) continue;
-        item.sort = i;
-        await put(item);
+  // A reorder's renumbered rows share one group, so undo takes them back together.
+  watch(
+    items,
+    () => {
+      const group = `${opts.kind}:${++gesture}`;
+      for (const item of items.value) {
+        const path = pathOf(item);
+        const wire = opts.strip(item);
+        if (!opts.autosave.known(path) && !hasText(wire)) continue;
+        opts.autosave.edit(path, wire, { path, label: `Edit ${opts.noun}`, group });
       }
-    }, "Reordered");
+    },
+    { deep: true },
+  );
 
   return {
     items,
-    set: (next) => (items.value = next),
 
-    /** Add a blank row locally. Not persisted until Save — an entity is only real
-     *  once it has content, and PUTting an empty one would put an empty row on
-     *  the live site the moment you clicked "+". */
+    set(next) {
+      items.value = next;
+      for (const item of next) opts.autosave.baseline(pathOf(item), pathOf(item), opts.strip(item));
+    },
+
+    /** Add a blank row locally. It is saved once it has content: an entity is only
+     *  real then, and PUTting an empty one would publish an empty row at the click. */
     add() {
       items.value.push(opts.blank(items.value.length));
     },
 
-    save: (item) => void opts.guarded(async () => void (await put(item))),
-
     remove(index) {
+      const item = items.value[index];
+      if (!item) return;
       void opts.guarded(async () => {
-        const item = items.value[index];
-        if (item?.id) await cms.del(`${opts.kind}/${item.id}`);
-        items.value.splice(index, 1);
-        // Everything after the hole shifted up; its stored `sort` is now wrong.
-        for (let i = index; i < items.value.length; i++) {
-          const it = items.value[i];
-          if (!it) continue;
-          it.sort = i;
-          await put(it);
+        if (opts.autosave.known(pathOf(item))) {
+          await opts.autosave.flush();
+          await cms.del(pathOf(item));
         }
+        opts.autosave.forget(pathOf(item));
+        // Everything after the hole shifts up. Its new `sort` is written directly
+        // so it isn't recorded as an undoable edit of its own.
+        const shifted = items.value.slice(index + 1).map((it, i) => ({ ...it, sort: index + i }));
+        for (const it of shifted) {
+          const wire = opts.strip(it);
+          await cms.put(pathOf(it), wire);
+          opts.autosave.baseline(pathOf(it), pathOf(it), wire);
+        }
+        items.value.splice(index, 1);
+        items.value.forEach((it, i) => (it.sort = i));
       }, "Deleted");
     },
 
@@ -104,7 +120,7 @@ export function useEntityList<T extends ListEntity>(opts: EntityListOptions<T>):
       const [moved] = list.splice(from, 1);
       if (!moved) return;
       list.splice(to, 0, moved);
-      void persistFrom(Math.min(from, to));
+      list.forEach((it, i) => (it.sort = i));
     },
   };
 }

@@ -11,13 +11,12 @@ import { type ListSettingsDeps, useListSettings } from "./useListSettings";
 export type MusicDeps = ListSettingsDeps;
 
 export function useMusicSettings(deps: MusicDeps) {
-  const s = useListSettings(deps, "music", defaultMusicSettings);
+  const s = useListSettings(deps, "music", "Edit listening settings", defaultMusicSettings);
   return {
     MUSIC_LIST_BOUNDS,
     musicInitialCount: s.initialCount,
     musicMaxCount: s.maxCount,
     musicDefaultRange: s.defaultRange,
-    saveMusic: s.save,
     hydrateMusic: s.hydrate,
   };
 }

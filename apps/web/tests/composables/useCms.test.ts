@@ -18,6 +18,13 @@ import { NAV_GROUPS } from "../../src/composables/useCmsNav";
  */
 const mounted: { unmount: () => void }[] = [];
 
+/** Autosaves go out on a timer; wait past the zero-delay ones. */
+async function settleSaves() {
+  await flushPromises();
+  await new Promise((r) => setTimeout(r, 30));
+  await flushPromises();
+}
+
 function mountCms() {
   let api!: ReturnType<typeof useCms>;
   const Host = defineComponent({
@@ -540,21 +547,23 @@ describe("gallery reorder", () => {
   beforeEach(seedContent);
 
   it("sends the whole order in one request, not a PUT per image", async () => {
-    const reorder = vi.spyOn(cms, "reorderGallery").mockResolvedValue({ ok: true });
     const put = vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
 
     api().dropGallery({ from: "gallery", to: "gallery", oldIndex: 3, newIndex: 0 });
-    await flushPromises();
+    await settleSaves();
 
-    expect(reorder).toHaveBeenCalledTimes(1);
-    expect(reorder).toHaveBeenCalledWith("gallery", ["img4", "img1", "img2", "img3"]);
-    expect(put).not.toHaveBeenCalled();
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledWith(
+      "gallery-order",
+      { module: "gallery", ids: ["img4", "img1", "img2", "img3"] },
+      expect.anything(),
+    );
   });
 
   it("renumbers sort to the position, so it can't drift from the list", async () => {
-    vi.spyOn(cms, "reorderGallery").mockResolvedValue({ ok: true });
+    vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
 
@@ -568,13 +577,17 @@ describe("gallery reorder", () => {
   });
 
   it("↑/↓ goes through the same path", async () => {
-    const reorder = vi.spyOn(cms, "reorderGallery").mockResolvedValue({ ok: true });
+    const put = vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
     const { api } = mountCms();
     await flushPromises();
 
     api().moveGallery(0, 1);
-    await flushPromises();
-    expect(reorder).toHaveBeenCalledWith("gallery", ["img2", "img1", "img3", "img4"]);
+    await settleSaves();
+    expect(put).toHaveBeenCalledWith(
+      "gallery-order",
+      { module: "gallery", ids: ["img2", "img1", "img3", "img4"] },
+      expect.anything(),
+    );
   });
 });
 

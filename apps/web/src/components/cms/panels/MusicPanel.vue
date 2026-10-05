@@ -2,7 +2,7 @@
 import { useCmsContext } from "../../../composables/cmsContext";
 import ListSettings from "../ListSettings.vue";
 
-const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, saveMusic } =
+const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange } =
   useCmsContext();
 </script>
 
@@ -18,8 +18,6 @@ const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, 
         rows="songs and artists"
         :bounds="MUSIC_LIST_BOUNDS"
         cap-detail="Enforced on the server as the query limit, so rows past it never reach the page. The 'tracks played' and 'different artists' figures are separate counts and are not affected."
-        save-label="Save listening"
-        @save="saveMusic"
       />
     </div>
   </section>
