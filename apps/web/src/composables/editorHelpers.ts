@@ -32,6 +32,30 @@ export function missingTranslation(
   return lacks(m.heading) || lacks(m.note);
 }
 
+export interface ModuleRow {
+  id: string;
+  name: string;
+  missing: boolean;
+  canUp: boolean;
+  canDown: boolean;
+}
+
+/** The mobile module list: one row per placed id, in order, with its move affordances. */
+export function moduleRows(
+  ids: readonly string[],
+  modules: Pick<ModuleDescriptor, "id" | "heading" | "note">[],
+  locale: string,
+  nameOf: (id: string) => string,
+): ModuleRow[] {
+  return ids.map((id, i) => ({
+    id,
+    name: nameOf(id),
+    missing: missingTranslation(modules.find((m) => m.id === id), locale),
+    canUp: i > 0,
+    canDown: i < ids.length - 1,
+  }));
+}
+
 /** True when keystrokes belong to a text control, so shortcuts must stay quiet. */
 export function isTypingTarget(el: EventTarget | null): boolean {
   const e = el as HTMLElement | null;

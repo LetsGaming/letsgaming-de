@@ -21,6 +21,10 @@ import PostsPanel from "./panels/PostsPanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
 import SettingsPanel from "./panels/SettingsPanel.vue";
 
+import MobileEditor from "./MobileEditor.vue";
+import { useIsMobile } from "../../composables/useIsMobile";
+
+const isMobile = useIsMobile();
 const context = useCms();
 provide(CMS_KEY, context);
 
@@ -56,6 +60,8 @@ const {
 	cms,
 } = context;
 
+const navItems = computed(() => NAV_GROUPS.flatMap((g) => g.items));
+
 /** Pending-count badges by nav id. Add an entry here to badge another sidebar item. */
 const navBadges = computed<Record<string, number>>(() => ({
 	guestbook: guestbook.value?.pending ?? 0,
@@ -63,7 +69,7 @@ const navBadges = computed<Record<string, number>>(() => ({
 </script>
 
 <template>
-  <div class="cms">
+  <div class="cms" :class="{ mobile: isMobile }">
     <div v-if="loading" class="center muted">Loading…</div>
 
     <!-- LOGIN GATE -->
@@ -84,7 +90,20 @@ const navBadges = computed<Record<string, number>>(() => ({
 
     <!-- APP -->
     <div v-else class="shell">
-      <aside class="side">
+      <nav v-if="isMobile" class="mnav" aria-label="CMS sections">
+        <button
+          v-for="item in navItems"
+          :key="item.id"
+          type="button"
+          :class="{ on: tab === item.id }"
+          :aria-current="tab === item.id ? 'page' : undefined"
+          @click="pick(item.id)"
+        >
+          {{ item.label }}
+          <span v-if="navBadges[item.id]" class="ndot">{{ navBadges[item.id] }}</span>
+        </button>
+      </nav>
+      <aside v-if="!isMobile" class="side">
         <div class="brand">CMS</div>
         <nav class="nav">
           <div v-for="(g, gi) in NAV_GROUPS" :key="gi" class="navgroup">
@@ -115,6 +134,10 @@ const navBadges = computed<Record<string, number>>(() => ({
           <h2>{{ VIEW_TITLES[tab] }}</h2>
           <div class="topact">
             <SaveBar />
+            <select v-if="isMobile" v-model="locale" class="mlocale" aria-label="Content language">
+              <option value="en">EN</option>
+              <option value="de">DE</option>
+            </select>
             <button class="btn ghost" @click="viewSite">View site ↗</button>
           </div>
         </div>
@@ -126,7 +149,10 @@ const navBadges = computed<Record<string, number>>(() => ({
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />
 
-      <EditorPanel v-if="tab === 'editor'" />
+      <template v-if="tab === 'editor'">
+        <MobileEditor v-if="isMobile" />
+        <EditorPanel v-else />
+      </template>
       <PostsPanel v-if="tab === 'posts'" />
 
       <!-- GUESTBOOK MODERATION -->
