@@ -23,7 +23,10 @@ export interface ProjectView {
   description: string;
   meta: string[];
   href: string;
+  /** Pinned on the owner's GitHub profile. */
   featured: boolean;
+  /** Preview image URL, when the source has one. */
+  image?: string;
 }
 
 export interface LinkView {
@@ -239,7 +242,7 @@ export interface SectionMeta {
 export type ResolvedModule =
   | { id: string; kind: "hero"; data: HeroView }
   | { id: string; kind: "areas"; data: SectionMeta & { areas: AreaCardView[] } }
-  | { id: string; kind: "featured"; data: SectionMeta & { project: ProjectView | null; moreHref: string } }
+  | { id: string; kind: "featured"; data: SectionMeta & { projects: ProjectView[]; moreHref: string } }
   | {
       id: string;
       kind: "glance";

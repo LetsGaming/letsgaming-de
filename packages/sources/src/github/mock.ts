@@ -37,7 +37,7 @@ const DEMO: GitHubData = {
     { name: "Shell", pct: 5 },
   ],
   contributions: demoContributions(),
-  pinned: ["plantcare-tracker", "LED-Controller-Websocket"],
+  pinned: ["plantcare-tracker", "LED-Controller-Websocket", "retro-launcher"],
   repos: [
     {
       name: "plantcare-tracker",
@@ -46,6 +46,9 @@ const DEMO: GitHubData = {
       url: "https://github.com/LetsGaming/plantcare-tracker",
       description: "Keeps my houseplants alive — tracks watering, light and health.",
       language: "TypeScript",
+      pinned: true,
+      pinnedOrder: 0,
+      image: preview("plantcare-tracker"),
     },
     {
       name: "LED-Controller-Websocket",
@@ -54,6 +57,9 @@ const DEMO: GitHubData = {
       url: "https://github.com/LetsGaming/LED-Controller-Websocket",
       description: "Drives LED strips live over a websocket bridge on a Raspberry Pi.",
       language: "Python",
+      pinned: true,
+      pinnedOrder: 1,
+      image: preview("LED-Controller-Websocket"),
     },
     {
       name: "homelab",
@@ -62,6 +68,20 @@ const DEMO: GitHubData = {
       url: "https://github.com/LetsGaming/homelab",
       description: "Compose files and notes for the boxes that run this site.",
       language: "Shell",
+      image: preview("homelab"),
+    },
+    // Pinned but untouched for over a year: older than the recent-repos window the
+    // live query reads, so it exercises the pinned-merge path.
+    {
+      name: "retro-launcher",
+      stars: 7,
+      pushedAt: daysAgo(420),
+      url: "https://github.com/LetsGaming/retro-launcher",
+      description: "A tiny frontend that launches emulators from one shelf.",
+      language: "C#",
+      pinned: true,
+      pinnedOrder: 2,
+      image: preview("retro-launcher"),
     },
   ],
   events: [
@@ -119,6 +139,10 @@ const DEMO: GitHubData = {
     },
   ],
 };
+
+function preview(repo: string): string {
+  return `https://opengraph.githubassets.com/1/LetsGaming/${repo}`;
+}
 
 function daysAgo(n: number): string {
   const d = new Date();

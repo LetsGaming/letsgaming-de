@@ -105,7 +105,11 @@ export const cms = {
     fetch(`${apiBase}/api/cms/content`, { headers: headers(false), credentials: "include" }).then(
       handle<CmsContentResponse>,
     ),
-  saveReferrerRules: (rules: { match: string; label: string }[]) =>
+  githubRepos: () =>
+    fetch(`${apiBase}/api/cms/github-repos`, { headers: headers(false), credentials: "include" }).then(
+      handle<{ repos: { name: string; description?: string; language?: string; pinned: boolean }[] }>,
+    ),
+  saveReferrerRules:(rules: { match: string; label: string }[]) =>
     fetch(`${apiBase}/api/cms/referrer-rules`, {
       method: "PUT",
       headers: headers(true),

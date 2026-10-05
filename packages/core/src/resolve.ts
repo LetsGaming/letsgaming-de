@@ -15,7 +15,7 @@ import type { SiteContent, Project, Link } from "./content.js";
 import { bucketHeat, compactNumber, relativeTime } from "./format.js";
 import { DEFAULT_LOCALE, localize, type Locale } from "./i18n.js";
 import { t as uiText, plural as uiPlural, type MessageKey } from "./ui-messages.js";
-import type { ModuleDescriptor } from "./modules.js";
+import { DEFAULT_FEATURED_SETTINGS, type ModuleDescriptor } from "./modules.js";
 import { defaultMusicSettings } from "./music.js";
 import { defaultWrappedSettings, wrappedWindow } from "./wrapped.js";
 import { defaultPlaytimeSettings } from "./playtime-settings.js";
@@ -26,6 +26,7 @@ import { areaHref, collectModuleIds, targetHref, type NavNode, visibleNav } from
 import {
   SOURCE_LABEL,
   type GitHubData,
+  type GitHubRepo,
   type GitHubEvent,
   type SourceData,
   type SourceId,
@@ -350,25 +351,38 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     };
   };
 
+  /** Pinned repos in profile order. Reads the per-repo `pinnedOrder`, falling back
+   *  to the name list older snapshots carry. */
+  const pinnedRepos = (): GitHubRepo[] => {
+    const legacy = (gh?.pinned ?? []).map((n) => n.toLowerCase());
+    return (gh?.repos ?? [])
+      .map((r) => ({ r, order: r.pinnedOrder ?? legacy.indexOf(r.name.toLowerCase()) }))
+      .filter((x) => x.order >= 0)
+      .sort((a, b) => a.order - b.order)
+      .map((x) => x.r);
+  };
+
+  const repoProjectView = (r: GitHubRepo, pinned: boolean): ProjectView => ({
+    id: r.name,
+    name: r.name,
+    tag: r.language ?? "",
+    description: r.description ?? "",
+    meta: repoMeta(r.stars, r.pushedAt),
+    href: r.url,
+    featured: pinned,
+    ...(r.image ? { image: r.image } : {}),
+  });
+
   /** Projects straight from GitHub: pinned first, then most-recently-updated. */
   const githubProjectViews = (): ProjectView[] => {
     const repos = gh?.repos ?? [];
     if (repos.length === 0) return [];
-    const byName = new Map(repos.map((r) => [r.name.toLowerCase(), r]));
-    const pinned = (gh?.pinned ?? [])
-      .map((n) => byName.get(n.toLowerCase()))
-      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+    const pinned = pinnedRepos();
     const pinnedNames = new Set(pinned.map((r) => r.name));
     const recent = repos.filter((r) => !pinnedNames.has(r.name)); // already push-desc
-    return [...pinned, ...recent].slice(0, FEED.projects).map((r) => ({
-      id: r.name,
-      name: r.name,
-      tag: r.language ?? "",
-      description: r.description ?? "",
-      meta: repoMeta(r.stars, r.pushedAt),
-      href: r.url,
-      featured: pinnedNames.has(r.name),
-    }));
+    return [...pinned, ...recent]
+      .slice(0, FEED.projects)
+      .map((r) => repoProjectView(r, pinnedNames.has(r.name)));
   };
 
   // GitHub is the source of truth for projects; fall back to any CMS-authored
@@ -526,14 +540,28 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         };
       }
       case "featured": {
-        const featured = projectList.find((p) => p.featured) ?? projectList[0] ?? null;
+        const settings = descriptor.settings ?? DEFAULT_FEATURED_SETTINGS;
+        const pinnedNames = new Set(pinnedRepos().map((r) => r.name));
+        const byName = new Map((gh?.repos ?? []).map((r) => [r.name.toLowerCase(), r]));
+        // Manual picks that no longer exist are skipped; none left means auto.
+        const manual =
+          settings.mode === "manual"
+            ? settings.repos.flatMap((n) => byName.get(n.toLowerCase()) ?? [])
+            : [];
+        const featured =
+          manual.length > 0
+            ? manual.slice(0, settings.count).map((r) => repoProjectView(r, pinnedNames.has(r.name)))
+            : (projectList.some((p) => p.featured)
+                ? projectList.filter((p) => p.featured)
+                : projectList
+              ).slice(0, settings.count);
         return {
           id: descriptor.id,
           kind: "featured",
           // A real URL the resolver already knows, so the "see all" affordance is
           // an <a href> — middle-clickable, crawlable — not a JS-only button that
           // calls window.location. Same `targetHref` the hero's links use.
-          data: { heading, note, project: featured, moreHref: targetHref(navView, AREA.code) },
+          data: { heading, note, projects: featured, moreHref: targetHref(navView, AREA.code) },
         };
       }
       case "glance": {

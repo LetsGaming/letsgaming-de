@@ -33,6 +33,8 @@ export interface RawRepo {
   description?: string | null;
   url?: string;
   isArchived?: boolean;
+  /** Social preview image (a generated card when no custom one is uploaded). */
+  openGraphImageUrl?: string;
   /** Latest release for this repo, if any (§ GitHub extras). */
   releases?: { nodes: RawReleaseNode[] };
 }
@@ -58,7 +60,8 @@ export interface GitHubRaw {
    *  for the language mix and repo cards; `repositoriesTotal` is the displayed
    *  count and does not come from this array's length. */
   repos: RawRepo[];
-  /** Repo names pinned on the profile, in pin order. */
+  /** Repo names pinned on the profile, in pin order. Every pinned repo is also in
+   *  `repos`, even when it is too old to be among the 100 most recently pushed. */
   pinned?: string[];
   yearCommits: number;
   /** Sum of commit contributions across every year since the account was created. */
@@ -109,7 +112,23 @@ query($login: String!) {
   user(login: $login) {
     createdAt
     pinnedItems(first: 6, types: REPOSITORY) {
-      nodes { ... on Repository { name } }
+      nodes { ... on Repository {
+        name
+        description
+        url
+        isFork
+        isArchived
+        stargazerCount
+        pushedAt
+        openGraphImageUrl
+        primaryLanguage { name }
+        languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
+          edges { size node { name } }
+        }
+        releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
+          nodes { name tagName url publishedAt }
+        }
+      } }
     }
     # Deliberate top-100-most-recently-pushed cap, same shape as pinnedItems/
     # pullRequests/gists below. Past 100 non-fork public repos, repositoriesTotal
@@ -129,6 +148,7 @@ query($login: String!) {
         isArchived
         stargazerCount
         pushedAt
+        openGraphImageUrl
         primaryLanguage { name }
         languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
           edges { size node { name } }
@@ -188,18 +208,24 @@ export async function fetchGitHub(config: GitHubConfig): Promise<Result<GitHubRa
     (w) => w.contributionDays,
   );
 
+  // A pinned repo can be older than the 100-repo window; merge it in so it is not
+  // lost. Non-repository pins come back as empty nodes and are dropped.
+  const pinnedNodes = (user.pinnedItems?.nodes ?? []).filter((n): n is RawRepo => !!n.name);
+  const seen = new Set(user.repositories.nodes.map((r) => r.name));
+  const repos = [...user.repositories.nodes, ...pinnedNodes.filter((n) => !seen.has(n.name))];
+
   return ok({
     login: config.username,
     repositoriesTotal: user.repositories.totalCount,
-    repos: user.repositories.nodes,
-    pinned: (user.pinnedItems?.nodes ?? []).map((n) => n.name).filter((n): n is string => !!n),
+    repos,
+    pinned: pinnedNodes.map((n) => n.name),
     yearCommits: user.contributionsCollection.totalCommitContributions,
     allTimeCommits: allTime.value,
     calendarTotal: user.contributionsCollection.contributionCalendar.totalContributions,
     days,
     events: await fetchEvents(config),
     // Latest release per repo, flattened (normalize sorts + caps).
-    releases: user.repositories.nodes.flatMap((r) =>
+    releases: repos.flatMap((r) =>
       (r.releases?.nodes ?? []).map((rel) => ({
         repo: r.name,
         name: rel.name,
@@ -269,7 +295,7 @@ async function fetchAllTimeCommits(config: GitHubConfig, createdAt: string): Pro
 
 interface RawUser {
   createdAt: string;
-  pinnedItems?: { nodes: { name?: string }[] };
+  pinnedItems?: { nodes: Partial<RawRepo>[] };
   repositories: { totalCount: number; nodes: RawRepo[] };
   pullRequests?: {
     nodes: { title: string; url: string; mergedAt: string | null; repository: { name: string } | null }[];
