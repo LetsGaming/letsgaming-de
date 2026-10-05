@@ -56,6 +56,28 @@ test("visits and pageviews are separate figures, each naming its source", async 
   assert.equal(body.metricSources.visitLength, "script");
 });
 
+async function getWith(hits: HourlyHit[]) {
+  const store = openStore(":memory:");
+  const env = loadEnv({ CMS_TOKEN: TOKEN, WEB_ORIGIN: "http://localhost:4321" });
+  const app = await buildApp(store, env);
+  store.analytics.recordHourly(hits);
+  const res = await app.inject({ method: "GET", url: "/api/cms/analytics?hours=24&tz=UTC", headers: auth });
+  assert.equal(res.statusCode, 200);
+  return res.json() as AnalyticsResponse;
+}
+
+test("secondPage is the share of confirmed visits that touched a second section", async () => {
+  const h = (key: string, n: number): HourlyHit[] =>
+    Array.from({ length: n }, () => ({ bucket, dimension: "session_tabs" as const, key }));
+  const body = await getWith([...h("1", 6), ...h("2", 2), ...h("4+", 2)]);
+  assert.deepEqual(body.secondPage, { visits: 10, reached: 4, rate: 0.4, source: "script" });
+});
+
+test("secondPage has a null rate when no visit was confirmed", async () => {
+  const body = await getWith([]);
+  assert.deepEqual(body.secondPage, { visits: 0, reached: 0, rate: null, source: "script" });
+});
+
 test("paths are grouped by first segment and expand to their sub-paths", async () => {
   const body = await get("");
   assert.deepEqual(body.paths.map((p) => [p.key, p.count]), [

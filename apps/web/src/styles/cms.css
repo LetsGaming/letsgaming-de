@@ -892,6 +892,19 @@ html:has(.cms) {
 .cms .sunit em.down {
   color: var(--delta-down);
 }
+.cms .secondpage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-4) var(--sp-8);
+  margin: var(--sp-8) 0 0;
+  font-size: var(--fs-help);
+}
+.cms .secondpage b {
+  font-family: var(--cms-font-value);
+  color: var(--ink-strong);
+  font-size: 18px;
+}
 .cms .medianline {
   margin-top: var(--sp-6);
   font-family: var(--cms-font-value);

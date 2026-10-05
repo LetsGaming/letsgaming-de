@@ -12,6 +12,7 @@ import {
   ANALYTICS_DIMENSIONS,
   MAX_CUSTOM_RANGE_DAYS,
   METRIC_SOURCES,
+  SESSION_TAB_BUCKETS,
   classifyReferrer,
   clearRange,
   groupPathSeries,
@@ -20,6 +21,7 @@ import {
   isPairedDimension,
   pathMatchesFilter,
   sanitizeTimeZone,
+  secondPageFigure,
 } from "@lg/core";
 import type {
   AnalyticsCardId,
@@ -413,6 +415,10 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         probes: topRows("probes", "probe"),
         visits: { total: visitsTotal, previous: hasPrev ? previous.visitLength : null, source: "script" },
         pageviews: { total: pageviewsTotal, previous: hasPrev ? previous.pageviews : null, source: "log" },
+        secondPage: {
+          ...secondPageFigure(store.analytics.topHourly("session_tabs", fromB, toB, SESSION_TAB_BUCKETS.length)),
+          source: "script",
+        },
         metricSources: METRIC_SOURCES,
         // The graph: stacked composition over time, per metric.
         chart: {

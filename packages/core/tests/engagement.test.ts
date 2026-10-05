@@ -6,10 +6,22 @@ import {
   dwellKey,
   scrollDepthsReached,
   scrollKey,
+  secondPageFigure,
   sessionTabsBucket,
   transitionKey,
   validateTrackEvent,
 } from "../src/engagement.js";
+
+test("secondPageFigure counts every bucket above one section as reached", () => {
+  const rows = [
+    { key: "1", count: 3 },
+    { key: "2", count: 1 },
+    { key: "3", count: 1 },
+    { key: "4+", count: 1 },
+  ];
+  assert.deepEqual(secondPageFigure(rows), { visits: 6, reached: 3, rate: 0.5 });
+  assert.deepEqual(secondPageFigure([]), { visits: 0, reached: 0, rate: null });
+});
 
 test("dwellBucket maps durations to coarse buckets", () => {
   assert.equal(dwellBucket(0), "<5s");

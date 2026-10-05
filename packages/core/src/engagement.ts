@@ -50,6 +50,26 @@ export function scrollDepthsReached(pct: number): ScrollDepth[] {
 export const SESSION_TAB_BUCKETS = ["1", "2", "3", "4+"] as const;
 export type SessionTabBucket = (typeof SESSION_TAB_BUCKETS)[number];
 
+/**
+ * The success metric: of the confirmed visits (every `session_tabs` beacon, one
+ * per completed visit), how many touched a second section. Sections are the
+ * site's pages, so "2" and above means the visitor went past the one they
+ * landed on. `rate` is null with no visits rather than a misleading 0.
+ */
+export function secondPageFigure(rows: readonly { key: string; count: number }[]): {
+  visits: number;
+  reached: number;
+  rate: number | null;
+} {
+  let visits = 0;
+  let reached = 0;
+  for (const r of rows) {
+    visits += r.count;
+    if (r.key !== "1") reached += r.count;
+  }
+  return { visits, reached, rate: visits > 0 ? reached / visits : null };
+}
+
 export function sessionTabsBucket(n: number): SessionTabBucket {
   if (n <= 1) return "1";
   if (n === 2) return "2";

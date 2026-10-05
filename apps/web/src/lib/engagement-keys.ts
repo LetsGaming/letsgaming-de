@@ -98,6 +98,15 @@ export function scrollFunnels(
   return funnels.sort((a, b) => b.entered - a.entered || a.section.localeCompare(b.section));
 }
 
+/** The second-page success metric as the Analytics panel reads it. */
+export function formatSecondPage(f: { visits: number; reached: number; rate: number | null }): {
+  value: string;
+  detail: string;
+} {
+  if (f.rate === null) return { value: "n/a", detail: "no confirmed visits in this range" };
+  return { value: `${Math.round(f.rate * 100)}%`, detail: `${f.reached} of ${f.visits} confirmed visits` };
+}
+
 /** One dwell-time histogram per section, the most-visited first. */
 export function dwellHistograms(rows: readonly CountedRow[]): DwellHistogram[] {
   const out: DwellHistogram[] = [];
