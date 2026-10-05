@@ -1,13 +1,13 @@
 /* CMS admin UI styles.
  *
  * Every rule is namespaced under the `.cms` root the admin mounts into, so these
- * never touch the public site — and, unlike a component-scoped block, they reach
+ * never touch the public site â€” and, unlike a component-scoped block, they reach
  * into the per-panel child components too (a scoped block only styles its own
  * template). That's what lets CmsApp split into panel components without each one
  * re-declaring `.card` / `.btn` / form-control styling.
  *
  * `.cms .card` carries the same specificity (0,2,0) the old scoped `.card[data-v]`
- * did, so it still wins over the public site's global `.card` exactly as before —
+ * did, so it still wins over the public site's global `.card` exactly as before â€”
  * the cascade is preserved, this is a relocation, not a restyle.
  *
  * Spacing (padding/margin/gap) uses --sp-*, radii use --r-*, and fills-on-accent
@@ -46,7 +46,7 @@
   color: var(--muted);
 }
 /* The local-development sign-in shortcut. Deliberately understated and dashed so
-   it never reads as the real way in — and it only exists in a dev build. */
+   it never reads as the real way in â€” and it only exists in a dev build. */
 .cms .gate .dev-login:not(.lgedit-page *) {
   background: none;
   border: 1px dashed var(--line-2);
@@ -259,7 +259,7 @@
 /* `.worksplit`, `.editor`, `.dock*` are gone with the side-by-side preview iframe.
    The editor is a preview, and a better one: it renders the pending layout at the
    full viewport instead of the saved one in a 660px column. Its `.cms .editor` also
-   collided with the launcher's — one class name, two components, one stylesheet. */
+   collided with the launcher's â€” one class name, two components, one stylesheet. */
 @media (max-width: 1080px) {
   .cms.wide {
     max-width: 1120px;
@@ -300,11 +300,11 @@
   line-height: 1.5;
   color: var(--ink);
 }
-/* `:not(.lgedit-page *)` — the canvas, and only the canvas.
+/* `:not(.lgedit-page *)` â€” the canvas, and only the canvas.
    The editor renders the site's real sections, and `.cms .card` (0,2,0) would
    out-specify the site's `.card` (0,1,0) and dress every one of them as an admin
    card. Excluding the canvas leaves app.css to style it exactly as it styles the
-   site — which is what a document boundary was buying, and what a Teleport to
+   site â€” which is what a document boundary was buying, and what a Teleport to
    <body> also bought, except the Teleport took the CMS's 34-token layer and the
    rail's own `.cms .*` rules out with it. The editor IS the CMS chrome; only the
    page inside it isn't. */
@@ -564,7 +564,7 @@
   width: 100%;
   height: auto;
   display: block;
-  /* The whole plot is the hover target — bands are far too thin to aim at, and a
+  /* The whole plot is the hover target â€” bands are far too thin to aim at, and a
      series with no data in a bucket has no band there at all. */
   cursor: crosshair;
 }
@@ -665,7 +665,7 @@
   border-color: color-mix(in oklab, var(--coral) 40%, var(--line));
   color: var(--coral);
 }
-/* The explanatory line above the chart when a dimension filter is active —
+/* The explanatory line above the chart when a dimension filter is active â€”
    why the six metric tiles below it went quiet. */
 .cms .filternote {
   margin-bottom: var(--sp-8);
@@ -739,7 +739,7 @@
   color: var(--muted);
   font-weight: 500;
 }
-/* Comparison against the previous window. Colour is a hint, never the message —
+/* Comparison against the previous window. Colour is a hint, never the message â€”
    the sign is in the text, so this reads the same to anyone who can't see it. */
 .cms .sunit em {
   font-style: normal;
@@ -775,8 +775,8 @@
   padding: var(--sp-8) 0;
 }
 /* Every painted decoration is inert to the pointer. The axis lines are drawn
-   after the bands, and the bottom axis sits exactly on `yAt(0)` — the baseline of
-   the first stacked layer, which is the largest series — so it used to intercept
+   after the bands, and the bottom axis sits exactly on `yAt(0)` â€” the baseline of
+   the first stacked layer, which is the largest series â€” so it used to intercept
    hovers precisely where the most important band is thickest. The chart's own
    pointermove handler owns hit-testing; nothing else should compete. */
 .cms .c-grid,
@@ -865,7 +865,7 @@
 .cms .legend .lg:hover {
   color: var(--purple-br);
 }
-/* A muted series stays in place and keeps its colour — toggling it back on
+/* A muted series stays in place and keeps its colour â€” toggling it back on
    shouldn't reshuffle the stack under the reader. */
 .cms .legend .lg.off {
   opacity: 0.45;
@@ -1106,7 +1106,7 @@
 }
 
 
-/* Blog editor. Two columns: the posts, and the post. The source is the source —
+/* Blog editor. Two columns: the posts, and the post. The source is the source â€”
    no WYSIWYG, because the frontmatter is part of the document and hiding it
    behind form fields is how the file and the form start disagreeing. */
 .posts-ed {
@@ -1189,15 +1189,15 @@
   }
 }
 
-/* ── drag & drop ──────────────────────────────────────────────────────────────
+/* â”€â”€ drag & drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Layout modules and gallery images are draggable (see composables/sortable.ts).
    Three states, and SortableJS names all three:
-     .sort-ghost  — the gap showing where it will land
-     .sort-chosen — the row you have hold of
-     .sort-drag   — the copy that follows the pointer
+     .sort-ghost  â€” the gap showing where it will land
+     .sort-chosen â€” the row you have hold of
+     .sort-drag   â€” the copy that follows the pointer
 
    Every colour here is --line/--card/--ink. Not purple: Rule 1 reserves it for
-   live or just-happened data, and "where this will land" is neither — it's a
+   live or just-happened data, and "where this will land" is neither â€” it's a
    control responding to your own hand. A drop indicator glowing like a live
    Discord status would make the one signal on the site that means something mean
    nothing. --danger is likewise a state, not an accent, so it stays out too. */
@@ -1230,7 +1230,7 @@
   opacity: 0.4;
 }
 /* Where it lands. A dashed outline over an empty box reads as "a space", which
-   is what it is — a filled highlight reads as a selected row, which it isn't. */
+   is what it is â€” a filled highlight reads as a selected row, which it isn't. */
 .cms .sort-ghost {
   opacity: 1;
   background: var(--bg-base);
@@ -1290,15 +1290,15 @@ body.is-dragging .cms .glist .gthumb {
   }
 }
 
-/* ── the visual editor ────────────────────────────────────────────────────────
+/* â”€â”€ the visual editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Deliberately NOT under `.cms`.
 
    That's the whole point of the teleport: the canvas renders the site's real
    sections, and inside `<div class="cms">` the admin's `.cms .card` (0,2,0) would
-   out-specify the site's `.card` (0,1,0) — every card would wear admin styling and
+   out-specify the site's `.card` (0,1,0) â€” every card would wear admin styling and
    the preview would lie. Outside it, `app.css` styles the page exactly as it
-   styles the site, and only these `lgedit-*` rules — which `app.css` never
-   defines — sit on top. That isolation is what an iframe was buying, at the price
+   styles the site, and only these `lgedit-*` rules â€” which `app.css` never
+   defines â€” sit on top. That isolation is what an iframe was buying, at the price
    of a message protocol.
 
    Everything here is prefixed, for the same reason: this file may not squat on a
@@ -1359,9 +1359,9 @@ body.is-dragging .cms .glist .gthumb {
   min-height: 0;
   display: grid;
   /* minmax(0, 1fr): `1fr` is `minmax(auto, 1fr)`, and `auto` floors a track at its
-     content — which is how a canvas once widened its own column past the pane and
+     content â€” which is how a canvas once widened its own column past the pane and
      made "Desktop" narrower than "Tablet". */
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   overflow: hidden;
 }
 .cms .lgedit-page {
@@ -1429,7 +1429,7 @@ body.is-dragging .cms .glist .gthumb {
 }
 .cms .lgedit-grip,
 .lgedit-tag,
-.cms .lgedit-add {
+.lgedit-missing {
   position: absolute;
   font: 500 11px/1 var(--f-m, monospace);
   color: var(--muted);
@@ -1447,22 +1447,17 @@ body.is-dragging .cms .glist .gthumb {
 .cms .lgedit-tag {
   opacity: 0.55;
 }
-.lgedit-add {
-  opacity: 0;
-}
 .cms .lgedit-mod:hover .lgedit-grip,
 .cms .lgedit-mod:hover .lgedit-tag,
-.cms .lgedit-mod:hover .lgedit-add,
 .cms .lgedit-mod.sel .lgedit-grip,
-.cms .lgedit-mod.sel .lgedit-tag,
-.cms .lgedit-mod.sel .lgedit-add {
+.cms .lgedit-mod.sel .lgedit-tag {
   opacity: 1;
 }
 /* A grab target you can hit. The drag only starts on the handle, so the handle has
    to be findable and hittable or the feature isn't there. */
 .cms .lgedit-grip {
   left: 2px;
-  top: 4px;
+  top: 10px;
   cursor: grab;
   font-size: 16px;
   padding: 6px 8px;
@@ -1477,25 +1472,63 @@ body.is-dragging .cms .glist .gthumb {
 }
 .lgedit-tag {
   right: 4px;
-  top: 4px;
+  top: 10px;
 }
-.lgedit-add {
-  left: 50%;
-  transform: translateX(-50%);
-  top: -10px;
+/* Sits left of the kind tag; warm so a gap in the translation reads as a to-do. */
+.lgedit-missing {
+  right: 4px;
+  top: 32px;
+  color: var(--danger-ink);
+  border-color: var(--danger);
+}
+/* The insert line: a full-width rule with a centered +, shown on hover or focus.
+   It straddles the boundary between two modules so it's hit by passing over the
+   seam, not by aiming at a 20px button. */
+.cms .lgedit-gap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  margin-top: -7px;
+  padding: 0;
+  border: 0;
+  background: none;
   cursor: pointer;
   pointer-events: auto;
-  line-height: 1;
-  padding: 2px 7px;
+  z-index: 1;
 }
-.cms .lgedit-add:hover {
-  color: var(--ink);
-  border-color: var(--ink);
+.cms .lgedit-gap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--ink);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
-.cms .lgedit-add.end {
+.cms .lgedit-gap-plus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 22px;
+  line-height: 20px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg-base);
+  font: 600 14px/20px var(--f-m, monospace);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.cms .lgedit-gap:hover::before,
+.cms .lgedit-gap:focus-visible::before,
+.cms .lgedit-gap:hover .lgedit-gap-plus,
+.cms .lgedit-gap:focus-visible .lgedit-gap-plus {
   opacity: 1;
 }
-
 @media (max-width: 900px) {
   .cms .lgedit-body {
     grid-template-columns: 1fr;
@@ -1507,12 +1540,13 @@ body.is-dragging .cms .glist .gthumb {
 @media (prefers-reduced-motion: reduce) {
   .cms .lgedit-grip,
   .cms .lgedit-tag,
-  .cms .lgedit-add {
+  .cms .lgedit-gap::before,
+  .cms .lgedit-gap-plus {
     transition: none;
   }
 }
 
-/* ── the editor's launcher, inside the CMS ─────────────────────────────────── */
+/* â”€â”€ the editor's launcher, inside the CMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .cms .editor {
   display: flex;
   flex-direction: column;
@@ -1536,7 +1570,7 @@ body.is-dragging .cms .glist .gthumb {
   max-width: 62ch;
 }
 
-/* The rail's groups. `.modlist` and `.grip` already carry the CMS's list styling —
+/* The rail's groups. `.modlist` and `.grip` already carry the CMS's list styling â€”
    these are the box around each area, which the old side-by-side editor had as
    `.cms .rail .railbox` and which moved here with the rail. */
 .cms .railbox {
@@ -1557,7 +1591,7 @@ body.is-dragging .cms .glist .gthumb {
   font-weight: 400;
   opacity: 0.6;
 }
-/* The per-module move/hide dropdown — the tap-friendly path for relocating or
+/* The per-module move/hide dropdown â€” the tap-friendly path for relocating or
    hiding a module, alongside the drag handle. */
 .cms .railmove {
   flex: none;
@@ -1572,7 +1606,7 @@ body.is-dragging .cms .glist .gthumb {
 .cms .railmove:hover {
   color: var(--ink);
 }
-/* The page currently open on the canvas — marked so showing every page doesn't
+/* The page currently open on the canvas â€” marked so showing every page doesn't
    lose track of which one is being edited. */
 .cms .railbox-cur {
   border-color: var(--line-2);
@@ -1593,12 +1627,12 @@ body.is-dragging .cms .glist .gthumb {
   border-radius: var(--r-xs);
 }
 
-/* ── the rail, when a module is selected ───────────────────────────────────── */
+/* â”€â”€ the rail, when a module is selected â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* Wider than the move-lists need, because a whole edit panel goes in here now.
    Clicking a module used to switch the CMS's tab behind the editor: the only
    thing selecting did was leave. */
 .cms .lgedit-body:has(.railpanel) {
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 440px;
 }
 .cms .railsel {
   display: flex;
@@ -1609,7 +1643,7 @@ body.is-dragging .cms .glist .gthumb {
   border-bottom: 1px solid var(--line);
   margin-bottom: var(--sp-4);
 }
-/* The panel is the CMS's own component, unchanged — it just isn't in a page-sized
+/* The panel is the CMS's own component, unchanged â€” it just isn't in a page-sized
    column any more, so its own padding would double up with the rail's. */
 .cms .railpanel {
   padding: 0;
@@ -1623,4 +1657,186 @@ body.is-dragging .cms .glist .gthumb {
   font-size: 12px;
   padding: var(--sp-8) var(--sp-4);
   line-height: 1.5;
+}
+
+/* â”€â”€ editor shell: rail tabs, module menu, picker, palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.cms .railtabs {
+  display: flex;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  margin: calc(var(--sp-4) * -1) 0 var(--sp-4);
+}
+.cms .railtabs button {
+  font: inherit;
+  font-size: 13px;
+  padding: var(--sp-6) var(--sp-10);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.cms .railtabs button.on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.cms .railtabs button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cms .lgedit-pagebtn {
+  font: inherit;
+  font-weight: 600;
+  background: none;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-s);
+  color: var(--ink);
+  padding: 3px var(--sp-8);
+  cursor: pointer;
+}
+.cms .lgedit-pagebtn:hover {
+  border-color: var(--ink);
+}
+/* Names wrap instead of truncating; the row keeps its handle and menu in line. */
+.cms .railbox .modrow {
+  align-items: flex-start;
+  position: relative;
+}
+.cms .railbox .modrow .modname {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.cms .modrow.cur {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.cms .tr-missing {
+  flex: none;
+  font-size: var(--fs-micro);
+  color: var(--danger-ink);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-xs);
+  padding: 0 var(--sp-4);
+}
+.cms .modmenu-btn {
+  flex: none;
+  font: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 var(--sp-6);
+  line-height: 1.4;
+}
+.cms .modmenu-btn:hover,
+.cms .modmenu-btn[aria-expanded="true"] {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.cms .modmenu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+  background: var(--card);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+.cms .modmenu h5 {
+  margin: var(--sp-4) var(--sp-6);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  font-weight: 600;
+}
+.cms .modmenu button {
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--r-xs);
+  color: var(--ink);
+  padding: var(--sp-4) var(--sp-8);
+  cursor: pointer;
+}
+.cms .modmenu button:hover,
+.cms .modmenu button:focus-visible {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cms .palette-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: rgb(0 0 0 / 0.45);
+}
+.cms .palette {
+  width: min(560px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-m, var(--r-s));
+  background: var(--card);
+  color: var(--ink);
+  overflow: hidden;
+}
+.cms .palette input {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: var(--sp-12) var(--sp-14);
+  font-size: var(--fs-body);
+  background: transparent;
+  color: inherit;
+}
+.cms .palette ol {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-4);
+  overflow: auto;
+}
+.cms .palette li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-10);
+  padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  font-size: 14px;
+}
+.cms .palette li.on {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cms .palette li .dim {
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
+.cms .shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-6) var(--sp-14);
+  margin: var(--sp-10) 0 0;
+}
+.cms .shortcuts kbd {
+  font: 500 12px var(--f-m, monospace);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xs);
+  padding: 1px var(--sp-6);
+  background: var(--card-2);
+}
+.cms .pagesettings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
 }

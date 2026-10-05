@@ -39,12 +39,17 @@ const props = defineProps<{
   areaLabel: string;
   selected?: string;
   loading?: boolean;
+  /** Module ids whose text lacks the current content language. */
+  untranslated?: string[];
+  /** The content language code, for the missing-translation badge. */
+  locale?: string;
 }>();
 
 const emit = defineEmits<{
   move: [area: string, from: number, to: number];
   select: [moduleId: string];
   insert: [area: string, index: number];
+  deselect: [];
   close: [];
 }>();
 
@@ -188,15 +193,15 @@ function onClick(e: MouseEvent) {
   }
 }
 
-const onKey = (e: KeyboardEvent) => {
-  if (e.key === "Escape") emit("close");
-};
+/** A click on bare page, not on a module or an insert line, drops the selection. */
+function onPageClick(e: MouseEvent) {
+  if (!(e.target as Element | null)?.closest?.(".lgedit-mod, .lgedit-gap")) emit("deselect");
+}
 
 watch(() => [props.site, props.area, props.selected], () => void measure());
 
 onMounted(() => {
   ro = new ResizeObserver(scheduleMeasure);
-  window.addEventListener("keydown", onKey);
   void measure();
   // Fonts land after first paint and reflow every section under the overlay.
   // `.catch()` because a browser without the Font Loading API shouldn't take the
@@ -204,7 +209,6 @@ onMounted(() => {
   document.fonts?.ready.then(scheduleMeasure).catch(() => {});
 });
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKey);
   ro?.disconnect();
   ro = null;
   observed = [];
@@ -230,17 +234,17 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
   -->
   <div ref="root" class="lgedit" @click.capture="onClick">
       <header class="lgedit-bar" @click.stop>
-        <strong>Editing {{ areaLabel }}</strong>
+        <slot name="title"><strong>Editing {{ areaLabel }}</strong></slot>
         <span v-if="loading" class="lgedit-dim">rendering…</span>
         <span class="lgedit-hint">
-          Drag a handle to reorder · click a module to edit it here · <b>+</b> adds one
+          Drag a handle to reorder · click a module to edit it here · hover between modules to add one · <b>?</b> shortcuts
         </span>
         <span class="lgedit-actions"><slot name="actions" /></span>
-        <button class="lgedit-close" title="Close (Esc)" @click="emit('close')">✕ Close</button>
+        <button class="lgedit-close" title="Close the editor" @click="emit('close')">✕ Close</button>
       </header>
 
       <div class="lgedit-body">
-        <div class="lgedit-page">
+        <div class="lgedit-page" @click="onPageClick">
           <SitePanels v-if="site" :site="site" :area="area" />
           <p v-else class="lgedit-dim lgedit-wait">Rendering the page…</p>
 
@@ -266,25 +270,33 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
                 >⠿</span
               >
               <span class="lgedit-tag">{{ kindOf(b.id) }}</span>
-              <button
-                class="lgedit-add"
-                title="Add a module here"
-                @click.stop="emit('insert', area, i)"
+              <span
+                v-if="untranslated?.includes(b.id)"
+                class="lgedit-missing"
+                :title="`No ${(locale ?? '').toUpperCase()} text yet. Showing English.`"
+                >no {{ (locale ?? "").toUpperCase() }}</span
               >
-                +
-              </button>
             </div>
             <button
-              class="lgedit-add end"
-              title="Add a module at the end"
-              :style="{ top: (boxes.at(-1) ? boxes.at(-1)!.top + boxes.at(-1)!.height : 0) + 'px' }"
-              @click="emit('insert', area, boxes.length)"
+              v-for="(b, i) in boxes"
+              :key="'gap-' + b.id"
+              class="lgedit-gap"
+              :style="{ top: b.top + 'px' }"
+              :aria-label="`Add a module before ${kindOf(b.id)}`"
+              @click.stop="emit('insert', area, i)"
             >
-              +
+              <span class="lgedit-gap-plus">+</span>
+            </button>
+            <button
+              class="lgedit-gap"
+              aria-label="Add a module at the end"
+              :style="{ top: (boxes.at(-1) ? boxes.at(-1)!.top + boxes.at(-1)!.height : 0) + 'px' }"
+              @click.stop="emit('insert', area, boxes.length)"
+            >
+              <span class="lgedit-gap-plus">+</span>
             </button>
           </div>
         </div>
-
         <aside class="lgedit-rail" @click.stop><slot name="rail" /></aside>
       </div>
   </div>
