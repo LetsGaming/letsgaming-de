@@ -541,6 +541,7 @@ html:has(.cms) {
 }
 .cms .cols li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   padding: 5px 0;
   border-top: 1px solid var(--line);
@@ -582,6 +583,100 @@ html:has(.cms) {
 .cms .seg.ranges button {
   flex-direction: row;
   align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 44px;
+}
+.cms .seg.tiles {
+  flex-wrap: nowrap;
+}
+.cms .seg.tiles button {
+  min-width: 112px;
+  text-align: left;
+}
+.cms .seg .sunit {
+  font-size: var(--fs-micro);
+}
+.cms .quality {
+  margin: var(--sp-10) 0;
+}
+.cms .quality > summary {
+  cursor: pointer;
+  font-family: var(--f-m);
+  font-size: 13px;
+  padding: var(--sp-6) 0;
+}
+.cms .quality > .cols {
+  margin-top: var(--sp-8);
+}
+.cms .funnels,
+.cms .histos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.cms .funnels > li,
+.cms .histos > li {
+  display: block;
+  padding: var(--sp-6) 0;
+}
+.cms .funnelhead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  font-size: 12px;
+}
+.cms .funnelrow {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: var(--sp-6);
+  font-size: 12px;
+}
+.cms .funnelrow b {
+  text-align: right;
+}
+.cms .funnelrow .bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.cms .funnelrow .bar i {
+  display: block;
+  height: 100%;
+  background: var(--purple-br);
+}
+.cms .histo {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 56px;
+  margin-top: var(--sp-4);
+}
+.cms .histo .col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+.cms .histo .col i {
+  display: block;
+  width: 100%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--purple-br);
+}
+.cms .histo .col small {
+  font-size: 9px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .cms .seg button.on {
   color: var(--ink-strong);

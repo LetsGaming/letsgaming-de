@@ -1,25 +1,27 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
+import type { AnalyticsCardId } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 import { STACK_COLORS } from "../../../composables/useAnalytics";
+import { dwellHistograms, parseTransition, scrollFunnels } from "../../../lib/engagement-keys";
 import AnalyticsCard from "../AnalyticsCard.vue";
 
 // View-only panel. All state and handlers come from the shared CMS context.
 const {
 	METRIC_LABELS,
-	METRIC_UNITS,
+	METRIC_SOURCES,
+	SOURCE_LABELS,
+	tileKeys,
 	RANGES,
 	analytics,
 	analyticsAt,
 	chart,
 	loadingA,
 	metric,
-	metricKeys,
 	metricTotals,
 	comparison,
 	zone,
 	activeZone,
-	setZone,
 	medianVisitLength,
 	at,
 	atLabel,
@@ -139,23 +141,42 @@ const muted = ref(new Set<string>());
 /** Whether the data table is on screen as well as in the accessibility tree. */
 const showTable = ref(false);
 
-/** Scroll depth is stored as a bare number; the card shows it as a percentage. */
-const scrollRows = computed(() =>
-	(analytics.value?.engagement?.scroll ?? []).map((r) => ({ key: `${r.key}%`, count: r.count })),
+const funnels = computed(() =>
+	scrollFunnels(analytics.value?.engagement?.scroll ?? [], analytics.value?.engagement?.tabs ?? []),
 );
+const histograms = computed(() => dwellHistograms(analytics.value?.engagement?.dwell ?? []));
+const pct = (share: number) => `${Math.round(share * 100)}%`;
+const arrow = (key: string) => {
+	const t = parseTransition(key);
+	return t ? `${t.from} -> ${t.to}` : key;
+};
 
 /** Where to draw the held marker for the selected bucket. */
 const atColumn = computed(() =>
 	at.value ? (chart.value?.columns.find((c) => c.bucket === at.value) ?? null) : null,
 );
 
-/** Why a card that isn't the active dimension filter still shows the whole
- *  range — `analytics_hourly` keeps no link between one dimension's rows and
- *  another's (ADR-0007), so a filter can only ever narrow its own card. Short
- *  enough to sit in the heading; the full reason is a hover tooltip. */
-const CROSS_FILTER_NOTE = "(not filtered)";
-const CROSS_FILTER_TITLE =
-	"Counters are stored one per dimension with nothing linking them, so this list can't be narrowed by a filter on a different dimension.";
+/** The filtered dimension's own card, so it can stay whole while the others narrow. */
+const CARD_OF_DIMENSION: Record<string, AnalyticsCardId> = {
+	path: "paths",
+	referrer: "referrers",
+	browser: "browsers",
+	os: "os",
+	device: "devices",
+	bot: "bots",
+	probe: "probes",
+};
+
+/** "(filtered)" on a log card the active filter narrowed. */
+function logNote(card: AnalyticsCardId): string | undefined {
+	const f = analytics.value?.filtered;
+	return f && f.narrowed.includes(card) && CARD_OF_DIMENSION[f.dimension] !== card ? "(filtered)" : undefined;
+}
+
+/** Beacon cards carry no path, referrer or device, so a filter cannot reach them. */
+const scriptNote = computed(() => (analytics.value?.filtered ? "(not filterable, script data)" : undefined));
+const scriptNoteTitle =
+	"This data comes from the in-page script, which records no path, referrer or device, so a filter cannot narrow it.";
 
 /** Whether the referrer-rule editor is open. */
 const showRules = ref(false);
@@ -237,14 +258,13 @@ const ingestStatus = computed(() => {
         <div v-if="!analytics" class="muted">Loading…</div>
         <template v-else>
           <div class="card chartcard">
-            <p v-if="filterDim && filterKey" class="muted filternote">
+            <p v-if="analytics.filtered" class="muted filternote">
               <b>Filtered to {{ filterDim }} = {{ filterKey }}.</b>
-              Counters are stored one per dimension with nothing linking them, so
-              page views, clicks and visit length can't be broken down by it. The
-              chart and total below show {{ filterDim }} = {{ filterKey }} over time.
+              The chart and total show that value over time. Access-log lists below are
+              narrowed to matching page views; in-page script cards can't be filtered.
             </p>
             <div class="charthead">
-              <div class="seg" role="group" aria-label="Metric" :aria-disabled="!!(filterDim && filterKey)">
+              <div class="seg tiles" role="group" aria-label="Metric" :aria-disabled="!!(filterDim && filterKey)">
                 <template v-if="filterDim && filterKey">
                   <button type="button" class="on" aria-pressed="true">
                     <span class="slabel">{{ filterDim }}: {{ filterKey }}</span>
@@ -257,7 +277,7 @@ const ingestStatus = computed(() => {
                 </template>
                 <template v-else>
                   <button
-                    v-for="k in metricKeys"
+                    v-for="k in tileKeys"
                     :key="k"
                     type="button"
                     :class="{ on: metric === k }"
@@ -267,32 +287,12 @@ const ingestStatus = computed(() => {
                     <span class="slabel">{{ METRIC_LABELS[k] }}</span>
                     <span class="sval">{{ metricTotals[k] }}</span>
                     <span class="sunit">
-                      {{ METRIC_UNITS[k] }}
+                      {{ SOURCE_LABELS[METRIC_SOURCES[k]] }}
                       <em v-if="deltaText(k)" :class="deltaDirection(k)">{{ deltaText(k) }}</em>
                     </span>
                   </button>
                 </template>
-              </div>
-              <div class="seg ranges" role="group" aria-label="Clock">
-                <button
-                  type="button"
-                  :class="{ on: zone === 'local' }"
-                  :aria-pressed="zone === 'local'"
-                  :title="activeZone"
-                  @click="setZone('local')"
-                >
-                  Local
-                </button>
-                <button
-                  type="button"
-                  :class="{ on: zone === 'utc' }"
-                  :aria-pressed="zone === 'utc'"
-                  @click="setZone('utc')"
-                >
-                  UTC
-                </button>
-              </div>
-              <div class="seg ranges" role="group" aria-label="Time range">
+              </div>              <div class="seg ranges" role="group" aria-label="Time range">
                 <button
                   v-for="r in RANGES"
                   :key="r.hours"
@@ -507,7 +507,7 @@ const ingestStatus = computed(() => {
               {{ c.label }} <span aria-hidden="true">✕</span>
               <span class="visually-hidden">— remove filter</span>
             </button>
-            <button v-if="chips.length > 1" type="button" class="link" @click="clearFilters">Clear all</button>
+            <button v-if="chips.length" type="button" class="link" @click="clearFilters">Clear all</button>
           </div>
           <div class="cols">
             <AnalyticsCard
@@ -515,8 +515,8 @@ const ingestStatus = computed(() => {
               :rows="analytics?.paths"
               dimension="path"
               :selected-key="filterDim === 'path' ? filterKey : null"
-              :note="filterDim && filterDim !== 'path' ? CROSS_FILTER_NOTE : undefined"
-              :note-title="filterDim && filterDim !== 'path' ? CROSS_FILTER_TITLE : undefined"
+              :note="logNote('paths')"
+              empty="No page views in this range. Fills from the access log (ACCESS_LOG)."
               @select="(k) => selectDimension('path', k)"
             />
             <AnalyticsCard
@@ -524,8 +524,8 @@ const ingestStatus = computed(() => {
               :rows="analytics?.referrers"
               dimension="referrer"
               :selected-key="filterDim === 'referrer' ? filterKey : null"
-              :note="filterDim && filterDim !== 'referrer' ? CROSS_FILTER_NOTE : undefined"
-              :note-title="filterDim && filterDim !== 'referrer' ? CROSS_FILTER_TITLE : undefined"
+              :note="logNote('referrers')"
+              empty="No referrers in this range. Direct visits have none."
               @select="(k) => selectDimension('referrer', k)"
             >
               <!-- Editing lives here rather than in a content panel because this
@@ -536,7 +536,7 @@ const ingestStatus = computed(() => {
               </button>
               <div v-if="showRules" class="rules">
                 <p class="muted">
-                  Map a host to a name — <code>steamcommunity.com</code> → <code>Steam</code>.
+                  Map a host to a name: <code>steamcommunity.com</code> → <code>Steam</code>.
                   Subdomains are included. Applies to past traffic too.
                 </p>
                 <div v-for="(r, i) in referrerRules" :key="i" class="rule">
@@ -557,8 +557,8 @@ const ingestStatus = computed(() => {
               :rows="analytics?.browsers"
               dimension="browser"
               :selected-key="filterDim === 'browser' ? filterKey : null"
-              :note="filterDim && filterDim !== 'browser' ? CROSS_FILTER_NOTE : undefined"
-              :note-title="filterDim && filterDim !== 'browser' ? CROSS_FILTER_TITLE : undefined"
+              :note="logNote('browsers')"
+              empty="No browser data in this range. Read from the access log user agent."
               @select="(k) => selectDimension('browser', k)"
             />
             <AnalyticsCard
@@ -566,8 +566,8 @@ const ingestStatus = computed(() => {
               :rows="analytics?.os"
               dimension="os"
               :selected-key="filterDim === 'os' ? filterKey : null"
-              :note="filterDim && filterDim !== 'os' ? CROSS_FILTER_NOTE : undefined"
-              :note-title="filterDim && filterDim !== 'os' ? CROSS_FILTER_TITLE : undefined"
+              :note="logNote('os')"
+              empty="No OS data in this range. Read from the access log user agent."
               @select="(k) => selectDimension('os', k)"
             />
             <AnalyticsCard
@@ -575,48 +575,145 @@ const ingestStatus = computed(() => {
               :rows="analytics?.devices"
               dimension="device"
               :selected-key="filterDim === 'device' ? filterKey : null"
-              :note="filterDim && filterDim !== 'device' ? CROSS_FILTER_NOTE : undefined"
-              :note-title="filterDim && filterDim !== 'device' ? CROSS_FILTER_TITLE : undefined"
+              :note="logNote('devices')"
+              empty="No device data in this range. Read from the access log user agent."
               @select="(k) => selectDimension('device', k)"
             />
-            <!-- Counted, and kept out of the four cards above: those describe
-                 people, and a crawler answers all four with noise. -->
-            <AnalyticsCard
-              title="Bots"
-              note="(not counted as visits)"
-              :rows="analytics?.bots"
-              empty="Nothing self-identified as a bot in this range."
-              dimension="bot"
-              :selected-key="filterDim === 'bot' ? filterKey : null"
-              @select="(k) => selectDimension('bot', k)"
-            />
-            <!-- The traffic the bot check can't see: scanners send a real browser
-                 user-agent, so they're identified by what they asked for. Kept
-                 out of the cards above for the same reason bots are. -->
-            <AnalyticsCard
-              title="Probes"
-              note="(scans, not people)"
-              :rows="analytics?.probes"
-              empty="No scanner traffic in this range."
-              dimension="probe"
-              :selected-key="filterDim === 'probe' ? filterKey : null"
-              @select="(k) => selectDimension('probe', k)"
-            />
           </div>
-          <template v-if="analytics?.engagement">
-            <h3 style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page</span></h3>
+          <!-- Counted, and kept out of the lists above: those describe people, and
+               a crawler or scanner answers all of them with noise. -->
+          <details class="quality">
+            <summary>
+              Traffic quality
+              <span class="muted">
+                {{ metricTotals.bots }} bot hits, {{ metricTotals.probes }} scans, not counted as visits
+              </span>
+            </summary>
             <div class="cols">
-              <AnalyticsCard title="Sections viewed" :rows="analytics.engagement.tabs" />
-              <AnalyticsCard title="Transitions" :rows="analytics.engagement.transitions" />
-              <AnalyticsCard title="Exited from" :rows="analytics.engagement.exits" />
-              <AnalyticsCard title="Dwell / section" :rows="analytics.engagement.dwell" />
-              <AnalyticsCard title="Scroll depth" :rows="scrollRows" />
-              <AnalyticsCard title="Clicks" :rows="analytics.engagement.clicks" />
-              <AnalyticsCard title="Projects opened" :rows="analytics.engagement.projects" />
-              <AnalyticsCard title="Viewport" :rows="analytics.engagement.viewport" />
-              <AnalyticsCard title="Sections / visit" :rows="analytics.engagement.sessionTabs" />
-              <AnalyticsCard title="Visit length" :rows="analytics.engagement.sessionDwell" />
-              <AnalyticsCard title="Theme" :rows="analytics.engagement.theme" />
+              <AnalyticsCard
+                title="Bots"
+                :note="logNote('bots') ?? '(not counted as visits)'"
+                :rows="analytics?.bots"
+                empty="Nothing self-identified as a bot in this range."
+                dimension="bot"
+                :selected-key="filterDim === 'bot' ? filterKey : null"
+                @select="(k) => selectDimension('bot', k)"
+              />
+              <!-- Scanners send a real browser user-agent, so they're identified
+                   by what they asked for rather than who they say they are. -->
+              <AnalyticsCard
+                title="Probes"
+                :note="logNote('probes') ?? '(scans, not people)'"
+                :rows="analytics?.probes"
+                empty="No scanner traffic in this range."
+                dimension="probe"
+                :selected-key="filterDim === 'probe' ? filterKey : null"
+                @select="(k) => selectDimension('probe', k)"
+              />
+            </div>
+          </details>
+          <template v-if="analytics?.engagement">
+            <h3 style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page script</span></h3>
+            <div class="cols">
+              <AnalyticsCard
+                title="Sections viewed"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.tabs"
+                empty="Recorded when a visitor opens a section."
+              />
+              <AnalyticsCard
+                title="Transitions"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.transitions"
+                :format="arrow"
+                empty="Recorded when a visitor moves from one section to another."
+              />
+              <AnalyticsCard
+                title="Exited from"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.exits"
+                empty="Recorded when a visit ends, naming the last section seen."
+              />
+              <div class="card">
+                <h3>Scroll depth <span v-if="scriptNote" class="muted" :title="scriptNoteTitle">{{ scriptNote }}</span></h3>
+                <ul v-if="funnels.length" class="funnels">
+                  <li v-for="fn in funnels" :key="fn.section">
+                    <div class="funnelhead">
+                      <span class="rowkey">{{ fn.section }}</span>
+                      <span class="muted">{{ fn.entered }} entered</span>
+                    </div>
+                    <div v-for="s in fn.steps" :key="s.depth" class="funnelrow">
+                      <span class="muted">{{ s.depth }}%</span>
+                      <span class="bar" aria-hidden="true"><i :style="{ width: pct(s.share) }" /></span>
+                      <b>{{ s.count }}</b>
+                    </div>
+                  </li>
+                </ul>
+                <p v-else class="muted">Recorded when a visitor scrolls a section to 25, 50, 75 or 100 percent.</p>
+              </div>
+              <div class="card">
+                <h3>Dwell / section <span v-if="scriptNote" class="muted" :title="scriptNoteTitle">{{ scriptNote }}</span></h3>
+                <ul v-if="histograms.length" class="histos">
+                  <li v-for="h in histograms" :key="h.section">
+                    <div class="funnelhead">
+                      <span class="rowkey">{{ h.section }}</span>
+                      <span class="muted">{{ h.total }} views</span>
+                    </div>
+                    <div class="histo" role="img" :aria-label="`${h.section} dwell: ${h.buckets.map((b) => `${b.bucket} ${b.count}`).join(', ')}`">
+                      <span v-for="b in h.buckets" :key="b.bucket" class="col" :title="`${b.bucket}: ${b.count}`">
+                        <i :style="{ height: pct(b.share) }" />
+                        <small>{{ b.bucket }}</small>
+                      </span>
+                    </div>
+                  </li>
+                </ul>
+                <p v-else class="muted">Recorded when a visitor leaves a section, bucketed by time spent.</p>
+              </div>
+              <AnalyticsCard
+                title="Clicks"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.clicks"
+                empty="Recorded when a visitor clicks a tracked element."
+              />
+              <AnalyticsCard
+                title="Projects opened"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.projects"
+                empty="Recorded when a visitor opens a project card."
+              />
+              <AnalyticsCard
+                title="Viewport"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.viewport"
+                empty="Recorded once per visit from the browser window size."
+              />
+              <AnalyticsCard
+                title="Sections / visit"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.sessionTabs"
+                empty="Recorded when a visit ends: how many sections it covered."
+              />
+              <AnalyticsCard
+                title="Visit length"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.sessionDwell"
+                empty="Recorded when a visit ends: how long it lasted."
+              />
+              <AnalyticsCard
+                title="Theme"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="analytics.engagement.theme"
+                empty="Recorded once per visit: light or dark."
+              />
             </div>
           </template>
           <p class="muted">Anonymous aggregates only — no cookies, no IPs, nothing personal stored.</p>
