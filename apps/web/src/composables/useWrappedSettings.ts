@@ -34,6 +34,7 @@ export function useWrappedSettings({ autosave }: WrappedDeps) {
   });
 
   function hydrate(w: Partial<WrappedSettings> | undefined) {
+    if (autosave.isDirty("wrapped")) return;
     const def = defaultWrappedSettings();
     wrappedEnabled.value = w?.enabled ?? def.enabled;
     wrappedEveryMonths.value = w?.everyMonths ?? def.everyMonths;

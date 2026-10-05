@@ -102,6 +102,49 @@ describe("the client's half of registerCrud", () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
+  it("does not re-create a deleted row when the list changes while the delete is in flight", async () => {
+    const { l } = list();
+    l.set([row("a", 0), row("b", 1)]);
+    let release!: () => void;
+    del.mockImplementation(() => new Promise((r) => (release = () => r({ ok: true }))));
+    vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
+
+    l.remove(0);
+    await nextTick();
+    l.items.value[0]!.title.en = "edited meanwhile";
+    await settle();
+    release();
+    await settle();
+
+    expect(put.mock.calls.map((c) => c[0])).not.toContain("hobbies/a");
+    expect(l.items.value.map((r) => r.id)).toEqual(["b"]);
+  });
+
+  it("puts the row back when the delete fails", async () => {
+    const autosave = createAutosave({ put: vi.fn(async () => ({ ok: true })), onStatus: () => {} });
+    const l = useEntityList<Row>({
+      kind: "hobbies",
+      noun: "hobby",
+      strip: (x) => x,
+      guarded: async (fn) => {
+        try {
+          await fn();
+        } catch {
+          /* surfaced as a toast in the app */
+        }
+      },
+      autosave,
+      blank: (i) => ({ id: `new-${i}`, title: { en: "" }, sort: i }),
+    });
+    l.set([row("a", 0), row("b", 1)]);
+    del.mockRejectedValue(new Error("boom"));
+
+    l.remove(0);
+    await settle();
+
+    expect(l.items.value.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+
   it("adds locally and saves once the row has content", async () => {
     const { l } = list();
     l.set([]);

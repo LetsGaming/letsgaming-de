@@ -3,12 +3,21 @@ import assert from "node:assert/strict";
 import {
   defaultWrappedSettings,
   sanitizeWrappedSettings,
+  nextWrappedWindow,
   wrappedWindow,
   type WrappedSettings,
 } from "../src/wrapped.js";
 
 const base: WrappedSettings = { enabled: true, everyMonths: 3, forWeeks: 2, fromDate: "2026-01-01", topCount: 5 };
 const at = (iso: string) => new Date(iso);
+
+test("nextWrappedWindow: reports the next, the open, and none", () => {
+  assert.deepEqual(nextWrappedWindow(base, at("2025-12-01T00:00:00Z")), { kind: "next", start: "2026-01-01T00:00:00.000Z" });
+  assert.deepEqual(nextWrappedWindow(base, at("2026-02-01T00:00:00Z")), { kind: "next", start: "2026-04-01T00:00:00.000Z" });
+  const open = nextWrappedWindow(base, at("2026-04-05T00:00:00Z"));
+  assert.equal(open?.kind, "open");
+  assert.equal(nextWrappedWindow({ ...base, enabled: false }, at("2026-02-01T00:00:00Z")), null);
+});
 
 test("wrappedWindow: disabled is never shown", () => {
   assert.equal(wrappedWindow({ ...base, enabled: false }, at("2026-01-05T12:00:00Z")), null);

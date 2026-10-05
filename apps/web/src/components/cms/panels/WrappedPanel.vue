@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
-import { formatDate, nextWrappedWindow } from "../../../lib/cmsInspector";
+import { nextWrappedWindow } from "@lg/core";
+import { formatDate } from "../../../lib/cmsInspector";
 import HelpTip from "../HelpTip.vue";
 import ToggleSwitch from "../ToggleSwitch.vue";
 

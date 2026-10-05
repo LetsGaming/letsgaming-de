@@ -62,6 +62,8 @@ interface Slot {
   baseline: unknown;
   hasBaseline: boolean;
   pending?: { value: unknown };
+  /** The value the user currently sees, even when it equals the baseline. Decides what a settling save must follow up with. */
+  latest?: { value: unknown };
   timer?: unknown;
   inflight: boolean;
   error?: string;
@@ -153,12 +155,21 @@ export function createAutosave(deps: AutosaveDeps) {
           if (had && !same(before, value)) {
             deps.onSaved?.({ key, label: s.label, path: s.path, before, after: value, group: s.group });
           }
-          const next = (s as Slot).pending;
-          if (next && same(next.value, s.baseline)) s.pending = undefined;
+          // The user may have typed back to the old value mid-flight: follow the latest
+          // value against the new baseline rather than trusting what edit() queued.
+          const want = (s as Slot).latest;
+          s.pending = want && !same(want.value, s.baseline) ? { value: want.value } : undefined;
         } catch (e) {
-          s.error = (e as Error).message || "Could not save.";
-          // A newer edit supersedes the failed value; otherwise keep it dirty.
+          // A newer edit supersedes the failed value; otherwise keep it dirty,
+          // unless the user has since typed back to what the server holds.
           const newer = s.pending;
+          if (!newer && s.latest && s.hasBaseline && same(s.latest.value, s.baseline)) {
+            s.error = undefined;
+            s.inflight = false;
+            publish();
+            return;
+          }
+          s.error = (e as Error).message || "Could not save.";
           s.pending ??= { value };
           s.inflight = false;
           publish();
@@ -178,6 +189,11 @@ export function createAutosave(deps: AutosaveDeps) {
     }
   }
 
+  function isDirty(key: string): boolean {
+    const s = slots.get(key);
+    return !!s && (!!s.pending || s.timer !== undefined || s.inflight || !!s.error);
+  }
+
   /** Send everything pending now. */
   async function flush(keepalive = false): Promise<void> {
     const jobs: Promise<void>[] = [];
@@ -188,8 +204,12 @@ export function createAutosave(deps: AutosaveDeps) {
   }
 
   return {
-    /** Record the server-confirmed value for a key, dropping any unsent edit to it. */
+    /**
+     * Record the server-confirmed value for a key. A slot that is still dirty (an
+     * unsent, in-flight or failed edit) is left alone so hydrating never erases it.
+     */
     baseline(key: string, path: string, value: unknown) {
+      if (isDirty(key)) return;
       value = snap(value);
       const s = slot(key, path);
       if (s.timer !== undefined) clearTimer(s.timer);
@@ -198,6 +218,7 @@ export function createAutosave(deps: AutosaveDeps) {
       s.baseline = value;
       s.hasBaseline = true;
       s.pending = undefined;
+      s.latest = undefined;
       s.error = undefined;
       publish();
     },
@@ -211,6 +232,9 @@ export function createAutosave(deps: AutosaveDeps) {
       const s = slots.get(key);
       if (s?.hasBaseline && s.baseline && typeof s.baseline === "object") s.baseline = { ...s.baseline, ...patch };
     },
+
+    /** An unsent, in-flight or failed edit exists for this key. Hydration must not replace its value. */
+    isDirty,
 
     /** Whether the server has a confirmed value for this key. */
     known: (key: string) => slots.get(key)?.hasBaseline === true,
@@ -231,6 +255,7 @@ export function createAutosave(deps: AutosaveDeps) {
       if (opts.label) s.label = opts.label;
       s.group = opts.group;
       s.after = opts.after;
+      s.latest = { value };
       if (s.hasBaseline && same(value, s.baseline)) {
         if (s.timer !== undefined) clearTimer(s.timer);
         s.timer = undefined;

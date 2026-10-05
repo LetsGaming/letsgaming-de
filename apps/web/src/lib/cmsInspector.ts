@@ -1,4 +1,4 @@
-import type { ModuleKind, WrappedSettings } from "@lg/core";
+import type { ModuleKind } from "@lg/core";
 
 /**
  * What feeds each module that has no hand-edited content. `source` is an id from
@@ -42,33 +42,6 @@ export function formatDateTime(iso: string | null, tag?: string): string {
   if (!iso) return "never";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(tag);
-}
-
-function addMonthsUtc(date: Date, n: number): Date {
-  const total = date.getUTCFullYear() * 12 + date.getUTCMonth() + n;
-  const y = Math.floor(total / 12);
-  const m = total % 12;
-  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  return new Date(Date.UTC(y, m, Math.min(date.getUTCDate(), lastDay)));
-}
-
-export type NextWrapped = { kind: "open"; start: string; end: string } | { kind: "next"; start: string };
-
-/** The window open at `now`, or the next one to open. `null` when off or the date is invalid. */
-export function nextWrappedWindow(s: WrappedSettings, now: Date): NextWrapped | null {
-  if (!s.enabled || !/^\d{4}-\d{2}-\d{2}$/.test(s.fromDate)) return null;
-  const from = new Date(`${s.fromDate}T00:00:00Z`);
-  if (Number.isNaN(from.getTime())) return null;
-  const weekMs = 7 * 24 * 3_600_000;
-  // ponytail: linear scan from the anchor; 24-month cycles over a century is still tiny.
-  for (let k = 0; k < 1200; k++) {
-    const start = addMonthsUtc(from, k * s.everyMonths);
-    const end = new Date(start.getTime() + s.forWeeks * weekMs);
-    if (end.getTime() <= now.getTime()) continue;
-    if (start.getTime() <= now.getTime()) return { kind: "open", start: start.toISOString(), end: end.toISOString() };
-    return { kind: "next", start: start.toISOString() };
-  }
-  return null;
 }
 
 /** Add a hidden-activity name: trimmed, ignored when empty or already present (case-insensitive). */

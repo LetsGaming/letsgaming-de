@@ -39,6 +39,7 @@ export function useListSettings(
   });
 
   function hydrate(v: Partial<ListValues> | undefined) {
+    if (autosave.isDirty(resource)) return;
     const def = defaults();
     initialCount.value = v?.initialCount ?? def.initialCount;
     maxCount.value = v?.maxCount ?? def.maxCount;

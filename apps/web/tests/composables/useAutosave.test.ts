@@ -47,6 +47,34 @@ describe("debounce", () => {
   });
 });
 
+describe("hydration", () => {
+  it("keeps a failed value and its error when the server state is loaded again", async () => {
+    const put = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    const { a, last } = setup(put as never);
+    a.baseline("k", "k", { t: "A" });
+    a.edit("k", { t: "B" }, { delay: 0 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(a.isDirty("k")).toBe(true);
+
+    a.baseline("k", "k", { t: "A" });
+
+    expect(a.isDirty("k")).toBe(true);
+    expect(last()).toEqual({ state: "error", message: "offline" });
+    put.mockClear();
+    await a.retry();
+    expect(put).toHaveBeenCalledWith("k", { t: "B" }, expect.anything());
+  });
+
+  it("baselines a clean slot as before", () => {
+    const { a } = setup();
+    a.baseline("k", "k", { t: "A" });
+    a.baseline("k", "k", { t: "Z" });
+    expect(a.isDirty("k")).toBe(false);
+  });
+});
+
 describe("one request in flight per key", () => {
   it("coalesces edits made while a save is running into one follow-up", async () => {
     let release!: () => void;
@@ -73,6 +101,49 @@ describe("one request in flight per key", () => {
     expect(put.mock.calls[1]).toBeDefined();
     release();
     await vi.advanceTimersByTimeAsync(0);
+  });
+
+  it("re-sends the original value when the user types back to it mid-flight", async () => {
+    const releases: Array<() => void> = [];
+    const put = vi.fn(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          releases.push(() => resolve({ ok: true }));
+        }),
+    );
+    const { a } = setup(put as never);
+    a.baseline("k", "k", { t: "A" });
+    a.edit("k", { t: "B" }, { delay: 0 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(put).toHaveBeenCalledTimes(1);
+
+    a.edit("k", { t: "A" }, { delay: 0 });
+    releases[0]?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(put).toHaveBeenCalledTimes(2);
+    expect(put.mock.calls[1]).toEqual(["k", { t: "A" }, { keepalive: false }]);
+    releases[1]?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(a.hasUnsaved()).toBe(false);
+  });
+
+  it("drops a failed in-flight value the user has since reverted", async () => {
+    let fail!: (e: Error) => void;
+    const put = vi.fn(
+      () =>
+        new Promise<{ ok: boolean }>((_, reject) => {
+          fail = reject;
+        }),
+    );
+    const { a } = setup(put as never);
+    a.baseline("k", "k", { t: "A" });
+    a.edit("k", { t: "B" }, { delay: 0 });
+    await vi.advanceTimersByTimeAsync(0);
+    a.edit("k", { t: "A" }, { delay: 0 });
+    fail(new Error("offline"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(a.hasUnsaved()).toBe(false);
   });
 
   it("lets different keys run side by side", async () => {
