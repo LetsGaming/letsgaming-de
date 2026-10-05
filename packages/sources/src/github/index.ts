@@ -83,13 +83,13 @@ export function normalizeGitHub(raw: GitHubRaw): GitHubData {
     // dropped here. Pinned repos older than the query window are sorted into place.
     repos: raw.repos
       .filter((r) => !r.isFork && !r.isArchived)
-      .sort((a, b) => b.pushedAt.localeCompare(a.pushedAt))
+      .sort((a, b) => (b.pushedAt ?? "").localeCompare(a.pushedAt ?? ""))
       .map((r) => {
         const pinnedOrder = pinned.indexOf(r.name);
         return {
           name: r.name,
           stars: r.stargazerCount,
-          pushedAt: r.pushedAt,
+          ...(r.pushedAt ? { pushedAt: r.pushedAt } : {}),
           url: r.url ?? `https://github.com/${raw.login}/${r.name}`,
           ...(r.description ? { description: r.description } : {}),
           ...(r.primaryLanguage?.name ? { language: r.primaryLanguage.name } : {}),
