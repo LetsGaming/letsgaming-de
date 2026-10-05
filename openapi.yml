@@ -519,8 +519,8 @@ paths:
       tags: [Auth]
       summary: GitHub OAuth callback
       description: |
-        Verifies `state`, exchanges the code, and — only if the GitHub login matches the allowed
-        login — issues a signed, http-only `lg_session` cookie the CMS uses. Then redirects to the
+        Verifies `state`, exchanges the code, and issues (only if the GitHub login matches the
+        allowed login) a signed, http-only `lg_session` cookie the CMS uses. Then redirects to the
         web origin plus the `returnTo` path chosen at login (default `/admin`).
       security: []
       parameters:
