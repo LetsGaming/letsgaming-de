@@ -35,6 +35,8 @@ const view = (): SiteView => ({
         lede: "l",
         status: { verb: "building", now: "x" },
         links: [{ id: "gh", label: "GitHub", href: "https://github.com/x", primary: false }],
+        presenceEnabled: false,
+        waves: 0,
       },
     },
     now: { id: "now", kind: "now", data: { heading: "Right now", items: [] } },

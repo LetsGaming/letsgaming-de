@@ -69,4 +69,6 @@ export const RATE_LIMIT = {
   contact: 5,
   /** Guestbook submissions, per IP per window. */
   guestbook: 3,
+  /** Waves, per IP per window. */
+  wave: 3,
 } as const;

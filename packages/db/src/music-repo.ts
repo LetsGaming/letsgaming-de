@@ -4,7 +4,7 @@ import {
   type MusicRankEntry,
 } from "@lg/core";
 import type { DatabaseSync } from "node:sqlite";
-import { asNumber, asText, mapRows, type Row } from "./row-mapper.js";
+import { asNumber, asText, mapRow, mapRows, type Row } from "./row-mapper.js";
 import { zonedDay } from "./tz.js";
 
 /**
@@ -59,6 +59,14 @@ export function musicRepo(db: DatabaseSync) {
       for (const artist of splitArtists(play.artist)) {
         insertArtist.run(row.id, artist.toLowerCase(), artist);
       }
+    },
+
+    /** The most recent song played (podcast episodes excluded). */
+    latest(): { name: string; at: string } | undefined {
+      return mapRow(
+        db.prepare("SELECT song, last_seen_at AS at FROM music_plays WHERE kind = 'track' ORDER BY last_seen_at DESC LIMIT 1"),
+        (r: Row) => ({ name: asText(r.song), at: asText(r.at) }),
+      );
     },
 
     /**

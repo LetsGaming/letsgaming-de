@@ -115,6 +115,11 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
       musicWindow,
     ),
     wrappedHistory: buildWrappedHistory(store, content),
+    recentActivity: {
+      games: store.sessions.recent("game", 10),
+      track: store.music.latest(),
+    },
+    reactions: { wave: store.reactions.count("wave") },
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
 }

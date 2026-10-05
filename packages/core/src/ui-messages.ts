@@ -207,6 +207,26 @@ const EN = {
   // Freshness — a synced module's own age. One key per FreshnessState, so the
   // component maps the state to a key instead of branching five ways in its
   // template. `{age}` is the pre-computed short relative ("8m", "2d").
+  // Hero live status, call to action and wave. `{parts}` is the live activities
+  // joined with a separator; `{age}` is the pre-computed short relative.
+  heroRightNow: "Right now: {parts}",
+  heroPlaying: "playing {name}",
+  heroListening: "listening to {name}",
+  heroLastPlayed: "Last played {name} {age} ago",
+  heroLastListened: "Last listened to {name} {age} ago",
+  heroCtaCode: "See what I'm building",
+  waveButton: "Wave",
+  waveLabel: "Wave hello",
+  waveCount: "{n} waves",
+  waveDone: "Waved",
+  waveLimited: "Too many waves for now, try again later.",
+
+  // Teaser cards on the home page.
+  teasersHeading: "Jump in",
+  teaserHoursWeek: "{n} h played this week",
+  teaserTopArtist: "Top artist: {name}",
+  teaserLatest: "{text} · {age} ago",
+
   freshFresh: "synced {age} ago",
   freshStale: "{age} old",
   freshFailed: "sync failed · showing {age} old",
@@ -385,6 +405,23 @@ const DE: Messages = {
   minutesPerDay: "Minuten pro Tag",
   clickDayToDrill: "Tag anklicken für Details",
   today: "heute",
+
+  heroRightNow: "Gerade jetzt: {parts}",
+  heroPlaying: "spielt {name}",
+  heroListening: "hört {name}",
+  heroLastPlayed: "Zuletzt gespielt: {name} vor {age}",
+  heroLastListened: "Zuletzt gehört: {name} vor {age}",
+  heroCtaCode: "Das baue ich gerade",
+  waveButton: "Winken",
+  waveLabel: "Hallo winken",
+  waveCount: "{n}-mal gewinkt",
+  waveDone: "Gewinkt",
+  waveLimited: "Gerade zu oft gewinkt, versuch es später erneut.",
+
+  teasersHeading: "Reinschauen",
+  teaserHoursWeek: "{n} Std. diese Woche gespielt",
+  teaserTopArtist: "Top-Künstler: {name}",
+  teaserLatest: "{text} · vor {age}",
 
   freshFresh: "vor {age} synchronisiert",
   freshStale: "{age} alt",
