@@ -30,7 +30,7 @@
  * proxy) and 16KB of CSS that a `client:only` entry can't be traced for at build.
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import type { SiteView } from "@lg/core";
+import type { ModuleKind, SiteView } from "@lg/core";
 import SitePanels from "../shell/SitePanels.vue";
 
 const props = defineProps<{
@@ -212,7 +212,31 @@ onUnmounted(() => {
   frame = 0;
 });
 
-const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
+const KIND_LABELS: Record<ModuleKind, string> = {
+  hero: "Hero",
+  areas: "Pages overview",
+  featured: "Featured",
+  glance: "At a glance",
+  activity: "Activity",
+  coding: "Coding",
+  projects: "Projects",
+  hobbies: "Hobbies",
+  now: "Right now",
+  guestbook: "Guestbook",
+  presence: "Presence",
+  gallery: "Gallery",
+  bio: "About",
+  contact: "Contact",
+  posts: "Blog",
+  music: "Listening",
+  playtime: "Played",
+  wrapped: "Wrapped",
+};
+
+const kindLabel = (id: string): string => {
+  const kind = props.site?.modules[id]?.kind;
+  return (kind && KIND_LABELS[kind]) || id;
+};
 </script>
 
 <template>
@@ -233,7 +257,7 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
         <strong>Editing {{ areaLabel }}</strong>
         <span v-if="loading" class="lgedit-dim">rendering…</span>
         <span class="lgedit-hint">
-          Drag a handle to reorder · click a module to edit it here · <b>+</b> adds one
+          Hover a module for its drag handle · click a module to edit it here · <b>+</b> adds one
         </span>
         <span class="lgedit-actions"><slot name="actions" /></span>
         <button class="lgedit-close" title="Close (Esc)" @click="emit('close')">✕ Close</button>
@@ -241,7 +265,10 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
 
       <div class="lgedit-body">
         <div class="lgedit-page">
-          <SitePanels v-if="site" :site="site" :area="area" />
+          <!-- Inert so forms and widgets can't take focus; a click selects the module. -->
+          <div v-if="site" class="lgedit-content" inert>
+            <SitePanels :site="site" :area="area" />
+          </div>
           <p v-else class="lgedit-dim lgedit-wait">Rendering the page…</p>
 
           <!-- Affordances, over the real sections. Never inside them. -->
@@ -256,16 +283,18 @@ const kindOf = (id: string): string => props.site?.modules[id]?.kind ?? id;
               @dragover="onDragOver(i, $event)"
               @drop="onDrop(i)"
             >
-              <span
-                class="lgedit-grip"
-                draggable="true"
-                title="Drag to reorder"
-                @dragstart="onDragStart(i, $event)"
-                @dragend="onDragEnd"
-                @click.stop
-                >⠿</span
-              >
-              <span class="lgedit-tag">{{ kindOf(b.id) }}</span>
+              <div class="lgedit-toolbar">
+                <span
+                  class="lgedit-grip"
+                  draggable="true"
+                  title="Drag to reorder"
+                  @dragstart="onDragStart(i, $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                  >⠿</span
+                >
+                <span class="lgedit-tag">{{ kindLabel(b.id) }}</span>
+              </div>
               <button
                 class="lgedit-add"
                 title="Add a module here"
