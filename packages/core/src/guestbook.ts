@@ -33,8 +33,8 @@ export function toGuestbookStatus(value: unknown): GuestbookStatus {
  * Distinct from the status they produce ("approve" the verb vs "approved" the
  * state) and easy to mix up, which is why both spellings and the mapping between
  * them live here rather than as literals in the route and again in the CMS
- * client. Only these two transitions exist: there's no un-approve, because the
- * queue is a decision log, not a toggle.
+ * client. Three transitions exist: approve, reject, and unapprove (back to
+ * pending).
  */
 export const MODERATION_ACTION = {
   Approve: "approve",
