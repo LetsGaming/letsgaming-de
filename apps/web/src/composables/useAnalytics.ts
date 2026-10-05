@@ -3,6 +3,7 @@ import { AuthError } from "../lib/cms";
 import {
   ANALYTICS_DIMENSIONS,
   DWELL_BUCKETS,
+  METRIC_SOURCES,
   VIEW_RANGES,
   CLEAR_RANGES,
   buildStackedChart,
@@ -101,9 +102,8 @@ const ANALYTICS_POLL_MS = 30_000;
 
 /**
  * Human labels for the dimensions a card can be filtered by. Only the seven
- * top-list dimensions are selectable for now (see `AnalyticsPanel.vue`) — the
- * eleven engagement dimensions stay unfiltered, so they don't need a label
- * here.
+ * access-log dimensions are selectable: a filter narrows the other log lists, and
+ * the script's engagement lists can't be crossed, so they need no label here.
  */
 const DIMENSION_LABELS: Partial<Record<AnalyticsDimension, string>> = {
   path: "Path",
@@ -270,10 +270,9 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
   /**
    * A dimension filter — set by clicking a row in one of the seven top-list
    * cards. Both-or-neither with `filterKey`. Replaces what the chart plots
-   * and what one headline tile counts (`analytics.value.filtered`); it does
-   * not narrow the list cards, and can't be crossed with any other dimension
-   * — the aggregates keep no link between one dimension's rows and another's
-   * (ADR-0007).
+   * and what one headline tile counts (`analytics.value.filtered`), and the
+   * server narrows the other access-log lists to match; the script's
+   * engagement lists stay whole (`filtered.notFilterable`).
    */
   const filterDim = ref<AnalyticsDimension | null>(restored.filterDim);
   const filterKey = ref<string | null>(restored.filterKey);
@@ -735,6 +734,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
   return {
     METRIC_LABELS,
     METRIC_UNITS,
+    METRIC_SOURCES,
     medianVisitLength,
     referrerRules,
     savingRules,

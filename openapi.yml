@@ -955,19 +955,107 @@ paths:
     get:
       tags: [CMS · Analytics]
       summary: Aggregate analytics
-      description: Engagement and (if a proxy access log is wired up) traffic aggregates over a window.
+      description: |
+        Engagement (in-page script) and traffic (proxy access log) aggregates over a window.
+
+        `visits` is script-confirmed and `pageviews` comes from the access log, so they differ
+        by every client that never runs JavaScript; each carries its `source`. `paths` is grouped
+        by first path segment, with `children` listing the stored sub-paths of a group.
+
+        A `dim`/`key` filter narrows the other access-log lists (`paths`, `referrers`, `browsers`,
+        `os`, `devices`, `bots`, `probes`) through pair counters written at ingest. The script's
+        `engagement` lists cannot be cross-filtered and are named in `filtered.notFilterable`.
       parameters:
         - name: hours
           in: query
           required: false
-          description: Window size in hours.
+          description: Rolling window size in hours (default 720, max 9600). Ignored when `from` and `to` are given.
           schema: { type: integer, minimum: 1 }
+        - name: from
+          in: query
+          required: false
+          description: Custom range start, a local calendar day. Requires `to`; the span may not exceed 400 days.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          description: Custom range end (inclusive), a local calendar day. Requires `from`.
+          schema: { type: string, format: date }
+        - name: tz
+          in: query
+          required: false
+          description: IANA time zone day buckets are expressed in. Defaults to the owner's zone.
+          schema: { type: string, example: Europe/Berlin }
+        - name: at
+          in: query
+          required: false
+          description: Narrow the lists (not the chart) to one bucket, `YYYY-MM-DD` or `YYYY-MM-DDTHH`.
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}(T\d{2})?$' }
+        - name: dim
+          in: query
+          required: false
+          description: Dimension to filter by. Requires `key`.
+          schema:
+            type: string
+            enum: [path, referrer, browser, os, device, bot, probe, tab, exit, transition, dwell, scroll, session_tabs, session_dwell, click, project, viewport, theme]
+        - name: key
+          in: query
+          required: false
+          description: Display key to filter to (a referrer's grouped label, a path group such as `/docs` or one stored path, or the raw key). Requires `dim`.
+          schema: { type: string, maxLength: 200 }
       responses:
         "200":
           description: The analytics response (contract `AnalyticsResponse` in `@lg/core`).
           content:
             application/json:
-              schema: { type: object, description: "See `AnalyticsResponse` in `@lg/core`." }
+              schema:
+                type: object
+                description: "See `AnalyticsResponse` in `@lg/core`."
+                properties:
+                  visits: { $ref: "#/components/schemas/TrafficFigure" }
+                  pageviews: { $ref: "#/components/schemas/TrafficFigure" }
+                  metricSources:
+                    type: object
+                    description: Where each metric tile's number comes from.
+                    additionalProperties: { type: string, enum: [script, log] }
+                  paths:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, count]
+                      properties:
+                        key: { type: string }
+                        count: { type: integer }
+                        children:
+                          type: array
+                          description: Stored sub-paths summed into this group; absent for a single path.
+                          items:
+                            type: object
+                            required: [key, count]
+                            properties:
+                              key: { type: string }
+                              count: { type: integer }
+                  filtered:
+                    type: object
+                    description: Present when `dim`/`key` is active.
+                    properties:
+                      dimension: { type: string }
+                      key: { type: string }
+                      total: { type: integer }
+                      previous: { type: [integer, "null"] }
+                      narrowed:
+                        type: array
+                        description: Top-level lists narrowed by the filter.
+                        items: { type: string }
+                      notFilterable:
+                        type: array
+                        description: Lists left whole because their source cannot be crossed with the filter.
+                        items:
+                          type: object
+                          properties:
+                            card: { type: string }
+                            source: { type: string, enum: [script, log] }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/cms/analytics/clear:
@@ -1149,6 +1237,14 @@ components:
             $ref: "#/components/schemas/Error"
 
   schemas:
+    TrafficFigure:
+      type: object
+      description: A traffic total with where it was measured.
+      required: [total, previous, source]
+      properties:
+        total: { type: integer }
+        previous: { type: [integer, "null"], description: "Same figure over the preceding window; null when there is none." }
+        source: { type: string, enum: [script, log] }
     Ok:
       type: object
       description: A bare success acknowledgement.

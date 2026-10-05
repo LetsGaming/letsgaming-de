@@ -198,3 +198,26 @@ re-reads, and it can only restore what the log file still covers** — check wha
 your rotation keeps first. Engagement data (sections, clicks, dwell, visits) is
 never touched: it comes from the browser beacon, and no log replay can
 reconstruct it.
+
+## Pair counters (cross-filtering)
+
+Besides the five page-view dimensions, ingest also counts every pair of them
+(path x referrer, path x device, browser x os, and so on: ten pairs) as
+dimension `x:<a>:<b>` with the key `<a>\u0001<b>`. That is what lets a filter on
+one dimension narrow the others in the CMS. A pair is still an aggregate count of
+page views with both values; nothing links it to a visitor.
+
+- **Storage is capped.** One pair dimension keeps at most 300 distinct keys per
+  hour (`PAIR_KEY_CAP_PER_HOUR`). Past that, new combinations are dropped for the
+  hour and known ones keep counting. The table is bounded by 10 x 300 rows an
+  hour whatever the traffic.
+- **Retention is unchanged.** Pairs live in `analytics_hourly` and roll up into
+  `analytics_daily` with everything else.
+- **History needs a rebuild.** Pairs are written as lines are ingested, so traffic
+  from before they shipped has none. `analytics:rebuild` drops and re-derives the
+  pairs along with the other log dimensions, so it also backfills them for
+  whatever the log still holds.
+- **Reclassify does not touch pairs.** Run a rebuild after a reclassify if the
+  moved paths also need to leave the pair counters.
+- **The in-page script cannot be crossed.** A beacon carries no path, referrer or
+  device, so the engagement lists stay whole under a filter.

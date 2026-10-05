@@ -82,6 +82,9 @@ export const CLICK_ACTIONS = [
   "highlight",
   "social",
   "theme-toggle",
+  "nav",
+  "hero-cta",
+  "teaser",
 ] as const;
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 
@@ -196,6 +199,20 @@ export type LogDimension = (typeof LOG_DIMENSIONS)[number];
  */
 export const ANALYTICS_DIMENSIONS = [...LOG_DIMENSIONS, ...ENGAGEMENT_DIMENSIONS] as const;
 export type AnalyticsDimension = (typeof ANALYTICS_DIMENSIONS)[number];
+
+/**
+ * Where each headline metric is measured. `log` counts requests the server saw;
+ * `script` counts what the in-page tracker reported, so it only ever includes
+ * browsers that ran JavaScript.
+ */
+export const METRIC_SOURCES = {
+  pageviews: "log",
+  sections: "script",
+  clicks: "script",
+  visitLength: "script",
+  bots: "log",
+  probes: "log",
+} as const;
 
 /** One event as it travels from browser to server. Intentionally tiny. */
 export interface TrackEvent {

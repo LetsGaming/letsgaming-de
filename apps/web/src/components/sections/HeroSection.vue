@@ -34,7 +34,7 @@ const syncedRelative = useSyncedRelative();
  * pattern didn't allow fragments, and this handler swallowed the click before
  * anyone could notice the CTA was dead.
  */
-const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsWith("#") ? "contact-cta" : "social");
+const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsWith("#") ? "hero-cta" : "social");
 </script>
 
 <template>

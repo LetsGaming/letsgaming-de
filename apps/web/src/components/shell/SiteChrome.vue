@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from "vue";
 import { icons } from "../../lib/icons";
 import { useSiteState, useTheme } from "../../composables/useSiteState";
 import { areaHref } from "../../lib/area";
+import { trackClick } from "../../lib/track";
 import SmartLink from "../ui/SmartLink.vue";
 import SettingsModal from "./SettingsModal.vue";
 
@@ -19,7 +20,7 @@ const settingsOpen = ref(false);
 const current = computed(() => props.current);
 const href = (id: string) => areaHref(props.nav, id);
 
-onMounted(() => initSite(props.nav));
+onMounted(() => initSite(props.nav, props.current));
 </script>
 
 <template>
@@ -35,6 +36,7 @@ onMounted(() => initSite(props.nav));
         :class="{ active: area.id === current }"
         :aria-current="area.id === current ? 'page' : undefined"
         :href="href(area.id)"
+        @click="trackClick('nav')"
       >
         {{ area.label }}
       </SmartLink>

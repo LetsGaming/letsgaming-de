@@ -11,12 +11,24 @@
 import {
   ANALYTICS_DIMENSIONS,
   MAX_CUSTOM_RANGE_DAYS,
+  METRIC_SOURCES,
   classifyReferrer,
   clearRange,
+  groupPathSeries,
+  groupPaths,
   groupReferrers,
+  isPairedDimension,
+  pathMatchesFilter,
   sanitizeTimeZone,
 } from "@lg/core";
-import type { AnalyticsResponse, AnalyticsTotals, ClearAnalyticsResponse } from "@lg/core";
+import type {
+  AnalyticsCardId,
+  AnalyticsResponse,
+  AnalyticsRow,
+  AnalyticsTotals,
+  ClearAnalyticsResponse,
+  PairedDimension,
+} from "@lg/core";
 import { zonedParts, type AnalyticsDimension, type SeriesRow, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
@@ -24,6 +36,18 @@ import { requireAuth } from "../auth/guard.js";
 import { badRequest } from "../errors.js";
 
 const HOUR = 3600_000;
+
+/** The page-view lists a filter on another page-view dimension can narrow, and the dimension each shows. */
+const CROSS_CARDS: Record<"paths" | "referrers" | "browsers" | "os" | "devices", PairedDimension> = {
+  paths: "path",
+  referrers: "referrer",
+  browsers: "browser",
+  os: "os",
+  devices: "device",
+};
+
+/** Sub-paths listed under one expandable path group. */
+const MAX_PATH_CHILDREN = 50;
 
 /**
  * Bounds that sort outside every real bucket, for "clear everything".
@@ -127,11 +151,9 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
        * request, not a partial one, and a hand-typed deep link with a typo'd
        * `dim` must fail loudly rather than silently render as unfiltered.
        *
-       * This replaces what the chart plots and what one headline total counts
-       * (`filtered` below) — it does not narrow the list cards or `engagement`.
-       * The aggregates keep no link between one dimension's rows and another's,
-       * so a filter can only ever be "this dimension's own counts, narrowed to
-       * one key" — see `AnalyticsResponse.filtered`'s doc comment.
+       * It replaces what the chart plots and what one headline total counts, and
+       * narrows the other access-log lists through the pair counters. The script's
+       * `engagement` lists can't be crossed: see `AnalyticsResponse.filtered`.
        */
       const dim = (ANALYTICS_DIMENSIONS as readonly string[]).includes(req.query.dim ?? "")
         ? (req.query.dim as AnalyticsDimension)
@@ -264,7 +286,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         return unit === "day" ? toLocalDays(rows, timeZone, rangeFrom, rangeTo) : rows;
       };
       const sumOf = (d: AnalyticsDimension, from: string, to: string) =>
-        store.analytics.topHourly(d, from, to).reduce((s, r) => s + r.count, 0);
+        store.analytics.sumHourly(d, from, to);
 
       // No comparison window for a single bucket: "vs the hour before" is a
       // different question from the one the range picker is answering.
@@ -291,14 +313,24 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
        * display key already *is* its stored key.
        */
       function filterKeys(dimension: AnalyticsDimension, key: string, from: string, to: string): string[] {
-        if (dimension !== "referrer") return [key];
-        return store.analytics
-          .topHourly("referrer", from, to, 1000)
-          .filter((r) => classifyReferrer(r.key, referrerRules) === key)
-          .map((r) => r.key);
+        if (dimension === "referrer") {
+          return store.analytics
+            .topHourly("referrer", from, to, 1000)
+            .filter((r) => classifyReferrer(r.key, referrerRules) === key)
+            .map((r) => r.key);
+        }
+        // A path filter can name a group (`/docs`) or one concrete path.
+        if (dimension === "path") {
+          return store.analytics
+            .topHourly("path", from, to, 5000)
+            .filter((r) => pathMatchesFilter(r.key, key))
+            .map((r) => r.key);
+        }
+        return [key];
       }
 
       let filtered: NonNullable<AnalyticsResponse["filtered"]> | null = null;
+      const narrowedLists: Partial<Record<AnalyticsCardId, AnalyticsRow[]>> = {};
       if (dim && filterKey) {
         // The chart series covers the full range; the total (like every other
         // list total) honours `at`. The member-key set can differ between the
@@ -319,26 +351,73 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
               .reduce((s, r) => s + r.count, 0)
           : null;
 
-        filtered = { dimension: dim, key: filterKey, series, total, previous: previousTotal };
+        filtered = { dimension: dim, key: filterKey, series, total, previous: previousTotal, narrowed: [], notFilterable: [] };
+
+        if (isPairedDimension(dim)) {
+          for (const [card, target] of Object.entries(CROSS_CARDS)) {
+            if (target === dim) continue;
+            narrowedLists[card as keyof typeof CROSS_CARDS] = store.analytics.topCross(
+              dim,
+              listKeys,
+              target,
+              listFromB,
+              listToB,
+            );
+            filtered.narrowed.push(card as AnalyticsCardId);
+          }
+          // Bot and probe requests never count as page views, so none of them
+          // shares a path, browser, OS, device or referrer with one.
+          narrowedLists.bots = [];
+          narrowedLists.probes = [];
+          filtered.narrowed.push("bots", "probes");
+          filtered.notFilterable.push({ card: "engagement", source: "script" });
+        } else if (dim === "bot" || dim === "probe") {
+          for (const card of Object.keys(CROSS_CARDS)) {
+            narrowedLists[card as keyof typeof CROSS_CARDS] = [];
+            filtered.narrowed.push(card as AnalyticsCardId);
+          }
+          const other = dim === "bot" ? "probes" : "bots";
+          narrowedLists[other] = [];
+          filtered.narrowed.push(other);
+          filtered.notFilterable.push({ card: "engagement", source: "script" });
+        } else {
+          for (const card of [...Object.keys(CROSS_CARDS), "bots", "probes"]) {
+            filtered.notFilterable.push({ card: card as AnalyticsCardId, source: "log" });
+          }
+          filtered.notFilterable.push({ card: "engagement", source: "script" });
+        }
       }
+
+      // Log-derived lists, narrowed by the dimension filter when one is active.
+      // Paths and referrers are grouped on read, not on ingest: the rules can
+      // change, and a rule added today has to relabel everything that ever
+      // arrived. Baking labels into the aggregates would only label the future.
+      const listOf = (card: AnalyticsCardId, dimension: AnalyticsDimension): AnalyticsRow[] =>
+        narrowedLists[card] ?? store.analytics.topHourly(dimension, listFromB, listToB, 1000);
+      const topRows = (card: AnalyticsCardId, dimension: AnalyticsDimension) => listOf(card, dimension).slice(0, 20);
+      const pathRows = groupPaths(listOf("paths", "path"))
+        .slice(0, 20)
+        .map((g) => (g.children ? { ...g, children: g.children.slice(0, MAX_PATH_CHILDREN) } : g));
+
+      const visitsTotal = sumOf("session_dwell", fromB, toB);
+      const pageviewsTotal = sumOf("path", fromB, toB);
 
       const response: AnalyticsResponse = {
         range: { from: rangeFrom, to: rangeTo, hours, unit, timeZone, ...(at ? { at } : {}) },
-        // Log-derived top lists (now hour-bucketed, same pipeline).
-        paths: top("path"),
-        // Grouped on read, not on ingest: the rules live in the CMS, so a rule
-        // added today has to relabel every referrer that ever arrived. Baking
-        // labels into the aggregates would only ever label the future.
-        referrers: groupReferrers(top("referrer"), referrerRules),
-        browsers: top("browser"),
-        os: top("os"),
-        devices: top("device"),
-        bots: top("bot"),
-        probes: top("probe"),
+        paths: pathRows,
+        referrers: groupReferrers(listOf("referrers", "referrer"), referrerRules).slice(0, 20),
+        browsers: topRows("browsers", "browser"),
+        os: topRows("os", "os"),
+        devices: topRows("devices", "device"),
+        bots: topRows("bots", "bot"),
+        probes: topRows("probes", "probe"),
+        visits: { total: visitsTotal, previous: hasPrev ? previous.visitLength : null, source: "script" },
+        pageviews: { total: pageviewsTotal, previous: hasPrev ? previous.pageviews : null, source: "log" },
+        metricSources: METRIC_SOURCES,
         // The graph: stacked composition over time, per metric.
         chart: {
           unit,
-          pageviews: series("path"),
+          pageviews: groupPathSeries(series("path")),
           sections: series("tab"),
           clicks: series("click"),
           visitLength: series("session_dwell"),

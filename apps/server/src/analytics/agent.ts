@@ -63,12 +63,12 @@ export type BotFamily = (typeof BOT_FAMILY)[keyof typeof BOT_FAMILY];
  * misses every agent that calls itself `monitor-something`.
  */
 const BOT_PATTERNS: readonly (readonly [RegExp, BotFamily])[] = [
-  [/googlebot|bingbot|yandex(bot)?|duckduckbot|baiduspider|slurp|applebot|petalbot|seznambot|qwantify/, BOT_FAMILY.search],
+  [/googlebot|googleother|google-inspectiontool|storebot-google|adsbot-google|mediapartners-google|apis-google|bingbot|bingpreview|msnbot|yandex(bot)?|duckduckbot|baiduspider|slurp|applebot|petalbot|seznambot|qwantify|sogou|exabot|mojeek/, BOT_FAMILY.search],
   [/gptbot|claudebot|anthropic|ccbot|perplexity|bytespider|google-extended|cohere|amazonbot|meta-externalagent|diffbot|omgili|timpibot|youbot|imagesift/, BOT_FAMILY.ai],
-  [/facebookexternalhit|twitterbot|slackbot|discordbot|whatsapp|telegrambot|linkedinbot|embedly|pinterest/, BOT_FAMILY.social],
-  [/uptimerobot|pingdom|statuscake|betteruptime|newrelic|datadog|site24x7|hetrixtool/, BOT_FAMILY.monitor],
-  [/curl|wget|python-requests|python-urllib|go-http-client|quic-go|okhttp|axios|node-fetch|libwww|httpie|postman|insomnia|java\/|apache-httpclient|scrapy|puppeteer|playwright|headlesschrome|phantomjs|lighthouse/, BOT_FAMILY.tool],
-  [/bot\b|crawler|crawl|spider|scraper|feedfetcher|archiver|monitor|checker|validator|preview/, BOT_FAMILY.other],
+  [/facebookexternalhit|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|linkedinbot|embedly|pinterest|skype ?uri ?preview|vkshare|redditbot|iframely|bitlybot|tumblr|nuzzel|flipboard|cardyb|opengraph|linkpreview|google-read-aloud/, BOT_FAMILY.social],
+  [/uptimerobot|pingdom|statuscake|betteruptime|newrelic|datadog|site24x7|hetrixtool|uptime|nodeping|freshping|updown\.io|zabbix|nagios|prometheus|blackbox|monitis|checkly|statping|healthcheck|health-check|kube-probe|googlehc|gtmetrix|pagespeed|webpagetest/, BOT_FAMILY.monitor],
+  [/curl|wget|python-requests|python-urllib|python-httpx|aiohttp|go-http-client|quic-go|fasthttp|colly|okhttp|axios|node-fetch|undici|libwww|libcurl|httpie|postman|insomnia|java\/|apache-httpclient|jakarta|scrapy|puppeteer|playwright|headless|phantom|selenium|webdriver|cypress|pa11y|jsdom|lighthouse|zgrab|masscan|nmap|censys|shodan|nuclei|reqwest|restsharp|guzzle|winhttp|powershell|\bperl\b|\bruby\b|\bphp\//, BOT_FAMILY.tool],
+  [/bot\b|crawler|crawl|spider|scraper|feedfetcher|archiver|monitor|checker|validator|preview|^node$|^mozilla\/\d\.\d$/, BOT_FAMILY.other],
 ];
 
 /**
