@@ -10,26 +10,15 @@ import AssetLibrary from "./AssetLibrary.vue";
 // scoped so the per-panel child components below are styled by the same rules —
 // see styles/cms.css.
 import "../../styles/cms.css";
-import { provide } from "vue";
+import { computed, provide } from "vue";
 import { CMS_KEY } from "../../composables/cmsContext";
-import AboutPanel from "./panels/AboutPanel.vue";
 import AnalyticsPanel from "./panels/AnalyticsPanel.vue";
 import DashboardPanel from "./panels/DashboardPanel.vue";
 import EditorPanel from "./panels/EditorPanel.vue";
-import GalleryPanel from "./panels/GalleryPanel.vue";
 import GuestbookPanel from "./panels/GuestbookPanel.vue";
-import HobbiesPanel from "./panels/HobbiesPanel.vue";
-import HomeIntroPanel from "./panels/HomeIntroPanel.vue";
 import PostsPanel from "./panels/PostsPanel.vue";
-import PlaytimePanel from "./panels/PlaytimePanel.vue";
 import LibraryPanel from "./panels/LibraryPanel.vue";
-import LinksPanel from "./panels/LinksPanel.vue";
-import NowPanel from "./panels/NowPanel.vue";
-import PresencePanel from "./panels/PresencePanel.vue";
-import MusicPanel from "./panels/MusicPanel.vue";
-import WrappedPanel from "./panels/WrappedPanel.vue";
 import SettingsPanel from "./panels/SettingsPanel.vue";
-import SiteIdentityPanel from "./panels/SiteIdentityPanel.vue";
 
 const context = useCms();
 provide(CMS_KEY, context);
@@ -65,6 +54,11 @@ const {
 	viewSite,
 	cms,
 } = context;
+
+/** Pending-count badges by nav id. Add an entry here to badge another sidebar item. */
+const navBadges = computed<Record<string, number>>(() => ({
+	guestbook: guestbook.value?.pending ?? 0,
+}));
 </script>
 
 <template>
@@ -101,7 +95,7 @@ const {
               @click="pick(item.id)"
             >
               {{ item.label }}
-              <span v-if="item.id === 'guestbook' && guestbook?.pending" class="ndot">{{ guestbook.pending }}</span>
+              <span v-if="navBadges[item.id]" class="ndot">{{ navBadges[item.id] }}</span>
             </button>
           </div>
         </nav>
@@ -127,38 +121,11 @@ const {
         <!-- DASHBOARD -->
         <DashboardPanel v-show="tab === 'dashboard'" />
 
-        <!-- SITE IDENTITY -->
-        <SiteIdentityPanel v-show="tab === 'site'" />
-
-        <!-- HOME INTRO -->
-        <HomeIntroPanel v-show="tab === 'home'" />
-
-        <!-- ABOUT / BIO -->
-        <AboutPanel v-show="tab === 'about'" />
-
-        <!-- PRESENCE -->
-        <PresencePanel v-show="tab === 'presence'" />
-        <MusicPanel v-show="tab === 'music'" />
-        <WrappedPanel v-show="tab === 'wrapped'" />
-        <PlaytimePanel v-show="tab === 'playtime'" />
-
       <!-- ASSET LIBRARY -->
       <LibraryPanel v-show="tab === 'library'" />
 
       <EditorPanel v-if="tab === 'editor'" />
       <PostsPanel v-if="tab === 'posts'" />
-
-      <!-- HOBBIES -->
-      <HobbiesPanel v-show="tab === 'hobbies'" />
-
-      <!-- LINKS -->
-      <LinksPanel v-show="tab === 'links'" />
-
-      <!-- NOW -->
-      <NowPanel v-show="tab === 'now'" />
-
-      <!-- GALLERY (images placed on the site, chosen from the library) -->
-      <GalleryPanel v-show="tab === 'gallery'" />
 
       <!-- GUESTBOOK MODERATION -->
       <GuestbookPanel v-show="tab === 'guestbook'" />
@@ -167,7 +134,7 @@ const {
       <AnalyticsPanel v-show="tab === 'analytics'" />
 
       <!-- SETTINGS -->
-      <SettingsPanel v-show="tab === 'settings'" />
+      <SettingsPanel v-if="tab === 'settings'" />
 
 
       </main>

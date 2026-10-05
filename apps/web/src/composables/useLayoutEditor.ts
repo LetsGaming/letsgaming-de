@@ -102,7 +102,7 @@ export const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   now: "now",
   guestbook: "guestbook",
   gallery: "gallery",
-  presence: "presence",
+  presence: null,
   playtime: "playtime",
   music: "music",
   wrapped: "wrapped",

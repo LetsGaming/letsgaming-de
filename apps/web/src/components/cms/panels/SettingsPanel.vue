@@ -3,6 +3,8 @@ import { CLEAR_RANGES, type ClearRangeId } from "@lg/core";
 import { computed, ref } from "vue";
 import { CLEAR_ALL_WORD, isClearConfirmed, needsTypedWord } from "../../../composables/clearConfirm";
 import { useCmsContext } from "../../../composables/cmsContext";
+import PresencePanel from "./PresencePanel.vue";
+import SiteIdentityPanel from "./SiteIdentityPanel.vue";
 
 const { clearRange, clearing, zone, activeZone, setZone } = useCmsContext();
 
@@ -32,6 +34,8 @@ async function run() {
 
 <template>
   <section class="pane">
+    <SiteIdentityPanel />
+    <PresencePanel />
     <div class="card">
       <h3>Analytics clock</h3>
       <p class="help">Which time zone the analytics charts and buckets are read in. Local is this browser's zone.</p>

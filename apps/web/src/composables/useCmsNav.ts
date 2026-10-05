@@ -64,42 +64,47 @@ export type View = (typeof VIEWS)[number];
 /** Where the CMS opens when the URL doesn't say. */
 const DEFAULT_VIEW: View = "dashboard";
 
-// Grouped left-nav, so it's obvious what each screen edits (a small WP/Typo3 shape).
+/**
+ * The sidebar: seven entries. Everything else in `VIEWS` is an inspector id, a panel
+ * mounted in the editor's Selected tab when its module is clicked, not a place to
+ * navigate to. A nav item's pending-count badge is read from `CmsApp`'s `navBadges`
+ * by id.
+ */
 export const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }[] = [
   { label: "", items: [{ id: "dashboard", label: "Dashboard" }] },
-  { label: "", items: [{ id: "editor", label: "Pages" }] },
   {
-    label: "Content",
+    label: "",
     items: [
-      { id: "site", label: "Site identity" },
-      { id: "home", label: "Home intro" },
-      { id: "about", label: "About / bio" },
-      { id: "hobbies", label: "Hobbies" },
-      { id: "links", label: "Links" },
-      { id: "now", label: "Right now" },
-    ],
-  },
-  {
-    label: "Structure & media",
-    items: [
+      { id: "editor", label: "Pages" },
       { id: "posts", label: "Blog" },
-      { id: "library", label: "Asset library" },
-      { id: "gallery", label: "Gallery" },
+      { id: "library", label: "Assets" },
     ],
   },
   {
-    label: "Widgets",
+    label: "",
     items: [
-      { id: "presence", label: "Presence" },
-      { id: "music", label: "Listening" },
-      { id: "playtime", label: "Played" },
-      { id: "wrapped", label: "Wrapped" },
+      { id: "guestbook", label: "Guestbook" },
+      { id: "analytics", label: "Analytics" },
     ],
   },
-  { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
-  { label: "Insights", items: [{ id: "analytics", label: "Analytics" }] },
   { label: "", items: [{ id: "settings", label: "Settings" }] },
 ];
+
+const NAV_VIEWS: readonly View[] = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id));
+
+/** Removed sidebar pages whose content now lives in Settings. */
+const MOVED_TO_SETTINGS: readonly string[] = ["site", "presence"];
+
+/**
+ * Where a hash lands. A stale bookmark to a removed page opens the editor (where
+ * that module is edited by selecting it), or Settings for site identity and
+ * presence privacy; anything unrecognised opens the default view.
+ */
+export function resolveView(name: string): View {
+  if (NAV_VIEWS.includes(name as View)) return name as View;
+  if (MOVED_TO_SETTINGS.includes(name)) return "settings";
+  return isView(name) ? "editor" : DEFAULT_VIEW;
+}
 
 export const VIEW_TITLES: Record<View, string> = {
   dashboard: "Dashboard",
@@ -141,7 +146,7 @@ function parseHash(): { view: View; params: URLSearchParams } {
   const qi = raw.indexOf("?");
   const viewPart = qi === -1 ? raw : raw.slice(0, qi);
   const paramsPart = qi === -1 ? "" : raw.slice(qi + 1);
-  return { view: isView(viewPart) ? viewPart : DEFAULT_VIEW, params: new URLSearchParams(paramsPart) };
+  return { view: resolveView(viewPart), params: new URLSearchParams(paramsPart) };
 }
 
 export function useCmsNav(opts: {

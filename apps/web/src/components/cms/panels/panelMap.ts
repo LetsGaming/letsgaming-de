@@ -11,8 +11,6 @@ import MusicPanel from "./MusicPanel.vue";
 import NowPanel from "./NowPanel.vue";
 import PlaytimePanel from "./PlaytimePanel.vue";
 import PostsPanel from "./PostsPanel.vue";
-import PresencePanel from "./PresencePanel.vue";
-import SiteIdentityPanel from "./SiteIdentityPanel.vue";
 import WrappedPanel from "./WrappedPanel.vue";
 
 /**
@@ -20,10 +18,10 @@ import WrappedPanel from "./WrappedPanel.vue";
  *
  * The same components the CMS's own nav mounts: they take everything from
  * `cmsContext`, so rendering one beside the page it changes costs nothing and shares
- * no state. Every non-null value of `PANEL_FOR_KIND` must be a key here.
+ * no state. Every non-null value of `PANEL_FOR_KIND` must be a key here. Site identity
+ * and presence privacy have no entry: they live in Settings.
  */
 export const PANEL: Partial<Record<View, Component>> = {
-  site: SiteIdentityPanel,
   home: HomeIntroPanel,
   about: AboutPanel,
   hobbies: HobbiesPanel,
@@ -32,7 +30,6 @@ export const PANEL: Partial<Record<View, Component>> = {
   posts: PostsPanel,
   gallery: GalleryPanel,
   guestbook: GuestbookPanel,
-  presence: PresencePanel,
   music: MusicPanel,
   playtime: PlaytimePanel,
   wrapped: WrappedPanel,

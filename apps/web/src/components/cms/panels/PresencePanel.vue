@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
+import type { ActivityNameRow } from "../../../lib/cms";
+import HelpTip from "../HelpTip.vue";
+import TagInput from "../TagInput.vue";
 
 // View-only panel. All state and handlers come from the shared CMS context.
 const {
@@ -13,17 +16,18 @@ const {
 	savePresence,
 	togglePresence,
 	toggleSample,
+	cms,
 } = useCmsContext();
 
-// The hidden list is a string[] in state; the textarea edits it one-per-line.
-const hiddenText = computed({
-	get: () => presenceHidden.value.join("\n"),
-	set: (v: string) => {
-		presenceHidden.value = v
-			.split("\n")
-			.map((s) => s.trim())
-			.filter(Boolean);
-	},
+// Names the sampler has recorded, most-seen first. Suggestions only: a missing list
+// leaves the field fully usable.
+const recorded = ref<ActivityNameRow[]>([]);
+onMounted(async () => {
+	try {
+		recorded.value = (await cms.activityNames()).names;
+	} catch {
+		recorded.value = [];
+	}
 });
 
 // Recording a category the widget doesn't display is fine (collect quietly); the
@@ -37,18 +41,24 @@ function setRetention(e: Event) {
 	const v = (e.target as HTMLSelectElement).value;
 	presenceRetention.value = v === "null" ? null : Number(v);
 }
+
+const retentionSummary = computed(() => {
+	const days = presenceRetention.value;
+	return days === null
+		? "Recorded sessions are kept forever."
+		: `Sessions older than ${days} days are deleted by a daily sweep.`;
+});
 </script>
 
 <template>
   <section class="pane">
     <div class="card">
-      <h3>Presence <span class="muted">(Life → “Right now”, and what the playtime charts record)</span></h3>
+      <h3>Presence privacy</h3>
 
       <h4>Activity categories</h4>
-      <p class="muted">
-        Two independent switches per category. <b>Show</b> puts it on the live widget — the server
-        sends visitors only what's ticked. <b>Record</b> saves it to build the playtime charts. They're
-        separate on purpose: a category can be recorded but not shown, or shown but not recorded.
+      <p class="help">
+        <b>Show</b> puts a category on the live widget. <b>Record</b> saves it for the playtime charts.
+        <HelpTip text="The two switches are independent on purpose: a category can be recorded but not shown, or shown but not recorded. The server sends visitors only what is ticked under Show." />
       </p>
       <div class="catgrid" role="table">
         <div class="cathead" role="row">
@@ -57,7 +67,7 @@ function setRetention(e: Event) {
           <span role="columnheader">Record</span>
         </div>
         <div v-for="o in PRESENCE_OPTIONS" :key="o.key" class="catrow" role="row">
-          <span class="catname"><b>{{ o.label }}</b><span class="muted"> — {{ o.hint }}</span></span>
+          <span class="catname"><b>{{ o.label }}</b><span class="muted"> · {{ o.hint }}</span></span>
           <label class="catcell" :title="`Show ${o.label} on the live widget`">
             <input type="checkbox" :checked="presenceShow.includes(o.key)" @change="togglePresence(o.key)" />
           </label>
@@ -66,35 +76,32 @@ function setRetention(e: Event) {
           </label>
         </div>
       </div>
-      <p v-if="sampledButHidden.length" class="muted note">
-        Recording but not showing: {{ sampledButHidden.join(", ") }} — accumulating quietly.
+      <p v-if="sampledButHidden.length" class="help hint">
+        Recording but not showing: {{ sampledButHidden.join(", ") }}.
       </p>
 
       <h4>Keep history for</h4>
-      <p class="muted">
-        How long recorded sessions are kept before a daily sweep prunes the rest. This table is the
-        only long memory of what was played, so the default keeps everything.
-      </p>
       <select class="retention" :value="presenceRetention === null ? 'null' : presenceRetention" @change="setRetention">
         <option v-for="o in RETENTION_OPTIONS" :key="String(o.days)" :value="o.days === null ? 'null' : o.days">
           {{ o.label }}
         </option>
       </select>
+      <p class="help hint">
+        {{ retentionSummary }}
+        <HelpTip text="This table is the only long memory of what was played, so the default keeps everything." />
+      </p>
 
       <h4>Hidden activities</h4>
-      <p class="muted">
-        Names that are recorded but never shown publicly — dropped from the live widget <em>and</em>
-        the playtime charts, whatever the category (a game, a stream, a show). One per line, matched
-        case-insensitively. The all-time shape (when you play, hours) still counts them; only the named
-        rows and the live card drop them.
+      <p class="help">
+        Names that are never shown publicly, in any category. Matched case-insensitively.
+        <HelpTip text="Hidden names are dropped from the live widget and the playtime charts. The all-time shape (when you play, hours) still counts them; only the named rows and the live card drop them." />
       </p>
-      <textarea
-        v-model="hiddenText"
-        class="hidden-list"
-        rows="4"
-        placeholder="e.g. R6"
-        spellcheck="false"
-      ></textarea>
+      <TagInput
+        v-model="presenceHidden"
+        label="Hidden activities"
+        placeholder="Type a name, press Enter"
+        :suggestions="recorded"
+      />
 
       <div class="actions"><button class="btn" @click="savePresence">Save presence</button></div>
     </div>
@@ -111,12 +118,11 @@ function setRetention(e: Event) {
 .pane h4:first-of-type {
 	margin-top: var(--sp-8);
 }
-.note {
-	font-size: var(--fs-micro);
+.hint {
 	margin-top: var(--sp-6);
 }
 
-/* One row per category, two switch columns — the two axes read at a glance instead
+/* One row per category, two switch columns: the two axes read at a glance instead
    of as two look-alike lists. */
 .catgrid {
 	margin-top: var(--sp-8);
@@ -160,16 +166,5 @@ function setRetention(e: Event) {
 	border: 1px solid var(--line);
 	border-radius: var(--r-s);
 	padding: 6px var(--sp-10);
-}
-.hidden-list {
-	width: 100%;
-	font: inherit;
-	font-size: 13px;
-	background: var(--card-2);
-	color: var(--ink);
-	border: 1px solid var(--line);
-	border-radius: var(--r-s);
-	padding: var(--sp-8) var(--sp-10);
-	resize: vertical;
 }
 </style>

@@ -5,6 +5,7 @@ import { cms } from "../../src/lib/cms";
 import { METRIC_SOURCES } from "@lg/core";
 import type { AnalyticsChart, AnalyticsResponse, Localized, SiteContent, SiteView } from "@lg/core";
 import { useCms } from "../../src/composables/useCms";
+import { NAV_GROUPS } from "../../src/composables/useCmsNav";
 
 /**
  * `useCms` is a composable, so it needs a component to live in (onMounted,
@@ -63,10 +64,37 @@ describe("which panel is open", () => {
   });
 
   it("restores the panel named by the URL on load — the reload complaint", async () => {
-    await withHash("#hobbies");
+    await withHash("#posts");
     const { api } = mountCms();
     await flushPromises();
-    expect(api().tab.value).toBe("hobbies");
+    expect(api().tab.value).toBe("posts");
+  });
+
+  it("sends a bookmark to a removed module page to the editor, or to Settings", async () => {
+    for (const [hash, view] of [
+      ["#hobbies", "editor"],
+      ["#music", "editor"],
+      ["#gallery", "editor"],
+      ["#site", "settings"],
+      ["#presence", "settings"],
+    ] as const) {
+      await withHash(hash);
+      const { api } = mountCms();
+      await flushPromises();
+      expect(api().tab.value, hash).toBe(view);
+    }
+  });
+
+  it("offers exactly seven sidebar entries", () => {
+    expect(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id))).toEqual([
+      "dashboard",
+      "editor",
+      "posts",
+      "library",
+      "guestbook",
+      "analytics",
+      "settings",
+    ]);
   });
 
   it("falls back rather than rendering nothing for a stale or hostile hash", async () => {
@@ -79,21 +107,21 @@ describe("which panel is open", () => {
   it("writes the panel to the URL, so a reload comes back to it", async () => {
     const { api } = mountCms();
     await flushPromises();
-    api().pick("hobbies");
-    expect(window.location.hash).toBe("#hobbies");
+    api().pick("posts");
+    expect(window.location.hash).toBe("#posts");
   });
 
   it("follows back/forward", async () => {
     const { api } = mountCms();
     await flushPromises();
-    api().pick("links");
-    expect(api().tab.value).toBe("links");
+    api().pick("posts");
+    expect(api().tab.value).toBe("posts");
 
     // What the browser does on Back: change the hash, fire the event.
-    window.location.hash = "#now";
+    window.location.hash = "#library";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
     await flushPromises();
-    expect(api().tab.value).toBe("now");
+    expect(api().tab.value).toBe("library");
   });
 });
 
