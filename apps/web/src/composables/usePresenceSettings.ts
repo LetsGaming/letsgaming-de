@@ -73,6 +73,7 @@ export function usePresenceSettings({ autosave }: PresenceDeps) {
     retentionDays?: number | null;
     hidden?: string[];
   } | undefined) {
+    if (autosave.isDirty("presence")) return;
     presenceShow.value = p?.show ?? [];
     presenceSample.value = p?.sample ?? p?.show ?? [];
     presenceRetention.value = p?.retentionDays ?? null;

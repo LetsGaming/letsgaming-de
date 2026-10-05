@@ -252,11 +252,12 @@ async function loadAll() {
   // Unsent edits go first: hydrating replaces the editor state with the server's.
   await autosave.flush();
   const data = await cms.content();
-  Object.assign(meta, data.content.meta);
-  Object.assign(headline, data.content.headline);
-  Object.assign(lede, data.content.lede);
-  Object.assign(status, data.content.status);
-  bio.value = data.content.bio;
+  // A document whose save failed (or was edited during the fetch) keeps its local value.
+  if (!autosave.isDirty("meta")) Object.assign(meta, data.content.meta);
+  if (!autosave.isDirty("headline")) Object.assign(headline, data.content.headline);
+  if (!autosave.isDirty("lede")) Object.assign(lede, data.content.lede);
+  if (!autosave.isDirty("status")) Object.assign(status, data.content.status);
+  if (!autosave.isDirty("bio")) bio.value = data.content.bio;
   hobbiesList.set(data.content.hobbies.map((h: Hobby, i: number) => ({ ...h, sort: i })));
   linksList.set(data.content.links.map((l: Link, i: number) => ({ ...l, sort: i })));
   nowList.set(data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i })));

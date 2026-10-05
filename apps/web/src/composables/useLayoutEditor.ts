@@ -166,10 +166,21 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
 
   /** Rebuild the placement state from freshly-loaded content. */
   function hydrate(data: { modules?: ModuleDescriptor[]; nav?: NavNode[]; content?: { gallery?: GalleryRow[] } }) {
-    gallery.value = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
-    for (const g of gallery.value) autosave.baseline(galleryKey(g.id), galleryKey(g.id), strip(g));
+    // Rows and headings with an unsaved or failed edit keep their local value.
+    const fresh = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
+    const localRows = gallery.value.filter((g) => autosave.isDirty(galleryKey(g.id)));
+    const mergedRows = fresh.map((g) => localRows.find((l) => l.id === g.id) ?? g);
+    for (const l of localRows) if (!mergedRows.some((g) => g.id === l.id)) mergedRows.push(l);
+    gallery.value = mergedRows;
+    for (const g of fresh) autosave.baseline(galleryKey(g.id), galleryKey(g.id), strip(g));
 
-    modules.value = (data.modules ?? []).filter((m) => isModuleKind(m.kind));
+    const priorModules = modules.value;
+    modules.value = (data.modules ?? [])
+      .filter((m) => isModuleKind(m.kind))
+      .map((m) => {
+        const local = autosave.isDirty(moduleKey(m.id)) ? priorModules.find((x) => x.id === m.id) : undefined;
+        return local ? { ...m, heading: local.heading, note: local.note } : m;
+      });
     const leaves: { id: string; label: Localized; modules: string[]; description: Localized }[] = [];
     const walk = (nodes: NavNode[]) => {
       for (const n of nodes) {
@@ -190,9 +201,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       }
     };
     walk(data.nav ?? []);
-    layoutAreas.value = leaves;
-    confirmLayout();
-    const placed = new Set(leaves.flatMap((l) => l.modules));
+    if (!autosave.isDirty("layout")) {
+      layoutAreas.value = leaves;
+      confirmLayout();
+    }
+    const placed = new Set(layoutAreas.value.flatMap((l) => l.modules));
     hiddenModules.value = modules.value.map((m) => m.id).filter((id) => !placed.has(id));
     const firstGallery = modules.value.find((m) => m.kind === MODULE_KIND.gallery);
     if (
@@ -203,6 +216,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     }
     for (const m of modules.value) {
       if (m.kind === MODULE_KIND.gallery) confirmOrder(m.id);
+      if (autosave.isDirty(moduleKey(m.id))) continue;
       hadText.set(m.id, { heading: filled(m.heading), note: filled(m.note) });
       autosave.baseline(moduleKey(m.id), "modules", modulePayload(m));
     }
