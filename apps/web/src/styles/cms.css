@@ -2104,3 +2104,188 @@ body.is-dragging .cms .glist .gthumb {
   background: var(--card);
   color: var(--danger-ink);
 }
+/* ── mobile mode ──────────────────────────────────────────────────────────────
+   Below 720px the CMS swaps the builder for the compact editor (MobileEditor),
+   moves the sidebar to a bottom tab bar and keeps every control at touch size. */
+.cms .mobed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.cms .mobed-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-6);
+}
+.cms .mobed-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 0 var(--sp-12);
+  cursor: pointer;
+}
+.cms .mobed-open .modname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cms .mobed-move {
+  min-width: 52px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  cursor: pointer;
+}
+.cms .mobed-move:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cms .mobed-add {
+  display: flex;
+  gap: var(--sp-8);
+}
+.cms .mobed-add select {
+  flex: 1;
+  min-width: 0;
+}
+.cms .mobed-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+  min-width: 0;
+}
+.cms .mobed-sheethead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-width: 0;
+}
+.cms .mobed-sheethead b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cms .mnav {
+  display: none;
+}
+@media (max-width: 719.98px) {
+  .cms {
+    padding: var(--sp-12) var(--sp-14) calc(72px + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+  .cms .desk-only {
+    display: none;
+  }
+  .cms .shell,
+  .cms .main,
+  .cms .pane {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .cms .mnav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .cms .mnav button {
+    position: relative;
+    min-height: 56px;
+    min-width: 0;
+    padding: 0 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--cms-font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .cms .mnav button.on {
+    color: var(--ink-strong);
+    box-shadow: inset 0 2px 0 var(--purple-br);
+  }
+  .cms .mnav .ndot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+  }
+  .cms .topbar {
+    flex-wrap: wrap;
+    gap: var(--sp-8);
+  }
+  .cms .topact {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .cms .mlocale,
+  .cms .topact .btn,
+  .cms .savebar-btn {
+    min-height: 44px;
+  }
+  .cms .savebar-btn {
+    min-width: 44px;
+  }
+  .cms .gb-tabs {
+    overflow-x: auto;
+  }
+  .cms .gb-tab,
+  .cms .gb-buttons .btn,
+  .cms .seg.ranges button,
+  .cms .btn {
+    min-height: 44px;
+  }
+  .cms .gb-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cms .gb-buttons {
+    flex-wrap: wrap;
+  }
+  .cms .charthead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cms .seg,
+  .cms .seg.tiles {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .cms .seg.tiles button {
+    flex: 1 1 calc(50% - var(--sp-6));
+    min-height: 44px;
+  }
+  .cms .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cms .toast {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+  .cms .pickbox {
+    max-width: 100%;
+  }
+}

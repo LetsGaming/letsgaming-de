@@ -329,7 +329,7 @@ const ingestStatus = computed(() => {
             <!-- The plot is wrapped so an HTML tooltip can be positioned over it;
                  SVG can't lay out wrapping text, and a foreignObject would just be
                  the same HTML with worse support. -->
-            <div class="plotwrap" @pointerleave="clearHover">
+            <div class="plotwrap desk-only" @pointerleave="clearHover">
               <svg
                 v-if="chart && chart.total > 0"
                 class="chart"
@@ -409,7 +409,7 @@ const ingestStatus = computed(() => {
             <p v-else-if="chart && chart.total === 0" class="muted empty">
               No {{ METRIC_LABELS[metric].toLowerCase() }} recorded in this range yet.
             </p>
-            <div v-if="chart && chart.total > 0" class="legend">
+            <div v-if="chart && chart.total > 0" class="legend desk-only">
               <button
                 v-for="l in chart.layers"
                 :key="l.key"
@@ -422,11 +422,11 @@ const ingestStatus = computed(() => {
                 <i :style="{ background: STACK_COLORS[l.colorIndex % STACK_COLORS.length] }" />{{ l.label }} <b>{{ l.total }}</b>
               </button>
             </div>
-            <p v-if="metric === 'visitLength' && medianVisitLength" class="muted medianline">
+            <p v-if="metric === 'visitLength' && medianVisitLength" class="muted medianline desk-only">
               Median visit length: <b>{{ medianVisitLength }}</b> — the chart bands are the
               spread of visit lengths over time.
             </p>
-            <div v-if="chart" class="axistip">
+            <div v-if="chart" class="axistip desk-only">
               <span>
                 <b v-if="filterDim && filterKey">{{ filterDim }}: {{ filterKey }}</b>
                 <b v-else>{{ METRIC_LABELS[metric] }}</b>
@@ -459,7 +459,7 @@ const ingestStatus = computed(() => {
                  that can be read, navigated and copied. Visually hidden by
                  default, and revealed by the toggle for anyone who just wants the
                  numbers. -->
-            <div v-if="chart && chart.total > 0" class="tablewrap">
+            <div v-if="chart && chart.total > 0" class="tablewrap desk-only">
               <button type="button" class="link" :aria-expanded="showTable" @click="showTable = !showTable">
                 {{ showTable ? "Hide" : "Show" }} data table
               </button>
@@ -548,6 +548,7 @@ const ingestStatus = computed(() => {
               </div>
             </AnalyticsCard>
             <AnalyticsCard
+              class="desk-only"
               title="Browsers"
               :rows="analytics?.browsers"
               dimension="browser"
@@ -557,6 +558,7 @@ const ingestStatus = computed(() => {
               @select="(k) => selectDimension('browser', k)"
             />
             <AnalyticsCard
+              class="desk-only"
               title="OS"
               :rows="analytics?.os"
               dimension="os"
@@ -566,6 +568,7 @@ const ingestStatus = computed(() => {
               @select="(k) => selectDimension('os', k)"
             />
             <AnalyticsCard
+              class="desk-only"
               title="Devices"
               :rows="analytics?.devices"
               dimension="device"
@@ -577,7 +580,7 @@ const ingestStatus = computed(() => {
           </div>
           <!-- Counted, and kept out of the lists above: those describe people, and
                a crawler or scanner answers all of them with noise. -->
-          <details class="quality">
+          <details class="quality desk-only">
             <summary>
               Traffic quality
               <span class="muted">
@@ -608,8 +611,8 @@ const ingestStatus = computed(() => {
             </div>
           </details>
           <template v-if="analytics?.engagement">
-            <h3 style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page script</span></h3>
-            <div class="cols">
+            <h3 class="desk-only" style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page script</span></h3>
+            <div class="cols desk-only">
               <AnalyticsCard
                 title="Sections viewed"
                 :note="scriptNote"
