@@ -50,8 +50,11 @@ test("layout edits show up in recentEdits alongside content edits", async () => 
   const { app, store } = await setup();
   store.ia.setNav(store.ia.getNav());
   const res = await app.inject({ method: "GET", url: "/api/cms/status", headers: auth });
-  const edits = res.json().recentEdits as { label: string; reason: string }[];
-  assert.ok(edits.some((e) => e.reason === "ia:nav" && e.label === "Page layout"));
+  const edits = res.json().recentEdits as { label: string; reason: string; kind: string; restorable: boolean }[];
+  const ia = edits.find((e) => e.reason === "ia:nav");
+  assert.equal(ia?.label, "Page layout");
+  assert.deepEqual([ia?.kind, ia?.restorable], ["ia", false]);
+  assert.ok(edits.some((e) => e.kind === "content" && e.restorable));
   await app.close();
 });
 

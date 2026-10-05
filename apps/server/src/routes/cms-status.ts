@@ -177,9 +177,13 @@ export function registerCmsStatusRoutes(
   app.get("/api/cms/status", guard, async () => ({
     sources: sourceStatus(),
     guestbook: store.guestbook.countsByStatus(),
+    // Content and IA revisions live in separate id spaces; `kind` says which one
+    // `id` belongs to, and only content revisions can be restored.
     recentEdits: [
-      ...store.content.listRevisions(RECENT_EDITS),
-      ...store.ia.listRevisions(RECENT_EDITS).map((r) => ({ ...r, reason: `ia:${r.reason}` })),
+      ...store.content.listRevisions(RECENT_EDITS).map((r) => ({ ...r, kind: "content" as const, restorable: true })),
+      ...store.ia
+        .listRevisions(RECENT_EDITS)
+        .map((r) => ({ ...r, reason: `ia:${r.reason}`, kind: "ia" as const, restorable: false })),
     ]
       .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
       .slice(0, RECENT_EDITS)

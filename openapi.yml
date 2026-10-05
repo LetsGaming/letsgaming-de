@@ -1270,9 +1270,11 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, savedAt, reason, label]
+                      required: [id, savedAt, reason, label, kind, restorable]
                       properties:
-                        id: { type: integer, description: "Revision id (see /api/cms/revisions). Layout and section-heading edits are archived separately and have no listing endpoint." }
+                        id: { type: integer, description: "Revision id within the id space named by `kind`. Only `content` ids are valid for /api/cms/revisions." }
+                        kind: { type: string, enum: [content, ia], description: "`ia` rows are layout and section-heading edits, archived separately." }
+                        restorable: { type: boolean, description: "True only for `content` rows." }
                         savedAt: { type: string, format: date-time }
                         reason: { type: string, description: "Raw table/column name, `restore:<id>`, or `ia:<nav|modules|module-added|module-removed>` for layout edits." }
                         label: { type: string, description: Human-readable label for `reason`. }
