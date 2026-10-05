@@ -34,6 +34,8 @@ import { SYNCED_INFO } from "../../../lib/cmsInspector";
 import { PANEL } from "./panelMap";
 
 const {
+	addGalleryAsset,
+	createGallery,
 	areaLabel,
 	areaOptions,
 	canvasDeselect,
@@ -180,6 +182,16 @@ function onKey(e: KeyboardEvent) {
 	e.preventDefault();
 }
 
+async function insertNewGallery(name: string) {
+	const id = await createGallery(name);
+	if (id) insertModule(id);
+}
+
+async function onCanvasUploaded(moduleId: string, asset: { id: string }) {
+	await addGalleryAsset(asset.id, moduleId);
+	await refreshCanvas();
+}
+
 onMounted(() => {
 	editorOpen.value = true;
 	void refreshCanvas();
@@ -203,6 +215,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       @select="canvasSelect"
       @deselect="showStructure"
       @insert="canvasInsert"
+      @uploaded="onCanvasUploaded"
       @close="pick('dashboard')"
     >
       <template #title>
@@ -341,6 +354,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       :heading="moduleHeading"
       :target="areaLabel(insertAt.area)"
       @pick="insertModule"
+      @new-gallery="insertNewGallery"
       @close="insertAt = null"
     />
     <CommandPalette v-if="paletteOpen" :items="paletteItems" @close="paletteOpen = false" />
