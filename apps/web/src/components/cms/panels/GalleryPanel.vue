@@ -48,7 +48,7 @@ const GROUP = "gallery";
             Pick images from the <b>Asset library</b>. <b>Drag an image</b> to reorder the gallery —
             the order here is the order on the site — or use ↑/↓. Alt text comes from the asset; the
             caption here is gallery-specific. Each gallery is a module — position it via
-            <b>Layout</b>. New galleries start hidden until you place them.
+            <b>Editor</b>. New galleries start hidden until you place them.
           </p>
         </div>
         <div v-if="!activeGalleryItems.length" class="muted">

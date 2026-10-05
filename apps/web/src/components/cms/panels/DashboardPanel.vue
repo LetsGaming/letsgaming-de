@@ -14,8 +14,10 @@ const {
 <template>
   <section class="pane">
           <div class="card note">
-            Welcome back. This is your site's control room — pick a section on the left. Edits go live
-            immediately (no rebuild); use <b>Preview</b> or <b>View site</b> to see them.
+            <p>
+              Welcome back. This is your site's control room. Pick a section on the left. Edits go live
+              immediately (no rebuild); use <b>View site</b> to see them.
+            </p>
           </div>
           <div class="statgrid">
             <button v-for="s in dashStats" :key="s.label" class="stat" @click="pick(s.to)">

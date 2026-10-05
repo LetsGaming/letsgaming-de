@@ -6,15 +6,12 @@ import AnalyticsCard from "../AnalyticsCard.vue";
 
 // View-only panel. All state and handlers come from the shared CMS context.
 const {
-	CLEARS,
 	METRIC_LABELS,
 	METRIC_UNITS,
 	RANGES,
 	analytics,
 	analyticsAt,
 	chart,
-	clearRange,
-	clearing,
 	loadingA,
 	metric,
 	metricKeys,
@@ -493,19 +490,6 @@ const ingestStatus = computed(() => {
                   </tbody>
                 </table>
               </div>
-            </div>
-            <div class="clearbar">
-              <span class="muted">Clear:</span>
-              <button
-                v-for="c in CLEARS"
-                :key="c.id"
-                class="clearbtn"
-                :class="{ danger: c.hours === null }"
-                :disabled="clearing"
-                @click="clearRange(c.id, c.label)"
-              >
-                {{ c.label }}
-              </button>
             </div>
           </div>
           <p v-if="analytics && !analytics?.paths?.length" class="muted" style="margin-top: 4px">

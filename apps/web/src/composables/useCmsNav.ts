@@ -55,6 +55,7 @@ const VIEWS = [
   "wrapped",
   "guestbook",
   "analytics",
+  "settings",
 ] as const;
 
 export type View = (typeof VIEWS)[number];
@@ -96,6 +97,7 @@ export const NAV_GROUPS: { label: string; items: { id: View; label: string }[] }
   },
   { label: "Community", items: [{ id: "guestbook", label: "Guestbook" }] },
   { label: "Insights", items: [{ id: "analytics", label: "Analytics" }] },
+  { label: "", items: [{ id: "settings", label: "Settings" }] },
 ];
 
 export const VIEW_TITLES: Record<View, string> = {
@@ -116,6 +118,7 @@ export const VIEW_TITLES: Record<View, string> = {
   playtime: "Played list",
   guestbook: "Guestbook",
   analytics: "Analytics",
+  settings: "Settings",
 };
 
 const isView = (value: unknown): value is View =>

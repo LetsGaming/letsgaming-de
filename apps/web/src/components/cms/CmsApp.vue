@@ -28,6 +28,7 @@ import NowPanel from "./panels/NowPanel.vue";
 import PresencePanel from "./panels/PresencePanel.vue";
 import MusicPanel from "./panels/MusicPanel.vue";
 import WrappedPanel from "./panels/WrappedPanel.vue";
+import SettingsPanel from "./panels/SettingsPanel.vue";
 import SiteIdentityPanel from "./panels/SiteIdentityPanel.vue";
 
 const context = useCms();
@@ -164,6 +165,9 @@ const {
 
       <!-- ANALYTICS -->
       <AnalyticsPanel v-show="tab === 'analytics'" />
+
+      <!-- SETTINGS -->
+      <SettingsPanel v-show="tab === 'settings'" />
 
 
       </main>
