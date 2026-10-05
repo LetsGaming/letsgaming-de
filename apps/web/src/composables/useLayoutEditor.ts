@@ -86,7 +86,7 @@ export interface LayoutEditorDeps {
 /** Which panel edits a module's content. `Record<ModuleKind, …>` on purpose: a
  *  new kind shouldn't compile until it says where clicking it lands. `null` is a
  *  real answer for synced modules nothing in the CMS edits. */
-const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
+export const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   hero: "home",
   /* Built from the nav tree, so its content is edited by editing the nav — there's
      no panel of its own to open. Renaming an area or writing its description is
@@ -102,12 +102,8 @@ const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   guestbook: "guestbook",
   gallery: "gallery",
   presence: "presence",
-  // Playtime shares presence's Discord settings — one set of knobs.
-  playtime: "presence",
-  // Music too: it's driven by the same presence sampler (the Spotify category is
-  // toggled in the same allow-list), so it lands on the presence panel.
-  music: "presence",
-  // Wrapped gets its own panel: its schedule has nothing to do with the sampler.
+  playtime: "playtime",
+  music: "music",
   wrapped: "wrapped",
   bio: "about",
   contact: "links",
@@ -452,6 +448,17 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   watch([tab, previewArea, locale], () => {
     if (tab.value === "editor") void refreshCanvas();
   });
+
+  // The rail must never show a module the canvas isn't displaying.
+  watch(
+    [previewArea, () => layoutAreas.value.find((a) => a.id === previewArea.value)?.modules.join()],
+    () => {
+      const id = canvasSelected.value;
+      if (!id) return;
+      const page = layoutAreas.value.find((a) => a.id === previewArea.value);
+      if (!page?.modules.includes(id)) canvasSelected.value = undefined;
+    },
+  );
 
   const previewKeyBump = ref(0);
 

@@ -1435,7 +1435,7 @@ body.is-dragging .cms .glist .gthumb {
 .cms .lgedit-page {
   position: relative;
   overflow: auto;
-  padding: var(--sp-20) var(--sp-24) 40vh;
+  padding: calc(var(--sp-20) + 24px) var(--sp-24) 40vh;
 }
 .cms .lgedit-wait {
   padding: var(--sp-24);
@@ -1455,9 +1455,12 @@ body.is-dragging .cms .glist .gthumb {
   color: var(--muted);
   font-weight: 600;
 }
+.cms .lgedit-content {
+  display: contents;
+}
 .cms .lgedit-overlay {
   position: absolute;
-  inset: var(--sp-20) var(--sp-24) 40vh;
+  inset: calc(var(--sp-20) + 24px) var(--sp-24) 40vh;
   pointer-events: none;
 }
 .cms .lgedit-mod {
@@ -1495,8 +1498,7 @@ body.is-dragging .cms .glist .gthumb {
   border-color: var(--line-2);
   background: color-mix(in srgb, var(--ink) 5%, transparent);
 }
-.cms .lgedit-grip,
-.lgedit-tag,
+.cms .lgedit-toolbar,
 .cms .lgedit-add {
   position: absolute;
   font: 500 11px/1 var(--f-m, monospace);
@@ -1504,50 +1506,48 @@ body.is-dragging .cms .glist .gthumb {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-xs);
-  padding: 3px 5px;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
-/* Visible without hunting.
-   The first version hid every affordance behind `:hover` on the module, so the only
-   way to learn what was draggable was to sweep the whole page with the mouse. An
-   editor's handles are the interface, not a reveal. */
-.lgedit-grip,
-.cms .lgedit-tag {
-  opacity: 0.55;
+/* Sits above the module's top edge, in the gap between sections, so it never
+   covers module text. A child of the box, so hovering it keeps the box hovered. */
+.cms .lgedit-toolbar {
+  left: 0;
+  bottom: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  border-bottom: 0;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  opacity: 0;
+  pointer-events: none;
 }
-.lgedit-add {
+.cms .lgedit-add {
   opacity: 0;
 }
-.cms .lgedit-mod:hover .lgedit-grip,
-.cms .lgedit-mod:hover .lgedit-tag,
+.cms .lgedit-mod:hover .lgedit-toolbar,
 .cms .lgedit-mod:hover .lgedit-add,
-.cms .lgedit-mod.sel .lgedit-grip,
-.cms .lgedit-mod.sel .lgedit-tag,
+.cms .lgedit-mod.sel .lgedit-toolbar,
 .cms .lgedit-mod.sel .lgedit-add {
   opacity: 1;
+  pointer-events: auto;
 }
-/* A grab target you can hit. The drag only starts on the handle, so the handle has
-   to be findable and hittable or the feature isn't there. */
 .cms .lgedit-grip {
-  left: 2px;
-  top: 4px;
   cursor: grab;
   font-size: 16px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   line-height: 1;
 }
 .cms .lgedit-grip:active {
   cursor: grabbing;
 }
-.cms .lgedit-mod:hover .lgedit-grip {
+.cms .lgedit-grip:hover {
   color: var(--ink);
-  border-color: var(--ink);
 }
-.lgedit-tag {
-  right: 4px;
-  top: 4px;
+.cms .lgedit-tag {
+  white-space: nowrap;
 }
-.lgedit-add {
+.cms .lgedit-add {
   left: 50%;
   transform: translateX(-50%);
   top: -10px;
@@ -1573,8 +1573,7 @@ body.is-dragging .cms .glist .gthumb {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cms .lgedit-grip,
-  .cms .lgedit-tag,
+  .cms .lgedit-toolbar,
   .cms .lgedit-add {
     transition: none;
   }
