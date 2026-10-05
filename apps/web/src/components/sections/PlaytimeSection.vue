@@ -144,7 +144,9 @@ const {
 const dayMinutes = computed(() => dayData.value?.minutes ?? 0);
 const dayGameCount = computed(() => dayData.value?.total ?? 0);
 
-const cover = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
+// `game` lets the server walk its fallback chain (stored image, Discord image,
+// letter tile) even when no cover URL was shipped.
+const cover = (url: string | undefined, game: string) => presenceMediaUrl({ url, game });
 
 // ── the weekday×hour heatmap ("when I play") ──────────────────────────────────
 // A second card, and Playtime's own — Listening has no equivalent. The day strip
@@ -279,7 +281,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
             :rank="i + 1"
             :name="g.name"
             :subtitle="g.genre"
-            :art="cover(g.coverUrl)"
+            :art="cover(g.coverUrl, g.name)"
             :highlight="i === 0"
             fallback="🎮"
           >
@@ -300,7 +302,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           :rank="i + 1"
           :name="g.name"
           :subtitle="g.genre"
-          :art="cover(g.coverUrl)"
+          :art="cover(g.coverUrl, g.name)"
           :highlight="i === 0"
           fallback="🎮"
         >

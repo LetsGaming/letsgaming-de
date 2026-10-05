@@ -5,6 +5,7 @@ import { PRESENCE_SAMPLE_SCHEDULE, DEFAULT_TIMEZONE } from "@lg/core";
 import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
 import { resolveGameMetadata } from "./sync/game-metadata.js";
+import { resolveGameImages } from "./sync/game-images.js";
 import { ingestLog } from "./analytics/ingest.js";
 import cron from "node-cron";
 import { existsSync, statSync } from "node:fs";
@@ -17,6 +18,9 @@ const LOG_MOUNT = "/logs";
  * sweep only queries names it hasn't cached yet, so this is near-zero cost once
  * caught up. */
 const GAME_METADATA_SWEEP_SCHEDULE = "23 * * * *";
+
+/** Every 15 minutes, so a newly seen game gets its image soon after first play. */
+const GAME_IMAGES_SWEEP_SCHEDULE = "*/15 * * * *";
 
 /** Every 5 minutes: incremental, idempotent access-log ingest. */
 const ANALYTICS_INGEST_SCHEDULE = "*/5 * * * *";
@@ -66,6 +70,15 @@ if (env.rawg) {
   rawgTask = cron.schedule(GAME_METADATA_SWEEP_SCHEDULE, sweep);
   app.log.info("[rawg] game-metadata sweep scheduled");
 }
+
+// Discord-hosted game images (activity art, then the application icon). Only
+// games without a resolved image are looked up, and a miss waits a week.
+const sweepGameImages = () =>
+  resolveGameImages(store, (m) => app.log.info(m)).catch((e) =>
+    app.log.error(`[game-images] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
+  );
+void sweepGameImages();
+const gameImagesTask = cron.schedule(GAME_IMAGES_SWEEP_SCHEDULE, sweepGameImages);
 
 // Traffic analytics: if an access log is configured, ingest it in-process on a
 // schedule (incremental + idempotent) so path/referrer/browser/OS/device stats
@@ -171,6 +184,7 @@ const shutdown = async (signal: string) => {
   sampler.stop();
   ingestTask?.stop();
   rawgTask?.stop();
+  gameImagesTask.stop();
   await app.close();
   store.close();
   process.exit(0);

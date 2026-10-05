@@ -19,6 +19,7 @@ const PRESENCE_COPY: Record<PresenceCategory, { label: string; hint: string }> =
   game: { label: "Games", hint: "Discord 'Playing …'" },
   streaming: { label: "Streaming", hint: "going live" },
   music: { label: "Music", hint: "Spotify" },
+  podcast: { label: "Podcasts", hint: "Spotify episodes" },
   watching: { label: "Watching", hint: "e.g. YouTube" },
   custom: { label: "Custom status", hint: "your set status + emoji" },
 };

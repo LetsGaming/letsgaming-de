@@ -50,6 +50,7 @@ const activityCards = computed(() =>
 // a palette that no stylesheet could see.
 const CAT: Record<string, { src: MessageKey; motif: string; color: string }> = {
   music: { src: "presenceSrcMusic", motif: "music", color: "var(--brand-spotify)" },
+  podcast: { src: "presenceSrcPodcast", motif: "music", color: "var(--brand-spotify)" },
   game: { src: "presenceSrcGame", motif: "game", color: "var(--live-ink)" },
   watching: { src: "presenceSrcWatching", motif: "watch", color: "var(--brand-youtube)" },
   streaming: { src: "presenceSrcStreaming", motif: "stream", color: "var(--brand-twitch)" },

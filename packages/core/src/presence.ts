@@ -22,6 +22,7 @@ export const PRESENCE_CATEGORIES = [
   "game",
   "streaming",
   "music",
+  "podcast",
   "watching",
   "custom",
 ] as const;
@@ -62,15 +63,16 @@ export interface PresenceSettings {
 }
 
 /** Sensible starting allow-list; used to seed the store and as a fallback.
- *  Everything except `watching` — a YouTube title is a stronger claim about a
- *  person than "playing something", so it's opt-in. */
+ *  Everything except `watching` (a YouTube title is a stronger claim about a
+ *  person than "playing something", so it's opt-in) and `podcast` (recorded for
+ *  the owner's own history, never revealed unless switched on). */
 export function defaultPresenceSettings(): PresenceSettings {
-  const live = PRESENCE_CATEGORIES.filter((c) => c !== "watching");
+  const recorded = PRESENCE_CATEGORIES.filter((c) => c !== "watching");
   return {
-    show: live,
-    // Sample by default whatever we'd display — the common case is "record what
-    // you show". Watching is off in both: it records the app, not the video.
-    sample: live,
+    show: recorded.filter((c) => c !== "podcast"),
+    // Sample by default whatever we'd display, plus podcasts. Watching is off in
+    // both: it records the app, not the video.
+    sample: recorded,
     retentionDays: null, // keep forever; the table is one row per session
     hidden: [],
   };
@@ -191,7 +193,26 @@ export interface LanyardData {
   discord_user?: { id?: string; avatar?: string | null; username?: string; global_name?: string | null };
   activities?: LanyardActivity[];
   listening_to_spotify?: boolean;
-  spotify?: { song: string; artist: string; album?: string; album_art_url?: string };
+  spotify?: { song: string; artist: string | null; album?: string; album_art_url?: string };
+}
+
+export type SpotifyKind = "track" | "episode";
+
+/** Spotify's artwork id prefix for a show (podcast) image; album covers use a
+ *  different prefix. A convention, not a documented contract. */
+const SHOW_IMAGE_PREFIX = "spotify:ab6765630000";
+
+/**
+ * Whether a Spotify listening activity is a song or a podcast episode. Episodes
+ * carry no artist (`state`); the show-image prefix is only a secondary signal.
+ */
+export function classifySpotify(activity: {
+  state?: string;
+  assets?: { large_image?: string };
+}): SpotifyKind {
+  if (!activity.state?.trim()) return "episode";
+  if (activity.assets?.large_image?.startsWith(SHOW_IMAGE_PREFIX)) return "episode";
+  return "track";
 }
 
 /** One curated presence card, ready to render. */
@@ -226,16 +247,21 @@ function discordAvatarUrl(u: LanyardData["discord_user"]): string | undefined {
   return `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.${ext}?size=128`;
 }
 
-/** Best-effort resolve a Lanyard asset image ref to a URL (common cases only). */
-function assetUrl(a: LanyardActivity): string | undefined {
+/** Resolve an activity's `large_image` ref to a CDN URL, when it has one. */
+export function assetUrl(a: Pick<LanyardActivity, "application_id" | "assets">): string | undefined {
   const img = a.assets?.large_image;
   if (!img) return undefined;
-  if (img.startsWith("mp:external/")) return `https://media.discordapp.net/${img.slice(3)}`;
+  if (img.startsWith("mp:")) return `https://media.discordapp.net/${img.slice(3)}`;
   if (/^https?:\/\//.test(img)) return img;
   if (a.application_id && /^[0-9]+$/.test(img)) {
     return `https://cdn.discordapp.com/app-assets/${a.application_id}/${img}.png`;
   }
   return undefined;
+}
+
+/** The Discord CDN URL of an application's icon hash. */
+export function applicationIconUrl(applicationId: string, icon: string): string {
+  return `https://cdn.discordapp.com/app-icons/${applicationId}/${icon}.png`;
 }
 
 /**
@@ -271,16 +297,24 @@ export function normalizePresence(
   const avatar = discordAvatarUrl(data.discord_user);
   const cards: PresenceCard[] = [];
 
-  // Music: prefer the structured Spotify object (one clean card).
-  if (allow.has("music") && data.listening_to_spotify && data.spotify && !isDropped(data.spotify.song)) {
-    cards.push({
-      category: "music",
-      title: data.spotify.song,
-      subtitle: data.spotify.album
-        ? `${data.spotify.artist} · ${data.spotify.album}`
-        : data.spotify.artist,
-      ...(data.spotify.album_art_url ? { image: data.spotify.album_art_url } : {}),
+  // Music: prefer the structured Spotify object (one clean card). A podcast
+  // episode arrives the same way but has no artist, and is gated by its own category.
+  if (data.listening_to_spotify && data.spotify) {
+    const listening = (data.activities ?? []).find((a) => a.type === LANYARD_ACTIVITY_TYPE.Listening);
+    const kind: SpotifyKind = classifySpotify({
+      state: data.spotify.artist ?? listening?.state,
+      ...(listening?.assets ? { assets: listening.assets } : {}),
     });
+    const category: PresenceCategory = kind === "episode" ? "podcast" : "music";
+    if (allow.has(category) && !isDropped(data.spotify.song)) {
+      const subtitle = [data.spotify.artist?.trim(), data.spotify.album].filter(Boolean).join(" · ");
+      cards.push({
+        category,
+        title: data.spotify.song,
+        ...(subtitle ? { subtitle } : {}),
+        ...(data.spotify.album_art_url ? { image: data.spotify.album_art_url } : {}),
+      });
+    }
   }
 
   for (const a of data.activities ?? []) {
@@ -498,8 +532,11 @@ export function splitArtists(state: string | undefined): string[] {
 export interface MusicPlay {
   trackId: string;
   song: string;
-  /** Raw artist string, verbatim from Discord. */
+  /** Raw artist string, verbatim from Discord. Empty for a podcast episode. */
   artist: string;
+  /** Defaults to `track`. Episodes are recorded but excluded from every music
+   *  aggregate. */
+  kind?: SpotifyKind;
   album?: string;
   /** Album cover URL (Spotify CDN), when the play exposed one. */
   albumArtUrl?: string;

@@ -91,7 +91,8 @@ listening modules.
 | Table | Holds |
 |---|---|
 | `presence_sessions` | one row per observed activity session: `category` (game / streaming / music / watching / custom), the `name` Discord reported, `started_at` / `last_seen_at`, and whether the start was exact. The playtime charts — per-game totals, the day ledger, the weekday×hour heatmap — are all queries over this. |
-| `music_plays` | one row per Spotify listen: `track_id`, `song`, `artist` (raw), `album`, and when it played. Drives the Listening module's top songs/artists and its day strip; split artists live in `music_play_artists` for counting. |
+| `music_plays` | one row per Spotify listen: `track_id`, `song`, `artist` (raw), `album`, when it played, and `kind` (`track` or `episode`; podcast episodes are recorded but excluded from every music aggregate). Drives the Listening module's top songs/artists and its day strip; split artists live in `music_play_artists` for counting. |
+| `game_images` | the Discord image per game: the `application_id` and raw `large_image` the sampler saw, the first working `image_url` (activity image, then application icon) and `checked_at` of the last failed attempt, retried after 7 days. Merged into the cover map when RAWG has none. |
 | `game_metadata` | cover art + genre per game, resolved by name from RAWG and cached (`name` normalized, `cover_url`, `genre`, `resolved_at`). Decoration only — a per-name lookup, not a source — attached to the playtime shelf by name. |
 
 Like the source archive, `presence_sessions` and `music_plays` can't be re-fetched

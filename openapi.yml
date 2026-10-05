@@ -227,7 +227,9 @@ paths:
         `u` can't be used for SSRF.
 
         When there is no usable upstream image, pass `game=<name>` to get a deterministic,
-        labelled SVG tile instead, so the widget always has something tidy to show.
+        labelled SVG tile instead, so the widget always has something tidy to show. With `game`,
+        the cover resolves through the stored fallback chain first (RAWG cover, then the image
+        resolved from the game's Discord activity or application icon) before the tile.
       security: []
       parameters:
         - name: u
@@ -1231,7 +1233,7 @@ components:
       properties:
         category:
           type: string
-          enum: [game, streaming, music, watching, custom]
+          enum: [game, streaming, music, podcast, watching, custom]
         title:
           type: string
         subtitle:
