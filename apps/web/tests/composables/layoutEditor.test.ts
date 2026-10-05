@@ -5,19 +5,19 @@ import { createAutosave } from "../../src/composables/useAutosave";
 import { PANEL_FOR_KIND, useLayoutEditor } from "../../src/composables/useLayoutEditor";
 import { PANEL } from "../../src/components/cms/panels/panelMap";
 
-function editor() {
+function editor(preview: () => Promise<unknown> = async () => null, tabName = "dashboard") {
   const previewArea = ref("home");
   const e = useLayoutEditor({
     locale: ref("en"),
     authed: { value: true },
-    tab: ref("dashboard"),
+    tab: ref(tabName),
     previewArea,
     flash: vi.fn(),
     guarded: async (fn) => void (await fn()),
     pickL: () => "",
     loadAll: async () => {},
     autosave: createAutosave({ put: async () => ({ ok: true }), onStatus: () => {} }),
-    cms: {} as never,
+    cms: { preview } as never,
   });
   e.layoutAreas.value = [
     { id: "home", label: { en: "Home" }, description: { en: "" }, modules: ["hero", "glance"] },
@@ -67,5 +67,44 @@ describe("panel map", () => {
     expect(PANEL_FOR_KIND.wrapped).toBe("wrapped");
     expect(PANEL_FOR_KIND.music).toBe("music");
     expect(PANEL_FOR_KIND.playtime).toBe("playtime");
+  });
+});
+
+describe("canvas refresh after a save", () => {
+  it("coalesces a burst of saves into one render and ignores other tabs", async () => {
+    vi.useFakeTimers();
+    try {
+      const preview = vi.fn(async () => null);
+      const { e } = editor(preview, "editor");
+      e.scheduleCanvasRefresh();
+      e.scheduleCanvasRefresh();
+      e.scheduleCanvasRefresh();
+      expect(preview).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(preview).toHaveBeenCalledTimes(1);
+
+      const other = vi.fn(async () => null);
+      editor(other, "dashboard").e.scheduleCanvasRefresh();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(other).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("renders again when a refresh is requested while one is in flight", async () => {
+    let release: () => void = () => {};
+    const preview = vi
+      .fn<() => Promise<unknown>>()
+      .mockImplementationOnce(() => new Promise((r) => (release = () => r("old"))))
+      .mockResolvedValue("new");
+    const { e } = editor(preview, "editor");
+    const first = e.refreshCanvas();
+    const second = e.refreshCanvas();
+    release();
+    await Promise.all([first, second]);
+    expect(preview).toHaveBeenCalledTimes(2);
+    expect(e.canvasSite.value).toBe("new");
+    expect(e.canvasLoading.value).toBe(false);
   });
 });
