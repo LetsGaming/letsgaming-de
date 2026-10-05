@@ -55,6 +55,16 @@ export function sessionsRepo(db: DatabaseSync) {
     WHERE category = ? AND name = ? AND started_at = ?
   `);
 
+  /** Stored sessions of one activity that share time with `[start, end]`. */
+  const overlapping = db.prepare(`
+    SELECT started_at, last_seen_at, started_exact FROM presence_sessions
+    WHERE category = ? AND name = ? AND started_at <= ? AND last_seen_at >= ?
+  `);
+
+  const remove = db.prepare(`
+    DELETE FROM presence_sessions WHERE category = ? AND name = ? AND started_at = ?
+  `);
+
   return {
     /**
      * Record that an activity was seen running.
@@ -63,7 +73,11 @@ export function sessionsRepo(db: DatabaseSync) {
      *
      * - **Dated** (`timestamps.start`): the session has a real identity, so this is
      *   a plain upsert and idempotence is the primary key's job. Polling twice
-     *   cannot inflate it.
+     *   cannot inflate it. A session that shares time with another stored session
+     *   of the same activity is the same play reported twice (Discord can list one
+     *   game as two linked applications with different start times), so the two
+     *   are merged into one spanning both: the earliest start, the latest sighting.
+     *   Playing is one stretch of time, never counted once per report.
      * - **Undated**: there's no key. `started_at = now` would make every poll its
      *   own zero-length session, so the game would accumulate nothing *forever* —
      *   silently, since `PLAYTIME_MIN_SECONDS` drops each one. So the poll extends
@@ -78,7 +92,32 @@ export function sessionsRepo(db: DatabaseSync) {
       startedExact: boolean;
     }): void {
       if (input.startedExact) {
-        observe.run(input.category, input.name, input.startedAt, input.seenAt, 1);
+        const shared = mapRows(
+          overlapping,
+          (r: Row) => ({
+            startedAt: asText(r.started_at),
+            lastSeenAt: asText(r.last_seen_at),
+            exact: asNumber(r.started_exact),
+          }),
+          input.category,
+          input.name,
+          input.seenAt,
+          input.startedAt,
+        );
+        if (shared.every((s) => s.startedAt === input.startedAt)) {
+          observe.run(input.category, input.name, input.startedAt, input.seenAt, 1);
+          return;
+        }
+        let start = input.startedAt;
+        let end = input.seenAt;
+        let exact = 1;
+        for (const s of shared) {
+          if (s.startedAt < start) start = s.startedAt;
+          if (s.lastSeenAt > end) end = s.lastSeenAt;
+          exact = Math.min(exact, s.exact);
+          remove.run(input.category, input.name, s.startedAt);
+        }
+        observe.run(input.category, input.name, start, end, exact);
         return;
       }
 
@@ -94,10 +133,10 @@ export function sessionsRepo(db: DatabaseSync) {
     /**
      * Minutes per activity since a cutoff, most-played first.
      *
-     * Sums `last_seen_at - started_at` per session. Sessions are keyed by their
-     * start, so overlapping rows for one game can't exist — Discord reports one
-     * activity of a kind at a time, and a restart is a new `started_at`, which is a
-     * new session and is correct.
+     * Sums `last_seen_at - started_at` per session. That is only right while no two
+     * sessions of one game overlap, which `observe` guarantees by merging any that
+     * share time. A restart is a new `started_at` after the last one ended, so it is
+     * a new session and is correct.
      *
      * `PLAYTIME_MIN_SECONDS` drops sessions we only ever saw once and can't date:
      * a game glimpsed by a single poll with no `timestamps.start` has

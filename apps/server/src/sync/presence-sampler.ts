@@ -15,6 +15,51 @@ import { recordOutcome } from "./tracked.js";
 /** The `sync_status` row for the Lanyard poll. */
 const SAMPLER_JOB = "presence";
 
+const sameName = (a: string | undefined, b: string | undefined) =>
+  (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+
+/**
+ * One activity per game per poll.
+ *
+ * Discord can list a single game twice at once: League of Legends arrives as two
+ * linked applications, each naming the other in `official_game_id`, with
+ * different start times. Playing is one stretch of time, so the earliest-started
+ * report stands for the game and the rest are dropped; recording both would count
+ * the shared time twice. An undated report loses to a dated one. Listening and
+ * custom status are left alone: they are keyed by track and carry no duration.
+ */
+export function dedupeActivities(activities: readonly LanyardActivity[]): LanyardActivity[] {
+  const start = (a: LanyardActivity) => a.timestamps?.start ?? Number.POSITIVE_INFINITY;
+  const kept: LanyardActivity[] = [];
+  for (const activity of activities) {
+    const duplicable =
+      activity.type === LANYARD_ACTIVITY_TYPE.Playing ||
+      activity.type === LANYARD_ACTIVITY_TYPE.Streaming ||
+      activity.type === LANYARD_ACTIVITY_TYPE.Watching;
+    const i = duplicable ? kept.findIndex((k) => k.type === activity.type && sameName(k.name, activity.name)) : -1;
+    if (i < 0) kept.push(activity);
+    else if (start(activity) < start(kept[i]!)) kept[i] = activity;
+  }
+  return kept;
+}
+
+/** The Discord application to remember for a game: among every report of it, one
+ *  that carries an image, else the first, so a duplicate with art is not lost. */
+export function bestApplication(
+  activities: readonly LanyardActivity[],
+  name: string,
+): { applicationId: string; largeImage?: string } | undefined {
+  const reports = activities.filter(
+    (a) => a.type === LANYARD_ACTIVITY_TYPE.Playing && a.application_id && sameName(a.name, name),
+  );
+  const pick = reports.find((a) => a.assets?.large_image) ?? reports[0];
+  if (!pick?.application_id) return undefined;
+  return {
+    applicationId: pick.application_id,
+    ...(pick.assets?.large_image ? { largeImage: pick.assets.large_image } : {}),
+  };
+}
+
 /**
  * Poll Discord presence and accumulate what was played.
  *
@@ -78,7 +123,8 @@ export class PresenceSampler {
     // the owner turned off here is never written, even if it's shown live.
     const sample = new Set(this.store.content.getPresence().sample);
 
-    for (const activity of data.activities ?? []) {
+    const reported = data.activities ?? [];
+    for (const activity of dedupeActivities(reported)) {
       const base = CATEGORY_FOR_TYPE[activity.type];
       // Custom status is a sentence, not an activity — there's no duration in
       // "brb". Everything else is something with a start and an end.
@@ -127,8 +173,9 @@ export class PresenceSampler {
         const name = sessionSubject(category, activity);
         if (!name) continue;
         this.store.sessions.observe({ category, name, startedAt, seenAt, startedExact: exact });
-        if (category === "game" && activity.application_id) {
-          this.store.gameMeta.noteApplication(name, activity.application_id, activity.assets?.large_image);
+        if (category === "game") {
+          const app = bestApplication(reported, name);
+          if (app) this.store.gameMeta.noteApplication(name, app.applicationId, app.largeImage);
         }
         recorded++;
       } catch (err) {
