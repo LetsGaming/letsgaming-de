@@ -33,7 +33,7 @@ const { shown, expanded, moreCount } = useLimitedList({
           <div class="gb-list">
             <figure v-for="e in shown" :key="e.id" class="gb-entry">
               <blockquote>{{ e.message }}</blockquote>
-              <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
+              <figcaption>{{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
             </figure>
           </div>
           <ListFooter :more-count="moreCount" :expanded="expanded" @toggle="expanded = !expanded" />

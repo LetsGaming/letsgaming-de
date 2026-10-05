@@ -611,7 +611,7 @@ const ingestStatus = computed(() => {
             </div>
           </details>
           <template v-if="analytics?.engagement">
-            <h3 class="desk-only" style="margin-top: 8px">Engagement <span class="muted">— cookieless, in-page script</span></h3>
+            <h3 class="desk-only" style="margin-top: 8px">Engagement <span class="muted">(cookieless, in-page script)</span></h3>
             <div class="cols desk-only">
               <AnalyticsCard
                 title="Sections viewed"
