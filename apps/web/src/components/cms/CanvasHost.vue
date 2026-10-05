@@ -30,7 +30,8 @@
  * proxy) and 16KB of CSS that a `client:only` entry can't be traced for at build.
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import type { ModuleKind, SiteView } from "@lg/core";
+import type { SiteView } from "@lg/core";
+import { KIND_LABELS } from "../../composables/editorHelpers";
 import type { Asset } from "@lg/core";
 import { cms } from "../../lib/cms";
 import type { SectionStat } from "../../lib/sectionStats";
@@ -316,28 +317,6 @@ onUnmounted(() => {
   if (frame) cancelAnimationFrame(frame);
   frame = 0;
 });
-
-const KIND_LABELS: Record<ModuleKind, string> = {
-  hero: "Hero",
-  areas: "Pages overview",
-  teasers: "Teasers",
-  featured: "Featured",
-  glance: "At a glance",
-  activity: "Activity",
-  coding: "Coding",
-  projects: "Projects",
-  hobbies: "Hobbies",
-  now: "Right now",
-  guestbook: "Guestbook",
-  presence: "Presence",
-  gallery: "Gallery",
-  bio: "About",
-  contact: "Contact",
-  posts: "Blog",
-  music: "Listening",
-  playtime: "Played",
-  wrapped: "Wrapped",
-};
 
 const kindLabel = (id: string): string => {
   const kind = props.site?.modules[id]?.kind;

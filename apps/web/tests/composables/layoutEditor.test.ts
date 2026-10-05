@@ -108,3 +108,12 @@ describe("canvas refresh after a save", () => {
     expect(e.canvasLoading.value).toBe(false);
   });
 });
+
+describe("module heading", () => {
+  it("falls back to the friendly kind name, not the raw id, when the heading is empty", () => {
+    const { e } = editor();
+    e.modules.value = [{ id: "glance", kind: "glance", heading: { en: "" } }] as never;
+    expect(e.moduleHeading("glance")).toBe("At a glance");
+    expect(e.moduleHeading("unknown-id")).toBe("unknown-id");
+  });
+});

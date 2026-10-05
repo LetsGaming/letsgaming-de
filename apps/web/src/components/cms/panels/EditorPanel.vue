@@ -186,6 +186,12 @@ function onKey(e: KeyboardEvent) {
 		paletteOpen.value = !paletteOpen.value;
 		return;
 	}
+	if (action === "deselect" && (paletteOpen.value || helpOpen.value)) {
+		paletteOpen.value = false;
+		helpOpen.value = false;
+		e.preventDefault();
+		return;
+	}
 	if (modalOpen.value) return;
 	const sel = canvasSelected.value;
 	if (action === "help") helpOpen.value = true;

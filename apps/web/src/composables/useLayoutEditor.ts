@@ -14,6 +14,7 @@ import {
 } from "@lg/core";
 import { AuthError } from "../lib/cms";
 import type { SortableMove } from "./sortable";
+import { KIND_LABELS } from "./editorHelpers";
 import { type Autosave, bindAutosave } from "./useAutosave";
 
 /**
@@ -165,7 +166,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   /** Friendly heading for a module id (falls back to the id). */
   function moduleHeading(id: string): string {
     const m = modules.value.find((x) => x.id === id);
-    return (m && pickL(m.heading)) || id;
+    return (m && (pickL(m.heading) || KIND_LABELS[m.kind])) || id;
   }
 
   /** Rebuild the placement state from freshly-loaded content. */
