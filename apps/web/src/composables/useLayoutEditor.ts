@@ -14,6 +14,7 @@ import {
 } from "@lg/core";
 import { AuthError } from "../lib/cms";
 import type { SortableMove } from "./sortable";
+import { KIND_LABELS } from "./editorHelpers";
 import { type Autosave, bindAutosave } from "./useAutosave";
 
 /**
@@ -165,7 +166,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   /** Friendly heading for a module id (falls back to the id). */
   function moduleHeading(id: string): string {
     const m = modules.value.find((x) => x.id === id);
-    return (m && pickL(m.heading)) || id;
+    return (m && (pickL(m.heading) || KIND_LABELS[m.kind])) || id;
   }
 
   /** Rebuild the placement state from freshly-loaded content. */
@@ -485,17 +486,42 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   /** Re-resolve the pending layout for the canvas — server-side, because it
    *  renders real sections that need a real SiteView. `/api/cms/preview` writes
    *  nothing. */
-  async function refreshCanvas() {
+  let refreshing: Promise<void> | null = null;
+  let refreshAgain = false;
+  async function refreshCanvas(): Promise<void> {
     if (!authed.value) return;
+    // A request already in flight may have read state from before the change that
+    // asked for this one, so one more pass runs when it settles.
+    if (refreshing) {
+      refreshAgain = true;
+      return refreshing;
+    }
     canvasLoading.value = true;
+    refreshing = (async () => {
+      do {
+        refreshAgain = false;
+        try {
+          canvasSite.value = await cms.preview(layoutOrder(), locale.value);
+        } catch (e) {
+          if (e instanceof AuthError) authed.value = false;
+          else flash((e as Error).message || "Couldn't render the preview.");
+        }
+      } while (refreshAgain);
+    })();
     try {
-      canvasSite.value = await cms.preview(layoutOrder(), locale.value);
-    } catch (e) {
-      if (e instanceof AuthError) authed.value = false;
-      else flash((e as Error).message || "Couldn't render the preview.");
+      await refreshing;
     } finally {
+      refreshing = null;
       canvasLoading.value = false;
     }
+  }
+
+  let canvasTimer: ReturnType<typeof setTimeout> | undefined;
+  /** After a save or undo/redo: re-resolve the canvas once the burst settles. */
+  function scheduleCanvasRefresh(delay = 250) {
+    if (tab.value !== "editor") return;
+    clearTimeout(canvasTimer);
+    canvasTimer = setTimeout(() => void refreshCanvas(), delay);
   }
 
   function canvasMove(area: string, oldIndex: number, newIndex: number) {
@@ -593,6 +619,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     canvasSelected,
     canvasLoading,
     refreshCanvas,
+    scheduleCanvasRefresh,
     canvasMove,
     canvasSelect,
     canvasDeselect,

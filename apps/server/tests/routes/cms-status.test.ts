@@ -5,7 +5,7 @@ import type { Source } from "@lg/core";
 import { buildApp } from "../../src/app.js";
 import { loadEnv } from "../../src/env.js";
 import { SyncRunner } from "../../src/sync/runner.js";
-import { medianDwell, revisionLabel } from "../../src/routes/cms-status.js";
+import { collapseEdits, medianDwell, revisionLabel } from "../../src/routes/cms-status.js";
 
 const TOKEN = "c".repeat(40);
 const auth = { authorization: `Bearer ${TOKEN}` };
@@ -175,4 +175,17 @@ test("guestbook: status filter, counts and unapprove", async () => {
   assert.equal(un.statusCode, 200);
   assert.deepEqual((await get("")).counts, { pending: 2, approved: 0, rejected: 1 });
   await app.close();
+});
+
+test("collapseEdits keeps the newest of a same-reason burst and leaves other rows alone", () => {
+  const row = (id: number, savedAt: string, reason: string, kind = "content") => ({ id, savedAt, reason, kind });
+  const rows = [
+    row(5, "2026-01-01T10:09:00Z", "headline"),
+    row(4, "2026-01-01T10:05:00Z", "headline"),
+    row(3, "2026-01-01T10:01:00Z", "headline"),
+    row(2, "2026-01-01T10:00:30Z", "bio"),
+    row(1, "2026-01-01T09:00:00Z", "headline"),
+    row(0, "2026-01-01T08:59:00Z", "headline", "ia"),
+  ];
+  assert.deepEqual(collapseEdits(rows).map((r) => r.id), [5, 2, 1, 0]);
 });

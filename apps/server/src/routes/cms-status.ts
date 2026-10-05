@@ -13,6 +13,10 @@ import type { SyncRunner } from "../sync/runner.js";
 
 const HOUR_MS = 3_600_000;
 const RECENT_EDITS = 10;
+/** Saves of the same kind and reason closer together than this read as one edit. */
+const EDIT_BURST_MS = 600_000;
+/** Over-fetch so collapsing a burst still leaves RECENT_EDITS distinct rows. */
+const EDIT_FETCH = RECENT_EDITS * 10;
 const DEFAULT_SECTION_HOURS = 168;
 const MAX_SECTION_HOURS = 8760;
 
@@ -41,6 +45,25 @@ const REVISION_LABELS: Record<string, string> = {
   "ia:module-added": "Section added",
   "ia:module-removed": "Section removed",
 };
+
+/**
+ * Collapse a run of consecutive saves with the same kind and reason, each within
+ * `EDIT_BURST_MS` of the previous one, into its newest row. Input is newest first.
+ */
+export function collapseEdits<T extends { savedAt: string; reason: string; kind: string }>(rows: readonly T[]): T[] {
+  const out: T[] = [];
+  let prev: T | undefined;
+  for (const r of rows) {
+    const burst =
+      prev !== undefined &&
+      prev.kind === r.kind &&
+      prev.reason === r.reason &&
+      Date.parse(prev.savedAt) - Date.parse(r.savedAt) <= EDIT_BURST_MS;
+    if (!burst) out.push(r);
+    prev = r;
+  }
+  return out;
+}
 
 export function revisionLabel(reason: string): string {
   if (reason.startsWith("restore:")) return `Restored revision ${reason.slice("restore:".length)}`;
@@ -179,13 +202,14 @@ export function registerCmsStatusRoutes(
     guestbook: store.guestbook.countsByStatus(),
     // Content and IA revisions live in separate id spaces; `kind` says which one
     // `id` belongs to, and only content revisions can be restored.
-    recentEdits: [
-      ...store.content.listRevisions(RECENT_EDITS).map((r) => ({ ...r, kind: "content" as const, restorable: true })),
-      ...store.ia
-        .listRevisions(RECENT_EDITS)
-        .map((r) => ({ ...r, reason: `ia:${r.reason}`, kind: "ia" as const, restorable: false })),
-    ]
-      .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
+    recentEdits: collapseEdits(
+      [
+        ...store.content.listRevisions(EDIT_FETCH).map((r) => ({ ...r, kind: "content" as const, restorable: true })),
+        ...store.ia
+          .listRevisions(EDIT_FETCH)
+          .map((r) => ({ ...r, reason: `ia:${r.reason}`, kind: "ia" as const, restorable: false })),
+      ].sort((a, b) => b.savedAt.localeCompare(a.savedAt)),
+    )
       .slice(0, RECENT_EDITS)
       .map((r) => ({ ...r, label: revisionLabel(r.reason) })),
   }));

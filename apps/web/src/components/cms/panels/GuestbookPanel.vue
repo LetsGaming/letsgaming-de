@@ -35,7 +35,6 @@ const updated = computed(() => {
 <template>
   <section class="pane">
     <div class="gb-head">
-      <h2>Guestbook</h2>
       <span class="muted gb-updated" aria-live="off">{{ updated }}</span>
     </div>
     <p class="muted">Nothing is public until you approve it. Auto-flags only sort the queue, you decide.</p>
@@ -85,6 +84,7 @@ const updated = computed(() => {
 
 <style scoped>
 .gb-updated {
+  margin-left: auto;
   font-size: 12px;
 }
 .gb-tabs {
@@ -109,7 +109,7 @@ const updated = computed(() => {
 }
 .gb-count {
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: 12px;
   margin-left: var(--sp-4);
 }
 .gb-del {

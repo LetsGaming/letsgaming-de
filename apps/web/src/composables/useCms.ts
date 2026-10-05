@@ -89,6 +89,7 @@ const autosave = useAutosave({
   onSaved: (edit) => {
     undo.record(edit);
     preview.invalidate();
+    scheduleCanvasRefresh();
   },
 });
 const { status: autosaveStatus } = autosave;
@@ -98,6 +99,7 @@ const undo = useUndo({
     await loadAll();
     if (analytics.value) await loadAnalytics({ quiet: true });
     preview.invalidate();
+    scheduleCanvasRefresh(0);
   },
   onError: (e) => flash((e as Error).message || "Couldn't undo."),
 });
@@ -397,6 +399,7 @@ const {
   canvasSelected,
   canvasLoading,
   refreshCanvas,
+  scheduleCanvasRefresh,
   canvasMove,
   canvasSelect,
   canvasDeselect,

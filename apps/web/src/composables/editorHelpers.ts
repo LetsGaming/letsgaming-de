@@ -1,4 +1,27 @@
-import type { Localized, ModuleDescriptor } from "@lg/core";
+import type { Localized, ModuleDescriptor, ModuleKind } from "@lg/core";
+
+/** The name an editor sees for a module kind, wherever a module has no heading of its own. */
+export const KIND_LABELS: Record<ModuleKind, string> = {
+  hero: "Hero",
+  areas: "Pages overview",
+  teasers: "Teasers",
+  featured: "Featured",
+  glance: "At a glance",
+  activity: "Activity",
+  coding: "Coding",
+  projects: "Projects",
+  hobbies: "Hobbies",
+  now: "Right now",
+  guestbook: "Guestbook",
+  presence: "Presence",
+  gallery: "Gallery",
+  bio: "About",
+  contact: "Contact",
+  posts: "Blog",
+  music: "Listening",
+  playtime: "Played",
+  wrapped: "Wrapped",
+};
 
 const LAST_PAGE_KEY = "lg.cms.editor.page";
 

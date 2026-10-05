@@ -1442,6 +1442,18 @@ paths:
                 properties:
                   visits: { $ref: "#/components/schemas/TrafficFigure" }
                   pageviews: { $ref: "#/components/schemas/TrafficFigure" }
+                  secondPage:
+                    type: object
+                    description: |
+                      Landing-page success metric over the same window as `visits`. `visits` counts completed
+                      visits (one `session_tabs` beacon each), `reached` those that touched two or more
+                      sections, `rate` is `reached / visits` (0 to 1) or null when there are no visits.
+                    required: [visits, reached, rate, source]
+                    properties:
+                      visits: { type: integer }
+                      reached: { type: integer }
+                      rate: { type: [number, "null"] }
+                      source: { type: string, enum: [script] }
                   metricSources:
                     type: object
                     description: Where each metric tile's number comes from.

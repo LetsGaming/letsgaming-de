@@ -165,6 +165,12 @@ export interface AnalyticsResponse {
    */
   visits: TrafficFigure<"script">;
   pageviews: TrafficFigure<"log">;
+  /**
+   * The landing-page success metric: confirmed visits (one `session_tabs` beacon
+   * each) that touched a second section. `rate` is `reached / visits`, 0..1, or
+   * `null` when the window has no confirmed visits. Same window as `visits`.
+   */
+  secondPage: { visits: number; reached: number; rate: number | null; source: "script" };
   /** Where every metric tile's number comes from, keyed like `chart` and `previous`. */
   metricSources: Record<keyof AnalyticsTotals, MetricSource>;
   /**

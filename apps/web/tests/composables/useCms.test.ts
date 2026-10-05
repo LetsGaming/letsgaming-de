@@ -163,6 +163,7 @@ const emptyAnalytics = (): AnalyticsResponse => ({
   probes: [],
   visits: { total: 0, previous: null, source: "script" },
   pageviews: { total: 0, previous: null, source: "log" },
+  secondPage: { visits: 0, reached: 0, rate: null, source: "script" },
   metricSources: METRIC_SOURCES,
   referrerRules: [],
   chart: emptyChart(),

@@ -3,7 +3,7 @@ import { computed, onUnmounted, ref } from "vue";
 import type { AnalyticsCardId } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 import { STACK_COLORS } from "../../../composables/useAnalytics";
-import { dwellHistograms, parseTransition, scrollFunnels } from "../../../lib/engagement-keys";
+import { dwellHistograms, formatSecondPage, parseTransition, scrollFunnels } from "../../../lib/engagement-keys";
 import AnalyticsCard from "../AnalyticsCard.vue";
 
 // View-only panel. All state and handlers come from the shared CMS context.
@@ -53,6 +53,7 @@ const {
  *  closed independent of whether a custom range is actually active — closing
  *  it doesn't clear a range already applied. */
 const showCustomRange = ref(false);
+const secondPage = computed(() => (analytics.value?.secondPage ? formatSecondPage(analytics.value.secondPage) : null));
 const todayStr = new Date().toISOString().slice(0, 10);
 const customFromInput = ref(customRange.value?.from ?? "");
 const customToInput = ref(customRange.value?.to ?? "");
@@ -312,6 +313,11 @@ const ingestStatus = computed(() => {
                 </button>
               </div>
             </div>
+            <p v-if="secondPage" class="secondpage" data-testid="second-page">
+              <span>Visits that reach a second page</span>
+              <b>{{ secondPage.value }}</b>
+              <span class="muted">{{ secondPage.detail }} · {{ SOURCE_LABELS.script }}</span>
+            </p>
             <div v-if="showCustomRange" class="customrange">
               <label>
                 From
