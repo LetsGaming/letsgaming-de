@@ -2192,7 +2192,7 @@ body.is-dragging .cms .glist .gthumb {
     overflow-x: hidden;
   }
   .cms .desk-only {
-    display: none;
+    display: none !important;
   }
   .cms .shell,
   .cms .main,
@@ -2235,12 +2235,17 @@ body.is-dragging .cms .glist .gthumb {
     right: 4px;
   }
   .cms .topbar {
+    height: auto;
+    padding-bottom: var(--sp-8);
     flex-wrap: wrap;
     gap: var(--sp-8);
   }
   .cms .topact {
     flex-wrap: wrap;
     min-width: 0;
+  }
+  .cms .mlocale {
+    width: auto;
   }
   .cms .mlocale,
   .cms .topact .btn,
