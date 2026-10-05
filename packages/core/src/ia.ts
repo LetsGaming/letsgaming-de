@@ -40,7 +40,7 @@ export const STORAGE_KEY = {
   lang: "lang",
   /** localStorage — the visitor's analytics opt-out (a functional preference). */
   analyticsOptout: "lg-analytics-optout",
-  /** localStorage — the visitor already waved; only disables the button. */
+  /** localStorage: the visitor already waved; only disables the button. */
   waved: "lg-waved",
   /** sessionStorage — CMS bearer token, tab-scoped on purpose (SEC-05). */
   cmsToken: "cms_token",

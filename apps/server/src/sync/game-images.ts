@@ -19,42 +19,51 @@ function isDiscordCdn(url: string): boolean {
   }
 }
 
+type Probe = "yes" | "no" | "unknown";
+
+/** A rate limit, server error or network failure says nothing about the image,
+ *  so it must not be recorded as a miss. */
+const transient = (status: number) => status === 429 || status >= 500;
+
 /** Whether `url` serves an image right now. */
-async function servesImage(url: string): Promise<boolean> {
+async function servesImage(url: string): Promise<Probe> {
   try {
     const res = await fetch(url, {
       headers: { Accept: "image/*" },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     void res.body?.cancel();
-    return res.ok && (res.headers.get("content-type") ?? "").startsWith("image/");
+    if (transient(res.status)) return "unknown";
+    return res.ok && (res.headers.get("content-type") ?? "").startsWith("image/") ? "yes" : "no";
   } catch {
-    return false;
+    return "unknown";
   }
 }
 
-/** The icon URL Discord lists for an application. The `/rpc` endpoint answers
+/** The icon URL Discord lists for an application (`null` when it has none, or
+ *  `"unknown"` when the lookup itself failed). The `/rpc` endpoint answers
  *  without authentication; it is not part of the documented API. */
-async function applicationIcon(applicationId: string): Promise<string | null> {
+async function applicationIcon(applicationId: string): Promise<string | null | "unknown"> {
   try {
     const res = await fetch(
       `https://discord.com/api/v10/applications/${encodeURIComponent(applicationId)}/rpc`,
       { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
     );
+    if (transient(res.status)) return "unknown";
     if (!res.ok) return null;
     const body = (await res.json()) as { icon?: unknown };
     return typeof body.icon === "string" && /^[\w-]+$/.test(body.icon)
       ? applicationIconUrl(applicationId, body.icon)
       : null;
   } catch {
-    return null;
+    return "unknown";
   }
 }
 
 /**
  * Resolve and persist a Discord-hosted image for games that have none: the
  * activity's own large image first, then the application icon. The first URL
- * that really serves an image is stored; when none does the attempt is stamped
+ * that really serves an image is stored; when all definitively do not, the attempt is stamped
  * so it is retried only after {@link GAME_IMAGE_RETRY_MS}.
  */
 export async function resolveGameImages(
@@ -75,17 +84,28 @@ export async function resolveGameImages(
     if (fromActivity && isDiscordCdn(fromActivity)) candidates.push(fromActivity);
 
     let found: string | null = null;
+    let inconclusive = false;
     for (const url of candidates) {
-      if (await servesImage(url)) {
+      const probe = await servesImage(url);
+      if (probe === "yes") {
         found = url;
         break;
       }
+      if (probe === "unknown") inconclusive = true;
     }
     if (!found) {
       const icon = await applicationIcon(game.applicationId);
-      if (icon && (await servesImage(icon))) found = icon;
+      if (icon === "unknown") inconclusive = true;
+      else if (icon) {
+        const probe = await servesImage(icon);
+        if (probe === "yes") found = icon;
+        else if (probe === "unknown") inconclusive = true;
+      }
     }
 
+    // Only a definitive "no image" is stamped; a transient failure leaves the
+    // game pending for the next sweep.
+    if (!found && inconclusive) continue;
     store.gameMeta.putImage(game.name, found, nowIso);
     if (found) resolved++;
   }

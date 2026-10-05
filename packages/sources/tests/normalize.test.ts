@@ -72,6 +72,17 @@ test("pinned repos carry pinnedOrder and image, including ones older than the re
   assert.deepEqual(d.pinned, ["old-pin", "a"]);
 });
 
+test("a never-pushed repo (null pushedAt) sorts last and omits pushedAt", () => {
+  const empty = {
+    name: "empty", stargazerCount: 0, isFork: false, pushedAt: null,
+    primaryLanguage: null, languages: { edges: [] },
+  };
+  const d = normalizeGitHub({ ...raw, repos: [empty, ...raw.repos], pinned: ["empty"] });
+  assert.deepEqual(d.repos?.map((r) => r.name), ["a", "empty"]);
+  assert.equal("pushedAt" in (d.repos?.[1] ?? {}), false);
+  assert.equal(d.repos?.[1]?.pinned, true);
+});
+
 test("longest streak is computed from the calendar", () => {
   const d = normalizeGitHub(raw);
   assert.equal(d.stats.longestStreakDays, 2); // days 1,2 then gap, then 4,5

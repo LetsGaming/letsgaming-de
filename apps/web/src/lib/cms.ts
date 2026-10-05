@@ -52,7 +52,16 @@ export interface SourceStatus {
 export interface CmsStatusResponse {
   sources: SourceStatus[];
   guestbook: GuestbookCounts;
-  recentEdits: { id: number; savedAt: string; reason: string; label: string }[];
+  recentEdits: {
+    id: number;
+    savedAt: string;
+    reason: string;
+    label: string;
+    /** Which revision id space `id` belongs to. */
+    kind: "content" | "ia";
+    /** Only content revisions can be passed to `restoreRevision`. */
+    restorable: boolean;
+  }[];
 }
 
 export interface SyncRunResponse {

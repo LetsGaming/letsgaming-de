@@ -27,7 +27,8 @@ export interface RawRepo {
   name: string;
   stargazerCount: number;
   isFork: boolean;
-  pushedAt: string;
+  /** Null for empty repos that were never pushed to. */
+  pushedAt: string | null;
   primaryLanguage: { name: string } | null;
   languages: { edges: { size: number; node: { name: string } }[] };
   description?: string | null;

@@ -4,7 +4,7 @@ import { getStore } from "./store.js";
 import { PRESENCE_SAMPLE_SCHEDULE, DEFAULT_TIMEZONE } from "@lg/core";
 import { PresenceSampler } from "./sync/presence-sampler.js";
 import { SyncRunner } from "./sync/runner.js";
-import { tracked } from "./sync/tracked.js";
+import { skipWhileRunning, tracked } from "./sync/tracked.js";
 import { resolveGameMetadata } from "./sync/game-metadata.js";
 import { resolveGameImages } from "./sync/game-images.js";
 import { ingestLog } from "./analytics/ingest.js";
@@ -73,10 +73,11 @@ if (env.rawg) {
 
 // Discord-hosted game images (activity art, then the application icon). Only
 // games without a resolved image are looked up, and a miss waits a week.
-const sweepGameImages = () =>
+const sweepGameImages = skipWhileRunning(() =>
   tracked(store, "game-images", () => resolveGameImages(store, (m) => app.log.info(m))).catch((e) =>
     app.log.error(`[game-images] sweep failed: ${e instanceof Error ? e.message : String(e)}`),
-  );
+  ),
+);
 void sweepGameImages();
 const gameImagesTask = cron.schedule(GAME_IMAGES_SWEEP_SCHEDULE, sweepGameImages);
 

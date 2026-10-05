@@ -149,8 +149,8 @@ export interface GitHubGist {
 export interface GitHubRepo {
   name: string;
   stars: number;
-  /** ISO timestamp of the last push. */
-  pushedAt: string;
+  /** ISO timestamp of the last push. Absent for repos that were never pushed to. */
+  pushedAt?: string;
   /** Repo description, if any. */
   description?: string;
   /** Canonical GitHub URL for the repo. */

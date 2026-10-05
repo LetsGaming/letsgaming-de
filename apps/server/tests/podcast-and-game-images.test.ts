@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { openStore } from "@lg/db";
 import type { ServerEnv } from "../src/env.js";
 import { resolveGameImages } from "../src/sync/game-images.js";
+import { skipWhileRunning } from "../src/sync/tracked.js";
 import { PresenceSampler } from "../src/sync/presence-sampler.js";
 
 const realFetch = globalThis.fetch;
@@ -172,4 +173,39 @@ test("a miss is cached for 7 days, then retried", async () => {
   await resolveGameImages(store, undefined, new Date(START + 8 * 86400000));
   assert.ok(seen.length > calls, "retried after 7 days");
   assert.equal(store.gameMeta.getAll().get("ghost"), undefined, "no image, so the letter is shown");
+});
+
+test("a rate limit or network error is not recorded as a miss", async () => {
+  const store = openStore(":memory:");
+  store.gameMeta.noteApplication("Busy", "70", "1234");
+  globalThis.fetch = (async () => new Response("slow down", { status: 429 })) as typeof fetch;
+  assert.equal(await resolveGameImages(store, undefined, new Date(START)), 0);
+  const retryAfter = new Date(START + 60_000).toISOString();
+  assert.equal(store.gameMeta.pendingImages(retryAfter).length, 1, "still pending, not stamped");
+
+  globalThis.fetch = (async () => {
+    throw new Error("network down");
+  }) as typeof fetch;
+  await resolveGameImages(store, undefined, new Date(START));
+  assert.equal(store.gameMeta.pendingImages(retryAfter).length, 1, "network error is not a miss either");
+
+  stubDiscord({ iconHash: "ic", imageOk: () => true });
+  assert.equal(await resolveGameImages(store, undefined, new Date(START + 60_000)), 1);
+});
+
+test("skipWhileRunning drops a tick that overlaps the previous run", async () => {
+  let calls = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const job = skipWhileRunning(async () => {
+    calls++;
+    await gate;
+  });
+  const first = job();
+  await job();
+  assert.equal(calls, 1);
+  release();
+  await first;
+  await job();
+  assert.equal(calls, 2, "runs again once the previous one finished");
 });

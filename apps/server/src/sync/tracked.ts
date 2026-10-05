@@ -21,3 +21,17 @@ export async function tracked<T>(store: Store, job: string, run: () => Promise<T
     throw err;
   }
 }
+
+/** Wrap a job so a tick that fires while the previous run is still going is skipped. */
+export function skipWhileRunning<T>(run: () => Promise<T>): () => Promise<T | undefined> {
+  let running = false;
+  return async () => {
+    if (running) return undefined;
+    running = true;
+    try {
+      return await run();
+    } finally {
+      running = false;
+    }
+  };
+}

@@ -87,7 +87,7 @@ const change = computed(() => {
       <p v-if="!cmsStatus" class="muted">Loading...</p>
       <p v-else-if="!cmsStatus.recentEdits.length" class="muted">No edits yet.</p>
       <ul v-else class="dash-list">
-        <li v-for="r in cmsStatus.recentEdits" :key="`${r.reason}-${r.id}`" class="dash-row">
+        <li v-for="r in cmsStatus.recentEdits" :key="`${r.kind}-${r.id}`" class="dash-row">
           <span>{{ r.label }}</span>
           <span class="muted">{{ ago(r.savedAt) }}</span>
         </li>

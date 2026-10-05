@@ -545,8 +545,8 @@ paths:
       tags: [Auth]
       summary: GitHub OAuth callback
       description: |
-        Verifies `state`, exchanges the code, and — only if the GitHub login matches the allowed
-        login — issues a signed, http-only `lg_session` cookie the CMS uses. Then redirects to the
+        Verifies `state`, exchanges the code, and issues (only if the GitHub login matches the
+        allowed login) a signed, http-only `lg_session` cookie the CMS uses. Then redirects to the
         web origin plus the `returnTo` path chosen at login (default `/admin`).
       security: []
       parameters:
@@ -641,12 +641,14 @@ paths:
       description: |
         Partial merge by module id: only the modules in the body are touched, and within each
         only the fields sent. `heading` and `note` are localized objects (`en` required, only
-        `en`/`de` keys), so a German-only body is rejected with 400; within one, only the locales
-        that carry text are written, and an all-empty value clears the field. An unknown module id
-        is 400. `settings` is accepted for `featured` modules only (400 otherwise). The schema
-        bounds the shape of `settings` (at most 50 `repos`, each up to 100 characters); the
-        sanitizer then trims and de-duplicates `repos` and caps them at 3, and silently clamps
-        `count` to 1..3 rather than rejecting out-of-range values.
+        `en`/`de` keys), so a German-only body is rejected with 400. They merge per locale: a
+        non-empty locale is set, and an empty string for a non-English locale removes that
+        locale. An empty `en` keeps the stored English, and a value with every locale empty
+        clears the field. An unknown module id is 400. `settings` is accepted for `featured`
+        modules only (400 otherwise). The schema bounds the shape of `settings` (at most 50
+        `repos`, each up to 100 characters); the sanitizer then trims and de-duplicates `repos`
+        and caps them at 3, and silently clamps `count` to 1..3 rather than rejecting
+        out-of-range values.
       requestBody:
         required: true
         content:
@@ -1587,9 +1589,11 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, savedAt, reason, label]
+                      required: [id, savedAt, reason, label, kind, restorable]
                       properties:
-                        id: { type: integer, description: "Revision id (see /api/cms/revisions). Layout and section-heading edits are archived separately and have no listing endpoint." }
+                        id: { type: integer, description: "Revision id within the id space named by `kind`. Only `content` ids are valid for /api/cms/revisions." }
+                        kind: { type: string, enum: [content, ia], description: "`ia` rows are layout and section-heading edits, archived separately." }
+                        restorable: { type: boolean, description: "True only for `content` rows." }
                         savedAt: { type: string, format: date-time }
                         reason: { type: string, description: "Raw table/column name, `restore:<id>`, or `ia:<nav|modules|module-added|module-removed>` for layout edits." }
                         label: { type: string, description: Human-readable label for `reason`. }

@@ -144,6 +144,10 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
    *  all-empty one as "clear it", so one that existed must still be sent when emptied. */
   const hadText = new Map<string, { heading: boolean; note: boolean }>();
 
+  /** `PUT /modules` reads an empty `de` as "remove the German text", so unlike
+   *  `strip` it must be sent rather than dropped. */
+  const withDe = (l: Localized): Localized => ({ en: l.en, de: l.de ?? "" });
+
   /** One module's heading and note, in the partial shape `PUT /modules` merges by id. */
   function modulePayload(m: ModuleDescriptor) {
     const had = hadText.get(m.id);
@@ -151,8 +155,8 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       modules: [
         {
           id: m.id,
-          ...(m.heading && (filled(m.heading) || had?.heading) ? { heading: strip(m.heading) } : {}),
-          ...(m.note && (filled(m.note) || had?.note) ? { note: strip(m.note) } : {}),
+          ...(m.heading && (filled(m.heading) || had?.heading) ? { heading: withDe(m.heading) } : {}),
+          ...(m.note && (filled(m.note) || had?.note) ? { note: withDe(m.note) } : {}),
         },
       ],
     };

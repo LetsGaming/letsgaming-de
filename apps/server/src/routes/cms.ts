@@ -283,8 +283,9 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * leaves the rest), so this endpoint owns the value once it exists.
    *
    * Partial by id: only the modules in the body are touched, and within each, only
-   * the locales that carry text. That's what lets the owner translate one heading
-   * without resending — or risking — the other sixteen.
+   * the locales sent. That's what lets the owner translate one heading without
+   * resending, or risking, the other sixteen. Within a field, a non-empty locale
+   * is set and an empty string for a non-English locale removes it.
    */
   app.put<{
     Body: { modules: { id: string; heading?: Localized; note?: Localized; settings?: unknown }[] };
@@ -304,11 +305,21 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
         for (const field of ["heading", "note"] as const) {
           const value = entry[field];
           if (value === undefined) continue;
-          const filled = Object.entries(value).filter(([, v]) => v?.trim());
+          const entries = Object.entries(value);
           // A heading is optional (the hero has none), so an all-empty value is a
-          // real instruction to clear it — unlike a nav label, which can't be.
-          if (filled.length) mod[field] = { ...mod[field], ...Object.fromEntries(filled) } as Localized;
-          else delete mod[field];
+          // real instruction to clear it, unlike a nav label, which can't be.
+          if (!entries.some(([, v]) => v?.trim())) {
+            delete mod[field];
+            continue;
+          }
+          // A non-empty locale is set; an empty non-English locale removes that
+          // locale. English is required, so an empty `en` keeps the stored one.
+          const next: Record<string, string> = { ...mod[field] };
+          for (const [locale, text] of entries) {
+            if (text?.trim()) next[locale] = text;
+            else if (locale !== "en") delete next[locale];
+          }
+          mod[field] = next as Localized;
         }
       }
       store.ia.setModules(modules);

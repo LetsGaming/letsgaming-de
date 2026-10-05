@@ -339,9 +339,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
    * it at zero repeats "nobody has starred this" once per card — twelve times on
    * /code. Omitted below one, the line still carries the useful half.
    */
-  const repoMeta = (stars: number, pushedAt: string): string[] => [
+  const repoMeta = (stars: number, pushedAt: string | undefined): string[] => [
     ...(stars > 0 ? [`★ ${stars}`] : []),
-    T("updatedAgo", { age: relativeTime(pushedAt, now) }),
+    ...(pushedAt ? [T("updatedAgo", { age: relativeTime(pushedAt, now) })] : []),
   ];
 
   const resolveProject = (p: Project): ProjectView => {
@@ -656,13 +656,15 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const hasAreaCta = links.some(
           (x) => x.href === codeHref || x.href === areaHref(navView, AREA.life),
         );
-        const heroLinks: LinkView[] =
-          codeHref && !hasAreaCta
-            ? [
-                { id: "hero-explore", label: T("heroCtaCode"), href: codeHref, primary: true },
-                ...links.map((x) => ({ ...x, primary: false })),
-              ]
-            : links;
+        const injectCta = Boolean(codeHref) && !hasAreaCta;
+        const heroLinks: LinkView[] = injectCta
+          ? [
+              { id: "hero-explore", label: T("heroCtaCode"), href: codeHref!, primary: true },
+              ...links.map((x) => ({ ...x, primary: false })),
+            ]
+          : links;
+        // The injected CTA does not count against the authored-link cap.
+        const heroLinkCap = FEED.heroLinks + (injectCta ? 1 : 0);
         return {
           id: descriptor.id,
           kind: "hero",
@@ -675,7 +677,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             },
             lede: L(content.lede),
             status: { verb: L(content.status.verb), now: L(content.status.now) },
-            links: heroLinks.slice(0, FEED.heroLinks),
+            links: heroLinks.slice(0, heroLinkCap),
             presenceEnabled: show.length > 0,
             ...(last ? { lastActivity: { ...last, relative: relativeTime(last.at, now) } } : {}),
             waves: input.reactions?.wave ?? 0,
