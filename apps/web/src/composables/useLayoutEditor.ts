@@ -289,11 +289,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     gallery.value.filter((g) => g.module === activeGallery.value),
   );
 
-  function addGalleryAsset(assetId: string, target = activeGallery.value) {
+  function addGalleryAsset(assetId: string, target = activeGallery.value): Promise<void> {
     const ref = assetRef(assetId);
     if (gallery.value.some((g) => g.asset === ref && g.module === target)) {
       flash("Already in this gallery.");
-      return;
+      return Promise.resolve();
     }
     const item: GalleryRow = {
       id: newId("img"),
@@ -303,7 +303,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       sort: gallery.value.filter((g) => g.module === target).length,
     };
     gallery.value.push(item);
-    void guarded(() => cms.put(`gallery/${item.id}`, strip(item)), "Added to gallery");
+    return guarded(() => cms.put(`gallery/${item.id}`, strip(item)), "Added to gallery");
   }
 
   const saveGalleryItem = (g: GalleryRow) => guarded(() => cms.put(`gallery/${g.id}`, strip(g)));
@@ -365,9 +365,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     reorderGalleryTo(move.oldIndex, move.newIndex);
   }
 
-  async function createGallery() {
-    const name = prompt("Name for the new gallery (e.g. Travel):")?.trim();
-    if (!name) return;
+  /** Creates a (hidden) gallery module and resolves with its id. */
+  async function createGallery(nameArg: string): Promise<string | undefined> {
+    const name = nameArg.trim();
+    if (!name) return undefined;
+    let created: string | undefined;
     await guarded(async () => {
       // Written into the locale being edited as well as English, which the type
       // requires. A gallery created while editing German used to be German-named
@@ -378,8 +380,9 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       const label = { en: name, ...(locale.value === "de" ? { de: name } : {}) };
       const res = await cms.createGallery(label);
       await loadAll();
-      if (res?.id) activeGallery.value = res.id;
+      if (res?.id) activeGallery.value = created = res.id;
     }, "Gallery created");
+    return created;
   }
 
   function deleteGallery(id: string) {
@@ -444,10 +447,6 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
 
   const insertAt = ref<{ area: string; index: number } | null>(null);
   function canvasInsert(area: string, index: number) {
-    if (!hiddenModules.value.length) {
-      flash("Nothing unplaced to add — every module is already on a page.");
-      return;
-    }
     insertAt.value = { area, index };
   }
   function insertModule(mid: string) {

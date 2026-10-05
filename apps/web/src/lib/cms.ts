@@ -256,6 +256,32 @@ export const cms = {
       body: fd,
     }).then(handle<Asset>);
   },
+  /** Like `uploadAsset`, with `fetch`-less progress: XHR is the only API that reports upload bytes. */
+  uploadAssetWithProgress: (file: File, onProgress: (fraction: number) => void) =>
+    new Promise<Asset>((resolve, reject) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${apiBase}/api/cms/assets`);
+      xhr.withCredentials = true;
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        if (xhr.status === 401 || xhr.status === 403) return reject(new AuthError());
+        let body: unknown = null;
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          /* non-JSON error page */
+        }
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(body as Asset);
+        reject(new Error((body as { error?: string } | null)?.error ?? `HTTP ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error("Network error."));
+      xhr.send(fd);
+    }),
   /**
    * Read a markdown asset's source for editing.
    *

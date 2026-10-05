@@ -8,9 +8,14 @@ const props = defineProps<{
   heading: (id: string) => string;
   target: string;
 }>();
-const emit = defineEmits<{ pick: [id: string]; close: [] }>();
+const emit = defineEmits<{ pick: [id: string]; newGallery: [name: string]; close: [] }>();
 
 const q = ref("");
+const galleryName = ref("");
+function createNew() {
+  const name = galleryName.value.trim();
+  if (name) emit("newGallery", name);
+}
 const input = ref<HTMLInputElement | null>(null);
 const rows = computed(() =>
   filterPalette(
@@ -42,6 +47,11 @@ onMounted(() => input.value?.focus());
         </li>
         <li v-if="!rows.length" class="dim">No unplaced module matches.</li>
       </ol>
+      <form class="modrow newgal" @submit.prevent="createNew">
+        <span class="modname">New gallery</span>
+        <input v-model="galleryName" type="text" maxlength="60" placeholder="Name, e.g. Travel" aria-label="New gallery name" />
+        <button class="link" type="submit" :disabled="!galleryName.trim()">create and add here</button>
+      </form>
     </div>
   </div>
 </template>
