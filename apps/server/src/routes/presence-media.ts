@@ -185,9 +185,14 @@ function sendBytes(
 	return reply.send(b.body);
 }
 
+/** A short lifetime on purpose: the tile stands in for art that may arrive later
+ *  under the same URL (a game's image is resolved after its first appearance), and
+ *  a day-long cache in the browser or the reverse proxy would pin the placeholder. */
+const TILE_MAX_AGE_S = 300;
+
 function sendTile(reply: FastifyReply, svg: string): FastifyReply {
 	reply.header("Content-Type", "image/svg+xml; charset=utf-8");
-	reply.header("Cache-Control", "public, max-age=86400");
+	reply.header("Cache-Control", `public, max-age=${TILE_MAX_AGE_S}`);
 	reply.header("X-Content-Type-Options", "nosniff");
 	return reply.send(svg);
 }

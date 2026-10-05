@@ -28,6 +28,17 @@ test("game fallback returns a labelled SVG tile", async () => {
 	await app.close();
 });
 
+test("the placeholder tile is cached briefly so later art is not pinned out", async () => {
+	const app = await build();
+	const res = await app.inject({
+		method: "GET",
+		url: "/api/presence/media?game=Modrinth",
+	});
+	const maxAge = Number(/max-age=(\d+)/.exec(String(res.headers["cache-control"]))?.[1]);
+	assert.ok(maxAge > 0 && maxAge <= 600, `tile max-age ${maxAge} should be a few minutes, not a day`);
+	await app.close();
+});
+
 test("game name is XML-escaped in the tile (no SVG injection)", async () => {
 	const app = await build();
 	const res = await app.inject({

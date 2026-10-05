@@ -21,9 +21,10 @@ function isDiscordCdn(url: string): boolean {
 
 type Probe = "yes" | "no" | "unknown";
 
-/** A rate limit, server error or network failure says nothing about the image,
- *  so it must not be recorded as a miss. */
-const transient = (status: number) => status === 429 || status >= 500;
+/** Only "not found" says the image does not exist. A rate limit, a server error, a
+ *  block (401/403) or a network failure says nothing about the image, so it must
+ *  not be recorded as a miss that waits a week. */
+const missing = (status: number) => status === 400 || status === 404 || status === 410;
 
 /** Whether `url` serves an image right now. */
 async function servesImage(url: string): Promise<Probe> {
@@ -33,8 +34,8 @@ async function servesImage(url: string): Promise<Probe> {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     void res.body?.cancel();
-    if (transient(res.status)) return "unknown";
-    return res.ok && (res.headers.get("content-type") ?? "").startsWith("image/") ? "yes" : "no";
+    if (!res.ok) return missing(res.status) ? "no" : "unknown";
+    return (res.headers.get("content-type") ?? "").startsWith("image/") ? "yes" : "no";
   } catch {
     return "unknown";
   }
@@ -49,8 +50,7 @@ async function applicationIcon(applicationId: string): Promise<string | null | "
       `https://discord.com/api/v10/applications/${encodeURIComponent(applicationId)}/rpc`,
       { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
     );
-    if (transient(res.status)) return "unknown";
-    if (!res.ok) return null;
+    if (!res.ok) return missing(res.status) ? null : "unknown";
     const body = (await res.json()) as { icon?: unknown };
     return typeof body.icon === "string" && /^[\w-]+$/.test(body.icon)
       ? applicationIconUrl(applicationId, body.icon)
@@ -105,10 +105,17 @@ export async function resolveGameImages(
 
     // Only a definitive "no image" is stamped; a transient failure leaves the
     // game pending for the next sweep.
-    if (!found && inconclusive) continue;
+    if (!found && inconclusive) {
+      log(`[game-images] ${game.name}: Discord did not answer cleanly (application ${game.applicationId}), trying again next sweep`);
+      continue;
+    }
     store.gameMeta.putImage(game.name, found, nowIso);
-    if (found) resolved++;
+    if (found) {
+      resolved++;
+      log(`[game-images] ${game.name}: found ${found}`);
+    } else {
+      log(`[game-images] ${game.name}: Discord has no image (application ${game.applicationId}), retrying in 7 days`);
+    }
   }
-  if (resolved) log(`[game-images] resolved ${resolved} Discord image(s)`);
   return resolved;
 }

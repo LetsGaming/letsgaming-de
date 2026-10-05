@@ -11,6 +11,7 @@ pinned in `package.json` under `packageManager`). Run these from the repo root.
 | `pnpm dev:server` / `pnpm dev:web` | Run just one of them. |
 | `pnpm dev:up` / `pnpm dev:down` | Start/stop an isolated backend+web dev session — own free ports, own disposable SQLite database, seeded with mock data. For agents and anyone who wants to poke at the site without touching the shared default database. `--id <name>` namespaces it; see [`CLAUDE.md`](../../CLAUDE.md) and `scripts/dev-up.mjs`. |
 | `pnpm sync` | Run every source once (fetch, normalize, persist) and exit. Uses the mock GitHub source without a token. |
+| `pnpm --filter @lg/server sync:game-images [--retry-misses]` | Look up Discord images for games now instead of at the next 5-minute sweep, and print what each game has (pending, found, or no image). `--retry-misses` first forgets recorded "no image" answers. In Docker: `docker compose exec server node dist/sync/game-images-cli.js`. |
 | `pnpm analytics:rebuild [log]` | Delete every log-derived dimension and re-derive from the access log. Deletes first — check what your rotation keeps. In Docker: `docker compose run --rm server node dist/analytics/rebuild-cli.js` with the server stopped. |
 | `pnpm analytics:reclassify` | Re-file stored rows through the current classifiers (e.g. scanner requests still counted as page views). Safe to repeat. |
 | `pnpm analytics <access.log> [host]` | Ingest new lines from an access log into the anonymous aggregates. Optional `host` keeps your own domain out of the referrer list. |

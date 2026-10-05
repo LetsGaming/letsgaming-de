@@ -20,8 +20,10 @@ const LOG_MOUNT = "/logs";
  * caught up. */
 const GAME_METADATA_SWEEP_SCHEDULE = "23 * * * *";
 
-/** Every 15 minutes, so a newly seen game gets its image soon after first play. */
-const GAME_IMAGES_SWEEP_SCHEDULE = "*/15 * * * *";
+/** Every 5 minutes, matching the presence sampler that records a new game's
+ *  application, so its image appears within one or two ticks of first play. A
+ *  sweep with nothing pending is a single query. */
+const GAME_IMAGES_SWEEP_SCHEDULE = "*/5 * * * *";
 
 /** Every 5 minutes: incremental, idempotent access-log ingest. */
 const ANALYTICS_INGEST_SCHEDULE = "*/5 * * * *";

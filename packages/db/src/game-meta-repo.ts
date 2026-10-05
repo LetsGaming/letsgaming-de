@@ -89,6 +89,35 @@ export function gameMetaRepo(db: DatabaseSync) {
       );
     },
 
+    /** Every game with a recorded Discord application, for diagnostics. */
+    imageRows(): {
+      name: string;
+      applicationId: string | null;
+      largeImage: string | null;
+      imageUrl: string | null;
+      checkedAt: string | null;
+    }[] {
+      return mapRows(
+        db.prepare("SELECT name, application_id, large_image, image_url, checked_at FROM game_images ORDER BY name"),
+        (r: Row) => ({
+          name: asText(r.name),
+          applicationId: r.application_id == null ? null : asText(r.application_id),
+          largeImage: r.large_image == null ? null : asText(r.large_image),
+          imageUrl: r.image_url == null ? null : asText(r.image_url),
+          checkedAt: r.checked_at == null ? null : asText(r.checked_at),
+        }),
+      );
+    },
+
+    /** Forget recorded misses so the next sweep looks those games up again. Games
+     *  that already have an image are untouched. Returns how many were reset. */
+    resetMisses(): number {
+      const res = db
+        .prepare("UPDATE game_images SET checked_at = NULL WHERE image_url IS NULL AND checked_at IS NOT NULL")
+        .run();
+      return Number(res.changes);
+    },
+
     /** Names already resolved (found or not), so the sweep can skip them. */
     resolvedKeys(): Set<string> {
       return new Set(mapRows(db.prepare("SELECT name FROM game_metadata"), (r: Row) => asText(r.name)));
