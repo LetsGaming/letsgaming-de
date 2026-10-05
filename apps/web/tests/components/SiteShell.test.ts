@@ -41,6 +41,8 @@ const site = {
 						icon: "gh",
 					},
 				],
+				presenceEnabled: false,
+				waves: 0,
 			},
 		},
 		activity: {

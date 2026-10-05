@@ -215,6 +215,7 @@ onUnmounted(() => {
 const KIND_LABELS: Record<ModuleKind, string> = {
   hero: "Hero",
   areas: "Pages overview",
+  teasers: "Teasers",
   featured: "Featured",
   glance: "At a glance",
   activity: "Activity",

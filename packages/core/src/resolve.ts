@@ -30,7 +30,7 @@ import {
   type SourceData,
   type SourceId,
 } from "./source.js";
-import type { FreshnessView, PostView, WrappedRankView } from "./view.js";
+import type { FreshnessView, PostView, TeaserView, WrappedRankView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
@@ -142,6 +142,15 @@ export interface ResolveInput {
    * the timezone.
    */
   contact?: { relay: boolean; email?: string };
+  /** Newest finished activity per category, for the hero's idle line. Games are a
+   *  short newest-first list so hidden names can be skipped; the track is the
+   *  newest public listen. */
+  recentActivity?: {
+    games: { name: string; at: string }[];
+    track?: { name: string; at: string };
+  };
+  /** Global reaction counters. */
+  reactions?: { wave: number };
   /** Library assets referenced by content, keyed by id (built by the read route). */
   assets?: Map<string, ResolvableAsset>;
   /** Injectable clock for deterministic relative times (tests). */
@@ -455,6 +464,112 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const activeSources = (): string[] =>
     (Object.keys(source) as SourceId[]).filter((id) => source[id]).map((id) => SOURCE_LABEL[id]);
 
+  /**
+   * Posts are markdown assets with a public slug. Their metadata lives in the
+   * file, so building the index is: parse each one, drop the drafts, newest first.
+   * Drafts are absent here *and* 404 at the route; the index is not the access
+   * control.
+   */
+  const postViews = (): PostView[] =>
+    [...assets.values()]
+      .filter((a) => a.kind === "markdown" && a.slug?.startsWith(POST_PREFIX) && a.markdown)
+      .map((a) => {
+        const { frontmatter: fm, body } = parsePost(a.markdown!, a.slug!);
+        return { fm, body, slug: a.slug! };
+      })
+      .filter(({ fm }) => !fm.draft)
+      .map(({ fm, body, slug }) => ({
+        slug,
+        title: fm.title,
+        at: fm.date,
+        relative: relativeTime(fm.date, now),
+        // Always give OG something to quote: an explicit excerpt, else the
+        // opening paragraph.
+        excerpt: fm.excerpt ?? firstParagraph(body),
+        tags: fm.tags,
+      }))
+      .sort((a, b) => b.at.localeCompare(a.at));
+
+  /**
+   * One preview card per area, each only when the area is reachable and has
+   * something to say. Blog stays out until there is a post, and Life's figures
+   * respect the same Show switches the live widget does.
+   */
+  const teaserViews = (): TeaserView[] => {
+    const cards: TeaserView[] = [];
+    const area = (id: string) => navView.find((a) => a.id === id);
+    const show = content.presence?.show ?? defaultPresenceSettings().show;
+
+    const code = area(AREA.code);
+    const lead = projectList.filter((p) => p.featured).slice(0, 2);
+    const projects = lead.length > 0 ? lead : projectList.slice(0, 1);
+    if (code && projects.length > 0) {
+      const latest = gh?.events[0];
+      cards.push({
+        id: code.id,
+        label: code.label,
+        value: projects.map((p) => p.name).join(", "),
+        ...(latest
+          ? {
+              detail: T("teaserLatest", {
+                text: eventText(latest),
+                age: relativeTime(latest.at, now),
+              }),
+            }
+          : projects[0]?.meta[0]
+            ? { detail: projects[0].meta[0] }
+            : {}),
+        href: areaHref(navView, code.id),
+      });
+    }
+
+    const life = area(AREA.life);
+    if (life) {
+      const weekMinutes = show.includes("game")
+        ? windowLedger(input.playHistory?.ledger ?? [], 7, now).reduce((sum, d) => sum + d.minutes, 0)
+        : 0;
+      const topArtist = show.includes("music") ? input.musicHistory?.topArtists[0] : undefined;
+      if (weekMinutes > 0 || topArtist) {
+        cards.push({
+          id: life.id,
+          label: life.label,
+          value:
+            weekMinutes > 0
+              ? T("teaserHoursWeek", { n: Math.round(weekMinutes / 6) / 10 })
+              : T("teaserTopArtist", { name: topArtist!.name }),
+          ...(weekMinutes > 0 && topArtist
+            ? { detail: T("teaserTopArtist", { name: topArtist.name }) }
+            : {}),
+          href: areaHref(navView, life.id),
+        });
+      }
+    }
+
+    const blog = area(AREA.blog);
+    const post = postViews()[0];
+    if (blog && post) {
+      cards.push({
+        id: blog.id,
+        label: blog.label,
+        value: post.title,
+        detail: T("ago", { age: post.relative }),
+        href: areaHref(navView, blog.id),
+      });
+    }
+
+    const about = area(AREA.about);
+    if (about) {
+      cards.push({
+        id: about.id,
+        label: about.label,
+        value: L(content.meta.role),
+        detail: L(content.meta.location),
+        href: areaHref(navView, about.id),
+      });
+    }
+    return cards;
+  };
+
   /** Resolve one module, or `null` when it shouldn't appear at all (currently
    *  only Wrapped, which is visible on a schedule). A null is dropped from the
    *  view entirely, so an out-of-window module is absent rather than hidden. */
@@ -506,6 +621,34 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           content.meta.location,
         )}`.toUpperCase();
         const avatar = resolveAsset(content.meta.avatar, assets);
+        const show = content.presence?.show ?? defaultPresenceSettings().show;
+        const hidden = content.presence?.hidden ?? [];
+        const candidates: { kind: "game" | "music"; name: string; at: string }[] = [];
+        const lastGame = show.includes("game")
+          ? input.recentActivity?.games.find((g) => !isHidden(g.name, hidden))
+          : undefined;
+        if (lastGame) candidates.push({ kind: "game", ...lastGame });
+        const lastTrack = input.recentActivity?.track;
+        if (lastTrack && show.includes("music") && !isHidden(lastTrack.name, hidden)) {
+          candidates.push({ kind: "music", ...lastTrack });
+        }
+        const last = candidates.sort((a, b) => b.at.localeCompare(a.at))[0];
+
+        // The first-paint decision is "where do I go next", so an internal primary
+        // CTA leads and everything the CMS authored (GitHub, contact) steps back to
+        // secondary. Skipped when the CMS already points a link at Code or Life.
+        const links = content.links.map(resolveLink);
+        const codeHref = navView.some((a) => a.id === AREA.code) ? areaHref(navView, AREA.code) : undefined;
+        const hasAreaCta = links.some(
+          (x) => x.href === codeHref || x.href === areaHref(navView, AREA.life),
+        );
+        const heroLinks: LinkView[] =
+          codeHref && !hasAreaCta
+            ? [
+                { id: "hero-explore", label: T("heroCtaCode"), href: codeHref, primary: true },
+                ...links.map((x) => ({ ...x, primary: false })),
+              ]
+            : links;
         return {
           id: descriptor.id,
           kind: "hero",
@@ -518,12 +661,21 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             },
             lede: L(content.lede),
             status: { verb: L(content.status.verb), now: L(content.status.now) },
-            links: content.links.slice(0, FEED.heroLinks).map(resolveLink),
+            links: heroLinks.slice(0, FEED.heroLinks),
+            presenceEnabled: show.length > 0,
+            ...(last ? { lastActivity: { ...last, relative: relativeTime(last.at, now) } } : {}),
+            waves: input.reactions?.wave ?? 0,
             ...(avatar && (avatar.kind === "image" || avatar.kind === "gif")
               ? { avatar }
               : {}),
           },
         };
+      }
+      case "teasers": {
+        const teasers = teaserViews();
+        return teasers.length > 0
+          ? { id: descriptor.id, kind: "teasers", data: { heading, note, teasers } }
+          : null;
       }
       case "featured": {
         const featured = projectList.find((p) => p.featured) ?? projectList[0] ?? null;
@@ -595,29 +747,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         };
       }
       case "posts": {
-        // Posts are markdown assets with a public slug. Their metadata lives in
-        // the file, so building the index is: parse each one, drop the drafts,
-        // newest first. Drafts are absent here *and* 404 at the route — the index
-        // is not the access control.
-        const posts: PostView[] = [...assets.values()]
-          .filter((a) => a.kind === "markdown" && a.slug?.startsWith(POST_PREFIX) && a.markdown)
-          .map((a) => {
-            const { frontmatter: fm, body } = parsePost(a.markdown!, a.slug!);
-            return { fm, body, slug: a.slug! };
-          })
-          .filter(({ fm }) => !fm.draft)
-          .map(({ fm, body, slug }) => ({
-            slug,
-            title: fm.title,
-            at: fm.date,
-            relative: relativeTime(fm.date, now),
-            // Always give OG something to quote: an explicit excerpt, else the
-            // opening paragraph.
-            excerpt: fm.excerpt ?? firstParagraph(body),
-            tags: fm.tags,
-          }))
-          .sort((a, b) => b.at.localeCompare(a.at));
-        return { id: descriptor.id, kind: "posts", data: { heading, note, posts } };
+        return { id: descriptor.id, kind: "posts", data: { heading, note, posts: postViews() } };
       }
       case "coding": {
         const w = source.wakapi;

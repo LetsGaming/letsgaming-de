@@ -133,6 +133,23 @@ export function sessionsRepo(db: DatabaseSync) {
       );
     },
 
+    /** The most recently seen activities of a category, newest first, one row per
+     *  name. Callers filter hidden names, so ask for more than they need. */
+    recent(category: PresenceCategory, limit: number): { name: string; at: string }[] {
+      return mapRows(
+        db.prepare(`
+          SELECT name, MAX(last_seen_at) AS at FROM presence_sessions
+          WHERE category = ?
+          GROUP BY name
+          ORDER BY at DESC
+          LIMIT ?
+        `),
+        (r: Row) => ({ name: asText(r.name), at: asText(r.at) }),
+        category,
+        limit,
+      );
+    },
+
     /**
      * When a category is played, as a weekday × hour grid, in `timeZone`.
      *

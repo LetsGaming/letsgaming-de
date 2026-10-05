@@ -5,10 +5,13 @@ import SmartLink from "../ui/SmartLink.vue";
 import { mdBold } from "../../lib/text";
 import { trackClick } from "../../lib/track";
 import AssetPicture from "../ui/AssetPicture.vue";
+import { computed } from "vue";
 import { useSyncedRelative } from "~/composables/syncedContext";
+import { usePresence } from "~/composables/usePresence";
+import { useWave } from "~/composables/useWave";
 import { useT } from "~/composables/useT";
 
-defineProps<{
+const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "hero" }>;
 }>();
 
@@ -19,6 +22,31 @@ defineProps<{
 // the site already uses, so it reads as the same kind of fact, not a new one.
 const { t } = useT();
 const syncedRelative = useSyncedRelative();
+
+// Live status comes from the server-filtered presence relay, so Show switches and
+// hidden activities are already applied. Only games and songs are surfaced here;
+// whatever the relay returns for other categories (episodes included) is ignored.
+const { view: presence } = usePresence(() => props.module.data.presenceEnabled);
+const liveParts = computed(() =>
+  (presence.value?.cards ?? []).flatMap((c) =>
+    c.category === "game" && c.title
+      ? [t("heroPlaying", { name: c.title })]
+      : c.category === "music" && c.title
+        ? [t("heroListening", { name: c.title })]
+        : [],
+  ),
+);
+const liveText = computed(() => {
+  if (liveParts.value.length) return t("heroRightNow", { parts: liveParts.value.join(" · ") });
+  const last = props.module.data.lastActivity;
+  if (!last) return "";
+  return t(last.kind === "game" ? "heroLastPlayed" : "heroLastListened", {
+    name: last.name,
+    age: last.relative,
+  });
+});
+
+const { count: waves, waved, wave } = useWave(props.module.data.waves);
 
 /**
  * Report the click. Don't intercept it.
@@ -61,6 +89,11 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
     <div class="status">
       <span class="dot" /> {{ module.data.status.verb }} <b>{{ module.data.status.now }}</b>
     </div>
+    <p v-if="module.data.presenceEnabled" class="live" aria-live="polite">
+      <template v-if="liveText"
+        ><span class="dot" :class="{ on: liveParts.length > 0 }" /> {{ liveText }}</template
+      >
+    </p>
     <p v-if="syncedRelative" class="synced">{{ t("freshFresh", { age: syncedRelative }) }}</p>
     <div class="links">
       <SmartLink
@@ -77,6 +110,10 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
         />{{ l.label }}
       </SmartLink>
     </div>
+    <button type="button" class="wave" :disabled="waved" :aria-label="t('waveLabel')" @click="wave">
+      {{ waved ? t("waveDone") : t("waveButton") }}
+      <span v-if="waves > 0" class="wave-count">{{ waves }}</span>
+    </button>
   </section>
 </template>
 
@@ -140,9 +177,62 @@ h1 .pop::after {
   color: var(--muted);
   margin-top: var(--sp-6);
 }
+.live {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-height: 1.6em;
+  margin-top: var(--sp-10);
+  font-family: var(--f-m);
+  font-size: 13px;
+  color: var(--muted);
+}
+.live .dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-2);
+}
+.live .dot.on {
+  background: var(--live-ink);
+  box-shadow: var(--glow-live);
+  animation: pulse 2.2s infinite;
+}
+.wave {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-top: var(--sp-14);
+  padding: var(--sp-4) var(--sp-12);
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line-1);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.wave:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+.wave:disabled {
+  cursor: default;
+}
+.wave-count {
+  font-family: var(--f-m);
+  color: var(--ink);
+}
 @keyframes pulse {
   50% {
     opacity: 0.32;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status .dot,
+  .live .dot.on {
+    animation: none;
   }
 }
 .avatar :deep(img) {

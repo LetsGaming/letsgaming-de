@@ -20,6 +20,7 @@ import { registerPresenceRoutes } from "./routes/presence.js";
 import { registerPlaytimeRoutes } from "./routes/playtime.js";
 import { registerMusicRoutes } from "./routes/music.js";
 import { registerModuleRoutes } from "./routes/module.js";
+import { registerReactionRoutes } from "./routes/reactions.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
 
@@ -87,6 +88,7 @@ export async function buildApp(
   registerTrackRoutes(app, store);
   registerContactRoutes(app, env);
   registerGuestbookRoutes(app, store);
+  registerReactionRoutes(app, store);
   registerPresenceRoutes(app, env, store);
   registerPlaytimeRoutes(app, store);
   registerMusicRoutes(app, store);

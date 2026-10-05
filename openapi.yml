@@ -54,6 +54,8 @@ tags:
     description: Image relays and stored media, served from this origin so no visitor IP leaks upstream.
   - name: Guestbook
     description: Public, pre-moderated guestbook submissions.
+  - name: Reactions
+    description: Anonymous one-click reactions (the hero wave). A global counter, nothing per visitor.
   - name: Contact
     description: Contact relay to email. Stores nothing.
   - name: Engagement
@@ -388,6 +390,44 @@ paths:
                   pending: { const: true }
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/reactions/wave:
+    get:
+      tags: [Reactions]
+      summary: Read the global wave count
+      security: []
+      responses:
+        "200":
+          description: The current total.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, minimum: 0 }
+    post:
+      tags: [Reactions]
+      summary: Wave (increment the global counter)
+      description: |
+        Adds one to a single global counter and returns the new total. Stores no visitor data:
+        no IP, no identifier, no timestamp. A coarse per-IP rate limit is kept in memory only,
+        keyed by a salted hash of the address with a salt that is random per process, so it
+        resets on restart and cannot be correlated afterwards. The count also rides along in the
+        site view as `modules.hero.data.waves`.
+      security: []
+      responses:
+        "200":
+          description: The new total.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, minimum: 1 }
         "429":
           $ref: "#/components/responses/RateLimited"
 

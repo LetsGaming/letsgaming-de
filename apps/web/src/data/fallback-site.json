@@ -13,6 +13,7 @@
         "label": "Home",
         "modules": [
           "hero",
+          "teasers",
           "glance",
           "featured",
           "guestbook"
@@ -66,6 +67,12 @@
           },
           "links": [
             {
+              "id": "hero-explore",
+              "label": "See what I'm building",
+              "href": "/code",
+              "primary": true
+            },
+            {
               "id": "github",
               "label": "GitHub",
               "href": "https://github.com/LetsGaming",
@@ -77,7 +84,25 @@
               "label": "Get in touch",
               "href": "/about#contact",
               "icon": "mail",
-              "primary": true
+              "primary": false
+            }
+          ],
+          "presenceEnabled": true,
+          "waves": 0
+        }
+      },
+      "teasers": {
+        "id": "teasers",
+        "kind": "teasers",
+        "data": {
+          "heading": "Jump in",
+          "teasers": [
+            {
+              "id": "about",
+              "label": "About",
+              "value": "web developer",
+              "detail": "Germany",
+              "href": "/about"
             }
           ]
         }
@@ -124,6 +149,8 @@
           "stats": [],
           "contributions": {
             "levels": [],
+            "dates": [],
+            "counts": [],
             "total": 0
           },
           "languages": [],
@@ -337,6 +364,7 @@
         "label": "Start",
         "modules": [
           "hero",
+          "teasers",
           "glance",
           "featured",
           "guestbook"
@@ -390,6 +418,12 @@
           },
           "links": [
             {
+              "id": "hero-explore",
+              "label": "Das baue ich gerade",
+              "href": "/code",
+              "primary": true
+            },
+            {
               "id": "github",
               "label": "GitHub",
               "href": "https://github.com/LetsGaming",
@@ -401,7 +435,25 @@
               "label": "Kontakt aufnehmen",
               "href": "/about#contact",
               "icon": "mail",
-              "primary": true
+              "primary": false
+            }
+          ],
+          "presenceEnabled": true,
+          "waves": 0
+        }
+      },
+      "teasers": {
+        "id": "teasers",
+        "kind": "teasers",
+        "data": {
+          "heading": "Reinschauen",
+          "teasers": [
+            {
+              "id": "about",
+              "label": "Über mich",
+              "value": "Webentwickler",
+              "detail": "Deutschland",
+              "href": "/about"
             }
           ]
         }
@@ -448,6 +500,8 @@
           "stats": [],
           "contributions": {
             "levels": [],
+            "dates": [],
+            "counts": [],
             "total": 0
           },
           "languages": [],
