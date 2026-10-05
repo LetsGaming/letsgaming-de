@@ -1,6 +1,7 @@
 import cron, { type ScheduledTask } from "node-cron";
 import {
   LANYARD_ACTIVITY_TYPE,
+  classifySpotify,
   isPresenceCategory,
   spotifyAlbumArtUrl,
   type LanyardActivity,
@@ -72,10 +73,14 @@ export class PresenceSampler {
     const sample = new Set(this.store.content.getPresence().sample);
 
     for (const activity of data.activities ?? []) {
-      const category = CATEGORY_FOR_TYPE[activity.type];
+      const base = CATEGORY_FOR_TYPE[activity.type];
       // Custom status is a sentence, not an activity — there's no duration in
       // "brb". Everything else is something with a start and an end.
-      if (!category || !isPresenceCategory(category) || category === "custom") continue;
+      if (!base || !isPresenceCategory(base) || base === "custom") continue;
+      // A podcast episode is a Spotify listen with no artist; it has its own
+      // record switch so it can be kept (or dropped) independently of music.
+      const spotifyKind = base === "music" ? classifySpotify(activity) : undefined;
+      const category: PresenceCategory = spotifyKind === "episode" ? "podcast" : base;
       if (!sample.has(category)) continue; // not on the record list
 
       // Discord's own start when it has one. Otherwise this poll — which makes the
@@ -96,13 +101,14 @@ export class PresenceSampler {
       // `SyncRunner.runSource`'s normalize/persist guard: log and keep polling,
       // don't lose the rest of the site over one bad activity.
       try {
-        if (category === "music") {
+        if (spotifyKind) {
           if (!activity.sync_id || !activity.details) continue;
           const albumArtUrl = spotifyAlbumArtUrl(activity);
           this.store.music.observe({
             trackId: activity.sync_id,
             song: activity.details,
             artist: activity.state?.trim() ?? "",
+            kind: spotifyKind,
             ...(activity.assets?.large_text ? { album: activity.assets.large_text } : {}),
             ...(albumArtUrl ? { albumArtUrl } : {}),
             startedAt,
@@ -115,6 +121,9 @@ export class PresenceSampler {
         const name = sessionSubject(category, activity);
         if (!name) continue;
         this.store.sessions.observe({ category, name, startedAt, seenAt, startedExact: exact });
+        if (category === "game" && activity.application_id) {
+          this.store.gameMeta.noteApplication(name, activity.application_id, activity.assets?.large_image);
+        }
         recorded++;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

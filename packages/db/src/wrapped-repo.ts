@@ -48,7 +48,7 @@ export function wrappedRepo(db: DatabaseSync) {
             SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds,
             COUNT(*) AS plays
           FROM music_plays
-          WHERE last_seen_at >= ? AND last_seen_at < ?
+          WHERE kind = 'track' AND last_seen_at >= ? AND last_seen_at < ?
           GROUP BY track_id
           ORDER BY seconds DESC, song ASC
           LIMIT ?
@@ -87,6 +87,7 @@ export function wrappedRepo(db: DatabaseSync) {
               FROM music_play_artists a2
               JOIN music_plays p2 ON p2.id = a2.play_id
               WHERE a2.artist_key = a.artist_key
+                AND p2.kind = 'track'
                 AND p2.last_seen_at >= ? AND p2.last_seen_at < ?
                 AND p2.album_art_url IS NOT NULL
               GROUP BY p2.track_id
@@ -95,7 +96,7 @@ export function wrappedRepo(db: DatabaseSync) {
             ) AS art
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
-          WHERE p.last_seen_at >= ? AND p.last_seen_at < ?
+          WHERE p.kind = 'track' AND p.last_seen_at >= ? AND p.last_seen_at < ?
           GROUP BY a.artist_key
           ORDER BY seconds DESC, artist ASC
           LIMIT ?
@@ -154,7 +155,7 @@ export function wrappedRepo(db: DatabaseSync) {
         .prepare(`
           SELECT SUM(strftime('%s', last_seen_at) - strftime('%s', started_at)) AS seconds
           FROM music_plays
-          WHERE last_seen_at >= ? AND last_seen_at < ?
+          WHERE kind = 'track' AND last_seen_at >= ? AND last_seen_at < ?
         `)
         .get(startIso, endIso) as { seconds: number | null } | undefined;
       return minutes(row?.seconds ?? 0);

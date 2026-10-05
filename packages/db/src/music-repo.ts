@@ -17,8 +17,8 @@ import { zonedDay } from "./tz.js";
  */
 export function musicRepo(db: DatabaseSync) {
   const upsertPlay = db.prepare(`
-    INSERT INTO music_plays (track_id, song, artist, album, album_art_url, started_at, last_seen_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO music_plays (track_id, song, artist, album, album_art_url, started_at, last_seen_at, kind)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (track_id, started_at) DO UPDATE SET
       last_seen_at = MAX(last_seen_at, excluded.last_seen_at),
       -- Backfill art if an earlier poll of this play didn't have it yet.
@@ -53,6 +53,7 @@ export function musicRepo(db: DatabaseSync) {
         play.albumArtUrl ?? null,
         play.startedAt,
         play.seenAt,
+        play.kind ?? "track",
       ) as { id: number } | undefined;
       if (!row) return;
       for (const artist of splitArtists(play.artist)) {
@@ -82,7 +83,7 @@ export function musicRepo(db: DatabaseSync) {
             SUM(${DURATION}) AS seconds,
             COUNT(*) AS plays
           FROM music_plays
-          WHERE last_seen_at >= ?
+          WHERE kind = 'track' AND last_seen_at >= ?
           GROUP BY track_id
           ORDER BY seconds DESC, song ASC
           LIMIT ?
@@ -131,6 +132,7 @@ export function musicRepo(db: DatabaseSync) {
               FROM music_play_artists a2
               JOIN music_plays p2 ON p2.id = a2.play_id
               WHERE a2.artist_key = a.artist_key
+                AND p2.kind = 'track'
                 AND p2.last_seen_at >= ?
                 AND p2.album_art_url IS NOT NULL
               GROUP BY p2.track_id
@@ -139,7 +141,7 @@ export function musicRepo(db: DatabaseSync) {
             ) AS art
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
-          WHERE p.last_seen_at >= ?
+          WHERE p.kind = 'track' AND p.last_seen_at >= ?
           GROUP BY a.artist_key
           ORDER BY seconds DESC, artist ASC
           LIMIT ?
@@ -169,7 +171,7 @@ export function musicRepo(db: DatabaseSync) {
             SUM(${DURATION}) AS seconds,
             COUNT(*) AS plays
           FROM music_plays
-          WHERE last_seen_at >= ? AND album IS NOT NULL AND album <> ''
+          WHERE kind = 'track' AND last_seen_at >= ? AND album IS NOT NULL AND album <> ''
           GROUP BY album
           ORDER BY seconds DESC, album ASC
           LIMIT ?
@@ -190,7 +192,7 @@ export function musicRepo(db: DatabaseSync) {
      *  count of tracks, not plays: two listens of one song is one track. */
     distinctTracks(sinceIso: string): number {
       const row = db
-        .prepare("SELECT COUNT(DISTINCT track_id) AS n FROM music_plays WHERE last_seen_at >= ?")
+        .prepare("SELECT COUNT(DISTINCT track_id) AS n FROM music_plays WHERE kind = 'track' AND last_seen_at >= ?")
         .get(sinceIso) as { n: number } | undefined;
       return row ? Number(row.n) : 0;
     },
@@ -203,7 +205,7 @@ export function musicRepo(db: DatabaseSync) {
           SELECT COUNT(DISTINCT a.artist_key) AS n
           FROM music_play_artists a
           JOIN music_plays p ON p.id = a.play_id
-          WHERE p.last_seen_at >= ?
+          WHERE p.kind = 'track' AND p.last_seen_at >= ?
         `)
         .get(sinceIso) as { n: number } | undefined;
       return row ? Number(row.n) : 0;
@@ -213,7 +215,7 @@ export function musicRepo(db: DatabaseSync) {
      *  timeline, same shape as the playtime ledger so the module reuses the strip. */
     dailyTotals(sinceIso: string, timeZone: string): { day: string; minutes: number }[] {
       const rows = mapRows(
-        db.prepare(`SELECT started_at AS s, last_seen_at AS e FROM music_plays WHERE started_at >= ?`),
+        db.prepare(`SELECT started_at AS s, last_seen_at AS e FROM music_plays WHERE kind = 'track' AND started_at >= ?`),
         (r: Row) => ({ s: asText(r.s), e: asText(r.e) }),
         sinceIso,
       );
@@ -242,7 +244,7 @@ export function musicRepo(db: DatabaseSync) {
       const hi = new Date(dayStartUtc + 48 * 3_600_000).toISOString();
       const rows = mapRows(
         db.prepare(
-          `SELECT track_id AS tid, song, artist, album_art_url AS art, started_at AS s, last_seen_at AS e FROM music_plays WHERE started_at >= ? AND started_at < ?`,
+          `SELECT track_id AS tid, song, artist, album_art_url AS art, started_at AS s, last_seen_at AS e FROM music_plays WHERE kind = 'track' AND started_at >= ? AND started_at < ?`,
         ),
         (r: Row) => ({
           tid: asText(r.tid),
@@ -279,7 +281,7 @@ export function musicRepo(db: DatabaseSync) {
     /** Total minutes listened over a window, for the headline figure. */
     totalMinutes(sinceIso: string): number {
       const row = db
-        .prepare(`SELECT SUM(${DURATION}) AS seconds FROM music_plays WHERE last_seen_at >= ?`)
+        .prepare(`SELECT SUM(${DURATION}) AS seconds FROM music_plays WHERE kind = 'track' AND last_seen_at >= ?`)
         .get(sinceIso) as { seconds: number | null } | undefined;
       return Math.round((row?.seconds ?? 0) / 60);
     },

@@ -12,6 +12,7 @@ import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 import { badRequest, forbidden, unauthorized, unavailable } from "../errors.js";
 import { SESSION_COOKIE } from "./guard.js";
+import { returnUrl, safeReturnTo } from "./return-to.js";
 
 const STATE_COOKIE = "lg_oauth_state";
 
@@ -19,13 +20,15 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
   const { clientId, clientSecret, allowedLogin } = env.oauth;
   const secureCookie = env.isProduction;
 
-  app.get("/auth/github/login", async (_req, reply) => {
+  app.get<{ Querystring: { returnTo?: string } }>("/auth/github/login", async (req, reply) => {
     if (!clientId) throw unavailable("OAuth not configured.");
 
     // CSRF: mint a random state, remember it in a short-lived signed cookie, and
-    // require it back on the callback.
+    // require it back on the callback. The validated return path rides in the
+    // same signed cookie as `<state>|<encoded path>` (a UUID never contains `|`).
     const state = randomUUID();
-    reply.setCookie(STATE_COOKIE, state, {
+    const returnTo = encodeURIComponent(safeReturnTo(req.query.returnTo));
+    reply.setCookie(STATE_COOKIE, `${state}|${returnTo}`, {
       signed: true,
       httpOnly: true,
       sameSite: "lax",
@@ -52,8 +55,15 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
       const raw = req.cookies?.[STATE_COOKIE];
       const unsigned = raw ? req.unsignCookie(raw) : { valid: false, value: null };
       reply.clearCookie(STATE_COOKIE, { path: "/" });
-      if (!unsigned.valid || !unsigned.value || unsigned.value !== req.query.state) {
+      const [expectedState, encodedReturn = ""] = (unsigned.value ?? "").split("|");
+      if (!unsigned.valid || !expectedState || expectedState !== req.query.state) {
         throw badRequest("Invalid OAuth state.");
+      }
+      let returnTo = "";
+      try {
+        returnTo = decodeURIComponent(encodedReturn);
+      } catch {
+        // malformed value falls back to the default below
       }
 
       const code = req.query.code;
@@ -94,7 +104,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
         path: "/",
         maxAge: 60 * 60 * 24 * 30, // 30 days
       });
-      return reply.redirect(env.webOrigin.split(",")[0] ?? "/");
+      return reply.redirect(returnUrl(env.webOrigin, returnTo));
     },
   );
 

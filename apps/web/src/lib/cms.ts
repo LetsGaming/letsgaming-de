@@ -94,6 +94,15 @@ export class AuthError extends Error {
   }
 }
 
+/** Current admin location (path, query, hash) so sign-in returns to it. The
+ *  server re-validates it; SSR and non-admin pages send nothing and get /admin. */
+function returnToQuery(): string {
+  if (typeof window === "undefined") return "";
+  const { pathname, search, hash } = window.location;
+  if (!pathname.startsWith("/admin")) return "";
+  return `?returnTo=${encodeURIComponent(pathname + search + hash)}`;
+}
+
 export const cms = {
   base: apiBase,
 
@@ -300,9 +309,9 @@ export const cms = {
       headers: headers(false),
       credentials: "include",
     }).then(handle<OkResponse>),
-  loginUrl: () => `${apiBase}/auth/github/login`,
+  loginUrl: () => `${apiBase}/auth/github/login${returnToQuery()}`,
   /** Dev-only shortcut. The server only registers this route outside production
    *  and only answers loopback callers; the button that uses it is compiled out
    *  of production builds. */
-  devLoginUrl: () => `${apiBase}/auth/dev/login`,
+  devLoginUrl: () => `${apiBase}/auth/dev/login${returnToQuery()}`,
 };

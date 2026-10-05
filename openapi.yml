@@ -227,7 +227,9 @@ paths:
         `u` can't be used for SSRF.
 
         When there is no usable upstream image, pass `game=<name>` to get a deterministic,
-        labelled SVG tile instead, so the widget always has something tidy to show.
+        labelled SVG tile instead, so the widget always has something tidy to show. With `game`,
+        the cover resolves through the stored fallback chain first (RAWG cover, then the image
+        resolved from the game's Discord activity or application icon) before the tile.
       security: []
       parameters:
         - name: u
@@ -454,8 +456,18 @@ paths:
     get:
       tags: [Auth]
       summary: Begin GitHub OAuth
-      description: Redirects to GitHub with a signed, single-use `state` cookie for CSRF protection.
+      description: |
+        Redirects to GitHub with a signed, single-use `state` cookie for CSRF protection. The
+        validated `returnTo` path is carried in the same signed cookie and used after login.
       security: []
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: |
+            Same-origin path to return to after sign-in. Must start with a single `/`; anything
+            else (`//host`, `/\host`, absolute URLs) falls back to `/admin`.
+          schema: { type: string, default: /admin }
       responses:
         "302":
           description: Redirect to GitHub's authorization page.
@@ -466,8 +478,8 @@ paths:
       summary: GitHub OAuth callback
       description: |
         Verifies `state`, exchanges the code, and — only if the GitHub login matches the allowed
-        login — issues a signed, http-only `lg_session` cookie the CMS uses. Then redirects back
-        to the app.
+        login — issues a signed, http-only `lg_session` cookie the CMS uses. Then redirects to the
+        web origin plus the `returnTo` path chosen at login (default `/admin`).
       security: []
       parameters:
         - name: code
@@ -1317,7 +1329,7 @@ components:
       properties:
         category:
           type: string
-          enum: [game, streaming, music, watching, custom]
+          enum: [game, streaming, music, podcast, watching, custom]
         title:
           type: string
         subtitle:
