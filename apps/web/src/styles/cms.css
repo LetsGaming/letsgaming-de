@@ -1491,12 +1491,33 @@ body.is-dragging .cms .glist .gthumb {
 .cms .lgedit-hint {
   font-size: 12px;
   color: var(--muted);
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cms .lgedit-bar > strong,
+.cms .lgedit-pagebtn,
+.cms .lgedit-close {
+  flex: none;
+  white-space: nowrap;
 }
 .cms .lgedit-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--sp-8);
   margin-left: auto;
+}
+.cms .lgedit-actions > * {
+  flex: none;
+}
+@media (max-width: 1500px) {
+  .cms .lgedit-hint {
+    display: none;
+  }
 }
 .cms .lgedit-dim {
   color: var(--muted);
@@ -1512,6 +1533,12 @@ body.is-dragging .cms .glist .gthumb {
   background: var(--card-2);
   color: var(--ink);
   cursor: pointer;
+  white-space: nowrap;
+}
+.cms select.lgedit-page-pick {
+  width: auto;
+  min-width: 9.5em;
+  text-overflow: ellipsis;
 }
 .cms .lgedit-close:hover {
   border-color: var(--ink);
