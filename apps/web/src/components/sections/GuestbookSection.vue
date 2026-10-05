@@ -27,17 +27,21 @@ const { shown, expanded, moreCount } = useLimitedList({
 
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
-    <template v-if="module.data.entries.length">
-      <div class="gb-list">
-        <figure v-for="e in shown" :key="e.id" class="gb-entry">
-          <blockquote>{{ e.message }}</blockquote>
-          <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
-        </figure>
+    <div class="gb-layout" :class="{ 'gb-layout--split': module.data.entries.length }">
+      <div class="gb-entries">
+        <template v-if="module.data.entries.length">
+          <div class="gb-list">
+            <figure v-for="e in shown" :key="e.id" class="gb-entry">
+              <blockquote>{{ e.message }}</blockquote>
+              <figcaption>— {{ e.name }} <span class="tm">{{ e.relative }}</span></figcaption>
+            </figure>
+          </div>
+          <ListFooter :more-count="moreCount" :expanded="expanded" @toggle="expanded = !expanded" />
+        </template>
+        <p v-else class="gb-empty">{{ t("emptyGuestbook") }}</p>
       </div>
-      <ListFooter :more-count="moreCount" :expanded="expanded" @toggle="expanded = !expanded" />
-    </template>
-    <p v-else class="gb-empty">{{ t("emptyGuestbook") }}</p>
-    <div><GuestbookForm /></div>
+      <div class="gb-form"><GuestbookForm /></div>
+    </div>
   </ModuleSection>
 </template>
 
@@ -45,6 +49,24 @@ const { shown, expanded, moreCount } = useLimitedList({
 /* Guestbook entries, scoped. `.tm` stays global but is styled here as a descendant
  * of the entry's figcaption — it's a real element in this template, so no :deep
  * needed. The GuestbookForm child brings its own styles. */
+/* Entries left, form right once the module (a size container, see ModuleSection)
+ * is wide enough; stacked below that. */
+.gb-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-18);
+  align-items: start;
+}
+@container (min-width: 720px) {
+  .gb-layout--split {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    gap: var(--sp-22);
+  }
+  .gb-layout--split .gb-form {
+    position: sticky;
+    top: var(--sp-16);
+  }
+}
 .gb-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

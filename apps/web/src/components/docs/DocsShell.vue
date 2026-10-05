@@ -12,7 +12,7 @@
  * there's nothing to keep in sync and no query selector to break when the markup
  * moves. Route changes close it, since navigating is the point of tapping a link.
  */
-import { ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import type { DocGroup } from "~/lib/docs";
 import SmartLink from "~/components/ui/SmartLink.vue";
 
@@ -23,7 +23,14 @@ defineProps<{
 }>();
 
 const open = ref(false);
+const navEl = ref<HTMLElement | null>(null);
 watch(() => useRoute().fullPath, () => (open.value = false));
+
+// The nav scrolls independently of the page, so a deep entry must be brought
+// into view inside it on load.
+onMounted(() => {
+  navEl.value?.querySelector<HTMLElement>("a.on")?.scrollIntoView({ block: "nearest" });
+});
 </script>
 
 <template>
@@ -37,9 +44,9 @@ watch(() => useRoute().fullPath, () => (open.value = false));
       </button>
     </header>
 
-    <div class="doc-scrim" :class="{ on: open }" @click="open = false" />
+    <div class="doc-scrim" :class="{ show: open }" @click="open = false" />
 
-    <aside class="doc-nav" :class="{ on: open }" id="doc-nav" aria-label="Documentation">
+    <aside ref="navEl" class="doc-nav" :class="{ open }" id="doc-nav" aria-label="Documentation">
       <div class="doc-navhead">
         <SmartLink class="doc-home" href="/">← letsgaming.de</SmartLink>
         <button class="burger doc-close" type="button" aria-label="Close docs menu" @click="open = false">
