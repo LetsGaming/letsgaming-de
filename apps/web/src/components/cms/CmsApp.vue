@@ -6,6 +6,7 @@ import SmartLink from "../ui/SmartLink.vue";
 // below is tree-shaken out rather than merely hidden.
 const isDev = import.meta.dev;
 import AssetLibrary from "./AssetLibrary.vue";
+import SaveBar from "./SaveBar.vue";
 // Global (un-scoped) admin styles, namespaced under `.cms`. Global rather than
 // scoped so the per-panel child components below are styled by the same rules —
 // see styles/cms.css.
@@ -113,6 +114,7 @@ const navBadges = computed<Record<string, number>>(() => ({
         <div class="topbar">
           <h2>{{ VIEW_TITLES[tab] }}</h2>
           <div class="topact">
+            <SaveBar />
             <button class="btn ghost" @click="viewSite">View site ↗</button>
           </div>
         </div>

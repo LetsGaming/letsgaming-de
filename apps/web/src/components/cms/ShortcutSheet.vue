@@ -3,6 +3,7 @@ const emit = defineEmits<{ close: [] }>();
 
 const KEYS: [string, string][] = [
   ["Ctrl+K", "Command palette"],
+  ["Ctrl+Z / Ctrl+Shift+Z", "Undo / redo the last saved change (outside text fields)"],
   ["Alt+Up / Alt+Down", "Move the selected module up or down"],
   ["Delete", "Remove the selected module from its page (to Hidden)"],
   ["Esc", "Back to Structure"],

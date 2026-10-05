@@ -1,6 +1,7 @@
 import { nextTick, ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 import { MODULE_KINDS } from "@lg/core";
+import { createAutosave } from "../../src/composables/useAutosave";
 import { PANEL_FOR_KIND, useLayoutEditor } from "../../src/composables/useLayoutEditor";
 import { PANEL } from "../../src/components/cms/panels/panelMap";
 
@@ -15,6 +16,7 @@ function editor() {
     guarded: async (fn) => void (await fn()),
     pickL: () => "",
     loadAll: async () => {},
+    autosave: createAutosave({ put: async () => ({ ok: true }), onStatus: () => {} }),
     cms: {} as never,
   });
   e.layoutAreas.value = [

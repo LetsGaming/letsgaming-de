@@ -6,9 +6,6 @@ import { useCmsContext } from "../../../composables/cmsContext";
 const {
 	headline,
 	lede,
-	saveHeadline,
-	saveLede,
-	saveStatus,
 	status,
 } = useCmsContext();
 </script>
@@ -21,18 +18,15 @@ const {
             <label>Before<LocalizedField :field="headline.before" /></label>
             <label>Highlight<LocalizedField :field="headline.highlight" /></label>
             <label>After<LocalizedField :field="headline.after" /></label>
-            <button class="btn" @click="saveHeadline">Save headline</button>
           </div>
           <div class="card">
             <h3>Lede <span class="muted">(**bold** supported)</span></h3>
             <LocalizedField textarea :rows="3" :field="lede" />
-            <button class="btn" @click="saveLede">Save lede</button>
           </div>
           <div class="card">
             <h3>Status</h3>
             <label>Verb<LocalizedField :field="status.verb" /></label>
             <label>Now<LocalizedField :field="status.now" /></label>
-            <button class="btn" @click="saveStatus">Save status</button>
           </div>
         </section>
 </template>

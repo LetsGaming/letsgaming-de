@@ -4,7 +4,7 @@ import { FEATURED_MAX, DEFAULT_FEATURED_SETTINGS, type FeaturedSettings } from "
 import { cms } from "../../../lib/cms";
 import { useCmsContext } from "../../../composables/cmsContext";
 
-const { modules, guarded, refreshCanvas } = useCmsContext();
+const { modules, autosave, refreshCanvas } = useCmsContext();
 
 interface RepoRow {
   name: string;
@@ -12,6 +12,10 @@ interface RepoRow {
   language?: string;
   pinned: boolean;
 }
+
+const settingsKey = (id: string) => `modules/${id}/settings`;
+const current = (): FeaturedSettings => ({ mode: mode.value, repos: [...picked.value], count: count.value });
+const payloadFor = (id: string, settings: FeaturedSettings) => ({ modules: [{ id, settings }] });
 
 const featured = computed(() => modules.value.find((m) => m.kind === "featured"));
 
@@ -38,9 +42,24 @@ watch(
     mode.value = s.mode;
     count.value = s.count;
     picked.value = [...s.repos];
+    if (m) autosave.baseline(settingsKey(m.id), "modules", payloadFor(m.id, current()));
   },
   { immediate: true },
 );
+
+watch([mode, count, picked], () => {
+  const m = featured.value;
+  if (!m) return;
+  const settings = current();
+  autosave.edit(settingsKey(m.id), payloadFor(m.id, settings), {
+    path: "modules",
+    label: "Edit Featured",
+    after: () => {
+      m.settings = settings;
+      void refreshCanvas();
+    },
+  });
+});
 
 const pinnedNames = computed(() => repos.value.filter((r) => r.pinned).map((r) => r.name));
 
@@ -70,14 +89,6 @@ function move(i: number, by: -1 | 1) {
   picked.value = next;
 }
 
-async function save() {
-  const m = featured.value;
-  if (!m) return;
-  const settings: FeaturedSettings = { mode: mode.value, repos: picked.value, count: count.value };
-  await guarded(() => cms.put("modules", { modules: [{ id: m.id, settings }] }), "Featured saved");
-  m.settings = settings;
-  void refreshCanvas();
-}
 </script>
 
 <template>
@@ -157,8 +168,6 @@ async function save() {
         </ul>
         <p v-if="full" class="muted note">Remove one to add another.</p>
       </div>
-
-      <div class="actions"><button class="btn" :disabled="!featured" @click="save">Save Featured</button></div>
     </div>
   </section>
 </template>

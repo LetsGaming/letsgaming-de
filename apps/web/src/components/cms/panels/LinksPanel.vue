@@ -5,9 +5,9 @@ import { assetRef } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel: its fields, and nothing else. The card frame, the reorder /
-// delete / save row and the add button are EntityCards; state and handlers come
+// delete row and the add button are EntityCards; state and handlers come
 // from the shared CMS context.
-const { linksList, openPicker } = useCmsContext();
+const { autosave, linksList, openPicker } = useCmsContext();
 </script>
 
 <template>
@@ -15,11 +15,11 @@ const { linksList, openPicker } = useCmsContext();
     <EntityCards :list="linksList" add-label="+ Add link">
       <template #default="{ item: l }">
         <div class="grid2">
-          <label>ID<input v-model="l.id" /></label>
+          <label>ID<input v-model="l.id" :readonly="autosave.known('links/' + l.id)" title="The id is fixed once saved" /></label>
           <label>Icon
             <span class="iconfield">
               <input v-model="l.icon" placeholder="gh, mail, x, linkedin, … or pick an SVG" />
-              <button class="link" type="button" @click="openPicker((id) => { l.icon = assetRef(id); linksList.save(l); }, 'svg')">pick SVG</button>
+              <button class="link" type="button" @click="openPicker((id) => { l.icon = assetRef(id); }, 'svg')">pick SVG</button>
             </span>
           </label>
           <label>Label<LocalizedField :field="l.label" /></label>

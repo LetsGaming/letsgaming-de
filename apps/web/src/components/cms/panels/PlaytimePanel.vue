@@ -7,7 +7,6 @@ const {
   playtimeInitialCount,
   playtimeMaxCount,
   playtimeDefaultRange,
-  savePlaytime,
 } = useCmsContext();
 </script>
 
@@ -23,8 +22,6 @@ const {
         rows="games"
         :bounds="PLAYTIME_LIST_BOUNDS"
         cap-detail="Applied in the view to the top-games list and to each day's breakdown. The 'games played' headline is a separate count and is not affected."
-        save-label="Save played"
-        @save="savePlaytime"
       />
     </div>
   </section>

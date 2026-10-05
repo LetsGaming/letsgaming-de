@@ -1,121 +1,127 @@
-import { flushPromises } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { nextTick } from "vue";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { cms } from "../../src/lib/cms";
+import { createAutosave } from "../../src/composables/useAutosave";
 import { useEntityList } from "../../src/composables/useEntityList";
 
 interface Row {
   id: string;
-  label: string;
+  title: { en: string };
   sort?: number;
 }
 
+const row = (id: string, sort: number): Row => ({ id, title: { en: id }, sort });
+
+let put: ReturnType<typeof vi.fn>;
+let del: MockInstance<(path: string) => Promise<unknown>>;
+let onSaved: ReturnType<typeof vi.fn>;
+
 function list() {
-  return useEntityList<Row>({
+  put = vi.fn(async () => ({ ok: true }));
+  onSaved = vi.fn();
+  const autosave = createAutosave({ put, onStatus: () => {}, onSaved });
+  const l = useEntityList<Row>({
     kind: "hobbies",
+    noun: "hobby",
     strip: (x) => x,
     guarded: async (fn) => void (await fn()),
-    blank: (i) => ({ id: `new-${i}`, label: "", sort: i }),
+    autosave,
+    blank: (i) => ({ id: `new-${i}`, title: { en: "" }, sort: i }),
   });
+  return { l, autosave };
 }
 
-let put: MockInstance<(path: string, body: unknown) => Promise<unknown>>;
-let del: MockInstance<(path: string) => Promise<unknown>>;
 beforeEach(() => {
-  put = vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
+  vi.useFakeTimers();
   del = vi.spyOn(cms, "del").mockResolvedValue({ ok: true });
 });
+afterEach(() => vi.useRealTimers());
+
+const settle = async () => {
+  await nextTick();
+  await vi.advanceTimersByTimeAsync(700);
+};
 
 describe("the client's half of registerCrud", () => {
-  it("moves an item, rather than swapping neighbours", async () => {
-    const l = list();
-    l.set([
-      { id: "a", label: "a", sort: 0 },
-      { id: "b", label: "b", sort: 1 },
-      { id: "c", label: "c", sort: 2 },
-      { id: "d", label: "d", sort: 3 },
-    ]);
-
-    // Last to first, in one go. The old `move(arr, i, dir)` could only swap
-    // neighbours, so drag could never use it — the bug that had to be fixed
-    // twice already, in moveModule and moveGallery.
+  it("moves an item, rather than swapping neighbours", () => {
+    const { l } = list();
+    l.set([row("a", 0), row("b", 1), row("c", 2), row("d", 3)]);
     l.moveTo(3, 0);
     expect(l.items.value.map((r) => r.id)).toEqual(["d", "a", "b", "c"]);
   });
 
-  it("renumbers everything the move disturbed, not just the two rows it swapped", async () => {
-    const l = list();
-    l.set([
-      { id: "a", label: "a", sort: 0 },
-      { id: "b", label: "b", sort: 1 },
-      { id: "c", label: "c", sort: 2 },
-      { id: "d", label: "d", sort: 3 },
-    ]);
+  it("persists every row the move renumbered, as one undoable group", async () => {
+    const { l } = list();
+    l.set([row("a", 0), row("b", 1), row("c", 2), row("d", 3)]);
 
     l.moveTo(3, 0);
-    await flushPromises();
+    await settle();
 
-    // Four positions changed, so four rows are persisted. The old version PUT
-    // exactly two and left the rest with stale `sort` — which `ORDER BY sort, id`
-    // then quietly settles by id.
-    expect(put).toHaveBeenCalledTimes(4);
-    expect(l.items.value.map((r) => r.sort)).toEqual([0, 1, 2, 3]);
-    expect(put.mock.calls.map((c) => c[0])).toEqual([
-      "hobbies/d",
+    expect(put.mock.calls.map((c) => c[0]).sort()).toEqual([
       "hobbies/a",
       "hobbies/b",
       "hobbies/c",
+      "hobbies/d",
     ]);
+    expect(l.items.value.map((r) => r.sort)).toEqual([0, 1, 2, 3]);
+    const groups = new Set(onSaved.mock.calls.map((c) => c[0].group));
+    expect(groups.size).toBe(1);
   });
 
-  it("only touches rows from the move point on", async () => {
-    const l = list();
-    l.set([
-      { id: "a", label: "a", sort: 0 },
-      { id: "b", label: "b", sort: 1 },
-      { id: "c", label: "c", sort: 2 },
-      { id: "d", label: "d", sort: 3 },
-    ]);
-
-    l.moveTo(2, 3); // only c and d shift
-    await flushPromises();
+  it("only touches rows whose position changed", async () => {
+    const { l } = list();
+    l.set([row("a", 0), row("b", 1), row("c", 2), row("d", 3)]);
+    l.moveTo(2, 3);
+    await settle();
     expect(put).toHaveBeenCalledTimes(2);
   });
 
+  it("autosaves an edit to a saved row after a pause", async () => {
+    const { l } = list();
+    l.set([row("a", 0)]);
+    l.items.value[0]!.title.en = "renamed";
+    await nextTick();
+    expect(put).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(700);
+    expect(put).toHaveBeenCalledWith("hobbies/a", expect.objectContaining({ title: { en: "renamed" } }), expect.anything());
+  });
+
   it("closes the gap after a delete, so sort can't drift from the list", async () => {
-    const l = list();
-    l.set([
-      { id: "a", label: "a", sort: 0 },
-      { id: "b", label: "b", sort: 1 },
-      { id: "c", label: "c", sort: 2 },
-    ]);
+    const { l } = list();
+    vi.spyOn(cms, "put").mockResolvedValue({ ok: true });
+    l.set([row("a", 0), row("b", 1), row("c", 2)]);
 
     l.remove(0);
-    await flushPromises();
+    await vi.advanceTimersByTimeAsync(0);
+    await nextTick();
 
     expect(del).toHaveBeenCalledWith("hobbies/a");
     expect(l.items.value.map((r) => r.id)).toEqual(["b", "c"]);
     expect(l.items.value.map((r) => r.sort)).toEqual([0, 1]);
+    // The renumbering is written directly, so it isn't an undoable edit.
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
-  it("adds locally — an empty row shouldn't reach the live site on '+'", async () => {
-    const l = list();
+  it("adds locally and saves once the row has content", async () => {
+    const { l } = list();
     l.set([]);
     l.add();
-    await flushPromises();
+    await settle();
     expect(l.items.value).toHaveLength(1);
     expect(put).not.toHaveBeenCalled();
 
-    l.save(l.items.value[0]!);
-    await flushPromises();
+    l.items.value[0]!.title.en = "Chess";
+    await settle();
     expect(put).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a move that isn't one", () => {
-    const l = list();
-    l.set([{ id: "a", label: "a", sort: 0 }]);
+  it("refuses a move that isn't one", async () => {
+    const { l } = list();
+    l.set([row("a", 0)]);
     l.moveTo(0, 0);
     l.moveTo(0, 5);
     l.moveTo(-1, 0);
+    await settle();
     expect(put).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { computed, ref, shallowRef, watch, type Ref } from "vue";
+import { computed, nextTick, ref, shallowRef, watch, type Ref } from "vue";
 import {
   assetRef,
   parseAssetRef,
@@ -14,6 +14,7 @@ import {
 } from "@lg/core";
 import { AuthError } from "../lib/cms";
 import type { SortableMove } from "./sortable";
+import { type Autosave, bindAutosave } from "./useAutosave";
 
 /**
  * Layout + gallery + canvas — one composable, because they're one tangle.
@@ -68,6 +69,7 @@ export interface LayoutEditorDeps {
   previewArea: Ref<string>;
   flash: (msg: string) => void;
   guarded: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  autosave: Autosave;
   /** Pick a localized string for the current editor locale. */
   pickL: (l?: Localized) => string;
   /** Re-fetch everything (after create/delete gallery, which changes the modules). */
@@ -77,7 +79,6 @@ export interface LayoutEditorDeps {
     del: (path: string) => Promise<unknown>;
     preview: (order: { area: string; modules: string[] }[], locale: string) => Promise<SiteView>;
     assetUrl: (id: string, variant: string) => string;
-    reorderGallery: (module: string, ids: string[]) => Promise<unknown>;
     createGallery: (name: Localized) => Promise<{ id?: string } | undefined>;
     deleteGallery: (id: string) => Promise<unknown>;
   };
@@ -115,7 +116,7 @@ const DEFAULT_GALLERY_ID = "gallery";
 const PREVIEW_PARAM = "preview";
 
 export function useLayoutEditor(deps: LayoutEditorDeps) {
-  const { locale, authed, tab, previewArea, flash, guarded, pickL, loadAll, cms } = deps;
+  const { locale, authed, tab, previewArea, flash, guarded, autosave, pickL, loadAll, cms } = deps;
 
   // ── placement state (the shared refs the three concerns operate on) ─────────
   const modules = ref<ModuleDescriptor[]>([]);
@@ -126,6 +127,37 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   const gallery = ref<GalleryRow[]>([]);
   const activeGallery = ref<string>(DEFAULT_GALLERY_ID);
 
+  const galleryKey = (id: string) => `gallery/${id}`;
+  const moduleKey = (id: string) => `modules/${id}`;
+  const orderKey = (moduleId: string) => `gallery-order/${moduleId}`;
+  /** A gallery's image ids in display order: the shape `PUT /gallery-order` takes. */
+  const orderOf = (moduleId: string) => ({
+    module: moduleId,
+    ids: gallery.value
+      .filter((g) => g.module === moduleId)
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+      .map((g) => g.id),
+  });
+  const confirmOrder = (moduleId: string) => autosave.baseline(orderKey(moduleId), "gallery-order", orderOf(moduleId));
+  const filled = (l?: Localized) => !!l && Object.values(l).some((v) => v?.trim());
+  /** Whether a module had a heading/note when loaded. The server reads an
+   *  all-empty one as "clear it", so one that existed must still be sent when emptied. */
+  const hadText = new Map<string, { heading: boolean; note: boolean }>();
+
+  /** One module's heading and note, in the partial shape `PUT /modules` merges by id. */
+  function modulePayload(m: ModuleDescriptor) {
+    const had = hadText.get(m.id);
+    return {
+      modules: [
+        {
+          id: m.id,
+          ...(m.heading && (filled(m.heading) || had?.heading) ? { heading: strip(m.heading) } : {}),
+          ...(m.note && (filled(m.note) || had?.note) ? { note: strip(m.note) } : {}),
+        },
+      ],
+    };
+  }
+
   /** Friendly heading for a module id (falls back to the id). */
   function moduleHeading(id: string): string {
     const m = modules.value.find((x) => x.id === id);
@@ -135,6 +167,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   /** Rebuild the placement state from freshly-loaded content. */
   function hydrate(data: { modules?: ModuleDescriptor[]; nav?: NavNode[]; content?: { gallery?: GalleryRow[] } }) {
     gallery.value = (data.content?.gallery ?? []).map((g, i) => ({ ...g, sort: i }));
+    for (const g of gallery.value) autosave.baseline(galleryKey(g.id), galleryKey(g.id), strip(g));
 
     modules.value = (data.modules ?? []).filter((m) => isModuleKind(m.kind));
     const leaves: { id: string; label: Localized; modules: string[]; description: Localized }[] = [];
@@ -158,6 +191,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     };
     walk(data.nav ?? []);
     layoutAreas.value = leaves;
+    confirmLayout();
     const placed = new Set(leaves.flatMap((l) => l.modules));
     hiddenModules.value = modules.value.map((m) => m.id).filter((id) => !placed.has(id));
     const firstGallery = modules.value.find((m) => m.kind === MODULE_KIND.gallery);
@@ -166,6 +200,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       !modules.value.some((m) => m.id === activeGallery.value && m.kind === MODULE_KIND.gallery)
     ) {
       activeGallery.value = firstGallery.id;
+    }
+    for (const m of modules.value) {
+      if (m.kind === MODULE_KIND.gallery) confirmOrder(m.id);
+      hadText.set(m.id, { heading: filled(m.heading), note: filled(m.note) });
+      autosave.baseline(moduleKey(m.id), "modules", modulePayload(m));
     }
   }
 
@@ -247,40 +286,48 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   ]);
 
   /**
-   * Save every module's heading and note.
-   *
-   * Separate from `saveLayout` because it is a separate question — what a section
-   * is called, not where it sits — and because `saveLayout` runs the nav lint,
-   * which has nothing to say about a rename. Sends the whole registry rather than
-   * a diff: seventeen short strings is not worth tracking dirt for, and one
-   * request can't half-succeed the way N of them can.
+   * Headings and notes autosave one module at a time, apart from the layout: what a
+   * section is called and where it sits are separate questions, and the layout save
+   * runs the nav lint, which has nothing to say about a rename.
    */
-  const saveModuleMeta = () =>
-    guarded(
-      () =>
-        cms.put("modules", {
-          modules: modules.value.map((m) => ({
-            id: m.id,
-            ...(m.heading ? { heading: strip(m.heading) } : {}),
-            ...(m.note ? { note: strip(m.note) } : {}),
-          })),
-        }),
-      "Headings saved",
-    );
+  let moduleGesture = 0;
+  watch(
+    modules,
+    () => {
+      const group = `modules:${++moduleGesture}`;
+      for (const m of modules.value) {
+        autosave.edit(moduleKey(m.id), modulePayload(m), { path: "modules", label: "Edit heading", group });
+      }
+    },
+    { deep: true },
+  );
 
-  const saveLayout = () =>
-    guarded(
-      () =>
-        cms.put("layout", {
-          order: layoutAreas.value.map((a) => ({
-            area: a.id,
-            modules: a.modules,
-            description: strip(a.description),
-            label: strip(a.label),
-          })),
-        }),
-      "Layout saved",
-    );
+  // An invalid layout (an empty page) is refused by the server and stays unsaved.
+  const confirmLayout = bindAutosave(autosave, {
+    path: "layout",
+    label: "Edit layout",
+    delay: 300,
+    source: () => ({
+      order: layoutAreas.value.map((a) => ({
+        area: a.id,
+        modules: a.modules,
+        description: strip(a.description),
+        label: strip(a.label),
+      })),
+    }),
+  });
+
+  let galleryGesture = 0;
+  watch(
+    gallery,
+    () => {
+      const group = `gallery:${++galleryGesture}`;
+      for (const g of gallery.value) {
+        autosave.edit(galleryKey(g.id), strip(g), { path: galleryKey(g.id), label: "Edit gallery image", group });
+      }
+    },
+    { deep: true },
+  );
 
   // ── gallery: multiple instances, each a gallery module ──────────────────────
 
@@ -303,10 +350,11 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       sort: gallery.value.filter((g) => g.module === target).length,
     };
     gallery.value.push(item);
-    return guarded(() => cms.put(`gallery/${item.id}`, strip(item)), "Added to gallery");
+    // Callers re-resolve the canvas next, so the row must be on the server first.
+    return nextTick()
+      .then(() => autosave.flush())
+      .then(() => confirmOrder(target));
   }
-
-  const saveGalleryItem = (g: GalleryRow) => guarded(() => cms.put(`gallery/${g.id}`, strip(g)));
 
   // Reusable asset picker (modal).
   const pickerOpen = ref(false);
@@ -332,14 +380,16 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   const galleryThumb = (ref: string) => cms.assetUrl(assetIdOf(ref), "w320.webp");
 
   function removeGalleryItem(id: string) {
+    autosave.forget(galleryKey(id));
+    const owner = gallery.value.find((g) => g.id === id)?.module;
     gallery.value = gallery.value.filter((g) => g.id !== id);
+    if (owner) confirmOrder(owner);
     void guarded(() => cms.del(`gallery/${id}`), "Removed");
   }
 
   /**
-   * Move an image within the active gallery, and persist the whole order. Reorder
-   * the list, send the list; the server renumbers, normalizing `sort` to 0..n-1
-   * on every move (the old swap-two-and-PUT-both only held while adjacent).
+   * Move an image within the active gallery. Every row's `sort` is renumbered and
+   * the rows that changed autosave together as one undoable step.
    */
   function reorderGalleryTo(fromIdx: number, toIdx: number) {
     const items = [...activeGalleryItems.value];
@@ -347,12 +397,18 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     if (!moved) return;
     items.splice(Math.max(0, Math.min(toIdx, items.length)), 0, moved);
 
-    const ids = items.map((g) => g.id);
-    items.forEach((g, i) => (g.sort = i));
+    items.forEach((g, i) => {
+      g.sort = i;
+      autosave.adopt(galleryKey(g.id), { sort: i });
+    });
     const rest = gallery.value.filter((g) => g.module !== activeGallery.value);
     gallery.value = [...rest, ...items];
-
-    void guarded(() => cms.reorderGallery(activeGallery.value, ids), "Reordered");
+    // One request carries the whole order, so it can't half-succeed.
+    autosave.edit(orderKey(activeGallery.value), orderOf(activeGallery.value), {
+      path: "gallery-order",
+      label: "Reorder gallery",
+      delay: 0,
+    });
   }
 
   function moveGallery(i: number, dir: -1 | 1) {
@@ -497,13 +553,10 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     hideModule,
     dropModule,
     areaOptions,
-    saveLayout,
-    saveModuleMeta,
     // gallery
     galleryModules,
     activeGalleryItems,
     addGalleryAsset,
-    saveGalleryItem,
     pickerOpen,
     pickerOnly,
     openPicker,

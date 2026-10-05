@@ -17,12 +17,15 @@ import type {
   SiteMeta,
   Status,
 } from "@lg/core";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useCmsNav } from "./useCmsNav";
 import { useDashboard } from "./useDashboard";
 import { useCmsSession } from "./useCmsSession";
 import { useCmsPreview } from "./useCmsPreview";
-import { cms } from "../lib/cms";
+import { AuthError, cms } from "../lib/cms";
+import { bindAutosave, useAutosave } from "./useAutosave";
+import { useUndo } from "./useUndo";
+import { shortcutFor } from "./editorHelpers";
 import { usePresenceSettings } from "./usePresenceSettings";
 import { useMusicSettings } from "./useMusicSettings";
 import { usePlaytimeSettings } from "./usePlaytimeSettings";
@@ -72,9 +75,38 @@ const session = useCmsSession({
 const { authed, login, loading, tokenInput, toast, flash, boot, signIn, signOut, guarded } = session;
 
 const preview = useCmsPreview();
+
+// Edits are live: every field saves itself, and this is the one status the top bar shows.
+const autosave = useAutosave({
+  put: async (path, body, opts) => {
+    try {
+      return await cms.put(path, body, opts);
+    } catch (e) {
+      if (e instanceof AuthError) authed.value = false;
+      throw e;
+    }
+  },
+  onSaved: (edit) => {
+    undo.record(edit);
+    preview.invalidate();
+  },
+});
+const { status: autosaveStatus } = autosave;
+const undo = useUndo({
+  write: (op, value) => autosave.write(op.key, op.path, value),
+  onApplied: async () => {
+    await loadAll();
+    if (analytics.value) await loadAnalytics({ quiet: true });
+    preview.invalidate();
+  },
+  onError: (e) => flash((e as Error).message || "Couldn't undo."),
+});
+const retrySave = () => autosave.retry();
+
 const { previewArea, previewKey, showDock, previewSrc, viewSite } = preview;
 const { tab, pick, params, setParams, NAV_GROUPS, VIEW_TITLES } = useCmsNav({
   onOpen: (view) => {
+    void autosave.flush();
     if (view === "guestbook" && authed.value) void loadGuestbook({ quiet: !!guestbook.value });
     if (view === "dashboard" && authed.value) {
       void dashboard.loadVisits();
@@ -95,28 +127,34 @@ const status = reactive<Status>({ verb: emptyL(), now: emptyL() });
 const bio = ref<Localized[]>([]);
 const hobbiesList = useEntityList<Hobby & { sort?: number }>({
   kind: "hobbies",
+  noun: "hobby",
   strip,
   guarded,
+  autosave,
   blank: (i) => ({ id: newId("hobby"), title: emptyL(), blurb: emptyL(), tone: DEFAULT_TONE, sort: i }),
 });
 const hobbies = hobbiesList.items;
 const linksList = useEntityList<Link & { sort?: number }>({
   kind: "links",
+  noun: "link",
   strip,
   guarded,
+  autosave,
   blank: (i) => ({ id: newId("link"), label: emptyL(), href: "", sort: i }),
 });
 const links = linksList.items;
 const nowList = useEntityList<NowItem & { sort?: number }>({
   kind: "now",
+  noun: "now item",
   strip,
   guarded,
+  autosave,
   blank: (i) => ({ id: newId("now"), key: emptyL(), value: emptyL(), sort: i }),
 });
 const now = nowList.items;
 
   // Presence/playtime settings — extracted composable (see usePresenceSettings).
-  const presence = usePresenceSettings({ guarded, cms });
+  const presence = usePresenceSettings({ autosave });
   const {
     PRESENCE_OPTIONS,
     RETENTION_OPTIONS,
@@ -126,25 +164,23 @@ const now = nowList.items;
     presenceHidden,
     togglePresence,
     toggleSample,
-    savePresence,
     hydratePresence,
   } = presence;
 
   // Listening list-display settings — extracted composable (see useMusicSettings).
-  const music = useMusicSettings({ guarded, cms });
-  const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, saveMusic, hydrateMusic } =
+  const music = useMusicSettings({ autosave });
+  const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, hydrateMusic } =
     music;
   // Playtime list-display settings — its own stored value, so its limits can differ.
   // Wrapped's recurring-display schedule — same shape as the two above.
-  const wrapped = useWrappedSettings({ guarded, cms });
+  const wrapped = useWrappedSettings({ autosave });
 
-  const playtime = usePlaytimeSettings({ guarded, cms });
+  const playtime = usePlaytimeSettings({ autosave });
   const {
     PLAYTIME_LIST_BOUNDS,
     playtimeInitialCount,
     playtimeMaxCount,
     playtimeDefaultRange,
-    savePlaytime,
     hydratePlaytime,
   } = playtime;
 
@@ -188,10 +224,8 @@ const now = nowList.items;
     tileKeys,
     medianVisitLength,
     referrerRules,
-    savingRules,
     addReferrerRule,
     removeReferrerRule,
-    saveReferrerRules,
     at,
     atLabel,
     setAt,
@@ -203,7 +237,7 @@ const now = nowList.items;
     filteredComparison,
     chips,
     clearFilters,
-  } = useAnalytics({ tab, cms, authed, flash, guarded, params, setParams });
+  } = useAnalytics({ tab, cms, authed, flash, guarded, autosave, params, setParams });
 
 function emptyL(): Localized {
   return { en: "" };
@@ -215,15 +249,18 @@ function setLv(obj: Localized, l: Locale, val: string) {
   obj[l] = val;
 }
 async function loadAll() {
+  // Unsent edits go first: hydrating replaces the editor state with the server's.
+  await autosave.flush();
   const data = await cms.content();
   Object.assign(meta, data.content.meta);
   Object.assign(headline, data.content.headline);
   Object.assign(lede, data.content.lede);
   Object.assign(status, data.content.status);
   bio.value = data.content.bio;
-  hobbies.value = data.content.hobbies.map((h: Hobby, i: number) => ({ ...h, sort: i }));
-  links.value = data.content.links.map((l: Link, i: number) => ({ ...l, sort: i }));
-  now.value = data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i }));
+  hobbiesList.set(data.content.hobbies.map((h: Hobby, i: number) => ({ ...h, sort: i })));
+  linksList.set(data.content.links.map((l: Link, i: number) => ({ ...l, sort: i })));
+  nowList.set(data.content.now.map((n: NowItem, i: number) => ({ ...n, sort: i })));
+  for (const confirm of confirmDocs) confirm();
   hydratePresence(data.content.presence);
   hydrateMusic(data.content.music);
   hydratePlaytime(data.content.playtime);
@@ -237,12 +274,41 @@ function pickL(l?: Localized): string {
 }
 
 
-// Saves
-const saveMeta = () => guarded(() => cms.put("meta", strip(meta)));
-const saveHeadline = () => guarded(() => cms.put("headline", strip(headline)));
-const saveLede = () => guarded(() => cms.put("lede", strip(lede)));
-const saveStatus = () => guarded(() => cms.put("status", strip(status)));
-const saveBio = () => guarded(() => cms.put("bio", bio.value.map(strip)));
+// Autosave: each document saves itself when it changes. Hydrating records the
+// loaded state as confirmed, so loading is never mistaken for an edit.
+const confirmDocs = [
+  bindAutosave(autosave, { path: "meta", label: "Edit site identity", source: () => strip(meta) }),
+  bindAutosave(autosave, { path: "headline", label: "Edit headline", source: () => strip(headline) }),
+  bindAutosave(autosave, { path: "lede", label: "Edit intro", source: () => strip(lede) }),
+  bindAutosave(autosave, { path: "status", label: "Edit status line", source: () => strip(status) }),
+  bindAutosave(autosave, { path: "bio", label: "Edit bio", source: () => bio.value.map(strip) }),
+];
+
+// Undo and redo live in the same shortcut layer as the editor's, which keeps them
+// out of text fields where the browser's own undo applies.
+function onUndoKey(e: KeyboardEvent) {
+  const action = shortcutFor(e);
+  if (action !== "undo" && action !== "redo") return;
+  e.preventDefault();
+  void (action === "undo" ? undo.undo() : undo.redo());
+}
+// pagehide is the only reliable unload signal on mobile; hidden covers tab switches.
+const flushNow = () => void autosave.flush(true);
+const flushSoon = () => void autosave.flush();
+const onVisibility = () => document.visibilityState === "hidden" && flushNow();
+onMounted(() => {
+  window.addEventListener("keydown", onUndoKey);
+  window.addEventListener("pagehide", flushNow);
+  document.addEventListener("visibilitychange", onVisibility);
+  document.addEventListener("focusout", flushSoon);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onUndoKey);
+  window.removeEventListener("pagehide", flushNow);
+  document.removeEventListener("visibilitychange", onVisibility);
+  document.removeEventListener("focusout", flushSoon);
+  flushNow();
+});
 
 // Adders
 // Seed a unique id per new row. A fixed default like "new-link" would collide on
@@ -310,12 +376,9 @@ const {
   hideModule,
   dropModule,
   areaOptions,
-  saveLayout,
-  saveModuleMeta,
   galleryModules,
   activeGalleryItems,
   addGalleryAsset,
-  saveGalleryItem,
   pickerOpen,
   pickerOnly,
   openPicker,
@@ -348,6 +411,7 @@ const {
   previewArea,
   flash,
   guarded,
+  autosave,
   pickL,
   loadAll,
   cms,
@@ -410,17 +474,14 @@ onMounted(() => {
     presenceHidden,
     togglePresence,
     toggleSample,
-    savePresence,
     MUSIC_LIST_BOUNDS,
     musicInitialCount,
     musicMaxCount,
     musicDefaultRange,
-    saveMusic,
     PLAYTIME_LIST_BOUNDS,
     playtimeInitialCount,
     playtimeMaxCount,
     playtimeDefaultRange,
-    savePlaytime,
     // The Wrapped slice, spread whole: the panel reads every ref plus
     // WRAPPED_BOUNDS off the context, and listing them here too would be a
     // second place to keep in sync.
@@ -455,12 +516,9 @@ onMounted(() => {
     editorOpen,
     selectedPanel,
     areaOptions,
-    saveLayout,
-    saveModuleMeta,
     galleryModules,
     activeGalleryItems,
     addGalleryAsset,
-    saveGalleryItem,
     pickerOpen,
     pickerOnly,
     openPicker,
@@ -476,11 +534,10 @@ onMounted(() => {
     signIn,
     signOut,
     guarded,
-    saveMeta,
-    saveHeadline,
-    saveLede,
-    saveStatus,
-    saveBio,
+    autosave,
+    autosaveStatus,
+    undo,
+    retrySave,
     hobbiesList,
     linksList,
     nowList,
@@ -520,10 +577,8 @@ onMounted(() => {
     tileKeys,
     medianVisitLength,
     referrerRules,
-    savingRules,
     addReferrerRule,
     removeReferrerRule,
-    saveReferrerRules,
     at,
     atLabel,
     setAt,

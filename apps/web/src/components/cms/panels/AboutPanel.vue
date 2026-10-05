@@ -10,7 +10,6 @@ const {
 	bioImageRef,
 	galleryThumb,
 	openPicker,
-	saveBio,
 } = useCmsContext();
 </script>
 
@@ -28,8 +27,7 @@ const {
             </div>
             <div class="actions">
               <button class="link" @click="addBio">+ paragraph</button>
-              <button class="link" @click="openPicker((id) => { bio.push({ en: assetRef(id) }); saveBio(); }, 'image')">+ image</button>
-              <button class="btn" @click="saveBio">Save bio</button>
+              <button class="link" @click="openPicker((id) => { bio.push({ en: assetRef(id) }); }, 'image')">+ image</button>
             </div>
           </div>
         </section>

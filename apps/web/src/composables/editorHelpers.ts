@@ -44,17 +44,22 @@ export function isTypingTarget(el: EventTarget | null): boolean {
   );
 }
 
-export type ShortcutAction = "palette" | "help" | "move-up" | "move-down" | "remove" | "deselect";
+export type ShortcutAction = "palette" | "help" | "move-up" | "move-down" | "remove" | "deselect" | "undo" | "redo";
 
 /**
  * Maps a key event to an editor action. Ctrl/Cmd+K is the only chord that fires
  * while typing: it can't be confused with text entry and it's how you leave a field.
  */
 export function shortcutFor(
-  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "target">,
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "target"> & { shiftKey?: boolean },
 ): ShortcutAction | null {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") return "palette";
   if (isTypingTarget(e.target)) return null;
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    const k = e.key.toLowerCase();
+    if (k === "z") return e.shiftKey ? "redo" : "undo";
+    if (k === "y") return "redo";
+  }
   if (e.altKey && e.key === "ArrowUp") return "move-up";
   if (e.altKey && e.key === "ArrowDown") return "move-down";
   if (e.ctrlKey || e.metaKey || e.altKey) return null;

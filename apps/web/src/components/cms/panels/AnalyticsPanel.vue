@@ -35,10 +35,8 @@ const {
 	chips,
 	clearFilters,
 	referrerRules,
-	savingRules,
 	addReferrerRule,
 	removeReferrerRule,
-	saveReferrerRules,
 	hovered,
 	hoverAt,
 	clearHover,
@@ -546,9 +544,6 @@ const ingestStatus = computed(() => {
                 </div>
                 <div class="ruleactions">
                   <button type="button" class="btn ghost" @click="addReferrerRule()">+ Add rule</button>
-                  <button type="button" class="btn" :disabled="savingRules" @click="saveReferrerRules()">
-                    {{ savingRules ? "Saving…" : "Save rules" }}
-                  </button>
                 </div>
               </div>
             </AnalyticsCard>

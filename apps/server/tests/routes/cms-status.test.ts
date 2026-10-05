@@ -46,6 +46,15 @@ test("status lists never-synced sources, guestbook counts and recent edits", asy
   await app.close();
 });
 
+test("layout edits show up in recentEdits alongside content edits", async () => {
+  const { app, store } = await setup();
+  store.ia.setNav(store.ia.getNav());
+  const res = await app.inject({ method: "GET", url: "/api/cms/status", headers: auth });
+  const edits = res.json().recentEdits as { label: string; reason: string }[];
+  assert.ok(edits.some((e) => e.reason === "ia:nav" && e.label === "Page layout"));
+  await app.close();
+});
+
 test("manual sync runs a registered source, records it, and rejects unknown ones", async () => {
   const { app } = await setup();
   const ok = await app.inject({ method: "POST", url: "/api/cms/sync/github", headers: auth });

@@ -6,6 +6,7 @@ import {
   missingTranslation,
   shortcutFor,
 } from "../../src/composables/editorHelpers";
+import { createAutosave } from "../../src/composables/useAutosave";
 import { useLayoutEditor } from "../../src/composables/useLayoutEditor";
 
 function editor() {
@@ -18,6 +19,7 @@ function editor() {
     guarded: async (fn) => void (await fn()),
     pickL: (l) => l?.en ?? "",
     loadAll: async () => {},
+    autosave: createAutosave({ put: async () => ({ ok: true }), onStatus: () => {} }),
     cms: {} as never,
   });
   e.hydrateLayout({

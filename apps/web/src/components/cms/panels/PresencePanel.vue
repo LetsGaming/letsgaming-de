@@ -13,7 +13,6 @@ const {
 	presenceSample,
 	presenceRetention,
 	presenceHidden,
-	savePresence,
 	togglePresence,
 	toggleSample,
 	cms,
@@ -103,7 +102,6 @@ const retentionSummary = computed(() => {
         :suggestions="recorded"
       />
 
-      <div class="actions"><button class="btn" @click="savePresence">Save presence</button></div>
     </div>
   </section>
 </template>

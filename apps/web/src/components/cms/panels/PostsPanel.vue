@@ -11,13 +11,13 @@
  * you see is the post — no hidden state, and adding a field is typing rather than
  * a migration.
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import SmartLink from "../../ui/SmartLink.vue";
 import { assetRef, MARKDOWN_MIME, POST_PREFIX, parsePost, slugify } from "@lg/core";
 import type { Asset, AssetFolder, Localized } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
-const { cms, flash, layoutAreas, openPicker, pickL } = useCmsContext();
+const { autosave, cms, flash, layoutAreas, openPicker, pickL, undo } = useCmsContext();
 
 /**
  * A post is a markdown asset that has a public slug.
@@ -52,48 +52,55 @@ const current = ref<PostAsset | null>(null);
 const source = ref("");
 const previewToken = ref<string | null>(null);
 const loading = ref(false);
-const saving = ref(false);
 const editor = ref<HTMLTextAreaElement | null>(null);
 
 /** Parsed live from the textarea, so the summary can't disagree with the file. */
 const parsed = computed(() => parsePost(source.value, current.value?.slug ?? "untitled"));
-const dirty = ref(false);
 
 async function loadList() {
   const { assets } = await cms.listAssets({ kind: "markdown" });
   posts.value = assets.filter(isPost);
 }
 
+const contentPath = (id: string) => `assets/${id}/content`;
+
 async function open(post: PostAsset) {
+  await autosave.flush();
   loading.value = true;
   try {
     const doc = await cms.getMarkdown(post.id);
     current.value = post;
     source.value = doc.markdown;
     previewToken.value = doc.previewToken ?? null;
-    dirty.value = false;
+    autosave.baseline(contentPath(post.id), contentPath(post.id), { markdown: doc.markdown });
   } finally {
     loading.value = false;
   }
 }
 
-async function save() {
-  if (!current.value) return;
-  saving.value = true;
+// The title lives in frontmatter; mirror it to the asset row so the library and
+// any picker show the post's name rather than its filename.
+async function mirrorTitle(id: string) {
   try {
-    await cms.putMarkdown(current.value.id, source.value);
-    // The title lives in frontmatter; mirror it to the asset row so the library
-    // and any picker show the post's name rather than its filename.
-    await cms.updateAsset(current.value.id, { title: parsed.value.frontmatter.title });
-    dirty.value = false;
+    await cms.updateAsset(id, { title: parsed.value.frontmatter.title });
     await loadList();
-    flash("Saved.");
   } catch (e) {
-    flash((e as Error).message || "Save failed.");
-  } finally {
-    saving.value = false;
+    flash((e as Error).message || "Couldn't update the post title.");
   }
 }
+
+watch(source, (markdown) => {
+  const post = current.value;
+  if (!post || loading.value) return;
+  const path = contentPath(post.id);
+  autosave.edit(path, { markdown }, { path, label: "Edit post", after: () => void mirrorTitle(post.id) });
+});
+
+// An undo or redo rewrote the file on the server; reload what the textarea shows.
+watch(undo.applied, async () => {
+  const post = current.value;
+  if (post) await open(post);
+});
 
 async function create() {
   const name = window.prompt("Post title");
@@ -129,7 +136,6 @@ function insert(text: string) {
   const start = el.selectionStart;
   const end = el.selectionEnd;
   source.value = source.value.slice(0, start) + text + source.value.slice(end);
-  dirty.value = true;
   void Promise.resolve().then(() => {
     el.focus();
     el.selectionStart = el.selectionEnd = start + text.length;
@@ -218,11 +224,7 @@ onMounted(loadList);
           <span class="posts-meta">
             {{ parsed.frontmatter.draft ? "Draft" : "Published" }} ·
             {{ parsed.frontmatter.tags.length }} tag(s)
-            <b v-if="dirty"> · unsaved</b>
           </span>
-          <button class="btn btn-primary" :disabled="saving || !dirty" @click="save">
-            {{ saving ? "Saving…" : "Save" }}
-          </button>
         </div>
         <textarea
           ref="editor"
@@ -230,7 +232,6 @@ onMounted(loadList);
           class="posts-src"
           spellcheck="true"
           :disabled="loading"
-          @input="dirty = true"
         />
       </div>
       <p v-else class="sub">Pick a post, or make one.</p>

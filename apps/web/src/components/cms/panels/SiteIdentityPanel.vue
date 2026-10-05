@@ -4,7 +4,7 @@ import { assetRef } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 
 // View-only panel. All state and handlers come from the shared CMS context.
-const { galleryThumb, locale, lv, meta, openPicker, saveMeta, setLv, tab } =
+const { galleryThumb, locale, lv, meta, openPicker, setLv, tab } =
 	useCmsContext();
 </script>
 
@@ -24,11 +24,10 @@ const { galleryThumb, locale, lv, meta, openPicker, saveMeta, setLv, tab } =
               </span>
               <div>
                 <div class="fieldlabel">Hero image <span class="muted">(optional portrait)</span></div>
-                <button class="btn ghost" @click="openPicker((id) => { meta.avatar = assetRef(id); saveMeta(); }, 'image')">Choose image</button>
-                <button v-if="meta.avatar" class="link danger" @click="meta.avatar = ''; saveMeta();">remove</button>
+                <button class="btn ghost" @click="openPicker((id) => { meta.avatar = assetRef(id); }, 'image')">Choose image</button>
+                <button v-if="meta.avatar" class="link danger" @click="meta.avatar = ''">remove</button>
               </div>
             </div>
-            <button class="btn" @click="saveMeta">Save identity</button>
           </div>
         </section>
 </template>

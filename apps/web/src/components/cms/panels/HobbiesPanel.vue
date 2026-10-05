@@ -7,7 +7,7 @@ import { useCmsContext } from "../../../composables/cmsContext";
 // View-only panel: its fields, and nothing else. The card frame, the reorder /
 // delete / save row and the add button are EntityCards; state and handlers come
 // from the shared CMS context.
-const { hobbiesList } = useCmsContext();
+const { autosave, hobbiesList } = useCmsContext();
 </script>
 
 <template>
@@ -15,7 +15,7 @@ const { hobbiesList } = useCmsContext();
     <EntityCards :list="hobbiesList" add-label="+ Add hobby">
       <template #default="{ item: h }">
         <div class="grid2">
-          <label>ID<input v-model="h.id" /></label>
+          <label>ID<input v-model="h.id" :readonly="autosave.known('hobbies/' + h.id)" title="The id is fixed once saved" /></label>
           <label>Icon<input v-model="h.icon" placeholder="game / plant / chip / server" /></label>
           <label>Title<LocalizedField :field="h.title" /></label>
           <!-- TONES, not four hard-coded options: this dropdown was the fifth copy

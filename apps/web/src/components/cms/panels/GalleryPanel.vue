@@ -21,7 +21,6 @@ const {
 	openPicker,
 	refreshCanvas,
 	removeGalleryItem,
-	saveGalleryItem,
 } = useCmsContext();
 
 watch(
@@ -110,7 +109,7 @@ function onDrop(e: DragEvent) {
         />
         <div class="gbody">
           <label>Caption ({{ locale }})
-            <input v-model="g.caption[locale]" maxlength="120" placeholder="optional" @blur="saveGalleryItem(g)" />
+            <input v-model="g.caption[locale]" maxlength="120" placeholder="optional" />
           </label>
           <div class="actions">
             <button class="link" :disabled="i === 0" :aria-label="`Move image ${i + 1} earlier`" @click="moveGallery(i, -1)">↑ up</button>

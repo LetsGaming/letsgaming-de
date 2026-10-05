@@ -1,11 +1,9 @@
 import { ref } from "vue";
 import type { ActivityRange } from "@lg/core";
+import { type Autosave, bindAutosave } from "./useAutosave";
 
-/** Write helpers a settings slice needs from the parent CMS. */
 export interface ListSettingsDeps {
-  /** Run a mutation with the CMS's error/toast handling. */
-  guarded: (fn: () => Promise<unknown>) => Promise<void>;
-  cms: { put: (resource: string, body: unknown) => Promise<unknown> };
+  autosave: Autosave;
 }
 
 interface ListValues {
@@ -15,13 +13,14 @@ interface ListValues {
 }
 
 /**
- * The state and save of a ranked-list module's display settings (rows shown, row cap,
+ * The state and autosave of a ranked-list module's display settings (rows shown, row cap,
  * opening window). Listening and Played are the same form over different resources;
  * their composables wrap this with their own names and defaults.
  */
 export function useListSettings(
-  { guarded, cms }: ListSettingsDeps,
+  { autosave }: ListSettingsDeps,
   resource: "music" | "playtime",
+  label: string,
   defaults: () => ListValues,
 ) {
   const d = defaults();
@@ -29,21 +28,23 @@ export function useListSettings(
   const maxCount = ref<number>(d.maxCount);
   const defaultRange = ref<ActivityRange>(d.defaultRange);
 
-  const save = () =>
-    guarded(() =>
-      cms.put(resource, {
-        initialCount: initialCount.value,
-        maxCount: maxCount.value,
-        defaultRange: defaultRange.value,
-      }),
-    );
+  const confirm = bindAutosave(autosave, {
+    path: resource,
+    label,
+    source: () => ({
+      initialCount: initialCount.value,
+      maxCount: maxCount.value,
+      defaultRange: defaultRange.value,
+    }),
+  });
 
   function hydrate(v: Partial<ListValues> | undefined) {
     const def = defaults();
     initialCount.value = v?.initialCount ?? def.initialCount;
     maxCount.value = v?.maxCount ?? def.maxCount;
     defaultRange.value = v?.defaultRange ?? def.defaultRange;
+    confirm();
   }
 
-  return { initialCount, maxCount, defaultRange, save, hydrate };
+  return { initialCount, maxCount, defaultRange, hydrate };
 }

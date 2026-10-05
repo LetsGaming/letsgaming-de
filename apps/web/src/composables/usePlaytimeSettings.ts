@@ -8,13 +8,12 @@ import { type ListSettingsDeps, useListSettings } from "./useListSettings";
 export type PlaytimeDeps = ListSettingsDeps;
 
 export function usePlaytimeSettings(deps: PlaytimeDeps) {
-  const s = useListSettings(deps, "playtime", defaultPlaytimeSettings);
+  const s = useListSettings(deps, "playtime", "Edit played settings", defaultPlaytimeSettings);
   return {
     PLAYTIME_LIST_BOUNDS: LIST_DISPLAY_BOUNDS,
     playtimeInitialCount: s.initialCount,
     playtimeMaxCount: s.maxCount,
     playtimeDefaultRange: s.defaultRange,
-    savePlaytime: s.save,
     hydratePlaytime: s.hydrate,
   };
 }
