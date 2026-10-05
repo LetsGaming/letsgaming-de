@@ -4,7 +4,7 @@ import { computed, ref } from "vue";
 import { CLEAR_ALL_WORD, isClearConfirmed, needsTypedWord } from "../../../composables/clearConfirm";
 import { useCmsContext } from "../../../composables/cmsContext";
 
-const { clearRange, clearing } = useCmsContext();
+const { clearRange, clearing, zone, activeZone, setZone } = useCmsContext();
 
 const pending = ref<ClearRangeId | null>(null);
 const typed = ref("");
@@ -32,6 +32,18 @@ async function run() {
 
 <template>
   <section class="pane">
+    <div class="card">
+      <h3>Analytics clock</h3>
+      <p class="help">Which time zone the analytics charts and buckets are read in. Local is this browser's zone.</p>
+      <div class="seg ranges" role="group" aria-label="Analytics clock">
+        <button type="button" :class="{ on: zone === 'local' }" :aria-pressed="zone === 'local'" :title="activeZone" @click="setZone('local')">
+          Local
+        </button>
+        <button type="button" :class="{ on: zone === 'utc' }" :aria-pressed="zone === 'utc'" @click="setZone('utc')">
+          UTC
+        </button>
+      </div>
+    </div>
     <div class="card dangerzone">
       <h3>Data</h3>
       <p class="help">

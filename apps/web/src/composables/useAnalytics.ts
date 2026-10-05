@@ -55,20 +55,30 @@ const METRIC_LABELS: Record<MetricKey, string> = {
   pageviews: "Page views",
   sections: "Section views",
   clicks: "Clicks",
-  visitLength: "Visits",
+  visitLength: "Confirmed visits",
   bots: "Bots",
   probes: "Probes",
 };
 
-/** The sub-label under each headline number, naming the unit it's counted in. */
-const METRIC_UNITS: Record<MetricKey, string> = {
-  pageviews: "from the access log",
-  sections: "sections opened",
-  clicks: "tracked elements",
-  visitLength: "completed visits",
-  bots: "crawler hits",
-  probes: "scans, not people",
-};
+/** What a tile's source reads as: the in-page script only sees browsers that
+ *  ran it, the access log sees every request. */
+const SOURCE_LABELS = { script: "in-page script", log: "access log" } as const;
+
+/** The headline tiles, in reading order. Bots and probes live in the "Traffic
+ *  quality" section instead of competing for the top row. */
+const TILE_KEYS: readonly MetricKey[] = ["visitLength", "pageviews", "sections", "clicks"];
+
+const ZONE_STORAGE_KEY = "lg-cms-analytics-zone";
+
+/** The clock the reader last picked in Settings, so it outlives the per-panel
+ *  hash (which resets on every tab switch). Local when nothing is stored. */
+function storedZone(): "local" | "utc" {
+  try {
+    return localStorage.getItem(ZONE_STORAGE_KEY) === "utc" ? "utc" : "local";
+  } catch {
+    return "local";
+  }
+}
 
 /** METRIC_KEYS, not `Object.keys(METRIC_LABELS) as MetricKey[]` — a cast is a
  *  check that can't fail, and the list already exists. */
@@ -140,7 +150,8 @@ function decodeUrlFilters(p: URLSearchParams): UrlFilters {
   const customRange = from && to ? { from, to } : null;
   const hoursRaw = Number(p.get("hours"));
   const rangeHours = !customRange && Number.isFinite(hoursRaw) && hoursRaw > 0 ? hoursRaw : 72;
-  const zone: "local" | "utc" = p.get("zone") === "utc" ? "utc" : "local";
+  const zoneRaw = p.get("zone");
+  const zone: "local" | "utc" = zoneRaw === "utc" || zoneRaw === "local" ? zoneRaw : storedZone();
   const metricRaw = p.get("metric");
   const metric = (METRIC_KEYS as readonly string[]).includes(metricRaw ?? "")
     ? (metricRaw as MetricKey)
@@ -165,7 +176,7 @@ function encodeUrlFilters(f: UrlFilters): URLSearchParams {
   } else if (f.rangeHours !== 72) {
     p.set("hours", String(f.rangeHours));
   }
-  if (f.zone !== "local") p.set("zone", f.zone);
+  if (f.zone !== storedZone()) p.set("zone", f.zone);
   if (f.metric !== "pageviews") p.set("metric", f.metric);
   if (f.at) p.set("at", f.at);
   if (f.filterDim && f.filterKey) {
@@ -458,6 +469,11 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
   function setZone(z: "local" | "utc") {
     if (z === zone.value) return;
     zone.value = z;
+    try {
+      localStorage.setItem(ZONE_STORAGE_KEY, z);
+    } catch {
+      /* storage blocked: the choice still holds for this session */
+    }
     at.value = null;
     syncUrl();
     refreshAnalytics();
@@ -484,11 +500,11 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
     const sum = (a?: unknown) =>
       (Array.isArray(a) ? a : []).reduce((s: number, r: { count: number }) => s + r.count, 0);
     return {
-      pageviews: sum(c?.pageviews),
+      pageviews: analytics.value?.pageviews?.total ?? sum(c?.pageviews),
       sections: sum(c?.sections),
       clicks: sum(c?.clicks),
       // One `session_dwell` row per visit, so its sum is the visit count.
-      visitLength: sum(c?.visitLength),
+      visitLength: analytics.value?.visits?.total ?? sum(c?.visitLength),
       bots: sum(c?.bots),
       probes: sum(c?.probes),
     };
@@ -502,11 +518,13 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
    * 100%", which is what a fresh install would otherwise report forever.
    */
   const comparison = computed<Record<MetricKey, { delta: number; pct: number | null }> | null>(() => {
-    const prev = analytics.value?.previous;
+    const a = analytics.value;
+    const prev = a?.previous;
     if (!prev) return null;
     const out = {} as Record<MetricKey, { delta: number; pct: number | null }>;
     for (const k of METRIC_KEYS) {
-      const before = prev[k];
+      const figure = k === "visitLength" ? a?.visits : k === "pageviews" ? a?.pageviews : undefined;
+      const before = figure?.previous ?? prev[k];
       const now = metricTotals.value[k];
       // A rise from zero has no percentage — reporting +∞% or +100% would both
       // be inventions. The absolute delta still says something true.
@@ -732,7 +750,8 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, params, setPara
 
   return {
     METRIC_LABELS,
-    METRIC_UNITS,
+    SOURCE_LABELS,
+    tileKeys: TILE_KEYS,
     METRIC_SOURCES,
     medianVisitLength,
     referrerRules,

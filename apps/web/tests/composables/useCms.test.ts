@@ -228,6 +228,36 @@ describe("analytics refresh", () => {
   });
 });
 
+describe("analytics headline figures", () => {
+  it("takes visits and page views from the whole-range figures, with their own comparison", async () => {
+    vi.spyOn(cms, "analytics").mockResolvedValue({
+      ...emptyAnalytics(),
+      visits: { total: 40, previous: 20, source: "script" },
+      pageviews: { total: 300, previous: 150, source: "log" },
+      previous: { pageviews: 1, sections: 0, clicks: 0, visitLength: 1, bots: 0, probes: 0 },
+    });
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    expect(api().metricTotals.value).toMatchObject({ visitLength: 40, pageviews: 300 });
+    expect(api().comparison.value?.visitLength).toEqual({ delta: 20, pct: 100 });
+    expect(api().tileKeys).toEqual(["visitLength", "pageviews", "sections", "clicks"]);
+  });
+
+  it("remembers the clock picked in Settings across panels", async () => {
+    localStorage.removeItem("lg-cms-analytics-zone");
+    vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
+    const { api } = mountCms();
+    api().pick("analytics");
+    await flushPromises();
+
+    api().setZone("utc");
+    await flushPromises();
+    expect(localStorage.getItem("lg-cms-analytics-zone")).toBe("utc");
+    localStorage.removeItem("lg-cms-analytics-zone");
+  });
+});
 describe("analytics dimension filtering", () => {
   it("selecting a row sends dim/key on the next request", async () => {
     const load = vi.spyOn(cms, "analytics").mockResolvedValue(emptyAnalytics());
