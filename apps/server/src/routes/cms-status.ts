@@ -36,6 +36,10 @@ const REVISION_LABELS: Record<string, string> = {
   hobbies: "Hobbies",
   links: "Links",
   now_items: "Now items",
+  "ia:nav": "Page layout",
+  "ia:modules": "Section headings and settings",
+  "ia:module-added": "Section added",
+  "ia:module-removed": "Section removed",
 };
 
 export function revisionLabel(reason: string): string {
@@ -173,8 +177,12 @@ export function registerCmsStatusRoutes(
   app.get("/api/cms/status", guard, async () => ({
     sources: sourceStatus(),
     guestbook: store.guestbook.countsByStatus(),
-    recentEdits: store.content
-      .listRevisions(RECENT_EDITS)
+    recentEdits: [
+      ...store.content.listRevisions(RECENT_EDITS),
+      ...store.ia.listRevisions(RECENT_EDITS).map((r) => ({ ...r, reason: `ia:${r.reason}` })),
+    ]
+      .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
+      .slice(0, RECENT_EDITS)
       .map((r) => ({ ...r, label: revisionLabel(r.reason) })),
   }));
 
