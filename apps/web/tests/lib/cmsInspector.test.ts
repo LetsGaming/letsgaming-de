@@ -1,11 +1,10 @@
-import { MODULE_KINDS } from "@lg/core";
+import { MODULE_KINDS, nextWrappedWindow } from "@lg/core";
 import { describe, expect, it } from "vitest";
 import { PANEL_FOR_KIND } from "../../src/composables/useLayoutEditor";
 import {
   SYNCED_INFO,
   addTag,
   formatDate,
-  nextWrappedWindow,
   removeTag,
   suggestTags,
 } from "../../src/lib/cmsInspector";
