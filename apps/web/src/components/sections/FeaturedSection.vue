@@ -35,6 +35,9 @@ function open(name: string) {
       <SmartLink class="more" :href="module.data.moreHref" @click="() => trackClick('project-more')">{{ t("seeAllWork") }}</SmartLink>
     </template>
     <div v-if="module.data.projects.length" class="featured" :class="`n${module.data.projects.length}`">
+      <!-- A card is five rows: image, title, tags, description, meta. Cards in one
+           row of the grid share those rows, so each row lines up across them
+           whatever the length of the text in it. -->
       <SmartLink
         v-for="p in module.data.projects"
         :key="p.id"
@@ -68,14 +71,17 @@ function open(name: string) {
             <img v-else :src="shot(p.image)" alt="" loading="lazy" decoding="async" @error="broken.add(p.id)" />
           </template>
           <span v-else class="ph" aria-hidden="true">{{ p.name.slice(0, 1) }}</span>
+        </div>
+        <div class="ptitle">
+          <span class="name" :title="p.name">{{ p.name }}</span>
+          <span class="arrow" v-html="icons.arrow" />
+        </div>
+        <div v-if="p.tag || p.featured" class="chips">
+          <span v-if="p.tag" class="tag" :style="{ color: langColor(p.tag), borderColor: langColor(p.tag) }">{{ p.tag }}</span>
           <span v-if="p.featured" class="badge">{{ t("featuredPinned") }}</span>
         </div>
-        <div class="body">
-          <div class="ptitle">{{ p.name }}<span class="arrow" v-html="icons.arrow" /></div>
-          <span v-if="p.tag" class="tag" :style="{ color: langColor(p.tag), borderColor: langColor(p.tag) }">{{ p.tag }}</span>
-          <p v-if="p.description" class="desc">{{ p.description }}</p>
-          <div class="meta"><span v-for="(m, i) in p.meta" :key="i">{{ m }}</span></div>
-        </div>
+        <p v-if="p.description" class="desc">{{ p.description }}</p>
+        <div class="meta"><span v-for="(m, i) in p.meta" :key="i">{{ m }}</span></div>
       </SmartLink>
     </div>
     <p v-else class="sub">{{ t("emptyFeatured") }}</p>
@@ -85,24 +91,41 @@ function open(name: string) {
 <style scoped>
 /* The grid answers to the section's own width (ModuleSection is the query
  * container), not the viewport, so the cards behave the same in the editor's
- * narrower canvas as on a phone. */
+ * narrower canvas as on a phone.
+ *
+ * The space between rows of cards is each card's bottom margin, not a row gap: a
+ * card shares the grid's rows (subgrid), and a row gap would also open up between
+ * the rows inside every card. The last margin is cancelled on the grid itself. */
 .featured {
   display: grid;
-  gap: var(--sp-18);
   grid-template-columns: 1fr;
+  column-gap: var(--sp-18);
+  margin-bottom: calc(-1 * var(--sp-18));
 }
 @container (min-width: 560px) {
   .featured.n2,
   .featured.n3 {
     grid-template-columns: repeat(2, 1fr);
   }
+  /* One card has no neighbours to line up with, so it is a plain two-column box. */
   .featured.n1 .fcard {
-    flex-direction: row;
+    grid-template-rows: none;
+    grid-template-columns: 45% 1fr;
+    grid-row: auto;
   }
   .featured.n1 .shot {
-    width: 45%;
+    grid-column: 1;
+    grid-row: 1 / span 5;
     aspect-ratio: auto;
-    min-height: 100%;
+    min-height: 180px;
+  }
+  .featured.n1 .shot img,
+  .featured.n1 .ph {
+    position: absolute;
+    inset: 0;
+  }
+  .featured.n1 .fcard > :not(.shot) {
+    grid-column: 2;
   }
 }
 @container (min-width: 860px) {
@@ -112,8 +135,10 @@ function open(name: string) {
 }
 
 .fcard {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 5;
+  margin-bottom: var(--sp-18);
   overflow: hidden;
   background: var(--surf-1);
   border: 1px solid var(--line-1);
@@ -129,12 +154,18 @@ function open(name: string) {
   box-shadow: var(--sh-anchor);
   border-color: var(--line-2);
 }
+/* Rows are named by number, so a card that has no tags or no description leaves its
+ * row empty instead of pulling the rows below it up. */
+.fcard > :not(.shot) {
+  min-width: 0;
+  padding-inline: var(--sp-20);
+}
 
 .shot {
   position: relative;
+  grid-row: 1;
   aspect-ratio: 2 / 1;
   background: var(--surf-2);
-  flex-shrink: 0;
 }
 .shot img,
 .ph {
@@ -161,37 +192,29 @@ function open(name: string) {
   color: var(--muted);
   background: linear-gradient(135deg, var(--surf-2), var(--surf-3));
 }
-.badge {
-  position: absolute;
-  top: var(--sp-10);
-  left: var(--sp-10);
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  font-weight: 700;
-  padding: var(--sp-4) var(--sp-10);
-  border-radius: 999px;
-  background: var(--surf-1);
-  color: var(--ink-strong);
-  border: 1px solid var(--line-2);
-}
 
-.body {
-  padding: var(--sp-18) var(--sp-20) var(--sp-20);
-  min-width: 0;
-  flex: 1;
-}
 .ptitle {
+  grid-row: 2;
+  padding-top: var(--sp-18);
   font-family: var(--f-d);
   font-weight: 600;
   font-size: clamp(18px, 2.4vw, 22px);
   letter-spacing: -0.01em;
-  margin-bottom: var(--sp-8);
   display: flex;
   align-items: center;
   gap: var(--sp-10);
   color: var(--ink-strong);
+}
+/* At most two lines, so a long name cannot grow the row without limit; the whole
+ * name is in the tooltip. */
+.name {
   min-width: 0;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .arrow {
   margin-left: auto;
@@ -212,16 +235,45 @@ function open(name: string) {
   height: 14px;
   color: var(--ink);
 }
+
+.chips {
+  grid-row: 3;
+  padding-top: var(--sp-8);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.badge {
+  font-family: var(--f-m);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  padding: var(--sp-4) var(--sp-10);
+  border-radius: 999px;
+  background: var(--surf-2);
+  color: var(--ink-strong);
+  border: 1px solid var(--line-2);
+}
+
 .desc {
+  grid-row: 4;
+  margin: 0;
+  padding-top: var(--sp-10);
   color: var(--muted);
   font-size: var(--fs-body);
-  margin: var(--sp-10) 0 var(--sp-12);
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Last row, at the bottom of the card, so the meta line sits level across cards. */
 .meta {
+  grid-row: 5;
+  align-self: end;
+  padding-top: var(--sp-12);
+  padding-bottom: var(--sp-20);
   color: var(--muted);
   font-size: var(--fs-micro);
 }
