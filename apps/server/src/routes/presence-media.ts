@@ -20,10 +20,14 @@
  * labelled tile: a per-game override if we ship one, otherwise a generated
  * initials tile, so the widget always has something tidy to show.
  *
- * Third job: size. RAWG cover art arrives at ~1920×1080 for what renders as a
- * small thumbnail, so rawg.io images are downscaled to a 640px WebP on the way
- * through. Other hosts (Discord avatars, Spotify covers) are already small and
- * pass straight through.
+ * Third job: size. RAWG cover art arrives at ~1920×1080 and repository previews at
+ * 1200×630 for what renders as a small card, so those hosts are downscaled to a
+ * WebP on the way through (see DOWNSCALE_PX). Other hosts (Discord avatars,
+ * Spotify covers) are already small and pass straight through.
+ *
+ * The repository previews on the Featured cards come through here too: a browser
+ * loading github's CDN directly would hand every visitor's IP to GitHub and run
+ * into its rate limit, which this server's cache keeps away from visitors.
  */
 
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -38,13 +42,24 @@ const ALLOWED_HOSTS = new Set([
 	"media.discordapp.net",
 	"media.rawg.io",
 	"i.scdn.co",
+	// A repository's social preview: GitHub's generated card, or the image its
+	// owner uploaded.
+	"opengraph.githubassets.com",
+	"repository-images.githubusercontent.com",
 ]);
 
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BYTES = 5 * 1024 * 1024; // presence art is small; refuse anything large
-/** RAWG cover art is served at ~1920×1080 but shown as a small thumbnail; cap its
- *  longest edge at this many pixels on the way through. */
-const COVER_MAX_PX = 640;
+/** Hosts whose images are much larger than where they are shown, and the longest
+ *  edge to cap them at on the way through (re-encoded as WebP). RAWG cover art is
+ *  ~1920×1080 for a small thumbnail; a repository preview is 1200×630 and often
+ *  hundreds of kilobytes for a card a few hundred pixels wide. Other hosts
+ *  (Discord avatars, Spotify covers) are already small and pass straight through. */
+const DOWNSCALE_PX: Record<string, number> = {
+	"media.rawg.io": 640,
+	"opengraph.githubassets.com": 800,
+	"repository-images.githubusercontent.com": 800,
+};
 const CACHE_MAX = 96;
 const CACHE_TTL_MS = 10 * 60_000;
 
@@ -57,13 +72,12 @@ interface Bytes {
 // Tiny in-memory LRU so a page full of visitors doesn't re-hit the CDNs for the
 // same handful of images every time (browser + Cloudflare cache the rest).
 const cache = new Map<string, Bytes>();
-function cacheGet(key: string): Bytes | undefined {
+/** An expired entry is kept (the size cap evicts it eventually) so it can still be
+ *  served when the upstream refuses or is down, with `allowStale`. */
+function cacheGet(key: string, allowStale = false): Bytes | undefined {
 	const hit = cache.get(key);
 	if (!hit) return undefined;
-	if (Date.now() - hit.at > CACHE_TTL_MS) {
-		cache.delete(key);
-		return undefined;
-	}
+	if (!allowStale && Date.now() - hit.at > CACHE_TTL_MS) return undefined;
 	cache.delete(key);
 	cache.set(key, hit); // bump to most-recent
 	return hit;
@@ -102,17 +116,16 @@ async function fetchUpstream(raw: string): Promise<Bytes | null> {
 		const buf = Buffer.from(await res.arrayBuffer());
 		if (buf.byteLength > MAX_BYTES) return null;
 
-		// RAWG cover art comes at ~1920×1080 for what renders as a thumbnail —
-		// downscale it to a small WebP here, so every consumer (the top-games shelf
-		// and the live widget's cover fallback) gets the light version. Other hosts
-		// are already small and pass through; if the bytes can't be decoded, keep
-		// the original rather than failing the request.
-		if (url.hostname === "media.rawg.io") {
+		// Oversized sources are downscaled to a small WebP here, so every consumer
+		// gets the light version. If the bytes can't be decoded, keep the original
+		// rather than failing the request.
+		const maxPx = DOWNSCALE_PX[url.hostname];
+		if (maxPx) {
 			try {
 				const body = await sharp(buf)
 					.resize({
-						width: COVER_MAX_PX,
-						height: COVER_MAX_PX,
+						width: maxPx,
+						height: maxPx,
 						fit: "inside",
 						withoutEnlargement: true,
 					})
@@ -213,7 +226,10 @@ export function registerPresenceMediaRoutes(
 			cacheSet(imageUrl, fresh);
 			return sendBytes(reply, fresh, 604_800);
 		}
-		return null;
+		// The upstream refused (a rate limit, an outage): the last good copy beats a
+		// missing image, with a short lifetime so the next visit tries again.
+		const stale = cacheGet(imageUrl, true);
+		return stale ? sendBytes(reply, stale, 300) : null;
 	}
 
 	app.get<{ Querystring: { u?: string; game?: string } }>(

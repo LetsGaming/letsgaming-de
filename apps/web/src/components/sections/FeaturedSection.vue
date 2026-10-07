@@ -6,6 +6,8 @@ import SmartLink from "../ui/SmartLink.vue";
 import ModuleSection from "../ui/ModuleSection.vue";
 import Freshness from "../ui/Freshness.vue";
 import { langColor, icons } from "../../lib/icons";
+import { presenceMediaUrl } from "../../lib/api";
+import { isGeneratedRepoCard } from "../../lib/repoPreview";
 import { trackClick, trackProject } from "../../lib/track";
 
 const { t } = useT();
@@ -15,6 +17,10 @@ defineProps<{
 
 /** Repos whose preview image failed to load; they fall back to the placeholder. */
 const broken = reactive(new Set<string>());
+
+/** Through the server's media proxy, so the visitor's browser never contacts GitHub's
+ *  CDN directly and the server's cache serves the image. */
+const shot = (url: string) => presenceMediaUrl({ url });
 
 function open(name: string) {
   trackClick("featured");
@@ -39,7 +45,8 @@ function open(name: string) {
         <div class="shot">
           <img
             v-if="p.image && !broken.has(p.id)"
-            :src="p.image"
+            :src="shot(p.image)"
+            :class="{ generated: isGeneratedRepoCard(p.image) }"
             alt=""
             loading="lazy"
             decoding="async"
@@ -120,6 +127,9 @@ function open(name: string) {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+.shot img.generated {
+  filter: var(--shot-filter);
 }
 .ph {
   position: absolute;
