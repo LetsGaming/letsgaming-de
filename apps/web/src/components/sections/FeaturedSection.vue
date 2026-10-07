@@ -20,7 +20,7 @@ const broken = reactive(new Set<string>());
 
 /** Through the server's media proxy, so the visitor's browser never contacts GitHub's
  *  CDN directly and the server's cache serves the image. */
-const shot = (url: string) => presenceMediaUrl({ url });
+const shot = (url: string, theme?: "dark") => presenceMediaUrl({ url, ...(theme ? { theme } : {}) });
 
 function open(name: string) {
   trackClick("featured");
@@ -43,15 +43,30 @@ function open(name: string) {
         @click="open(p.name)"
       >
         <div class="shot">
-          <img
-            v-if="p.image && !broken.has(p.id)"
-            :src="shot(p.image)"
-            :class="{ generated: isGeneratedRepoCard(p.image) }"
-            alt=""
-            loading="lazy"
-            decoding="async"
-            @error="broken.add(p.id)"
-          />
+          <template v-if="p.image && !broken.has(p.id)">
+            <!-- GitHub's generated card is white; the server has a dark version of it.
+                 Both are in the page and the theme decides which one is displayed, so
+                 there is no flash on first paint. A hidden lazy image is not fetched. -->
+            <template v-if="isGeneratedRepoCard(p.image)">
+              <img
+                class="theme-light"
+                :src="shot(p.image)"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                @error="broken.add(p.id)"
+              />
+              <img
+                class="theme-dark"
+                :src="shot(p.image, 'dark')"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                @error="broken.add(p.id)"
+              />
+            </template>
+            <img v-else :src="shot(p.image)" alt="" loading="lazy" decoding="async" @error="broken.add(p.id)" />
+          </template>
           <span v-else class="ph" aria-hidden="true">{{ p.name.slice(0, 1) }}</span>
           <span v-if="p.featured" class="badge">{{ t("featuredPinned") }}</span>
         </div>
@@ -128,8 +143,11 @@ function open(name: string) {
   object-fit: cover;
   display: block;
 }
-.shot img.generated {
-  filter: var(--shot-filter);
+.shot img.theme-light {
+  display: var(--shot-light-display);
+}
+.shot img.theme-dark {
+  display: var(--shot-dark-display);
 }
 .ph {
   position: absolute;

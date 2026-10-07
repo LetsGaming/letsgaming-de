@@ -35,6 +35,11 @@ import sharp from "sharp";
 import { gameMetaKey } from "@lg/core";
 import type { Store } from "@lg/db";
 import { notFound } from "../errors.js";
+import { darkenRepoCard } from "./repo-card.js";
+
+/** GitHub's generated repository card. An uploaded preview comes from another host
+ *  and is never recoloured. */
+const GENERATED_CARD_HOST = "opengraph.githubassets.com";
 
 /** Exact hosts we will fetch from — nothing else. Keeps this from being an open proxy. */
 const ALLOWED_HOSTS = new Set([
@@ -91,8 +96,9 @@ function cacheSet(key: string, value: Bytes): void {
 	}
 }
 
-/** Fetch an allow-listed image server-side. Returns null on any rejection. */
-async function fetchUpstream(raw: string): Promise<Bytes | null> {
+/** Fetch an allow-listed image server-side. Returns null on any rejection. With
+ *  `dark`, a generated repository card comes back as its dark version. */
+async function fetchUpstream(raw: string, dark = false): Promise<Bytes | null> {
 	let url: URL;
 	try {
 		url = new URL(raw);
@@ -116,13 +122,24 @@ async function fetchUpstream(raw: string): Promise<Bytes | null> {
 		const buf = Buffer.from(await res.arrayBuffer());
 		if (buf.byteLength > MAX_BYTES) return null;
 
+		// The dark theme asks for GitHub's generated card in its dark version. Any
+		// failure keeps the light card: a bright image beats a missing one.
+		let source: Buffer = buf;
+		if (dark && url.hostname === GENERATED_CARD_HOST) {
+			try {
+				source = await darkenRepoCard(buf);
+			} catch {
+				source = buf;
+			}
+		}
+
 		// Oversized sources are downscaled to a small WebP here, so every consumer
 		// gets the light version. If the bytes can't be decoded, keep the original
 		// rather than failing the request.
 		const maxPx = DOWNSCALE_PX[url.hostname];
 		if (maxPx) {
 			try {
-				const body = await sharp(buf)
+				const body = await sharp(source)
 					.resize({
 						width: maxPx,
 						height: maxPx,
@@ -214,32 +231,36 @@ export function registerPresenceMediaRoutes(
 	app: FastifyInstance,
 	store: Store,
 ): void {
-	/** Serve an allow-listed image from cache or upstream; null when unavailable. */
+	/** Serve an allow-listed image from cache or upstream; null when unavailable.
+	 *  `dark` asks for the dark theme's version of an image that has one; the two
+	 *  versions are cached apart. */
 	async function serveImage(
 		reply: FastifyReply,
 		imageUrl: string,
+		dark = false,
 	): Promise<FastifyReply | null> {
-		const cached = cacheGet(imageUrl);
+		const key = dark ? `dark|${imageUrl}` : imageUrl;
+		const cached = cacheGet(key);
 		if (cached) return sendBytes(reply, cached, 604_800);
-		const fresh = await fetchUpstream(imageUrl);
+		const fresh = await fetchUpstream(imageUrl, dark);
 		if (fresh) {
-			cacheSet(imageUrl, fresh);
+			cacheSet(key, fresh);
 			return sendBytes(reply, fresh, 604_800);
 		}
 		// The upstream refused (a rate limit, an outage): the last good copy beats a
 		// missing image, with a short lifetime so the next visit tries again.
-		const stale = cacheGet(imageUrl, true);
+		const stale = cacheGet(key, true);
 		return stale ? sendBytes(reply, stale, 300) : null;
 	}
 
-	app.get<{ Querystring: { u?: string; game?: string } }>(
+	app.get<{ Querystring: { u?: string; game?: string; theme?: string } }>(
 		"/api/presence/media",
 		async (req, reply) => {
-			const { u, game } = req.query;
+			const { u, game, theme } = req.query;
 
 			// 1) The image the caller handed us (Discord activity art, an album cover).
 			if (u) {
-				const served = await serveImage(reply, u);
+				const served = await serveImage(reply, u, theme === "dark");
 				if (served) return served;
 				// fell through: upstream missing/blocked — try the fallbacks below
 			}

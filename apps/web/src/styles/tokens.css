@@ -185,16 +185,17 @@
      (which is why Listening/Time-played finally get the same gap as their siblings). */
   --sp-section: 52px;
 
-  /* GitHub's generated social card is a fixed white image. Inverted, with the hue
-     turned back, it reads as a dark card with light text and keeps its language
-     colours. Applied only to those cards; an uploaded preview is left as designed. */
-  --shot-filter: invert(1) hue-rotate(180deg);
+  /* GitHub's generated social card is a fixed white image, and the server serves a
+     dark version of it. Which of the two is displayed follows the theme. */
+  --shot-light-display: none;
+  --shot-dark-display: block;
 
   color-scheme: dark;
 }
 
 [data-theme="light"] {
-  --shot-filter: none;
+  --shot-light-display: block;
+  --shot-dark-display: none;
 
   --ink: #2c2748;
   --ink-strong: #17122b;
