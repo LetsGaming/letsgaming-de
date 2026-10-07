@@ -15,6 +15,7 @@ import { AREA, type Locale, type SiteView } from "@lg/core";
 import { areaById, areaHref, areaMeta } from "~/lib/area";
 import { useLocale, useT } from "~/composables/useT";
 import { useSeo } from "~/composables/useSeo";
+import { useRenderedLocale } from "~/composables/useSiteRequest";
 import { SYNCED_RELATIVE_KEY } from "~/composables/syncedContext";
 import SiteChrome from "./SiteChrome.vue";
 import SitePanels from "./SitePanels.vue";
@@ -33,6 +34,7 @@ const area = computed(() => areaById(props.site.nav, props.area));
 // The locale SSR actually rendered in, published for the UI-string catalog.
 // Set during setup so it's identical on the server and on hydration.
 useLocale().value = props.locale;
+useRenderedLocale().value = props.locale;
 const { t } = useT();
 
 // Per-area <title>/description, so a link pasted into a chat unfurls as the thing

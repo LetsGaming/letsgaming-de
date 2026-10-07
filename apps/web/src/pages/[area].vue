@@ -10,12 +10,13 @@
 import type { Locale, SiteView } from "@lg/core";
 import { areaById } from "~/lib/area";
 import AreaPage from "~/components/shell/AreaPage.vue";
+import { useRequestLang } from "~/composables/useSiteRequest";
 
 const route = useRoute();
 const areaId = String(route.params.area ?? "");
 
 const { data } = await useFetch<{ locale: Locale; site: SiteView }>("/api/site", {
-  query: { lang: route.query.lang },
+  query: { lang: useRequestLang() },
 });
 
 const site = data.value?.site;
