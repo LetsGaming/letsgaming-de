@@ -26,6 +26,30 @@ export function pickLocale(param?: string | null, acceptLanguage?: string | null
   return "en";
 }
 
+/**
+ * The `lang` the next `/api/site` request should carry.
+ *
+ * An explicit `?lang` always wins. During the first render nothing is sent and the
+ * server decides: the head script has already reloaded with `?lang` when the
+ * visitor stored a choice. After that, navigation is client-side. The head script
+ * does not run again and the request's own `Accept-Language` knows nothing about
+ * the visitor's choice, so a tab click would fall back to the browser language.
+ * The locale the previous area page rendered in is reused instead, or the stored
+ * choice when no area page has rendered yet (a visit that started on a page that
+ * ignores `?lang`).
+ */
+export function chooseRequestLang(input: {
+  explicit?: string | null;
+  hydrating: boolean;
+  rendered?: Locale | null;
+  stored?: string | null;
+}): Locale | string | undefined {
+  if (input.explicit) return input.explicit;
+  if (input.hydrating) return undefined;
+  if (input.rendered) return input.rendered;
+  return isLocale(input.stored) ? input.stored : undefined;
+}
+
 /** Escape HTML, then turn `**bold**` into <b>…</b>. Safe for v-html: the only
  *  markup introduced is <b>, and all original characters are escaped first. */
 export function mdBold(input: string): string {
