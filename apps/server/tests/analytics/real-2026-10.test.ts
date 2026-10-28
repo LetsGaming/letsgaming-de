@@ -19,7 +19,7 @@ import { parseLine } from "../../src/analytics/parse.js";
  * page view on its own and is reclassified by its neighbours.
  */
 const OWN = "letsgaming.de";
-const lines = readFileSync(fileURLToPath(new URL("./fixtures/real-2026-10.log", import.meta.url)), "utf8")
+const lines = readFileSync(fileURLToPath(new URL("./fixtures/real-2026-10.access", import.meta.url)), "utf8")
   .split("\n")
   .filter(Boolean);
 
