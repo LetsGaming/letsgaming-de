@@ -26,6 +26,7 @@ import { LOG_DIMENSIONS, PAIR_DIMENSIONS } from "@lg/core";
 import { openStore, type StoredDimension } from "@lg/db";
 import { loadEnv } from "../env.js";
 import { ingestLog } from "./ingest.js";
+import { rollupAll } from "./rollup.js";
 
 /** Everything `lineToHits` can produce. Keep in step with parse.ts. */
 const LOG_DERIVED: readonly StoredDimension[] = [...LOG_DIMENSIONS, ...PAIR_DIMENSIONS];
@@ -67,9 +68,11 @@ store.analytics.setClearedThrough(null);
 // where it left off and rebuilding nothing.
 store.analytics.setOffset(file, 0);
 const result = ingestLog(store, file, ownHost);
+const rolled = rollupAll(store);
 store.close();
 
 console.log(
   `analytics: dropped ${removed} log-derived row(s), re-read ${result.linesRead} line(s), ` +
-    `wrote ${result.hits} aggregate hit(s). Engagement (beacon) data was not touched.`,
+    `wrote ${result.hits} aggregate hit(s), rolled up ${rolled.day} day and ${rolled.hour} hour bucket(s). ` +
+    `Engagement (beacon) data was not touched.`,
 );

@@ -15,6 +15,7 @@
 import { openStore } from "@lg/db";
 import { loadEnv } from "../env.js";
 import { probeFamily } from "./probe.js";
+import { rollupAll } from "./rollup.js";
 
 const env = loadEnv();
 const store = openStore(env.dbPath);
@@ -23,6 +24,7 @@ const store = openStore(env.dbPath);
 // rows; anything that still looks like a real request stays put.
 const moved = store.analytics.reclassify("path", "probe", (key) => probeFamily(key));
 
+if (moved > 0) rollupAll(store);
 store.close();
 console.log(
   moved > 0
