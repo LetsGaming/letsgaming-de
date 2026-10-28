@@ -10,8 +10,9 @@
  */
 
 import type { HourlyHit } from "@lg/db";
-import { UTM_PREFIX, isPairedDimension, pairEntries, sanitizeUtmSource, type PairedDimension } from "@lg/core";
-import { classifyHit } from "./classify.js";
+import { DIRECT_REFERRER, UTM_PREFIX, isPairedDimension, pairEntries, sanitizeUtmSource, type PairedDimension } from "@lg/core";
+import { BURST_CLASSIFICATION } from "./burst.js";
+import { classifyHit, type Classification } from "./classify.js";
 import { sourceOf } from "./source.js";
 
 export interface ParsedUA {
@@ -57,15 +58,15 @@ const MONTHS: Record<string, string> = {
   Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12",
 };
 
-/** "10/Oct/2026:13:55:36 +0000" -> UTC hour bucket "2026-10-10T13". */
-function logHour(stamp: string): string | null {
+/** "10/Oct/2026:13:55:36 +0000" -> the instant it names. */
+function logInstant(stamp: string): Date | null {
   const m = /^(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})\s*([+-]\d{4})?/.exec(stamp);
   if (!m) return null;
   const mon = MONTHS[m[2]!];
   if (!mon) return null;
   const tz = m[7] ? `${m[7].slice(0, 3)}:${m[7].slice(3)}` : "Z"; // +0200 -> +02:00
   const d = new Date(`${m[3]}-${mon}-${m[1]}T${m[4]}:${m[5]}:${m[6]}${tz}`);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 13);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** `utm_source` (or the shorter aliases) from a raw request target. */
@@ -80,12 +81,15 @@ function taggedSource(rawPath: string): string | null {
   return null;
 }
 
-function referrerHost(ref: string): string | null {
-  if (!ref || ref === "-") return "direct";
+const hostnameOf = (host: string): string => host.toLowerCase().replace(/:\d+$/, "");
+
+/** The referring host, or `direct` for no usable referrer (absent, `-`, or unparseable). */
+function referrerHost(ref: string): string {
+  if (!ref || ref === "-") return DIRECT_REFERRER;
   try {
-    return new URL(ref).host || null;
+    return new URL(ref).hostname || DIRECT_REFERRER;
   } catch {
-    return null;
+    return DIRECT_REFERRER;
   }
 }
 
@@ -102,26 +106,68 @@ export function pairHitsOf(hits: readonly HourlyHit[]): HourlyHit[] {
   return pairEntries(values).map((e) => ({ bucket: first.bucket, ...e }));
 }
 
-/** Parse one log line into aggregate hourly hits (or [] if not a page view). */
-export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
+export interface ParsedLine {
+  /** Log timestamp in whole seconds since the epoch. */
+  second: number;
+  bucket: string;
+  verdict: Classification;
+  hits: HourlyHit[];
+}
+
+/** The hits a page view becomes once burst-adjacent has reclassified it. */
+export function burstHitsOf(line: ParsedLine): HourlyHit[] {
+  return botOrProbeHits(line.bucket, BURST_CLASSIFICATION);
+}
+
+function botOrProbeHits(bucket: string, verdict: Classification): HourlyHit[] {
+  return [
+    { bucket, dimension: verdict.class as "probe" | "bot", key: verdict.family! },
+    { bucket, dimension: "exclusion", key: verdict.rule },
+    { bucket, dimension: "traffic", key: verdict.class },
+  ];
+}
+
+/**
+ * Judge one log line on its own. `null` means the line isn't combined-format; an
+ * ignored line parses fine and has no hits.
+ */
+export function parseLine(line: string, ownHost?: string): ParsedLine | null {
   const m = LINE.exec(line);
-  if (!m) return [];
+  if (!m) return null;
   const [, stamp, method, rawPath, statusStr, referrer, ua] = m;
-  const bucket = logHour(stamp!);
-  if (!bucket) return [];
+  const instant = logInstant(stamp!);
+  if (!instant) return null;
+  const bucket = instant.toISOString().slice(0, 13);
+  const second = Math.floor(instant.getTime() / 1000);
   const status = Number(statusStr);
-  const verdict = classifyHit({ method: method!, path: rawPath ?? "/", status, ua: ua ?? "", referrer: referrer ?? "" });
-  if (verdict.class === "ignored") return [];
+  const verdict = classifyHit({
+    method: method!,
+    path: rawPath ?? "/",
+    status,
+    ua: ua ?? "",
+    referrer: referrer ?? "",
+    ...(ownHost ? { ownHost } : {}),
+  });
+  if (verdict.class === "ignored") return { second, bucket, verdict, hits: [] };
 
   // Probes and bots are counted but kept out of the dimensions that describe
   // people. The path is judged before the user agent because scanners forge the
   // latter; `exclusion` keeps the rule id so the reason stays visible.
   if (verdict.class === "probe" || verdict.class === "bot") {
-    return [
-      { bucket, dimension: verdict.class, key: verdict.family! },
-      { bucket, dimension: "exclusion", key: verdict.rule },
-      { bucket, dimension: "traffic", key: verdict.class },
-    ];
+    return { second, bucket, verdict, hits: botOrProbeHits(bucket, verdict) };
+  }
+
+  // A dead link is counted, nothing more: it describes no one.
+  if (verdict.class === "notfound") {
+    return {
+      second,
+      bucket,
+      verdict,
+      hits: [
+        { bucket, dimension: "exclusion", key: verdict.rule },
+        { bucket, dimension: "traffic", key: "notfound" },
+      ],
+    };
   }
 
   const path = (rawPath ?? "").split("?")[0] ?? "/";
@@ -132,14 +178,14 @@ export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   // The tag wins because it's the one that survives. Native apps hand a URL to
   // the browser with no previous page, so a visit from the Discord or Steam
   // client arrives header-less and indistinguishable from someone typing the
-  // address. A `?utm_source=` on the link answers anyway. When there's no tag
-  // this falls back to exactly what it did before.
+  // address. A `?utm_source=` on the link answers anyway. The site's own host
+  // (internal navigation, language switch) is filed as `direct` rather than
+  // dropped, so the referrer list always sums to the page views.
   const tagged = taggedSource(rawPath ?? "");
   const host = referrerHost(referrer ?? "");
-  let referrerKey: string | null = null;
-  if (tagged) referrerKey = `${UTM_PREFIX}${tagged}`;
-  else if (host && host !== ownHost) referrerKey = host;
-  if (referrerKey) hits.push({ bucket, dimension: "referrer", key: referrerKey });
+  const own = ownHost ? hostnameOf(ownHost) : undefined;
+  const referrerKey = tagged ? `${UTM_PREFIX}${tagged}` : host === own ? DIRECT_REFERRER : host;
+  hits.push({ bucket, dimension: "referrer", key: referrerKey });
   hits.push({ bucket, dimension: "traffic", key: "pageview" });
   hits.push({ bucket, dimension: "source", key: sourceOf(referrerKey) });
 
@@ -148,5 +194,13 @@ export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
   hits.push({ bucket, dimension: "os", key: os });
   hits.push({ bucket, dimension: "device", key: device });
 
-  return hits;
+  return { second, bucket, verdict, hits };
+}
+
+/**
+ * Parse one log line into aggregate hourly hits (or [] if it isn't counted).
+ * Judges the line alone; `ingest.ts` adds the timestamp-window rule on top.
+ */
+export function lineToHits(line: string, ownHost?: string): HourlyHit[] {
+  return parseLine(line, ownHost)?.hits ?? [];
 }

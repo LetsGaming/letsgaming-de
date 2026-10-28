@@ -94,10 +94,20 @@ export function isPreview(): boolean {
   return new URLSearchParams(window.location.search).has(PREVIEW_PARAM);
 }
 
-/** May we measure this visit? False if DNT is on, the visitor opted out, previewing, or no API. */
+/** Playwright, Puppeteer and Selenium set `navigator.webdriver`; people do not. */
+export function isAutomated(): boolean {
+  return typeof navigator !== "undefined" && navigator.webdriver === true;
+}
+
+/** May we measure this visit? False if DNT is on, the visitor opted out, previewing, automated, or no API. */
 export function analyticsAllowed(): boolean {
   return (
-    typeof window !== "undefined" && !!apiBase && !dntActive() && !isOptedOut() && !isPreview()
+    typeof window !== "undefined" &&
+    !!apiBase &&
+    !dntActive() &&
+    !isOptedOut() &&
+    !isPreview() &&
+    !isAutomated()
   );
 }
 
@@ -112,7 +122,7 @@ export function setOptedOut(optout: boolean) {
   if (optout) {
     enabled = false;
     queue = [];
-  } else if (!dntActive() && apiBase && !isPreview()) {
+  } else if (!dntActive() && apiBase && !isPreview() && !isAutomated()) {
     // Opting back in mid-visit: register the current section so the visit counts.
     enabled = true;
     if (current) {

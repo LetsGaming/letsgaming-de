@@ -3,11 +3,11 @@ import { test } from "node:test";
 import { lineToHits, parseUserAgent } from "../../src/analytics/parse.js";
 
 const CHROME =
-  '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /work?tab=1 HTTP/1.1" 200 512 "https://news.ycombinator.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"';
+  '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /work?tab=1 HTTP/1.1" 200 512 "https://news.ycombinator.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"';
 const ASSET =
   '203.0.113.7 - - [10/Oct/2026:13:55:37 +0000] "GET /_nuxt/app.css HTTP/1.1" 200 2048 "-" "Mozilla/5.0"';
 const IPHONE =
-  '198.51.100.2 - - [11/Oct/2026:09:00:00 +0000] "GET / HTTP/1.1" 200 900 "-" "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605 Mobile Safari"';
+  '198.51.100.2 - - [11/Oct/2026:09:00:00 +0000] "GET / HTTP/1.1" 200 900 "-" "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"';
 
 test("parses a page view into aggregate hits without touching the IP", () => {
   const hits = lineToHits(CHROME, "letsgaming.de");
@@ -68,7 +68,7 @@ test("page view writes traffic and source dimensions alongside the existing keys
 });
 
 test("tagged visit is a campaign unless the tag names a known network", () => {
-  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36";
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
   const line = (q: string) =>
     `203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /?${q} HTTP/1.1" 200 512 "-" "${ua}"`;
   const src = (q: string) => lineToHits(line(q), "letsgaming.de").find((h) => h.dimension === "source")!.key;
@@ -94,10 +94,32 @@ test("bot and probe hits record exclusion rule and traffic class", () => {
   assert.ok(!JSON.stringify([p, b]).includes("203.0.113.7"));
 });
 
-test("HEAD requests count as bots, other non-GET methods stay ignored", () => {
+test("HEAD and write methods count as bots, other methods stay ignored", () => {
   const head =
     '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "HEAD / HTTP/1.1" 200 0 "-" "Mozilla/5.0 (Windows NT 10.0) Chrome/120"';
   const post = head.replace('"HEAD /', '"POST /');
+  const options = head.replace('"HEAD /', '"OPTIONS /');
   assert.ok(lineToHits(head).some((h) => h.dimension === "exclusion" && h.key === "http-head"));
-  assert.equal(lineToHits(post).length, 0);
+  assert.ok(lineToHits(post).some((h) => h.dimension === "exclusion" && h.key === "http-post-page"));
+  assert.equal(lineToHits(options).length, 0);
+});
+
+test("a not-found writes only the traffic class and the rule", () => {
+  const line =
+    '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /blog/ HTTP/2.0" 404 10 "https://example.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"';
+  assert.deepEqual(
+    lineToHits(line, "letsgaming.de").map((h) => [h.dimension, h.key]),
+    [["exclusion", "not-found"], ["traffic", "notfound"]],
+  );
+});
+
+test("a page view from the site's own host is filed as direct so referrers sum to page views", () => {
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36";
+  const line = (ref: string) =>
+    `203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /about HTTP/2.0" 200 512 "${ref}" "${ua}"`;
+  for (const ref of ["https://letsgaming.de/", "https://letsgaming.de", "https://letsgaming.de/admin", "-"]) {
+    const hits = lineToHits(line(ref), "letsgaming.de");
+    assert.deepEqual(hits.filter((h) => h.dimension === "referrer").map((h) => h.key), ["direct"], ref);
+    assert.ok(hits.some((h) => h.dimension === "source" && h.key === "direct"), ref);
+  }
 });

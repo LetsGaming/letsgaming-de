@@ -9,7 +9,7 @@ const CHROME_WIN =
 const get = (path: string, ua: string, status = 200): HitInput => ({ method: "GET", path, status, ua });
 
 const RULE_CASES: [rule: string, hit: HitInput, cls: string][] = [
-  ["ignored-method", { method: "POST", path: "/", status: 200, ua: CHROME_WIN }, "ignored"],
+  ["ignored-method", { method: "OPTIONS", path: "/", status: 200, ua: CHROME_WIN }, "ignored"],
   ["ignored-status", get("/", CHROME_WIN, 301), "ignored"],
   ["ignored-internal-path", get("/admin/pages", CHROME_WIN), "ignored"],
   ["ignored-asset", get("/logo.png", CHROME_WIN), "ignored"],
@@ -25,6 +25,11 @@ const RULE_CASES: [rule: string, hit: HitInput, cls: string][] = [
   ["probe-traversal", get("/static/..%2f..%2fetc/passwd", CHROME_WIN, 400), "probe"],
   ["probe-server-script", get("/index.asp", CHROME_WIN, 404), "probe"],
   ["probe-scanner-furniture", get("/vendor/phpunit/x", CHROME_WIN, 404), "probe"],
+  ["probe-query-wordpress", get("/?rest_route=/", CHROME_WIN), "probe"],
+  ["probe-query-php", get("/?phpinfo=1", CHROME_WIN), "probe"],
+  ["probe-query-lfi", get("/?url=.env", CHROME_WIN), "probe"],
+  ["probe-query-cloaker", get("/?stream_uuid=2fd8bbe5-0e5d-477a-9092-b802b11d75ad", CHROME_WIN), "probe"],
+  ["http-post-page", { method: "POST", path: "/", status: 200, ua: CHROME_WIN }, "bot"],
   ["http-head", { method: "HEAD", path: "/", status: 200, ua: CHROME_WIN }, "bot"],
   ["ua-empty", get("/", "-"), "bot"],
   ["ua-search-engine", get("/", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"), "bot"],
@@ -35,8 +40,18 @@ const RULE_CASES: [rule: string, hit: HitInput, cls: string][] = [
   ["ua-http-library", get("/", "python-requests/2.31.0"), "bot"],
   ["ua-generic-bot", get("/", "Mozilla/5.0 (compatible; SomeCrawler/1.0)"), "bot"],
   ["ua-no-platform", get("/", "Opera"), "bot"],
+  ["ua-tool-token", get("/", "Mozilla/5.0 (l9scan/2.0; leakix)"), "bot"],
+  ["ua-no-engine", get("/", "Mozilla/5.0 (X11; Linux x86_64)"), "bot"],
+  ["ua-malformed-webkit", get("/", CHROME_WIN.replace("(KHTML, like Gecko) ", "")), "bot"],
+  ["ua-malformed-chrome-version", get("/", CHROME_WIN.replace("Chrome/120.0.0.0", "Chrome/124.0")), "bot"],
+  ["ua-stale-browser", get("/", CHROME_WIN.replace("Chrome/120.0.0.0", "Chrome/49.0.2623.112")), "bot"],
+  ["ua-embedded-url", get("/", CHROME_WIN.replace("Gecko)", "Gecko, Institute https://example.org)")), "bot"],
+  ["ua-unknown-suffix", get("/", `${CHROME_WIN} Agency/93.8.2357.5`), "bot"],
+  ["referer-self-http", { ...get("/", CHROME_WIN), referrer: "http://letsgaming.de/", ownHost: "letsgaming.de" }, "bot"],
+  ["referer-spam", { ...get("/", CHROME_WIN), referrer: "https://five.co.in/redirect.php?ref_host=x" }, "bot"],
+  ["not-found", get("/typo", CHROME_WIN, 404), "notfound"],
   ["pageview", get("/work", CHROME_WIN), "pageview"],
-  ["ignored-not-served", get("/typo", CHROME_WIN, 404), "ignored"],
+  ["ignored-not-served", get("/typo", CHROME_WIN, 500), "ignored"],
 ];
 
 for (const [rule, hit, cls] of RULE_CASES) {
@@ -109,7 +124,6 @@ const REAL_BROWSERS: Record<string, string> = {
   "Chrome iOS": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.0.0 Mobile/15E148 Safari/604.1",
   "Edge Android": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 EdgA/120.0.0.0",
   "Samsung Internet": "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36",
-  "Opera desktop": "Opera/9.80 (Windows NT 6.1; U; en) Presto/2.9.168 Version/11.50",
 };
 
 for (const [name, ua] of Object.entries(REAL_BROWSERS)) {

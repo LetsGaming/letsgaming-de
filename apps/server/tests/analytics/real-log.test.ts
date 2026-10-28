@@ -31,16 +31,19 @@ test("the HTTP→HTTPS redirect is not a page view", () => {
 });
 
 test("the request that actually served the page is counted, exactly once", () => {
-  assert.ok(dims(SERVED_REAL).includes("path:/"));
+  const https = SERVED_REAL.replace('"http://letsgaming.de"', '"https://letsgaming.de/"');
+  assert.ok(dims(https).includes("path:/"));
 });
 
-test("the redirect's self-referral is not counted as a referral", () => {
-  // The follow-up request carries `Referer: http://letsgaming.de` — the site
-  // itself. Without ownHost every visit would report the site as its own source.
-  assert.equal(
-    dims(SERVED_REAL).some((d) => d.startsWith("referrer:")),
-    false,
-  );
+test("a plain-http Referer naming the site is a scanner following its own redirect", () => {
+  // The proxy redirects HTTP to HTTPS, so a browser on the https site never sends
+  // `Referer: http://letsgaming.de`; a script that follows the 301 does.
+  assert.deepEqual(dims(SERVED_REAL), ["bot:Other bot"]);
+});
+
+test("the site's own https Referer is filed as direct, never dropped", () => {
+  const https = SERVED_REAL.replace('"http://letsgaming.de"', '"https://letsgaming.de/"');
+  assert.ok(dims(https).includes("referrer:direct"));
 });
 
 test("a secret sweep wearing a Googlebot user-agent is a probe, not a search engine", () => {

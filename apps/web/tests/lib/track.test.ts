@@ -73,6 +73,7 @@ beforeEach(() => {
       return true;
     },
   });
+  Object.defineProperty(navigator, "webdriver", { configurable: true, get: () => false });
   vi.stubGlobal("IntersectionObserver", FakeObserver);
   document.body.innerHTML = `
     <section class="module-section" id="hero"></section>
@@ -127,6 +128,29 @@ describe("visit confirmation", () => {
     expect(await dims()).not.toContain("visit");
     vi.advanceTimersByTime(300);
     expect((await batches()).flat()).toContainEqual({ d: "visit", k: "dwell" });
+  });
+});
+
+describe("automation", () => {
+  const setWebdriver = (v: boolean) =>
+    Object.defineProperty(navigator, "webdriver", { configurable: true, get: () => v });
+
+  afterEach(() => setWebdriver(false));
+
+  it("sends nothing when navigator.webdriver is true", async () => {
+    setWebdriver(true);
+    const { initTracking, analyticsAllowed } = await load();
+    expect(analyticsAllowed()).toBe(false);
+    initTracking("home", "dark");
+    vi.advanceTimersByTime(10_000);
+    expect(await batches()).toEqual([]);
+  });
+
+  it("still tracks when webdriver is false", async () => {
+    setWebdriver(false);
+    const { initTracking } = await load();
+    initTracking("home", "dark");
+    expect(await dims()).toContain("tab");
   });
 });
 

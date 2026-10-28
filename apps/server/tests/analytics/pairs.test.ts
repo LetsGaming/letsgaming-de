@@ -20,10 +20,10 @@ test("a page view writes every pair among its dimensions", () => {
   assert.ok(pairs.every((p) => p.bucket === "2026-10-10T13"));
 });
 
-test("an internal navigation has no referrer, so its pairs skip that dimension", () => {
+test("an internal navigation is filed as direct, so it pairs like a direct visit", () => {
   const pairs = pairHitsOf(lineToHits(line("/work", "https://letsgaming.de/", CHROME_WIN), "letsgaming.de"));
-  assert.equal(pairs.length, 6);
-  assert.ok(pairs.every((p) => !p.dimension.includes("referrer")));
+  assert.equal(pairs.length, 10);
+  assert.ok(pairs.some((p) => p.dimension.includes("referrer")));
 });
 
 test("bots and probes write no pairs", () => {

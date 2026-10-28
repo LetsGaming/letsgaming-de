@@ -48,6 +48,8 @@ export interface ProbeRule {
   id: string;
   family: ProbeFamily;
   test: RegExp;
+  /** Which half of the request target the rule reads. Defaults to the path. */
+  on?: "path" | "query";
 }
 
 export const PROBE_RULES: readonly ProbeRule[] = [
@@ -76,6 +78,13 @@ export const PROBE_RULES: readonly ProbeRule[] = [
 
   // Generic scanner furniture.
   { id: "probe-scanner-furniture", family: PROBE_FAMILY.other, test: /\/(vendor\/phpunit|eval-stdin|telescope\/requests|\.well-known\/traffic-advice|autodiscover\/autodiscover\.xml)/i },
+
+  // Query strings. The site reads `?lang=`, `?utm_source=` and `?preview=1` and nothing
+  // else, so these parameters only ever come from a scanner that got a 200 for `/`.
+  { id: "probe-query-wordpress", family: PROBE_FAMILY.wordpress, on: "query", test: /(?:^|&)rest_route=|^wp[a-z0-9]{6,}=?$/i },
+  { id: "probe-query-php", family: PROBE_FAMILY.php, on: "query", test: /(?:^|&)(?:phpinfo|allow_url_include|auto_prepend_file)(?:=|&|$)/i },
+  { id: "probe-query-lfi", family: PROBE_FAMILY.secrets, on: "query", test: /\.\.(?:%2f|%5c|\/|\\)|%2f(?:tmp|etc|proc|var)%2f|\/(?:tmp|etc|proc)\/|\/var\/(?:lib|log|www)\/|sess_[a-z0-9]{6,}|\.env(?![a-z0-9_])|(?:^|[&=])(?:php|file|data|expect):\/\//i },
+  { id: "probe-query-cloaker", family: PROBE_FAMILY.other, on: "query", test: /(?:^|&)(?:stream_uuid|sub_?id[3-5]?)=/i },
 ];
 
 /**
@@ -104,28 +113,45 @@ function normalizePath(path: string): string {
   return decoded.replace(/[\s.]+$/, "");
 }
 
+/** Percent-decode a query string (`+` is a space), judging the raw text if that fails. */
+function decodeQuery(query: string): string {
+  try {
+    return decodeURIComponent(query.replace(/\+/g, " "));
+  } catch {
+    return query;
+  }
+}
+
 /**
- * The probe family for a request path, or `null` if it looks like a real request.
+ * The probe rule for a request target (path plus optional query), or `null` if it
+ * looks like a real request.
  *
- * Takes the path only — never the query, never the agent. A false positive here
- * loses a page view from the count; a false negative leaves scanner noise in the
- * human-facing dimensions. The rules are therefore written to match things that
- * cannot exist on this site rather than things that merely look suspicious.
+ * Path rules read the path only and query rules read the query only, so a
+ * parameter value can never be mistaken for a path segment. Never the agent. A
+ * false positive here loses a page view from the count; a false negative leaves
+ * scanner noise in the human-facing dimensions. The rules are therefore written
+ * to match things that cannot exist on this site rather than things that merely
+ * look suspicious.
  *
- * Matched against both the raw and the normalized form: normalizing catches the
- * `%20` evasion, and keeping the raw catches the traversal patterns that only
- * exist *because* they're encoded (`..%2f`).
+ * Matched against both the raw and the decoded form: decoding catches the `%20`
+ * evasion, and keeping the raw catches the traversal patterns that only exist
+ * *because* they're encoded (`..%2f`).
  */
-export function probeRuleFor(path: string): ProbeRule | null {
-  if (!path || path === "/") return null;
-  const normalized = normalizePath(path);
-  if (!normalized || normalized === "/") return null;
+export function probeRuleFor(target: string): ProbeRule | null {
+  if (!target) return null;
+  const q = target.indexOf("?");
+  const path = q === -1 ? target : target.slice(0, q);
+  const query = q === -1 ? "" : target.slice(q + 1);
+  const normalized = path ? normalizePath(path) : "";
+  const pathCandidates = !normalized || normalized === "/" ? [] : [path, normalized];
+  const queryCandidates = query ? [query, decodeQuery(query)] : [];
   for (const rule of PROBE_RULES) {
-    if (rule.test.test(path) || rule.test.test(normalized)) return rule;
+    const candidates = rule.on === "query" ? queryCandidates : pathCandidates;
+    if (candidates.some((c) => rule.test.test(c))) return rule;
   }
   return null;
 }
 
-export function probeFamily(path: string): ProbeFamily | null {
-  return probeRuleFor(path)?.family ?? null;
+export function probeFamily(target: string): ProbeFamily | null {
+  return probeRuleFor(target)?.family ?? null;
 }

@@ -17,8 +17,8 @@ test("ingesting an access log populates the traffic top-lists (topHourly)", () =
   writeFileSync(
     file,
     [
-      '1.2.3.4 - - [10/Oct/2026:13:00:00 +0000] "GET /work HTTP/1.1" 200 500 "https://news.ycombinator.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"',
-      '5.6.7.8 - - [10/Oct/2026:13:05:00 +0000] "GET / HTTP/1.1" 200 500 "-" "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605 Mobile Safari"',
+      '1.2.3.4 - - [10/Oct/2026:13:00:00 +0000] "GET /work HTTP/1.1" 200 500 "https://news.ycombinator.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"',
+      '5.6.7.8 - - [10/Oct/2026:13:05:00 +0000] "GET / HTTP/1.1" 200 500 "-" "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"',
       "",
     ].join("\n"),
   );
