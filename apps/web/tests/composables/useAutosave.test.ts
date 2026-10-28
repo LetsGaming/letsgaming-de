@@ -1,10 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { createAutosave, isTextEdit, TEXT_DELAY_MS, type SaveStatus } from "../../src/composables/useAutosave";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-function setup(put = vi.fn(async (_p: string, _b: unknown, _o: { keepalive: boolean }) => ({ ok: true }))) {
+type PutMock = Mock<(path: string, body: unknown, opts: { keepalive: boolean }) => Promise<unknown>>;
+
+function setup(put: PutMock = vi.fn(async () => ({ ok: true }))) {
   const statuses: SaveStatus[] = [];
   const saved: unknown[] = [];
   const a = createAutosave({
