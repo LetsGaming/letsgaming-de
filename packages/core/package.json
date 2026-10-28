@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared contracts: Localized i18n, the recursive NavNode tree + build-time lint, the content model, and the Source adapter contract. No runtime deps \u2014 pure TypeScript.",
+  "description": "Shared contracts: Localized i18n, the recursive NavNode tree + build-time lint, the content model, and the Source adapter contract. No runtime deps — pure TypeScript.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -22,7 +22,7 @@
     "test": "node --test --import tsx ./tests/*.test.ts"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^22.20.5",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   }
