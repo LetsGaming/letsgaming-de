@@ -70,6 +70,17 @@ export function useSeo(opts: {
   }
   graphs.push(...(opts.jsonLd ?? []));
 
+  type KeyedMeta =
+    | { property: string; content: string; key: string }
+    | { name: string; content: string; key: string };
+  const metaTags = tags.meta.flatMap((m): KeyedMeta[] =>
+    m.property
+      ? [{ property: m.property, content: m.content, key: m.property }]
+      : m.name
+        ? [{ name: m.name, content: m.content, key: m.name }]
+        : [],
+  );
+
   useHead(() => ({
     // The page's own title and description, which is the whole point — Open Graph
     // is what a chat client unfurls, but `<title>` and `<meta name="description">`
@@ -79,11 +90,11 @@ export function useSeo(opts: {
     title: opts.title,
     link: [
       { rel: "canonical", href: tags.canonical },
-      ...tags.alternates.map((a) => ({ rel: "alternate", hreflang: a.hreflang, href: a.href })),
+      ...tags.alternates.map((a) => ({ rel: "alternate" as const, hreflang: a.hreflang, href: a.href })),
     ],
     meta: [
       { name: "description", content: opts.description, key: "description" },
-      ...tags.meta.map((m) => ({ ...m, key: m.property ?? m.name })),
+      ...metaTags,
     ],
     // One graph per script block is the shape Google's parser prefers over an
     // @graph array; both validate, this reads cleaner in view-source.
