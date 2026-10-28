@@ -70,19 +70,39 @@ can't leave an area empty. Changes take effect on the next page load.
 
 ## Reading the analytics dashboard
 
-Five tiles across the top, each showing a total for the window and how it
-compares with the window before it. Two of them are easy to misread, so they say
-what they count underneath:
+Five headline tiles across the top, each showing a total for the window, how it
+compares with the window before it (computed by the server over an equal-length,
+non-overlapping window), and a small trend line. They say what they count
+underneath, because the two sources behind them differ:
 
-- **Page views** — requests, from the web server's log, with self-identified bots
-  counted separately and never as people.
-- **Section views** — how many times a section was opened. Several per visitor,
-  so this is always larger than Visits.
-- **Visits** — completed visits. The summary is sent when the page closes, so a
-  tab your phone kills in the background never gets counted; visits read slightly
-  under page views by design.
-- **Visit length** — the spread of how long visits lasted, in coarse buckets,
-  with the median called out beneath the chart.
+- **Page views**: requests from browser-like clients in the web server's log.
+  Bots and scanners are counted separately and never as people. Clients without
+  JavaScript are still in here.
+- **Confirmed visits**: page loads whose script reported real engagement (a scroll
+  to 25 percent, a section seen, 5 seconds visible, or a click). A bare load is not
+  a visit. Before the first confirmation was ever recorded the tile reads "Not
+  measured", not 0.
+- **Beacon coverage**: script loads divided by page views. The rest are views no
+  script reported on.
+- **Sections per visit**: the average number of page sections seen per completed
+  visit.
+- **Median visit length**: the middle visit length, estimated from coarse time
+  buckets.
+
+Below the chart three cards explain the numbers:
+
+- **Section flow** lists the page's module sections in page order: how many loads
+  saw each, which one visitors enter and leave on, where focus moves next, how long
+  they stay, plus modules per visit and scroll depth per page.
+- **Traffic quality** is the funnel from requests to confirmed and completed
+  visits, the confirmation rate, and why requests were excluded. A "How a visit is
+  confirmed" note sits inside it. See
+  [operations/analytics-ingestion](../operations/analytics-ingestion.md#reading-the-traffic-quality-card).
+- **Sources** is page views by where they came from: search, social, campaign,
+  referral, direct.
+
+A note appears above the tiles when a time zone other than Europe/Berlin is
+selected: its day columns are rebuilt from hourly data and are approximate.
 
 **Local / UTC** switches which clock the chart is read in. Local is the default
 and is almost always what you want — on UTC, an evening's traffic in Germany

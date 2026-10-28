@@ -24,6 +24,7 @@ deleted.
 | [0015](./0015-nuxt-migration.md) | Nuxt 3 for the web app | Accepted (supersedes 0003) |
 | [0016](./0016-analytics-timezone.md) | Analytics stored in UTC, grouped in the reader's zone | Accepted (extends 0012) |
 | [0017](./0017-seo-metadata.md) | SEO metadata is derived, not hand-written per page | Accepted |
+| [0018](./0018-visit-model.md) | A visit model built from aggregate reconciliation | Accepted (extends 0012 and 0016) |
 
 The decisions from 0009 onward record where the project grew past its original
 locked spec: a second and third data source, the asset library, the engagement

@@ -7,8 +7,9 @@
  *
  * It never stores anything on the device (no cookie, no localStorage), never
  * creates a session id or identifier, and correlates the visit only in memory
- * here in the browser. The server receives self-contained counters. Do-Not-Track
- * and Global Privacy Control are honoured — if set, nothing is sent at all.
+ * here in the browser. The server receives self-contained counters. Do-Not-Track,
+ * the visitor's own opt-out and automated browsers (`navigator.webdriver`) are
+ * honoured: if any applies, nothing is sent at all.
  */
 
 import {

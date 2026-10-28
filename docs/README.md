@@ -18,6 +18,9 @@ If you're new to the project, read [OVERVIEW](./OVERVIEW.md) then
   and how to cut a release.
 - [SECURITY](./SECURITY.md) is the auth model, upload handling, and how to
   report something.
+- [GLOSSARY](./GLOSSARY.md) is the analytics and dashboard vocabulary (confirmed
+  visit, beacon coverage, traffic class, rollup grain). The wider project
+  vocabulary is in [concepts/glossary](./concepts/glossary.md).
 
 ## Folders
 
