@@ -1,17 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dwellHistograms, formatSecondPage, parseTransition, scrollFunnels } from "../../src/lib/engagement-keys";
-
-describe("formatSecondPage", () => {
-  it("shows the rounded rate and the counts behind it", () => {
-    expect(formatSecondPage({ visits: 28, reached: 12, rate: 12 / 28 })).toEqual({
-      value: "43%",
-      detail: "12 of 28 confirmed visits",
-    });
-  });
-  it("says so when there are no confirmed visits", () => {
-    expect(formatSecondPage({ visits: 0, reached: 0, rate: null }).value).toBe("n/a");
-  });
-});
+import { dwellHistograms, parseTransition, scrollFunnels } from "../../src/lib/engagement-keys";
 
 describe("parseTransition", () => {
   it("splits from and to", () => {

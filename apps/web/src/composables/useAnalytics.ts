@@ -3,7 +3,6 @@ import { AuthError } from "../lib/cms";
 import { type Autosave, bindAutosave } from "./useAutosave";
 import {
   ANALYTICS_DIMENSIONS,
-  DWELL_BUCKETS,
   METRIC_SOURCES,
   VIEW_RANGES,
   CLEAR_RANGES,
@@ -15,6 +14,7 @@ import {
   type ChartColumn,
   type ClearRangeId,
 } from "@lg/core";
+import { seriesRows } from "../lib/analytics-view";
 
 /**
  * The analytics-dashboard slice of the CMS.
@@ -31,43 +31,35 @@ import {
  * write helpers; everything analytics-specific is internal.
  */
 
-const METRIC_KEYS = ["pageviews", "sections", "clicks", "visitLength", "bots", "probes"] as const;
+const METRIC_KEYS = ["pageviews", "visits", "sections", "clicks", "visitLength", "bots", "probes"] as const;
 type MetricKey = (typeof METRIC_KEYS)[number];
 
 /**
- * What each tile is called, and what its headline number actually counts.
+ * What each chart metric is called, and what its number actually counts.
  *
- * Two of these were wrong, in a way that made the dashboard confidently
- * misreport its own traffic:
- *
- * - `sections` is the `tab` dimension, emitted on every section entry — several
- *   per visitor. It was labelled "Confirmed visits", so the number shown as a
- *   visit count was inflated by however many sections people browsed.
- * - `visitLength` is `session_dwell`, emitted exactly once per visit (in the
- *   tracker's `end()`, behind an `ended` guard). Summing it gives the number of
- *   visits, not a length — so the tile labelled "Visit length" was showing the
- *   visit count, and the real visit count had no tile of its own.
- *
- * Both now say what they hold. Visit *length* is a distribution across dwell
- * buckets, so its headline is the median bucket rather than a sum — adding up
- * bucket labels was never going to mean anything.
+ * - `visits` is the confirmed-visit series from the server's headline block: one
+ *   `visit` event per load that showed real engagement. It is the only chart
+ *   layer not read from `chart.*`, and it is a single band.
+ * - `visitLength` is `session_dwell`: one per visit whose tab reported its end.
+ *   Its bands are the length buckets, so it is labelled "Completed visits".
+ * - `sections` is the `tab` dimension, emitted on every section entry (several
+ *   per visit), so it counts section views, not visits.
  */
 const METRIC_LABELS: Record<MetricKey, string> = {
   pageviews: "Page views",
+  visits: "Confirmed visits",
   sections: "Section views",
   clicks: "Clicks",
-  visitLength: "Confirmed visits",
+  visitLength: "Completed visits",
   bots: "Bots",
   probes: "Probes",
 };
 
-/** What a tile's source reads as: the in-page script only sees browsers that
+const CHART_METRIC_SOURCES: Record<MetricKey, "script" | "log"> = { ...METRIC_SOURCES, visits: "script" };
+
+/** What a metric's source reads as: the in-page script only sees browsers that
  *  ran it, the access log sees every request. */
 const SOURCE_LABELS = { script: "in-page script", log: "access log" } as const;
-
-/** The headline tiles, in reading order. Bots and probes live in the "Traffic
- *  quality" section instead of competing for the top row. */
-const TILE_KEYS: readonly MetricKey[] = ["visitLength", "pageviews", "sections", "clicks"];
 
 const ZONE_STORAGE_KEY = "lg-cms-analytics-zone";
 
@@ -498,66 +490,6 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     flash(removed ? `Cleared ${removed} rows (${label}).` : `Nothing to clear for ${label}.`);
   }
 
-  const metricTotals = computed<Record<MetricKey, number>>(() => {
-    const c = analytics.value?.chart;
-    const sum = (a?: unknown) =>
-      (Array.isArray(a) ? a : []).reduce((s: number, r: { count: number }) => s + r.count, 0);
-    return {
-      pageviews: analytics.value?.pageviews?.total ?? sum(c?.pageviews),
-      sections: sum(c?.sections),
-      clicks: sum(c?.clicks),
-      // One `session_dwell` row per visit, so its sum is the visit count.
-      visitLength: analytics.value?.visits?.total ?? sum(c?.visitLength),
-      bots: sum(c?.bots),
-      probes: sum(c?.probes),
-    };
-  });
-
-  /**
-   * This window against the one before it, per metric.
-   *
-   * `null` when the server sent no previous window — it omits it rather than
-   * zeroing, so "nothing to compare against" stays distinguishable from "down
-   * 100%", which is what a fresh install would otherwise report forever.
-   */
-  const comparison = computed<Record<MetricKey, { delta: number; pct: number | null }> | null>(() => {
-    const a = analytics.value;
-    const prev = a?.previous;
-    if (!prev) return null;
-    const out = {} as Record<MetricKey, { delta: number; pct: number | null }>;
-    for (const k of METRIC_KEYS) {
-      const figure = k === "visitLength" ? a?.visits : k === "pageviews" ? a?.pageviews : undefined;
-      const before = figure?.previous ?? prev[k];
-      const now = metricTotals.value[k];
-      // A rise from zero has no percentage — reporting +∞% or +100% would both
-      // be inventions. The absolute delta still says something true.
-      out[k] = { delta: now - before, pct: before > 0 ? ((now - before) / before) * 100 : null };
-    }
-    return out;
-  });
-
-  /**
-   * The median visit-length bucket — the honest headline for a distribution.
-   *
-   * Walks the ordered dwell buckets accumulating visits until it passes the
-   * halfway point, so the answer is a real bucket somebody actually fell into.
-   * Empty when there are no completed visits, rather than defaulting to the
-   * shortest bucket and implying everyone bounced.
-   */
-  const medianVisitLength = computed<string>(() => {
-    const rows = analytics.value?.chart?.visitLength ?? [];
-    const byBucket = new Map<string, number>();
-    for (const r of rows) byBucket.set(r.key, (byBucket.get(r.key) ?? 0) + r.count);
-    const total = [...byBucket.values()].reduce((s, v) => s + v, 0);
-    if (!total) return "";
-    let seen = 0;
-    for (const bucket of DWELL_BUCKETS) {
-      seen += byBucket.get(bucket) ?? 0;
-      if (seen * 2 >= total) return bucket;
-    }
-    return "";
-  });
-
   /**
    * Stacked-area geometry for the selected metric. The maths is `@lg/core`'s
    * `buildStackedChart` — pure, and unit-tested against exact output; this only
@@ -575,7 +507,9 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     const f = a.filtered;
     const rows = f
       ? f.series.map((r) => ({ bucket: r.bucket, key: f.key, count: r.count }))
-      : ((a.chart[metric.value] ?? []) as { bucket: string; key: string; count: number }[]);
+      : metric.value === "visits"
+        ? seriesRows(a.headline.confirmedVisits.series, a.range, a.chart.unit, "visits")
+        : a.chart[metric.value];
     return buildStackedChart({
       rows,
       from: a.range.from,
@@ -679,19 +613,6 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     refreshAnalytics();
   }
 
-  /**
-   * The filtered dimension's total against its comparison window, in the same
-   * `{ delta, pct }` shape as `comparison` — the headline tile for a
-   * dimension filter reads it the same way the six metric tiles read
-   * `comparison`.
-   */
-  const filteredComparison = computed<{ delta: number; pct: number | null } | null>(() => {
-    const f = analytics.value?.filtered;
-    if (!f || f.previous == null) return null;
-    const delta = f.total - f.previous;
-    return { delta, pct: f.previous > 0 ? (delta / f.previous) * 100 : null };
-  });
-
   /** Track the pointer across the plot. `xInView` is in viewBox units. */
   function hoverAt(xInView: number) {
     const c = chart.value;
@@ -754,9 +675,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   return {
     METRIC_LABELS,
     SOURCE_LABELS,
-    tileKeys: TILE_KEYS,
-    METRIC_SOURCES,
-    medianVisitLength,
+    METRIC_SOURCES: CHART_METRIC_SOURCES,
     referrerRules,
     addReferrerRule,
     removeReferrerRule,
@@ -778,8 +697,6 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     refreshAnalytics,
     setRange,
     clearRange,
-    metricTotals,
-    comparison,
     zone,
     activeZone,
     setZone,
@@ -795,7 +712,6 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     filterKey,
     selectDimension,
     clearDimensionFilter,
-    filteredComparison,
     chips,
     clearFilters,
   };

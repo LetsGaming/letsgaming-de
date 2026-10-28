@@ -879,36 +879,245 @@ html:has(.cms) {
   color: var(--muted);
   font-weight: 500;
 }
-/* Comparison against the previous window. Colour is a hint, never the message —
+/* Comparison against the previous window. Colour is a hint, never the message:
    the sign is in the text, so this reads the same to anyone who can't see it. */
-.cms .sunit em {
-  font-style: normal;
-  font-size: 12px;
-  margin-left: var(--sp-4);
+.cms .panelhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-10);
 }
-.cms .sunit em.up {
-  color: var(--delta-up);
+.cms .privacyline {
+  margin: 0;
 }
-.cms .sunit em.down {
-  color: var(--delta-down);
+.cms .zonenote {
+  margin: 0;
 }
-.cms .secondpage {
+.cms .tilegrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-10);
+}
+.cms .tile {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-l);
+  padding: var(--sp-12) var(--sp-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.cms .tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6);
+}
+.cms .tile .slabel {
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+.cms .tile-value {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-4) var(--sp-8);
-  margin: var(--sp-8) 0 0;
+  gap: var(--sp-6);
+}
+.cms .tile .sval {
+  font-family: var(--f-d);
+  font-size: 24px;
+  color: var(--ink-strong);
+}
+.cms .tile .sval.muted {
+  font-size: 14px;
+  color: var(--muted);
+}
+.cms .tile .delta {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cms .tile .delta.up {
+  color: var(--delta-up);
+}
+.cms .tile .delta.down {
+  color: var(--delta-down);
+}
+.cms .tile-cap {
+  margin: 0;
+  font-size: var(--fs-micro);
+}
+.cms .tile svg {
+  margin-top: auto;
+}
+.cms .tile.unmeasured {
+  border-style: dashed;
+}
+.cms .trafficq h4,
+.cms .sectionflow h4 {
+  margin: var(--sp-10) 0 var(--sp-4);
   font-size: var(--fs-help);
 }
-.cms .secondpage b {
-  font-family: var(--cms-font-value);
-  color: var(--ink-strong);
-  font-size: 18px;
+.cms .tq-rates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-10);
 }
-.cms .medianline {
-  margin-top: var(--sp-6);
-  font-family: var(--cms-font-value);
+.cms .tq-rates > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.cms .tq-rates .slabel {
   font-size: var(--fs-micro);
+  color: var(--muted);
+}
+.cms .tq-rates .sval {
+  font-family: var(--f-d);
+  font-size: 20px;
+  color: var(--ink-strong);
+}
+.cms .tq-rates .sval.muted {
+  font-size: 14px;
+  color: var(--muted);
+}
+.cms .tq-note {
+  margin: 0;
+  font-size: var(--fs-help);
+}
+.cms .tq-funnel,
+.cms .tq-excl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cms .tq-funnel > li,
+.cms .tq-excl > li {
+  display: grid;
+  grid-template-columns: minmax(110px, 1.2fr) 2fr minmax(52px, auto);
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-4) 0;
+  font-size: 13px;
+}
+.cms .tq-funnel > li.split > .tq-label {
+  padding-left: var(--sp-12);
+  color: var(--muted);
+}
+.cms .tq-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cms .tq-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.cms .tq-bar i {
+  display: block;
+  height: 100%;
+  background: var(--purple-br);
+}
+.cms .tq-funnel > li.unmeasured .tq-bar {
+  background: transparent;
+  border: 1px dashed var(--line);
+}
+.cms .tq-funnel > li > b,
+.cms .tq-excl > li > b {
+  text-align: right;
+}
+.cms .tq-how > summary {
+  cursor: pointer;
+  font-size: var(--fs-help);
+}
+.cms .sf-modules,
+.cms .sf-flows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cms .sf-module {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 2fr) minmax(130px, 1fr) minmax(150px, 1.2fr);
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-8) 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.cms .sf-module:first-child {
+  border-top: 0;
+}
+.cms .sf-head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cms .sf-seen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.cms .sf-seen .funnelrow {
+  grid-template-columns: 1fr 40px;
+}
+.cms .sf-cols {
+  display: grid;
+  gap: var(--sp-4);
+  margin: 0;
+}
+.cms .sf-cols dt {
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+.cms .sf-cols dd {
+  display: grid;
+  grid-template-columns: 1fr 32px;
+  align-items: center;
+  gap: var(--sp-6);
+  margin: 0;
+}
+.cms .sf-cols .bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.cms .sf-cols .bar i {
+  display: block;
+  height: 100%;
+  background: var(--purple-br);
+}
+.cms .sf-cols b {
+  text-align: right;
+}
+.cms .sf-dwell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.cms .sf-dwell .histo {
+  height: 40px;
+}
+.cms .sf-flows li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  padding: var(--sp-4) 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.cms .sf-flows li:first-child {
+  border-top: 0;
+}
+.cms .sf-extra {
+  margin-top: var(--sp-8);
 }
 .cms .c-area {
   fill: var(--purple);
@@ -2329,6 +2538,26 @@ body.is-dragging .cms .glist .gthumb {
   }
   .cms .cols {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .cms .tilegrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cms .sf-module {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-6);
+  }
+  .cms .tq-funnel > li,
+  .cms .tq-excl > li {
+    grid-template-columns: minmax(0, 1fr) minmax(48px, auto);
+  }
+  .cms .tq-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .cms .tq-funnel > li > b,
+  .cms .tq-excl > li > b {
+    grid-column: 2;
+    grid-row: 1;
   }
   .cms .toast {
     bottom: calc(72px + env(safe-area-inset-bottom, 0px));

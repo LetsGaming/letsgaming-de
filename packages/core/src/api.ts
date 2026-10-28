@@ -131,7 +131,7 @@ export interface AnalyticsResponse {
      * where this range starts, so the two never overlap. Bounds are in the same
      * format as `from`/`to`. Null when there is no comparison (a selected bucket).
      */
-    previous?: { from: string; to: string } | null;
+    previous: { from: string; to: string } | null;
     /**
      * True when day buckets for a zone other than Europe/Berlin were rebuilt from
      * the hourly rows. Day rollups are Berlin days, so this view is retention
@@ -182,8 +182,8 @@ export interface AnalyticsResponse {
    * when the window ends before the first `visit` event ever recorded: the 0 is
    * then "not measured", not "no visits".
    */
-  visits: TrafficFigure<"script"> & { measured?: boolean };
-  completedVisits?: TrafficFigure<"script">;
+  visits: TrafficFigure<"script"> & { measured: boolean };
+  completedVisits: TrafficFigure<"script">;
   pageviews: TrafficFigure<"log">;
   /**
    * The landing-page success metric: completed visits (one `session_tabs` beacon
@@ -204,13 +204,13 @@ export interface AnalyticsResponse {
   referrerRules: ReferrerRule[];
   engagement: AnalyticsEngagement;
   /** The headline metrics, each with its server-computed delta and trend. */
-  headline?: AnalyticsHeadline;
+  headline: AnalyticsHeadline;
   /** Traffic quality: the funnel from requests to confirmed visits. */
-  quality?: AnalyticsQuality;
+  quality: AnalyticsQuality;
   /** Module-level engagement, in page order. */
-  sections?: AnalyticsSections;
+  sections: AnalyticsSections;
   /** Page views by referrer category. */
-  sources?: AnalyticsSources;
+  sources: AnalyticsSources;
   /**
    * Health of the access-log ingest pipeline. Present only when `ACCESS_LOG`
    * is configured server-side — absent (not an empty object) is the existing
@@ -338,16 +338,8 @@ export interface AnalyticsSources {
   rows: { key: string; count: number; share: number | null }[];
 }
 
-/**
- * What `GET /api/cms/analytics` always sends. The blocks are optional on
- * `AnalyticsResponse` only so fixtures written before they existed still compile;
- * a consumer of a live response can narrow with this.
- */
-export type AnalyticsResponseFull = AnalyticsResponse &
-  Required<Pick<AnalyticsResponse, "headline" | "quality" | "sections" | "sources" | "completedVisits">> & {
-    visits: { measured: boolean };
-    range: { previous: { from: string; to: string } | null };
-  };
+/** Same as `AnalyticsResponse`; kept so existing imports keep compiling. */
+export type AnalyticsResponseFull = AnalyticsResponse;
 
 export type MetricSource = "script" | "log";
 
