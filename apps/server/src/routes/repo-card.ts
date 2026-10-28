@@ -138,7 +138,7 @@ export async function darkenRepoCard(card: Buffer): Promise<Buffer> {
 		}
 	}
 
-	const restore: sharp.OverlayOptions[] = [
+	const restore: Parameters<ReturnType<typeof sharp>["composite"]>[0] = [
 		{ input: avatar, raw: { width: size, height: size, channels: 4 }, left, top },
 	];
 	if (hasLanguageBar(data, info.width, info.height)) {
