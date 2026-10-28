@@ -50,7 +50,9 @@ async function get(query: string) {
 
 test("visits and pageviews are separate figures, each naming its source", async () => {
   const body = await get("");
-  assert.deepEqual(body.visits, { total: 3, previous: 0, source: "script" });
+  // Confirmed visits need a `visit` event; session_dwell alone is the completed count.
+  assert.deepEqual(body.visits, { total: 0, previous: 0, source: "script", measured: false });
+  assert.deepEqual(body.completedVisits, { total: 3, previous: 0, source: "script" });
   assert.deepEqual(body.pageviews, { total: 7, previous: 0, source: "log" });
   assert.equal(body.metricSources.pageviews, "log");
   assert.equal(body.metricSources.visitLength, "script");

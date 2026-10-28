@@ -1386,9 +1386,26 @@ paths:
       description: |
         Engagement (in-page script) and traffic (proxy access log) aggregates over a window.
 
-        `visits` is script-confirmed and `pageviews` comes from the access log, so they differ
-        by every client that never runs JavaScript; each carries its `source`. `paths` is grouped
-        by first path segment, with `children` listing the stored sub-paths of a group.
+        Headline figures and lists come from materialized rollups: hour grain for ranges up to 72
+        hours, Europe/Berlin-day grain above, with the still-open bucket read live from the hourly
+        counters. A day range in any other `tz` is rebuilt from the hourly rows (about 90 days of
+        history) and flagged `range.approximateZone`. Dimension-filtered views also read the hourly
+        rows.
+
+        Every delta compares two windows of the same length that do not overlap: `range.previous`
+        ends the bucket before `range.from`. A day-unit range is whole local days (`hours` is
+        rounded up to days), so "7d" is seven columns whatever the time of day.
+
+        `pageviews` comes from the access log. `visits` counts **confirmed** visits: page loads
+        whose script reported real engagement (`visit` events). `completedVisits` counts visits
+        that reported their end. Confirmed visits exist only from the first `visit` event on;
+        before that `measured` is false and the 0 means "not measured". Nothing is inferred from
+        `session_dwell` for earlier periods. `paths` is grouped by first path segment, with
+        `children` listing the stored sub-paths of a group.
+
+        The `headline`, `quality`, `sections` and `sources` blocks are the visit model; see
+        their schemas. `secondPage` is deprecated in favour of `sections.sessionModules` and
+        `headline.sectionsPerVisit` and is removed after one release.
 
         A `dim`/`key` filter narrows the other access-log lists (`paths`, `referrers`, `browsers`,
         `os`, `devices`, `bots`, `probes`) through pair counters written at ingest. The script's
@@ -1425,7 +1442,7 @@ paths:
           description: Dimension to filter by. Requires `key`.
           schema:
             type: string
-            enum: [path, referrer, browser, os, device, bot, probe, tab, exit, transition, dwell, scroll, session_tabs, session_dwell, click, project, viewport, theme]
+            enum: [path, referrer, browser, os, device, bot, probe, exclusion, traffic, source, tab, exit, transition, dwell, scroll, session_tabs, session_dwell, click, project, viewport, theme, visit, module, module_entry, module_dwell, module_flow, module_exit, session_modules]
         - name: key
           in: query
           required: false
@@ -1438,16 +1455,97 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "See `AnalyticsResponse` in `@lg/core`."
+                description: "See `AnalyticsResponse` in `@lg/core` (`AnalyticsResponseFull` is what this route always sends)."
                 properties:
-                  visits: { $ref: "#/components/schemas/TrafficFigure" }
+                  range:
+                    type: object
+                    description: The window that was summarised.
+                    required: [from, to, hours, unit, timeZone, previous]
+                    properties:
+                      from: { type: string, description: "First bucket: a UTC hour (`YYYY-MM-DDTHH`) or a local day (`YYYY-MM-DD`)." }
+                      to: { type: string, description: Last bucket (inclusive), same format as `from`. }
+                      hours: { type: integer, description: Requested rolling length in hours (days * 24 for a custom range). }
+                      unit: { type: string, enum: [hour, day] }
+                      timeZone: { type: string, description: IANA zone day buckets are expressed in. }
+                      at: { type: string, description: Present when the lists were narrowed to one bucket. }
+                      previous:
+                        type: [object, "null"]
+                        description: The comparison window, same bucket count, ending the bucket before `from`. Null for a single selected bucket (`at`).
+                        required: [from, to]
+                        properties:
+                          from: { type: string }
+                          to: { type: string }
+                      approximateZone:
+                        type: boolean
+                        description: Present and true when day buckets in a zone other than Europe/Berlin were rebuilt from hourly rows (retention bound, approximate).
+                  visits:
+                    allOf:
+                      - { $ref: "#/components/schemas/TrafficFigure" }
+                      - type: object
+                        required: [measured]
+                        properties:
+                          measured:
+                            type: boolean
+                            description: False when the window ends before the first `visit` event ever recorded; `total` 0 then means "not measured".
+                    description: "Confirmed visits (`source: script`)."
+                  completedVisits:
+                    allOf:
+                      - { $ref: "#/components/schemas/TrafficFigure" }
+                    description: Visits whose tab reported its end (`session_dwell`).
                   pageviews: { $ref: "#/components/schemas/TrafficFigure" }
+                  previous:
+                    type: object
+                    description: Metric totals over the previous window; absent when it predates any data.
+                    properties:
+                      pageviews: { type: integer }
+                      sections: { type: integer }
+                      clicks: { type: integer }
+                      visitLength: { type: integer }
+                      bots: { type: integer }
+                      probes: { type: integer }
+                  chart:
+                    type: object
+                    description: Stacked composition over time per metric; each series is a list of `{ bucket, key, count }` points.
+                    required: [unit, pageviews, sections, clicks, visitLength, bots, probes]
+                    properties:
+                      unit: { type: string, enum: [hour, day] }
+                      pageviews: { type: array, items: { $ref: "#/components/schemas/AnalyticsPoint" } }
+                      sections: { type: array, items: { $ref: "#/components/schemas/AnalyticsPoint" } }
+                      clicks: { type: array, items: { $ref: "#/components/schemas/AnalyticsPoint" } }
+                      visitLength: { type: array, items: { $ref: "#/components/schemas/AnalyticsPoint" } }
+                      bots: { type: array, items: { $ref: "#/components/schemas/AnalyticsPoint" } }
+                      probes: { type: array, items: { $ref: "#/components/schemas/AnalyticsPoint" } }
+                  engagement:
+                    type: object
+                    description: Top lists of the in-page script's counters over the list window (the range, or the bucket given by `at`). Each value is a list of `{ key, count }`.
+                    additionalProperties:
+                      type: array
+                      items: { $ref: "#/components/schemas/AnalyticsRow" }
+                  headline:
+                    type: object
+                    description: The headline metrics, each with its server-computed delta and per-bucket series.
+                    required: [pageviews, confirmedVisits, loads, beaconCoverage, sectionsPerVisit, medianVisitSeconds, clicks, bots, probes]
+                    properties:
+                      pageviews: { $ref: "#/components/schemas/HeadlineMetric" }
+                      confirmedVisits: { $ref: "#/components/schemas/HeadlineMetric" }
+                      loads: { $ref: "#/components/schemas/HeadlineMetric" }
+                      beaconCoverage: { $ref: "#/components/schemas/HeadlineMetric" }
+                      sectionsPerVisit: { $ref: "#/components/schemas/HeadlineMetric" }
+                      medianVisitSeconds: { $ref: "#/components/schemas/HeadlineMetric" }
+                      clicks: { $ref: "#/components/schemas/HeadlineMetric" }
+                      bots: { $ref: "#/components/schemas/HeadlineMetric" }
+                      probes: { $ref: "#/components/schemas/HeadlineMetric" }
+                  quality: { $ref: "#/components/schemas/AnalyticsQuality" }
+                  sections: { $ref: "#/components/schemas/AnalyticsSections" }
+                  sources: { $ref: "#/components/schemas/AnalyticsSources" }
                   secondPage:
                     type: object
+                    deprecated: true
                     description: |
-                      Landing-page success metric over the same window as `visits`. `visits` counts completed
-                      visits (one `session_tabs` beacon each), `reached` those that touched two or more
-                      sections, `rate` is `reached / visits` (0 to 1) or null when there are no visits.
+                      Deprecated; use `sections.sessionModules` and `headline.sectionsPerVisit`. Landing-page
+                      success metric over the same window. `visits` counts completed visits (one
+                      `session_tabs` beacon each), `reached` those that touched two or more sections,
+                      `rate` is `reached / visits` (0 to 1) or null when there are no visits.
                     required: [visits, reached, rate, source]
                     properties:
                       visits: { type: integer }
@@ -1514,8 +1612,9 @@ paths:
       summary: Clear analytics
       description: |
         Deletes aggregate analytics for a named range. Windowed ranges delete hour-bucketed
-        engagement counters; `all` also wipes the log-derived day stats. The deletion is made
-        durable by advancing a watermark so a rotated access log is not re-ingested.
+        engagement counters; `all` also wipes the log-derived day stats. The stored rollups of the
+        cleared range are removed too and re-derived from whatever hourly rows remain. The deletion
+        is made durable by advancing a watermark so a rotated access log is not re-ingested.
       requestBody:
         required: true
         content:
@@ -1648,7 +1747,9 @@ paths:
         Median dwell is approximated from the dwell buckets as the midpoint of the bucket holding the
         50th percentile (<5s 2.5s, 5-15s 10s, 15-30s 22.5s, 30-60s 45s, 1-3m 120s, 3-10m 390s,
         10m+ 900s). Reach is the share of completed visits whose scroll reached 25% of the section,
-        capped at 1; null when there are no completed visits in the window.
+        capped at 1; null when there are no completed visits in the window. The window is the same
+        one `/api/cms/analytics` uses for `hours`: whole hour buckets up to 72 hours, whole local
+        days (Europe/Berlin) above, ending now.
       parameters:
         - { name: area, in: query, required: false, schema: { type: string }, description: Nav node id; returns it and its descendants. Omit for every node. }
         - { name: hours, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 8760, default: 168 } }
@@ -1866,6 +1967,134 @@ components:
             $ref: "#/components/schemas/Error"
 
   schemas:
+    AnalyticsRow:
+      type: object
+      required: [key, count]
+      properties:
+        key: { type: string }
+        count: { type: integer }
+    AnalyticsPoint:
+      type: object
+      required: [bucket, key, count]
+      properties:
+        bucket: { type: string, description: "A UTC hour (`YYYY-MM-DDTHH`) or a local day (`YYYY-MM-DD`), per `range.unit`." }
+        key: { type: string }
+        count: { type: integer }
+    HeadlineMetric:
+      type: object
+      description: One headline number with its comparison and trend.
+      required: [total, previous, deltaPct, series, measured, previousMeasured]
+      properties:
+        total: { type: [number, "null"], description: Null when undefined for the window (a ratio with no denominator). }
+        previous: { type: [number, "null"], description: The same figure over `range.previous`; null when there is no comparison window. }
+        deltaPct: { type: [number, "null"], description: "(total - previous) / previous * 100. Null when either side is missing, previous is 0, or a window was not measured." }
+        series:
+          type: array
+          description: One value per bucket of the range axis, oldest first. A ratio with no denominator in a bucket is 0.
+          items: { type: number }
+        measured: { type: boolean, description: False when the window ends before the metric existed (confirmed visits before the first `visit` event); show "not measured". }
+        previousMeasured: { type: boolean, description: Same for the previous window. }
+    AnalyticsQuality:
+      type: object
+      description: |
+        The reconciliation from requests to confirmed visits over the whole range. No identifier is
+        involved: every stage is a counter emitted once per request or per page load, and the
+        stages are compared as aggregates.
+      required: [funnel, coverage, confirmationRate, confirmationSince, measured, partiallyMeasured, exclusions, approximateHistory]
+      properties:
+        funnel:
+          type: object
+          required: [requests, probes, bots, unverified, loads, confirmed, completed]
+          properties:
+            requests: { type: integer, description: "Every request counted: page views + bots + probes." }
+            probes: { type: integer }
+            bots: { type: integer }
+            unverified: { type: integer, description: "Page views no script reported on (non-JS clients, blockers, DNT, opt-out): max(0, pageviews - loads)." }
+            loads: { type: integer, description: Page loads that ran the tracker (one `viewport` event per load). }
+            confirmed: { type: integer, description: Loads that showed real engagement (`visit` events). }
+            completed: { type: integer, description: Visits that reported their end (`session_dwell`). }
+        coverage: { type: [number, "null"], description: "loads / pageviews; null with no page views." }
+        confirmationRate: { type: [number, "null"], description: "confirmed / loads; null with no loads." }
+        confirmationSince: { type: [string, "null"], description: "UTC hour bucket (`YYYY-MM-DDTHH`) of the first `visit` event; null if none yet." }
+        measured: { type: boolean, description: False when the range ends before `confirmationSince`; `funnel.confirmed` and `confirmationRate` are then not real zeros. }
+        partiallyMeasured: { type: boolean, description: True when the range starts before `confirmationSince`, so its early part counts no confirmations. }
+        exclusions:
+          type: array
+          description: Why requests were excluded as non-human, by classifier rule id.
+          items: { $ref: "#/components/schemas/AnalyticsRow" }
+        approximateHistory: { type: boolean, description: True when part of the range comes from legacy UTC-day rows folded into the Berlin-day rollups unchanged. }
+    AnalyticsSections:
+      type: object
+      description: Module-level engagement over the whole range, from the in-page tracker.
+      required: [loads, modules, flow, sessionModules, scrollDepth]
+      properties:
+        loads: { type: integer, description: Script loads in the range; the denominator of `seenRate`. }
+        modules:
+          type: array
+          description: "In page order: nav order, each leaf's modules in order, modules placed nowhere last."
+          items:
+            type: object
+            required: [id, area, seen, seenRate, entries, exits, dwell, medianDwellSeconds]
+            properties:
+              id: { type: string, description: Module id. }
+              area: { type: [string, "null"], description: The nav leaf whose page renders it. }
+              seen: { type: integer, description: Visits that had the module at least 50% in view. }
+              seenRate: { type: [number, "null"], description: seen / loads. }
+              entries: { type: integer, description: Visits whose first module was this one. }
+              exits: { type: integer, description: Visits whose last focused module was this one. }
+              dwell:
+                type: object
+                description: Visits per focus-time bucket. Every bucket is present.
+                additionalProperties: { type: integer }
+                example: { "<5s": 0, "5-15s": 3, "15-30s": 0, "30-60s": 0, "1-3m": 0, "3-10m": 0, "10m+": 0 }
+              medianDwellSeconds: { type: [number, "null"], description: Midpoint of the bucket holding the median. }
+        flow:
+          type: array
+          description: Top module-to-module focus moves, most frequent first, at most 20.
+          items:
+            type: object
+            required: [from, to, count]
+            properties:
+              from: { type: string }
+              to: { type: string }
+              count: { type: integer }
+        sessionModules:
+          type: array
+          description: Visits by number of modules seen, all four buckets in order.
+          items:
+            type: object
+            required: [bucket, count]
+            properties:
+              bucket: { type: string, enum: ["1", "2", "3", "4+"] }
+              count: { type: integer }
+        scrollDepth:
+          type: array
+          description: Furthest scroll reached per area (page).
+          items:
+            type: object
+            required: [area, views, depths]
+            properties:
+              area: { type: string }
+              views: { type: integer, description: Times the area was shown; the denominator for the depths. }
+              depths:
+                type: object
+                required: ["25", "50", "75", "100"]
+                additionalProperties: { type: integer }
+    AnalyticsSources:
+      type: object
+      description: Page views by referrer category.
+      required: [total, rows]
+      properties:
+        total: { type: integer }
+        rows:
+          type: array
+          items:
+            type: object
+            required: [key, count, share]
+            properties:
+              key: { type: string, enum: [search, social, campaign, referral, direct] }
+              count: { type: integer }
+              share: { type: [number, "null"] }
     TrafficFigure:
       type: object
       description: A traffic total with where it was measured.

@@ -196,7 +196,9 @@ which can be up to 23 hours more than 168.
     "to": "2026-07-17",
     "hours": 720,
     "unit": "day",
-    "timeZone": "Europe/Berlin" // the zone the buckets are expressed in
+    "timeZone": "Europe/Berlin", // the zone the buckets are expressed in
+    "previous": { "from": "2026-06-11", "to": "2026-07-10" }, // the comparison window; null for a single selected bucket
+    "approximateZone": false     // true: day columns rebuilt from hourly rows (zone is not Europe/Berlin)
   },
   "paths": [ { "key": "/", "count": 12 }, ... ],
   "referrers": [ ... ], "browsers": [ ... ], "os": [ ... ], "devices": [ ... ],
@@ -208,16 +210,61 @@ which can be up to 23 hours more than 168.
   // period" reading. OMITTED — not zeroed — when that window predates any data,
   // so a fresh install shows "nothing to compare" rather than −100%.
   "previous": { "pageviews": 0, "sections": 0, "clicks": 0, "visitLength": 0, "bots": 0 },
-  "engagement": { "tabs": [...], "exits": [...], "transitions": [...], "dwell": [...], "scroll": [...], "clicks": [...], "projects": [...], "viewport": [...], "theme": [...] }
+  "engagement": { "tabs": [...], "exits": [...], "transitions": [...], "dwell": [...], "scroll": [...], "clicks": [...], "projects": [...], "viewport": [...], "theme": [...] },
+
+  // The visit-model blocks (see below)
+  "visits": { "total": 0, "previous": 0, "source": "script", "measured": true },
+  "completedVisits": { "total": 0, "previous": 0, "source": "script" },
+  "pageviews": { "total": 0, "previous": 0, "source": "log" },
+  "headline": { "pageviews": { "total": 0, "previous": 0, "deltaPct": null, "series": [], "measured": true, "previousMeasured": true }, ... },
+  "quality": { "funnel": { ... }, "coverage": 0.8, "confirmationRate": 0.5, "confirmationSince": "2026-10-28T09", "measured": true, "partiallyMeasured": false, "exclusions": [ ... ], "approximateHistory": false },
+  "sections": { "loads": 0, "modules": [ ... ], "flow": [ ... ], "sessionModules": [ ... ], "scrollDepth": [ ... ] },
+  "sources": { "total": 0, "rows": [ { "key": "search", "count": 0, "share": null } ] }
 }
 ```
 
 What the `chart` series actually count, since two of them read like something
-else: `sections` is the `tab` dimension — one row per *section entry*, several per
+else: `sections` is the `tab` dimension, one row per *section entry*, several per
 visitor, so it totals section views and not visits. `visitLength` is
-`session_dwell`, emitted exactly once per visit when the page unloads, so its
-total **is** the visit count and its keys are dwell buckets. The CMS labels them
-"Section views" and "Visits" for this reason.
+`session_dwell`, emitted once per visit when the page unloads, so its total is the
+**completed**-visit count and its keys are dwell buckets.
+
+The visit-model blocks, defined in `packages/core/src/visit-model.ts` and
+`api.ts` and explained in
+[concepts/analytics-and-privacy](../concepts/analytics-and-privacy.md):
+
+- `visits.total` is **confirmed visits**: the `visit` event, one per page load that
+  showed real engagement. `visits.measured` is false when the window ends before
+  the first `visit` event was ever recorded; the 0 is then "not measured", not "no
+  visits". `completedVisits` is the older `session_dwell` count (tab closed while
+  the page could still report). `pageviews` is the access-log count. Each figure
+  names its `source` (`script` or `log`), and `previous` is `null` with no
+  comparison window.
+- `headline` has one entry per metric: `pageviews`, `confirmedVisits`, `loads`,
+  `beaconCoverage`, `sectionsPerVisit`, `medianVisitSeconds`, `clicks`, `bots`,
+  `probes`. Each is `{ total, previous, deltaPct, series, measured,
+  previousMeasured }`. The server computes the delta against the equal-length,
+  non-overlapping window before (`range.previous`). `total` is null for a ratio
+  with no denominator, `deltaPct` is null when either side is missing, zero or not
+  measured, and `series` has one value per bucket of the range axis.
+- `quality` is the reconciliation funnel (`requests`, `probes`, `bots`,
+  `unverified`, `loads`, `confirmed`, `completed`), `coverage` (loads per page
+  view), `confirmationRate` (confirmed per load), `confirmationSince` (UTC hour of
+  the first `visit` event, or null), `measured` and `partiallyMeasured`,
+  `exclusions` (classifier rule ids by count) and `approximateHistory` (part of the
+  range comes from legacy UTC-day rows).
+- `sections` is module-level engagement: `loads`, `modules` in page order (`seen`,
+  `seenRate`, `entries`, `exits`, a `dwell` histogram and `medianDwellSeconds`),
+  the top 20 module-to-module `flow` moves, `sessionModules` (visits by modules
+  seen: `1`, `2`, `3`, `4+`) and `scrollDepth` per area.
+- `sources` is page views by referrer category (`search`, `social`, `campaign`,
+  `referral`, `direct`), with each row's `share`.
+- `secondPage` is still returned but deprecated: use `sections.sessionModules` and
+  `headline.sectionsPerVisit`.
+
+For ranges in a zone other than `Europe/Berlin` the day columns come from the
+hourly rows, are limited to the hourly retention, and `range.approximateZone` is
+true.
 
 `referrers` is grouped by source before it leaves the server — built-in table
 plus the custom rules, which are echoed back in `referrerRules`. Grouping happens

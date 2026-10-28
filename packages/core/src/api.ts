@@ -35,7 +35,8 @@ import type { SiteContent } from "./content.js";
 import type { GuestbookEntry } from "./guestbook.js";
 import type { ModuleDescriptor } from "./modules.js";
 import type { NavNode } from "./nav.js";
-import type { AnalyticsDimension } from "./engagement.js";
+import type { AnalyticsDimension, DwellBucket, ScrollDepth, SessionTabBucket } from "./engagement.js";
+import type { AnalyticsHeadline, QualityFunnel } from "./visit-model.js";
 
 /** Every mutation answers the same way. */
 export interface OkResponse {
@@ -125,6 +126,18 @@ export interface AnalyticsResponse {
     timeZone: string;
     /** Set when the window was narrowed to one bucket (a click on the chart). */
     at?: string;
+    /**
+     * The window the deltas compare against: the same number of buckets, ending
+     * where this range starts, so the two never overlap. Bounds are in the same
+     * format as `from`/`to`. Null when there is no comparison (a selected bucket).
+     */
+    previous: { from: string; to: string } | null;
+    /**
+     * True when day buckets for a zone other than Europe/Berlin were rebuilt from
+     * the hourly rows. Day rollups are Berlin days, so this view is retention
+     * bound (about 90 days) and its columns are approximate.
+     */
+    approximateZone?: boolean;
   };
   /**
    * Grouped by first path segment (`/docs/*` is one `/docs` row). A row with
@@ -162,13 +175,23 @@ export interface AnalyticsResponse {
    * primary number; the gap between the two is the part nothing can confirm.
    * Totals cover the whole range (not `range.at`); `previous` is `null` when
    * there is no comparison window.
+   *
+   * `visits.total` is the confirmed-visit count (`visit` events, one per load that
+   * showed real engagement); `completedVisits` is the older `session_dwell` count
+   * (tab closed while the page could still report). `visits.measured` is false
+   * when the window ends before the first `visit` event ever recorded: the 0 is
+   * then "not measured", not "no visits".
    */
-  visits: TrafficFigure<"script">;
+  visits: TrafficFigure<"script"> & { measured: boolean };
+  completedVisits: TrafficFigure<"script">;
   pageviews: TrafficFigure<"log">;
   /**
-   * The landing-page success metric: confirmed visits (one `session_tabs` beacon
+   * The landing-page success metric: completed visits (one `session_tabs` beacon
    * each) that touched a second section. `rate` is `reached / visits`, 0..1, or
-   * `null` when the window has no confirmed visits. Same window as `visits`.
+   * `null` when the window has no completed visits.
+   *
+   * @deprecated Use `sections.sessionModules` and `headline.sectionsPerVisit`.
+   * Kept for one release for older dashboards, then removed.
    */
   secondPage: { visits: number; reached: number; rate: number | null; source: "script" };
   /** Where every metric tile's number comes from, keyed like `chart` and `previous`. */
@@ -180,6 +203,14 @@ export interface AnalyticsResponse {
    */
   referrerRules: ReferrerRule[];
   engagement: AnalyticsEngagement;
+  /** The headline metrics, each with its server-computed delta and trend. */
+  headline: AnalyticsHeadline;
+  /** Traffic quality: the funnel from requests to confirmed visits. */
+  quality: AnalyticsQuality;
+  /** Module-level engagement, in page order. */
+  sections: AnalyticsSections;
+  /** Page views by referrer category. */
+  sources: AnalyticsSources;
   /**
    * Health of the access-log ingest pipeline. Present only when `ACCESS_LOG`
    * is configured server-side — absent (not an empty object) is the existing
@@ -228,6 +259,87 @@ export interface AnalyticsResponse {
     notFilterable: { card: AnalyticsCardId | "engagement"; source: MetricSource }[];
   };
 }
+
+/**
+ * The reconciliation funnel and its caveats for the whole range.
+ *
+ * `measured` is false when the range ends before the first `visit` event was ever
+ * recorded (`confirmationSince`): `funnel.confirmed` and `confirmationRate` are
+ * then not real zeros and must be shown as "not measured". `partiallyMeasured`
+ * means the range starts before that moment, so its early part counts no
+ * confirmations. Confirmed visits are never inferred from `session_dwell`.
+ */
+export interface AnalyticsQuality {
+  funnel: QualityFunnel;
+  /** `loads / pageviews`, or null with no page views. */
+  coverage: number | null;
+  /** `confirmed / loads`, or null with no loads. */
+  confirmationRate: number | null;
+  /** UTC hour bucket (`YYYY-MM-DDTHH`) of the first `visit` event, or null if none. */
+  confirmationSince: string | null;
+  measured: boolean;
+  partiallyMeasured: boolean;
+  /** Why requests were excluded as non-human, by classifier rule id. */
+  exclusions: AnalyticsRow[];
+  /** True when part of the range comes from legacy UTC-day rows (`analytics_daily`)
+   *  that were folded into the Berlin-day rollups without being re-bucketed. */
+  approximateHistory: boolean;
+}
+
+/** One `<section class="module-section">` of the site, with what visitors did there. */
+export interface AnalyticsSectionModule {
+  id: string;
+  /** The nav leaf (area) whose page renders it; null for a module placed nowhere. */
+  area: string | null;
+  /** Visits that had this module >=50% in view. */
+  seen: number;
+  /** `seen / loads`, or null with no loads. */
+  seenRate: number | null;
+  /** Visits whose first module was this one. */
+  entries: number;
+  /** Visits whose last focused module was this one. */
+  exits: number;
+  /** Time focused here, one count per visit, every bucket present (zeros included). */
+  dwell: Record<DwellBucket, number>;
+  medianDwellSeconds: number | null;
+}
+
+/** Focus moving from one module to the next, summed over the range. */
+export interface AnalyticsSectionFlow {
+  from: string;
+  to: string;
+  count: number;
+}
+
+/** Furthest scroll reached on one area (page). */
+export interface AnalyticsAreaScroll {
+  area: string;
+  /** Times the area was shown (`tab`), the denominator for the depths. */
+  views: number;
+  depths: Record<ScrollDepth, number>;
+}
+
+export interface AnalyticsSections {
+  /** Script loads in the range: the denominator for `seenRate`. */
+  loads: number;
+  /** In page order: nav order, then each leaf's module order; unplaced modules last. */
+  modules: AnalyticsSectionModule[];
+  /** Top module-to-module moves, most frequent first (capped at 20). */
+  flow: AnalyticsSectionFlow[];
+  /** Visits by how many modules they saw, all four buckets in order. */
+  sessionModules: { bucket: SessionTabBucket; count: number }[];
+  scrollDepth: AnalyticsAreaScroll[];
+}
+
+export interface AnalyticsSources {
+  /** Page views counted by the classifier (`sum(source)`). */
+  total: number;
+  /** `search`, `social`, `campaign`, `referral`, `direct`; most frequent first. */
+  rows: { key: string; count: number; share: number | null }[];
+}
+
+/** Same as `AnalyticsResponse`; kept so existing imports keep compiling. */
+export type AnalyticsResponseFull = AnalyticsResponse;
 
 export type MetricSource = "script" | "log";
 

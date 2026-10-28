@@ -1,4 +1,13 @@
-export { zonedParts, zonedDay } from "./tz.js";
+export {
+  ROLLUP_TIME_ZONE,
+  bucketDay,
+  dayHourSpan,
+  hourBucket,
+  localDayStartMs,
+  shiftDay,
+  zonedDay,
+  zonedParts,
+} from "./tz.js";
 import { openDatabase, DatabaseSync } from "./database.js";
 export { buildSiteView, buildAssetLookup, contactFromEnv, type BuildSiteViewOptions } from "./site-view.js";
 import { analyticsRepo, type AnalyticsRepo } from "./analytics-repo.js";
@@ -23,6 +32,7 @@ export * from "./source-repo.js";
 export * from "./sync-status-repo.js";
 export * from "./ia-repo.js";
 export * from "./analytics-repo.js";
+export * from "./analytics-rollup-repo.js";
 export * from "./assets-repo.js";
 export * from "./guestbook-repo.js";
 export * from "./seed.js";

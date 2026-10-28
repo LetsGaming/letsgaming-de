@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useCmsContext } from "../../../composables/cmsContext";
+import { deltaView } from "../../../lib/analytics-view";
 import { relativeTime } from "../../../lib/relativeTime";
 import Sparkline from "../Sparkline.vue";
 
@@ -14,11 +15,8 @@ onMounted(() => (timer = setInterval(() => (tick.value = Date.now()), 30_000)));
 onBeforeUnmount(() => clearInterval(timer));
 const ago = (iso: string | null) => relativeTime(iso, tick.value);
 
-const change = computed(() => {
-	const p = visits.value?.pct;
-	if (p == null) return null;
-	return `${p >= 0 ? "+" : ""}${Math.round(p)}% vs previous 7 days`;
-});
+const delta = computed(() => deltaView(visits.value?.deltaPct));
+const change = computed(() => (delta.value.text ? `${delta.value.text} vs previous 7 days` : null));
 </script>
 
 <template>
@@ -38,15 +36,21 @@ const change = computed(() => {
         <h3>Confirmed visits, last 7 days</h3>
         <p v-if="visitsError" class="muted">Couldn't load visits.</p>
         <p v-else-if="!visits" class="muted">Loading...</p>
+        <template v-else-if="!visits.measured">
+          <p class="dash-big dash-unmeasured">Not measured yet</p>
+          <p class="muted dash-sub">Visit confirmation has not been recorded in this window.</p>
+        </template>
         <template v-else>
           <div class="dash-visits">
-            <span class="dash-big">{{ visits.total }}</span>
+            <span class="dash-big">{{ visits.total ?? 0 }}</span>
             <Sparkline :values="visits.series" label="Confirmed visits per day, last 7 days" />
           </div>
           <p class="muted dash-sub">
-            {{ change ?? "No earlier data to compare" }} · in-page script
+            <em v-if="delta.text" class="dash-delta" :class="delta.direction">{{ change }}</em>
+            <template v-else>No earlier data to compare</template>
+            · in-page script
           </p>
-          <p v-if="visits.total === 0" class="muted dash-sub">No confirmed visits yet this week.</p>
+          <p v-if="!visits.total" class="muted dash-sub">No confirmed visits yet this week.</p>
         </template>
       </div>
 
@@ -132,6 +136,19 @@ const change = computed(() => {
 .dash-sub {
   font-size: 12px;
   margin-top: var(--sp-6);
+}
+.dash-unmeasured {
+  font-size: 18px;
+  color: var(--muted);
+}
+.dash-delta {
+  font-style: normal;
+}
+.dash-delta.up {
+  color: var(--delta-up);
+}
+.dash-delta.down {
+  color: var(--delta-down);
 }
 .dash-list {
   list-style: none;

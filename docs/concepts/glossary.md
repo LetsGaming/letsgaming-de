@@ -1,7 +1,9 @@
 # Glossary
 
 The words this project uses in a specific way. When a doc says "module" or
-"snapshot" it means the thing defined here.
+"snapshot" it means the thing defined here. Analytics terms (confirmed visit,
+beacon coverage, traffic class, rollup grain, and so on) are in
+[GLOSSARY](../GLOSSARY.md).
 
 | Term | Meaning |
 |---|---|

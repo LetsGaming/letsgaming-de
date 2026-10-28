@@ -3,9 +3,12 @@
  * dashboard shows, and lets the owner clear ranges. Read-only over anonymous
  * counts — there's nothing personal to expose or protect.
  *
- * Two stores: log-derived stats are day-bucketed (`analytics_daily`); engagement
- * is hour-bucketed (`analytics_hourly`) so the graph can show hourly resolution
- * and the owner can clear fine-grained ranges (last hour, last 3 days, …).
+ * Headline figures and lists are read from the materialized rollups
+ * (`analytics_summary`, `analytics_rollup`): hour grain for ranges up to 72 hours,
+ * Berlin-day grain above, with the still-open bucket topped up from
+ * `analytics_hourly`. A day range in another zone, and every dimension-filtered
+ * view, read the hourly rows directly (retention bound). Deltas compare two
+ * equal-length, non-overlapping windows and are computed here, not in the client.
  */
 
 import {
@@ -26,16 +29,21 @@ import {
 import type {
   AnalyticsCardId,
   AnalyticsResponse,
+  AnalyticsResponseFull,
   AnalyticsRow,
   AnalyticsTotals,
   ClearAnalyticsResponse,
   PairedDimension,
 } from "@lg/core";
-import { zonedParts, type AnalyticsDimension, type SeriesRow, type Store } from "@lg/db";
+import { ROLLUP_TIME_ZONE, bucketDay, type AnalyticsDimension, type Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import type { ServerEnv } from "../env.js";
 import { requireAuth } from "../auth/guard.js";
 import { badRequest } from "../errors.js";
+import { headlineBlock, qualityBlock, sectionsBlock, sourcesBlock, windowFigures } from "../analytics/blocks.js";
+import { createReader, toLocalDays } from "../analytics/reader.js";
+import { rollupRange } from "../analytics/rollup.js";
+import { bucketWindow, buildWindows } from "../analytics/window.js";
 
 const HOUR = 3600_000;
 
@@ -64,80 +72,6 @@ const BUCKET_MAX = "9999";
 
 function isoHour(d: Date): string {
   return d.toISOString().slice(0, 13);
-}
-
-/** A calendar-day label, shifted by a whole number of days (may be negative). */
-function shiftDay(day: string, deltaDays: number): string {
-  return new Date(Date.parse(`${day}T00:00:00Z`) + deltaDays * 24 * HOUR).toISOString().slice(0, 10);
-}
-
-/**
- * How far a zone's wall clock runs ahead of UTC at a given instant, in ms.
- *
- * Derived by reading the wall clock and re-parsing it *as if* it were UTC; the
- * difference is the offset. `zonedParts` resolves to the hour, so the instant is
- * floored to the hour before comparing — otherwise the minutes would show up as
- * a bogus sub-hour offset.
- */
-function zoneOffsetMs(atMs: number, timeZone: string): number {
-  const p = zonedParts(atMs, timeZone);
-  const asIfUtc = Date.parse(`${p.day}T${String(p.hour).padStart(2, "0")}:00:00Z`);
-  return asIfUtc - Math.floor(atMs / HOUR) * HOUR;
-}
-
-/**
- * The UTC instant at which a local calendar day begins.
- *
- * Two passes: the offset that applies at the naive guess may not be the one that
- * applies at the answer — on a DST changeover the clock moves between them — so
- * the second pass re-derives it at the corrected instant.
- */
-function localDayStartMs(day: string, timeZone: string): number {
-  const wall = Date.parse(`${day}T00:00:00Z`);
-  const first = wall - zoneOffsetMs(wall, timeZone);
-  return wall - zoneOffsetMs(first, timeZone);
-}
-
-/**
- * Re-bucket hourly rows into the reader's local calendar days.
- *
- * SQLite can group by `substr(bucket,1,10)`, but that is a *UTC* day, and a day
- * boundary is a wall-clock fact: in Europe/Berlin the 22:00 and 23:00 UTC hours
- * belong to the next local day. Grouping in SQL would put them in the wrong
- * column and no amount of relabelling fixes it. Done here in JS with `zonedParts`
- * — the same DST-exact helper the playtime heatmap buckets with — over rows the
- * process already holds from a local SQLite read.
- */
-function toLocalDays(rows: SeriesRow[], timeZone: string, from: string, to: string): SeriesRow[] {
-  const merged = new Map<string, number>();
-  for (const r of rows) {
-    const day = zonedParts(Date.parse(`${r.bucket}:00:00Z`), timeZone).day;
-    if (day < from || day > to) continue;
-    const k = `${day}\u0000${r.key}`;
-    merged.set(k, (merged.get(k) ?? 0) + r.count);
-  }
-  return [...merged.entries()].map(([k, count]) => {
-    const [bucket, key] = k.split("\u0000");
-    return { bucket: bucket!, key: key!, count };
-  });
-}
-
-/**
- * The lower bound to query with, given the bucket unit.
- *
- * Buckets are stored per hour and compared as text. A day-unit query groups by
- * `substr(bucket,1,10)` but still filters on the raw hour string, so a bound of
- * `2026-06-17T10` excludes `2026-06-17T00`…`T09` — the first day of the range
- * came back missing every hour before the current hour-of-day. Nothing failed:
- * the client draws that day as a full day, so the oldest column was quietly
- * short by up to 23/24 of itself, by an amount that changed with the time of day
- * the dashboard happened to be open.
- *
- * Flooring to the start of the day makes the queried window match the window the
- * chart claims to be showing.
- */
-function fromBucket(from: Date, unit: "hour" | "day"): string {
-  return unit === "day" ? `${from.toISOString().slice(0, 10)}T00` : isoHour(from);
 }
 
 export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env: ServerEnv): void {
@@ -204,110 +138,60 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       const now = new Date();
 
       /**
-       * A single bucket to narrow the LISTS to — what the dashboard sends when
-       * you click a column in the chart.
-       *
-       * This used to narrow the whole response, which meant the chart had to be
-       * re-fetched at full range separately to stay put while you looked at one
-       * bucket's lists — a second request, and the second request was never
-       * re-polled, so a drilled-in view silently went stale. Now the chart and
-       * totals always cover the full range (`fromB`/`toB` below); only the list
-       * cards and their totals use the bucket window (`listFromB`/`listToB`).
+       * A single bucket to narrow the LISTS to: what the dashboard sends when
+       * you click a column in the chart. The chart and totals always cover the
+       * full range; only the list cards and their totals use the bucket window.
        *
        * Validated by shape, not trusted: `YYYY-MM-DD` or `YYYY-MM-DDTHH`, and
        * anything else is ignored rather than concatenated into a bucket string.
        */
       const at = /^\d{4}-\d{2}-\d{2}(T\d{2})?$/.test(req.query.at ?? "") ? req.query.at! : null;
 
-      // The window, and the window immediately before it for the comparison.
-      const windowStart = new Date(now.getTime() - (hours - 1) * HOUR);
-      const prevEnd = new Date(windowStart.getTime() - HOUR);
-      const prevStart = new Date(prevEnd.getTime() - (hours - 1) * HOUR);
-
-      let fromB: string;
-      let toB: string;
-      let prevFromB: string;
-      let prevToB: string;
-      if (customFrom && customTo) {
-        // Whole local days, same as the day-unit preset branch below, but
-        // anchored to the picked dates instead of "back from now" — a custom
-        // range can end in the past, so it can't reuse `windowStart`/`now`.
-        fromB = isoHour(new Date(localDayStartMs(customFrom, timeZone)));
-        toB = isoHour(new Date(localDayStartMs(customTo, timeZone) + 23 * HOUR));
-        // The immediately preceding window of the same length, same as every
-        // other range's comparison — "vs the same number of days before this
-        // custom range started".
-        const prevTo = shiftDay(customFrom, -1);
-        const prevFrom = shiftDay(prevTo, -(customSpanDays! - 1));
-        prevFromB = isoHour(new Date(localDayStartMs(prevFrom, timeZone)));
-        prevToB = isoHour(new Date(localDayStartMs(prevTo, timeZone) + 23 * HOUR));
-      } else if (unit === "day") {
-        // Whole local days: the axis draws day columns, so the window has to
-        // start at a local midnight or the oldest column is a partial day drawn
-        // as a full one.
-        const firstDay = zonedParts(windowStart.getTime(), timeZone).day;
-        fromB = isoHour(new Date(localDayStartMs(firstDay, timeZone)));
-        toB = isoHour(now);
-        const prevFirstDay = zonedParts(prevStart.getTime(), timeZone).day;
-        prevFromB = isoHour(new Date(localDayStartMs(prevFirstDay, timeZone)));
-        prevToB = isoHour(prevEnd);
-      } else {
-        fromB = isoHour(windowStart);
-        toB = isoHour(now);
-        prevFromB = isoHour(prevStart);
-        prevToB = isoHour(prevEnd);
-      }
-
-      // Day buckets are local days; hour buckets stay UTC and only their labels
-      // shift client-side. A custom range echoes the picked dates verbatim —
-      // deriving `rangeTo` from `now` (the preset ranges' assumption, since
-      // they're always "back from now") would be wrong the moment `to` is in
-      // the past. This describes the chart's range, independent of `at`.
-      const rangeFrom = customFrom ?? (unit === "day" ? zonedParts(Date.parse(`${fromB}:00:00Z`), timeZone).day : fromB);
-      const rangeTo = customTo ?? (unit === "day" ? zonedParts(now.getTime(), timeZone).day : toB);
+      // The range and the equal-length range immediately before it (never overlapping).
+      const windows = buildWindows({
+        now,
+        hours,
+        unit,
+        timeZone,
+        custom: customFrom && customTo ? { from: customFrom, to: customTo } : null,
+      });
+      const { current, previous: previousWin } = windows;
+      const fromB = current.fromB;
+      const toB = current.toB;
+      const reader = createReader(store, unit, timeZone);
 
       // The lists and their totals narrow to the clicked bucket; the chart
-      // above them doesn't — see the comment on `at`.
-      let listFromB = fromB;
-      let listToB = toB;
-      if (at) {
-        // One bucket. An hour is itself; a local day spans from its midnight to
-        // the hour before the next one, which is why this can't be a substring.
-        if (at.length === 13) {
-          listFromB = at;
-          listToB = at;
-        } else {
-          listFromB = isoHour(new Date(localDayStartMs(at, timeZone)));
-          listToB = isoHour(new Date(localDayStartMs(at, timeZone) + 23 * HOUR));
-        }
-      }
-
-      const top = (d: AnalyticsDimension) => store.analytics.topHourly(d, listFromB, listToB);
-      const series = (d: AnalyticsDimension) => {
-        const rows = store.analytics.seriesHourly(d, fromB, toB, unit === "day" ? "hour" : "hour");
-        return unit === "day" ? toLocalDays(rows, timeZone, rangeFrom, rangeTo) : rows;
-      };
-      const sumOf = (d: AnalyticsDimension, from: string, to: string) =>
-        store.analytics.sumHourly(d, from, to);
+      // above them doesn't.
+      const listWin = at ? bucketWindow(at, timeZone) : current;
+      const listFromB = listWin.fromB;
+      const listToB = listWin.toB;
 
       // No comparison window for a single bucket: "vs the hour before" is a
       // different question from the one the range picker is answering.
-      const hasPrev = Boolean(prevFromB && prevToB) && !at;
+      const hasPrev = !at;
+      const prevWin = hasPrev ? previousWin : null;
+
+      const figures = windowFigures(reader, current, prevWin);
+      const since = store.analytics.confirmationSince();
+      const prevSummary = figures.previous;
 
       const previous: AnalyticsTotals = {
-        pageviews: hasPrev ? sumOf("path", prevFromB, prevToB) : 0,
-        sections: hasPrev ? sumOf("tab", prevFromB, prevToB) : 0,
-        clicks: hasPrev ? sumOf("click", prevFromB, prevToB) : 0,
-        visitLength: hasPrev ? sumOf("session_dwell", prevFromB, prevToB) : 0,
-        bots: hasPrev ? sumOf("bot", prevFromB, prevToB) : 0,
-        probes: hasPrev ? sumOf("probe", prevFromB, prevToB) : 0,
+        pageviews: prevSummary?.pageviews ?? 0,
+        sections: prevSummary?.tabs ?? 0,
+        clicks: prevSummary?.clicks ?? 0,
+        visitLength: prevSummary?.completed ?? 0,
+        bots: prevSummary?.bots ?? 0,
+        probes: prevSummary?.probes ?? 0,
       };
       const hasPrevious = Object.values(previous).some((v) => v > 0);
+
+      const top = (d: AnalyticsDimension) => reader.top(d, listWin);
+      const series = (d: AnalyticsDimension) => reader.series(d, current);
 
       const referrerRules = store.content.getReferrerRules();
 
       /**
-       * A referrer *label* ("Reddit") isn't a stored key — `groupReferrers`
+       * A referrer *label* ("Reddit") isn't a stored key: `groupReferrers`
        * folds several raw hosts (and `utm:`-tagged sources) into one label on
        * read. So filtering by label can't be an equality match against
        * `analytics_hourly.key`; it has to expand back to the label's member
@@ -331,16 +215,21 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         return [key];
       }
 
+      /*
+       * Dimension-filtered views read `analytics_hourly` (and its pair rows)
+       * directly, so they are bounded by hourly retention; the rollups carry no
+       * pair dimensions.
+       */
       let filtered: NonNullable<AnalyticsResponse["filtered"]> | null = null;
       const narrowedLists: Partial<Record<AnalyticsCardId, AnalyticsRow[]>> = {};
       if (dim && filterKey) {
         // The chart series covers the full range; the total (like every other
         // list total) honours `at`. The member-key set can differ between the
-        // two windows — a source relabeled mid-range, say — so each is
+        // two windows (a source relabeled mid-range, say) so each is
         // resolved separately rather than reused.
         const rangeKeys = filterKeys(dim, filterKey, fromB, toB);
         const rawSeries = store.analytics.seriesHourly(dim, fromB, toB, "hour", rangeKeys);
-        const series = unit === "day" ? toLocalDays(rawSeries, timeZone, rangeFrom, rangeTo) : rawSeries;
+        const filteredSeries = unit === "day" ? toLocalDays(rawSeries, timeZone, current.from, current.to) : rawSeries;
 
         const listKeys = filterKeys(dim, filterKey, listFromB, listToB);
         const total = store.analytics
@@ -349,11 +238,25 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
 
         const previousTotal = hasPrev
           ? store.analytics
-              .topHourly(dim, prevFromB, prevToB, 1000, filterKeys(dim, filterKey, prevFromB, prevToB))
+              .topHourly(
+                dim,
+                previousWin.fromB,
+                previousWin.toB,
+                1000,
+                filterKeys(dim, filterKey, previousWin.fromB, previousWin.toB),
+              )
               .reduce((s, r) => s + r.count, 0)
           : null;
 
-        filtered = { dimension: dim, key: filterKey, series, total, previous: previousTotal, narrowed: [], notFilterable: [] };
+        filtered = {
+          dimension: dim,
+          key: filterKey,
+          series: filteredSeries,
+          total,
+          previous: previousTotal,
+          narrowed: [],
+          notFilterable: [],
+        };
 
         if (isPairedDimension(dim)) {
           for (const [card, target] of Object.entries(CROSS_CARDS)) {
@@ -395,17 +298,26 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       // change, and a rule added today has to relabel everything that ever
       // arrived. Baking labels into the aggregates would only label the future.
       const listOf = (card: AnalyticsCardId, dimension: AnalyticsDimension): AnalyticsRow[] =>
-        narrowedLists[card] ?? store.analytics.topHourly(dimension, listFromB, listToB, 1000);
+        narrowedLists[card] ?? reader.top(dimension, listWin, 1000);
       const topRows = (card: AnalyticsCardId, dimension: AnalyticsDimension) => listOf(card, dimension).slice(0, 20);
       const pathRows = groupPaths(listOf("paths", "path"))
         .slice(0, 20)
         .map((g) => (g.children ? { ...g, children: g.children.slice(0, MAX_PATH_CHILDREN) } : g));
 
-      const visitsTotal = sumOf("session_dwell", fromB, toB);
-      const pageviewsTotal = sumOf("path", fromB, toB);
+      const total = figures.current;
+      const measured = since !== null && since <= toB;
 
-      const response: AnalyticsResponse = {
-        range: { from: rangeFrom, to: rangeTo, hours, unit, timeZone, ...(at ? { at } : {}) },
+      const response: AnalyticsResponseFull = {
+        range: {
+          from: current.from,
+          to: current.to,
+          hours,
+          unit,
+          timeZone,
+          ...(at ? { at } : {}),
+          previous: hasPrev ? { from: previousWin.from, to: previousWin.to } : null,
+          ...(reader.approximateZone ? { approximateZone: true } : {}),
+        },
         paths: pathRows,
         referrers: groupReferrers(listOf("referrers", "referrer"), referrerRules).slice(0, 20),
         browsers: topRows("browsers", "browser"),
@@ -413,10 +325,20 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         devices: topRows("devices", "device"),
         bots: topRows("bots", "bot"),
         probes: topRows("probes", "probe"),
-        visits: { total: visitsTotal, previous: hasPrev ? previous.visitLength : null, source: "script" },
-        pageviews: { total: pageviewsTotal, previous: hasPrev ? previous.pageviews : null, source: "log" },
+        visits: {
+          total: total.confirmed,
+          previous: prevSummary ? prevSummary.confirmed : null,
+          source: "script",
+          measured,
+        },
+        completedVisits: {
+          total: total.completed,
+          previous: prevSummary ? prevSummary.completed : null,
+          source: "script",
+        },
+        pageviews: { total: total.pageviews, previous: prevSummary ? prevSummary.pageviews : null, source: "log" },
         secondPage: {
-          ...secondPageFigure(store.analytics.topHourly("session_tabs", fromB, toB, SESSION_TAB_BUCKETS.length)),
+          ...secondPageFigure(reader.top("session_tabs", current, SESSION_TAB_BUCKETS.length)),
           source: "script",
         },
         metricSources: METRIC_SOURCES,
@@ -434,7 +356,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
         // so the UI can say "no comparison" instead of "down 100%".
         ...(hasPrevious ? { previous } : {}),
         referrerRules,
-        // Engagement top lists (hour-bucketed).
+        // Engagement top lists, over the list window.
         engagement: {
           tabs: top("tab"),
           exits: top("exit"),
@@ -448,8 +370,12 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
           viewport: top("viewport"),
           theme: top("theme"),
         },
+        headline: headlineBlock(figures, since, current, prevWin),
+        quality: qualityBlock(store, reader, figures, since, current),
+        sections: sectionsBlock(store, reader, current, total.loads),
+        sources: sourcesBlock(reader, current),
         // Absent (not an empty object) when no access log is configured at
-        // all — that's the existing, separate "never configured" case the
+        // all: that's the existing, separate "never configured" case the
         // traffic banner already explains.
         ...(env.accessLog ? { ingest: store.analytics.getIngestStatus(env.accessLog) } : {}),
         ...(filtered ? { filtered } : {}),
@@ -477,11 +403,21 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
 
       // `hours: null` is the un-windowed one: everything, both tables. The bucket
       // strings are lexicographic, so these bounds sort outside any real bucket.
+      const fromB = range.hours === null ? null : isoHour(new Date(now.getTime() - (range.hours - 1) * HOUR));
       const removed =
-        range.hours === null
-          ? store.analytics.clearHourly(BUCKET_MIN, BUCKET_MAX) +
-            store.analytics.clearDaily(BUCKET_MIN, BUCKET_MAX)
-          : store.analytics.clearHourly(isoHour(new Date(now.getTime() - (range.hours - 1) * HOUR)), toB);
+        fromB === null
+          ? store.analytics.clearHourly(BUCKET_MIN, BUCKET_MAX) + store.analytics.clearDaily(BUCKET_MIN, BUCKET_MAX)
+          : store.analytics.clearHourly(fromB, toB);
+
+      // The rollups are copies of what was just deleted. Drop them, then re-derive
+      // the buckets that still have hourly rows (a day only partly cleared).
+      if (fromB === null) {
+        store.analytics.clearAllRollups();
+      } else {
+        store.analytics.clearRollups(fromB, toB);
+        rollupRange(store, "hour", fromB, toB, { now });
+        rollupRange(store, "day", bucketDay(fromB, ROLLUP_TIME_ZONE), bucketDay(toB, ROLLUP_TIME_ZONE), { now });
+      }
 
       /**
        * Make the deletion durable.

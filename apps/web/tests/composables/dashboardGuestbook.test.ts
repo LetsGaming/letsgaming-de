@@ -134,20 +134,16 @@ describe("stats placement", () => {
 });
 
 describe("visitsSummary", () => {
-  it("sums buckets, orders them, and computes change", () => {
-    const a = {
-      visits: { total: 6, previous: 4, source: "script" },
-      chart: {
-        visitLength: [
-          { bucket: "2026-01-02", key: "x", count: 1 },
-          { bucket: "2026-01-01", key: "x", count: 2 },
-          { bucket: "2026-01-01", key: "y", count: 3 },
-        ],
-      },
-    } as unknown as AnalyticsResponse;
-    const s = visitsSummary(a);
-    expect(s.series).toEqual([5, 1]);
-    expect(s.total).toBe(6);
-    expect(s.pct).toBe(50);
+  const summaryOf = (confirmedVisits: object) =>
+    visitsSummary({ headline: { confirmedVisits } } as unknown as AnalyticsResponse);
+
+  it("passes the server's total, series and delta through untouched", () => {
+    const s = summaryOf({ total: 6, previous: 4, deltaPct: 50, series: [5, 1], measured: true, previousMeasured: true });
+    expect(s).toEqual({ total: 6, previous: 4, series: [5, 1], deltaPct: 50, measured: true });
+  });
+  it("keeps an unmeasured window distinguishable from zero visits", () => {
+    const s = summaryOf({ total: 0, previous: null, deltaPct: null, series: [0, 0], measured: false, previousMeasured: false });
+    expect(s.measured).toBe(false);
+    expect(s.deltaPct).toBeNull();
   });
 });

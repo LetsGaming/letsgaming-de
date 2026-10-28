@@ -8,7 +8,9 @@ liability, don't collect it.
 
 ## Decision
 - Analytics is log-based aggregate counting: the IP is dropped at parse time; only
-  anonymous per-day counts are stored. No cookies, no identifiers.
+  anonymous aggregate counts (per hour, rolled up to days) are stored. No cookies,
+  no identifiers. See [0018](./0018-visit-model.md) for how visits are counted
+  within that rule.
 - Contact relays to email and stores nothing.
 - Fonts are self-hosted, no third-party request.
 - A short static Datenschutzerklärung ships; **no Impressum** (documented risk

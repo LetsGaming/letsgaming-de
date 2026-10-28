@@ -77,6 +77,38 @@ export function sessionTabsBucket(n: number): SessionTabBucket {
   return "4+";
 }
 
+/** What first proved a page load was a person engaging with it. */
+export const VISIT_TRIGGERS = ["scroll", "section", "dwell", "click"] as const;
+export type VisitTrigger = (typeof VISIT_TRIGGERS)[number];
+
+/** Visible time on the page that confirms a visit on its own. */
+export const VISIT_DWELL_MS = 5_000;
+/** Scroll depth (percent of the page) that confirms a visit on its own. */
+export const VISIT_SCROLL_DEPTH = 25;
+
+export interface VisitState {
+  /** Furthest scroll reached, in percent. */
+  scrollPct: number;
+  /** Modules that have been >=50% visible so far. */
+  modulesSeen: number;
+  /** Time the page was visible, in ms. */
+  visibleMs: number;
+  clicked: boolean;
+}
+
+/**
+ * The first real engagement signal in a visit, or null for a bare load. A load
+ * alone (even a long hidden one) never confirms; the caller sends `visit` once,
+ * the first time this returns non-null.
+ */
+export function visitTrigger(s: VisitState): VisitTrigger | null {
+  if (s.clicked) return "click";
+  if (s.scrollPct >= VISIT_SCROLL_DEPTH) return "scroll";
+  if (s.modulesSeen > 0) return "section";
+  if (s.visibleMs >= VISIT_DWELL_MS) return "dwell";
+  return null;
+}
+
 /**
  * Named, allow-listed interactions. Free-text click keys are never accepted.
  *
@@ -182,6 +214,13 @@ export const ENGAGEMENT_DIMENSIONS = [
   "project", // which project card was opened   → key: <repo name>
   "viewport", // coarse device class            → key: mobile|tablet|desktop
   "theme", // theme active during the visit     → key: dark|light
+  "visit", // a visit showed real engagement     → key: <VisitTrigger>
+  "module", // a module was >=50% visible        → key: <moduleId>
+  "module_entry", // first module seen in a visit → key: <moduleId>
+  "module_dwell", // time focused on a module     → key: <moduleId>|<DwellBucket>
+  "module_flow", // focus moved between modules   → key: <from>><to>
+  "module_exit", // last focused module at leave  → key: <moduleId>
+  "session_modules", // modules seen per visit    → key: <SessionTabBucket>
 ] as const;
 export type EngagementDimension = (typeof ENGAGEMENT_DIMENSIONS)[number];
 
@@ -205,6 +244,9 @@ export const LOG_DIMENSIONS = [
   // exploit sweep wearing a Chrome user-agent. Kept out of path/browser/os/
   // device/referrer for the same reason `bot` is — those describe people.
   "probe", // an attack probe                       → key: <ProbeFamily>
+  "exclusion", // why a hit was not a person        → key: <rule id>
+  "traffic", // class of every counted request      → key: probe|bot|pageview
+  "source", // referrer category of a page view    → key: search|social|campaign|referral|direct
 ] as const;
 export type LogDimension = (typeof LOG_DIMENSIONS)[number];
 
@@ -273,12 +315,15 @@ const splitArrow = (key: string): [string | undefined, string | undefined] => {
 
 /**
  * Validate one event against the vocabulary and the set of known section ids.
+ * Module dimensions are checked against `moduleIds`; without that set (or with
+ * an empty one) they are all dropped.
  * Returns the normalized `{ dimension, key }` to record, or null to drop it.
  * This is the server's whole trust boundary for the tracking endpoint.
  */
 export function validateTrackEvent(
   event: TrackEvent,
   sectionIds: ReadonlySet<string>,
+  moduleIds: ReadonlySet<string> = new Set(),
 ): { dimension: EngagementDimension; key: string } | null {
   const { d, k } = event;
   if (typeof k !== "string" || k.length === 0 || k.length > 64) return null;
@@ -314,6 +359,22 @@ export function validateTrackEvent(
       return ok((VIEWPORT_BUCKETS as readonly string[]).includes(k));
     case "theme":
       return ok(THEME_KEYS.includes(k));
+    case "visit":
+      return ok((VISIT_TRIGGERS as readonly string[]).includes(k));
+    case "module":
+    case "module_entry":
+    case "module_exit":
+      return ok(moduleIds.has(k));
+    case "module_dwell": {
+      const [id, bucket] = splitPair(k);
+      return ok(!!id && moduleIds.has(id) && !!bucket && dwellOk(bucket));
+    }
+    case "module_flow": {
+      const [from, to] = splitArrow(k);
+      return ok(!!from && !!to && moduleIds.has(from) && moduleIds.has(to));
+    }
+    case "session_modules":
+      return ok((SESSION_TAB_BUCKETS as readonly string[]).includes(k));
     default:
       return null;
   }

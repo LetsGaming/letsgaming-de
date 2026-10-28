@@ -8,7 +8,11 @@ import { lineToHits } from "../../src/analytics/parse.js";
  * actual bytes rather than something reconstructed to suit the parser.
  */
 const OWN = "letsgaming.de";
-const dims = (line: string) => lineToHits(line, OWN).map((h) => `${h.dimension}:${h.key}`);
+const DERIVED = new Set(["exclusion", "traffic", "source"]);
+const dims = (line: string) =>
+  lineToHits(line, OWN)
+    .filter((h) => !DERIVED.has(h.dimension))
+    .map((h) => `${h.dimension}:${h.key}`);
 
 // The proxy upgrades HTTP to HTTPS with a 301, so a single visit writes two
 // lines and a single probe writes one before its HTTPS request 404s.
@@ -27,16 +31,19 @@ test("the HTTP→HTTPS redirect is not a page view", () => {
 });
 
 test("the request that actually served the page is counted, exactly once", () => {
-  assert.ok(dims(SERVED_REAL).includes("path:/"));
+  const https = SERVED_REAL.replace('"http://letsgaming.de"', '"https://letsgaming.de/"');
+  assert.ok(dims(https).includes("path:/"));
 });
 
-test("the redirect's self-referral is not counted as a referral", () => {
-  // The follow-up request carries `Referer: http://letsgaming.de` — the site
-  // itself. Without ownHost every visit would report the site as its own source.
-  assert.equal(
-    dims(SERVED_REAL).some((d) => d.startsWith("referrer:")),
-    false,
-  );
+test("a plain-http Referer naming the site is a scanner following its own redirect", () => {
+  // The proxy redirects HTTP to HTTPS, so a browser on the https site never sends
+  // `Referer: http://letsgaming.de`; a script that follows the 301 does.
+  assert.deepEqual(dims(SERVED_REAL), ["bot:Other bot"]);
+});
+
+test("the site's own https Referer is filed as direct, never dropped", () => {
+  const https = SERVED_REAL.replace('"http://letsgaming.de"', '"https://letsgaming.de/"');
+  assert.ok(dims(https).includes("referrer:direct"));
 });
 
 test("a secret sweep wearing a Googlebot user-agent is a probe, not a search engine", () => {
@@ -60,10 +67,10 @@ test("the admin surface and the sitemap are never page views", () => {
   assert.deepEqual(dims(sitemap), []);
 });
 
-test("a HEAD request is not a page view", () => {
+test("a HEAD request is a bot hit, not a page view", () => {
   const line =
     '104.23.199.162 - - [24/Jul/2026:11:18:43 +0200] "HEAD / HTTP/2.0" 200 0 "-" "quic-go-HTTP/3"';
-  assert.deepEqual(dims(line), []);
+  assert.deepEqual(dims(line), ["bot:Script or tool"]);
 });
 
 test("a tagged link names its source even with no Referer at all", () => {

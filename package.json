@@ -23,7 +23,9 @@
     "analytics": "pnpm --filter=@lg/server analytics",
     "lint:tokens": "pnpm --filter=@lg/web lint:tokens",
     "analytics:reclassify": "pnpm --filter=@lg/server analytics:reclassify",
-    "analytics:rebuild": "pnpm --filter=@lg/server analytics:rebuild"
+    "analytics:rebuild": "pnpm --filter=@lg/server analytics:rebuild",
+    "analytics:rollup": "pnpm --filter=@lg/server analytics:rollup",
+    "db:migrate:down": "pnpm --filter=@lg/db migrate:down"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

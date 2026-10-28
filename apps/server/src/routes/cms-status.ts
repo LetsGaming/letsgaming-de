@@ -3,15 +3,15 @@
  * section stats, and the recorded-activity-name list. All authed.
  */
 
-import { DWELL_BUCKETS, SOURCE_IDS, isLeaf, type DwellBucket, type NavNode } from "@lg/core";
+import { SOURCE_IDS, isLeaf, medianDwell, sanitizeTimeZone, type DwellBucket, type NavNode } from "@lg/core";
 import type { Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../auth/guard.js";
 import type { ServerEnv } from "../env.js";
 import { badRequest, notFound, unavailable } from "../errors.js";
+import { buildWindows } from "../analytics/window.js";
 import type { SyncRunner } from "../sync/runner.js";
 
-const HOUR_MS = 3_600_000;
 const RECENT_EDITS = 10;
 /** Saves of the same kind and reason closer together than this read as one edit. */
 const EDIT_BURST_MS = 600_000;
@@ -70,35 +70,7 @@ export function revisionLabel(reason: string): string {
   return REVISION_LABELS[reason] ?? reason;
 }
 
-/**
- * Representative seconds per dwell bucket, used to turn the bucket counters into
- * a median. The counters only say "how many visits fell in each bucket", so the
- * median is the midpoint of the bucket holding the 50th percentile. The open-ended
- * "10m+" bucket is assumed to be 15 minutes.
- */
-export const DWELL_MIDPOINT_SECONDS: Record<DwellBucket, number> = {
-  "<5s": 2.5,
-  "5-15s": 10,
-  "15-30s": 22.5,
-  "30-60s": 45,
-  "1-3m": 120,
-  "3-10m": 390,
-  "10m+": 900,
-};
-
-export function medianDwell(counts: Partial<Record<DwellBucket, number>>): {
-  seconds: number;
-  bucket: DwellBucket;
-} | null {
-  const total = DWELL_BUCKETS.reduce((n, b) => n + (counts[b] ?? 0), 0);
-  if (total === 0) return null;
-  let seen = 0;
-  for (const bucket of DWELL_BUCKETS) {
-    seen += counts[bucket] ?? 0;
-    if (seen >= total / 2) return { seconds: DWELL_MIDPOINT_SECONDS[bucket], bucket };
-  }
-  return null;
-}
+export { DWELL_MIDPOINT_SECONDS, medianDwell } from "@lg/core";
 
 function flatten(nodes: NavNode[], into: NavNode[] = []): NavNode[] {
   for (const n of nodes) {
@@ -108,7 +80,6 @@ function flatten(nodes: NavNode[], into: NavNode[] = []): NavNode[] {
   return into;
 }
 
-const isoHour = (d: Date): string => d.toISOString().slice(0, 13);
 
 type JobState = "ok" | "error" | "never";
 
@@ -235,9 +206,15 @@ export function registerCmsStatusRoutes(
       nodes = flatten([root]);
     }
 
-    const now = new Date();
-    const from = isoHour(new Date(now.getTime() - hours * HOUR_MS));
-    const to = isoHour(now);
+    // The same window the analytics screen uses for this length, so the two agree.
+    const { current } = buildWindows({
+      now: new Date(),
+      hours,
+      unit: hours <= 72 ? "hour" : "day",
+      timeZone: sanitizeTimeZone(undefined),
+    });
+    const from = current.fromB;
+    const to = current.toB;
     const dwell = new Map<string, Partial<Record<DwellBucket, number>>>();
     for (const row of store.analytics.topHourly("dwell", from, to, 5000)) {
       const [id, bucket] = row.key.split("|");

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PROBE_FAMILY, probeFamily } from "../../src/analytics/probe.js";
+import { PROBE_FAMILY, probeFamily, probeRuleFor } from "../../src/analytics/probe.js";
 
 /**
  * Every path in this suite is one that actually appeared in the live dashboard's
@@ -105,4 +105,41 @@ test("encoded traversal is still caught after decoding", () => {
 
 test("a real path with an encoded space is still a real path", () => {
   assert.equal(probeFamily("/md/blog/hello%20world"), null);
+});
+
+test("query strings are probes when they carry what only a scanner sends", () => {
+  const cases: [string, string][] = [
+    ["/?phpinfo=1", "probe-query-php"],
+    ["/?rest_route=/", "probe-query-wordpress"],
+    ["/?wpcbfdc18575", "probe-query-wordpress"],
+    ["/?url=.env", "probe-query-lfi"],
+    ["/?file=%2Ftmp%2Fsess_a7d49fc98768ad2648984075a1&0=id", "probe-query-lfi"],
+    ["/?file=..%2F..%2F..%2F..%2F..%2F..%2F%2Fvar%2Flib%2Fphp%2Fsessions%2Fsess_x&0=id", "probe-query-lfi"],
+    ["/?page=..%2f..%2fetc%2fpasswd", "probe-query-lfi"],
+    ["/?include=/etc/passwd", "probe-query-lfi"],
+    ["/?view=../../secret", "probe-query-lfi"],
+    ["/?stream_uuid=2fd8bbe5-0e5d-477a-9092-b802b11d75ad", "probe-query-cloaker"],
+    ["/?subid3=abc", "probe-query-cloaker"],
+  ];
+  for (const [target, id] of cases) assert.equal(probeRuleFor(target)?.id, id, target);
+});
+
+test("the parameters this site actually reads are never probes", () => {
+  for (const target of [
+    "/?lang=de",
+    "/?lang=en",
+    "/?utm_source=discord",
+    "/?utm_source=github.environment",
+    "/?preview=1",
+    "/work?tab=1",
+    "/?ref=steam",
+    "/?wpforms",
+    "/about?from=newsletter&source=mail",
+  ]) {
+    assert.equal(probeRuleFor(target), null, target);
+  }
+});
+
+test("a path rule still wins when the target also has a query", () => {
+  assert.equal(probeRuleFor("/wp-login.php?redirect_to=/")?.id, "probe-wordpress");
 });

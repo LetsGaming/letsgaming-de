@@ -2,8 +2,16 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { cms } from "../../src/lib/cms";
-import { METRIC_SOURCES } from "@lg/core";
-import type { AnalyticsChart, AnalyticsResponse, Localized, SiteContent, SiteView } from "@lg/core";
+import { HEADLINE_METRICS, METRIC_SOURCES } from "@lg/core";
+import type {
+  AnalyticsChart,
+  AnalyticsHeadline,
+  AnalyticsResponseFull,
+  HeadlineMetric,
+  Localized,
+  SiteContent,
+  SiteView,
+} from "@lg/core";
 import { useCms } from "../../src/composables/useCms";
 import { NAV_GROUPS } from "../../src/composables/useCmsNav";
 
@@ -152,8 +160,21 @@ const emptyChart = (): AnalyticsChart => ({
   probes: [],
 });
 
-const emptyAnalytics = (): AnalyticsResponse => ({
-  range: { from: "2026-07-17T00", to: "2026-07-17T12", hours: 12, unit: "hour", timeZone: "UTC" },
+const headlineMetric = (over: Partial<HeadlineMetric> = {}): HeadlineMetric => ({
+  total: 0,
+  previous: null,
+  deltaPct: null,
+  series: [],
+  measured: true,
+  previousMeasured: false,
+  ...over,
+});
+
+const emptyHeadline = (): AnalyticsHeadline =>
+  Object.fromEntries(HEADLINE_METRICS.map((id) => [id, headlineMetric()])) as AnalyticsHeadline;
+
+const emptyAnalytics = (): AnalyticsResponseFull => ({
+  range: { from: "2026-07-17T00", to: "2026-07-17T12", hours: 12, unit: "hour", timeZone: "UTC", previous: null },
   paths: [],
   referrers: [],
   browsers: [],
@@ -161,7 +182,8 @@ const emptyAnalytics = (): AnalyticsResponse => ({
   devices: [],
   bots: [],
   probes: [],
-  visits: { total: 0, previous: null, source: "script" },
+  visits: { total: 0, previous: null, source: "script", measured: true },
+  completedVisits: { total: 0, previous: null, source: "script" },
   pageviews: { total: 0, previous: null, source: "log" },
   secondPage: { visits: 0, reached: 0, rate: null, source: "script" },
   metricSources: METRIC_SOURCES,
@@ -172,6 +194,25 @@ const emptyAnalytics = (): AnalyticsResponse => ({
     sessionTabs: [], sessionDwell: [], clicks: [], projects: [],
     viewport: [], theme: [],
   },
+  headline: emptyHeadline(),
+  quality: {
+    funnel: { requests: 0, probes: 0, bots: 0, unverified: 0, loads: 0, confirmed: 0, completed: 0 },
+    coverage: null,
+    confirmationRate: null,
+    confirmationSince: null,
+    measured: false,
+    partiallyMeasured: false,
+    exclusions: [],
+    approximateHistory: false,
+  },
+  sections: {
+    loads: 0,
+    modules: [],
+    flow: [],
+    sessionModules: [],
+    scrollDepth: [],
+  },
+  sources: { total: 0, rows: [] },
 });
 
 const L = (en: string): Localized => ({ en });
@@ -265,20 +306,29 @@ describe("analytics refresh", () => {
 });
 
 describe("analytics headline figures", () => {
-  it("takes visits and page views from the whole-range figures, with their own comparison", async () => {
+  it("keeps the server's deltas as given and charts confirmed visits from the headline series", async () => {
     vi.spyOn(cms, "analytics").mockResolvedValue({
       ...emptyAnalytics(),
-      visits: { total: 40, previous: 20, source: "script" },
-      pageviews: { total: 300, previous: 150, source: "log" },
-      previous: { pageviews: 1, sections: 0, clicks: 0, visitLength: 1, bots: 0, probes: 0 },
+      headline: {
+        ...emptyHeadline(),
+        confirmedVisits: headlineMetric({
+          total: 40,
+          previous: 20,
+          deltaPct: 100,
+          series: [0, 10, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          previousMeasured: true,
+        }),
+      },
     });
     const { api } = mountCms();
     api().pick("analytics");
     await flushPromises();
 
-    expect(api().metricTotals.value).toMatchObject({ visitLength: 40, pageviews: 300 });
-    expect(api().comparison.value?.visitLength).toEqual({ delta: 20, pct: 100 });
-    expect(api().tileKeys).toEqual(["visitLength", "pageviews", "sections", "clicks"]);
+    expect(api().analytics.value?.headline.confirmedVisits.deltaPct).toBe(100);
+    api().metric.value = "visits";
+    await flushPromises();
+    expect(api().chart.value?.total).toBe(40);
+    expect(api().chart.value?.layers.map((l) => l.key)).toEqual(["visits"]);
   });
 
   it("remembers the clock picked in Settings across panels", async () => {
@@ -327,7 +377,7 @@ describe("analytics dimension filtering", () => {
 
   it("a stale response never overwrites a newer one, in either order", async () => {
     const load = vi.spyOn(cms, "analytics");
-    let resolveFirst!: (v: AnalyticsResponse) => void;
+    let resolveFirst!: (v: AnalyticsResponseFull) => void;
     load.mockImplementationOnce(
       () => new Promise((resolve) => (resolveFirst = resolve)),
     );

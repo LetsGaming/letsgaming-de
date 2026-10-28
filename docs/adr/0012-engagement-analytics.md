@@ -1,6 +1,6 @@
 # 0012: Cookieless engagement analytics
 
-**Status:** Accepted · 2026 · extends [0007](./0007-privacy-by-omission.md)
+**Status:** Accepted · 2026 · extends [0007](./0007-privacy-by-omission.md); visit counting extended by [0018](./0018-visit-model.md)
 
 ## Context
 

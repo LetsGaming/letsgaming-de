@@ -10,7 +10,9 @@
 import type { Source } from "@lg/core";
 import type { Store } from "@lg/db";
 import { getSources, type SourcesEnv } from "@lg/sources";
+import { ROLLUP_TIME_ZONE } from "@lg/db";
 import cron, { type ScheduledTask } from "node-cron";
+import { catchUp, runDailyRollup, runHourlyRollup } from "../analytics/rollup.js";
 import { recordOutcome } from "./tracked.js";
 
 export interface SyncResult {
@@ -44,6 +46,17 @@ export class SyncRunner {
       }
     } catch (err) {
       this.log(`[maint] analytics rollup FAILED: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  /** Recompute analytics rollups; a failure is logged and the next run retries. */
+  runRollup(kind: "catch-up" | "hourly" | "daily"): void {
+    try {
+      if (kind === "catch-up") catchUp(this.store);
+      else if (kind === "hourly") runHourlyRollup(this.store);
+      else runDailyRollup(this.store);
+    } catch (err) {
+      this.log(`[maint] analytics ${kind} rollup FAILED: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -137,8 +150,13 @@ export class SyncRunner {
     // Nightly analytics rollup/prune (keeps the store from growing unbounded).
     const maint = cron.schedule("0 4 * * *", () => this.runMaintenance());
     this.tasks.push(maint);
+    // Rollups: the open hour every hour at :05, the last two Berlin days at 04:10
+    // Berlin time (after the 04:00 prune), and a catch-up from `through` at boot.
+    this.tasks.push(cron.schedule("5 * * * *", () => this.runRollup("hourly")));
+    this.tasks.push(cron.schedule("10 4 * * *", () => this.runRollup("daily"), { timezone: ROLLUP_TIME_ZONE }));
     void this.runAll();
     this.runMaintenance();
+    this.runRollup("catch-up");
   }
 
   stop(): void {

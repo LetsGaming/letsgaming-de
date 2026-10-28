@@ -104,13 +104,31 @@ refills it.
 
 | Table | Holds |
 |---|---|
-| `analytics_daily` | `(day, dimension, key) -> count`. Log-derived traffic stats, rolled up. Dimensions: path, referrer, browser, os, device. |
-| `analytics_hourly` | `(bucket, dimension, key) -> count`, bucketed by UTC hour. Engagement events plus recent traffic, so the dashboard can show hourly resolution. |
+| `analytics_hourly` | `(bucket, dimension, key) -> count`, bucketed by UTC hour. Every dimension, log-derived and beacon-derived, lands here first. Kept `RETAIN_HOURLY_DAYS` (default 90). |
+| `analytics_rollup` | `(grain, bucket, dimension, key) -> count`. The same counters materialized per grain: `hour` buckets are UTC hours, `day` buckets are Europe/Berlin calendar days. What the dashboard's lists and charts read. |
+| `analytics_summary` | `(grain, bucket, metric) -> value`. One additive figure per bucket (page views, loads, confirmed, completed, bots, probes, clicks, modules seen, dwell and modules-per-visit buckets). Totals, ratios and medians are derived from sums of these. |
+| `analytics_rollup_state` | `(grain) -> through, computed_at, approx`. The newest bucket each grain has computed, and whether the day grain holds legacy UTC-day history. |
 | `analytics_state` | `(log path) -> byte offset`, so re-running the ingest doesn't double-count |
+| `analytics_daily` | Legacy. `(day, dimension, key) -> count` by UTC day, for every dimension. Still written by retention, no longer read. Its history was copied once into the day rollups. |
 
-No IPs, no identifiers, no per-visitor rows, only counts. Old hourly rows are
-bundled into daily rows and pruned on a schedule to keep the volume flat. The two
-systems, the dimensions, and the retention are in
+`analytics_hourly` and the two rollup tables hold every dimension, not only the
+log-derived ones: `path`, `referrer`, `browser`, `os`, `device`, `bot`, `probe`,
+`exclusion`, `traffic` (`pageview`, `bot`, `probe`, `notfound`) and `source` from the
+access log, and `tab`, `exit`, `transition`, `dwell`, `scroll`, `session_tabs`,
+`session_dwell`, `click`, `project`, `viewport`, `theme`, `visit`, `module`,
+`module_entry`, `module_exit`, `module_dwell`, `module_flow` and `session_modules`
+from the beacon, plus the `x:<a>:<b>` pair counters (not rolled up). Key formats,
+and what each counts, are in
+[analytics-and-privacy](./analytics-and-privacy.md#dimensions).
+
+Rollups are derived and recomputable per bucket (`pnpm analytics:rollup`) for as
+long as the hourly rows exist. Hour rollups are kept 14 days. Day rollups are kept
+indefinitely, and once `analytics_hourly` is pruned they are the only copy of that
+history, so they belong in the backup. An hourly row is pruned only after its
+Berlin day is stored in the day grain.
+
+No IPs, no identifiers, no per-visitor rows, only counts. The two systems, the
+funnel that reconciles them, and the retention are in
 [analytics-and-privacy](./analytics-and-privacy.md).
 
 ## The content model in code

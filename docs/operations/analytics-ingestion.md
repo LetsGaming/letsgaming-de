@@ -36,6 +36,23 @@ restart won't re-read env or mounts.
 
 That's the whole setup if your reverse proxy runs on the Docker host.
 
+### The last 10 seconds are held back
+
+One classifier rule, `burst-adjacent`, judges a page view by the probe and
+not-found lines within 10 seconds on either side of it, so a page view is only
+final once those 10 seconds of log exist. Ingest therefore holds back the newest
+lines: it stops recording at the first page view whose window is not complete yet
+(about 12 seconds of wall clock, 10 plus a 2 second margin), and persists the
+byte offset at the start of that line. The next run re-reads from there, so each
+line is recorded exactly once. To give a held page view the probes that came
+before it, a run also re-reads up to 256 KiB before the saved offset, as context
+only; those lines are never recorded twice.
+
+The visible effect is that the dashboard trails the log by up to a few seconds
+past the 5 minute schedule, and the newest page view may appear one run later. It
+is not a lost line. A log that stops growing settles by itself once the margin has
+passed.
+
 ## When the proxy runs on another host
 
 If the proxy is on a different box (an NPMplus LXC, say), the container can't read
@@ -111,10 +128,86 @@ restart). A missing file at that path means `ACCESS_LOG_DIR` isn't mounted or
 points at the wrong directory. See
 [operations/troubleshooting](./troubleshooting.md).
 
+## Rollups
+
+The dashboard reads pre-aggregated rows, not live sums. The sync worker keeps them
+current, with nothing to configure:
+
+| Job | When | Recomputes |
+|---|---|---|
+| Hourly | every hour at :05 | the current UTC hour and the two before it |
+| Daily | 04:10 Europe/Berlin | the last two Berlin days, plus the last 48 hours of hour buckets |
+| Catch-up | at server boot | both grains, from where each stopped (from the oldest hourly row on a fresh store) |
+
+Each job recomputes whole buckets, so running one twice, or overlapping a range,
+changes nothing. A failure is logged as `[maint] analytics ... rollup FAILED` and
+the next run retries. To backfill or repair by hand, run `pnpm analytics:rollup`
+(optionally `--from YYYY-MM-DD --to YYYY-MM-DD` for those Berlin days). In Docker
+that is `node dist/analytics/rollup-cli.js`. The schema change behind this
+(migration `0021`) is reversible: stop the server, copy the database, then
+`pnpm db:migrate:down --to <version>`.
+
 ## Seeing the results
 
 View them in the CMS Analytics screen. Preview traffic from the admin is never
 counted.
+
+### Reading the Traffic quality card
+
+The card walks from the widest count to the narrowest, and each step is a counter,
+never a matched request:
+
+- **Requests** is page views + bots + probes. **Scanner probes**, **Bots** and
+  **Page views** are the three things a request can be (not-found lines are kept
+  as a count but are not requests here).
+- **Script loads** is how many page loads ran the tracker. **Beacon coverage** is
+  loads divided by page views. A low coverage with a large "page views had no
+  script load" note means most logged traffic never ran the script: other bots the
+  classifier missed, blockers, or a broken beacon (see the checklist below).
+- **Confirmed visits** is loads that showed engagement. **Confirmation rate** is
+  confirmed divided by loads. A load that bounces before 5 seconds without
+  scrolling, seeing a section or clicking is a load, not a visit.
+- **Completed visits** is visits that reported their end, which reads below
+  confirmed by design (killed background tabs never fire `pagehide`).
+- **Why requests were excluded** lists classifier rule ids (for example
+  `probe-wordpress`, `ua-headless`, `burst-adjacent`) by count. A rule that is
+  suddenly large is the thing to look at.
+
+"Page views" is the ceiling and "Confirmed visits" the floor. The gap is the point
+of the card, not an error.
+
+### "Not measured" after deploy
+
+The `visit` event only exists from the first deploy of the visit model. Before the
+first one is recorded (`quality.confirmationSince`, a UTC hour), confirmed visits
+and the confirmation rate show **Not measured**, not 0. A range that straddles that
+moment says confirmation covers only part of it. This is expected right after the
+deploy and fixes itself as days pass; nothing needs to be run. A stuck "not
+measured" after traffic has arrived means no `visit` event is reaching the server,
+which is the checklist below. Confirmed visits are never estimated from completed
+visits.
+
+### If confirmed visits stay at zero or coverage is low
+
+Work through these in order. Pages without a beacon read as page views with no
+script load.
+
+1. **API origin.** The browser reaches the API at `PUBLIC_API_URL`, baked into the
+   client bundle at build. If it was empty or wrong at build time, the tracker is
+   off (`apiBase` is empty) or posts to the wrong host. A same-origin `/api/pulse`
+   is not an option on this deployment: it returns 404. Check the built bundle,
+   and rebuild the web image with the right `PUBLIC_API_URL` build argument.
+2. **Reachability and CORS.** `POST https://<api>/api/pulse` from the site's origin
+   should answer `204`. Anything else (a 404, a CORS failure, a 429 from the rate
+   limit) means events are dropped.
+3. **Tracker blockers.** The endpoint is named neutrally, but a blocker can still
+   drop a cross-origin request to the API host. This shows up as low coverage with
+   normal-looking traffic.
+4. **Do Not Track.** A browser with DNT set sends nothing, by design. (Global
+   Privacy Control is not honoured.)
+5. **Owner opt-out.** Settings has an analytics opt-out stored in the browser. Your
+   own browser may simply be opted out, along with preview frames and automated
+   (`navigator.webdriver`) browsers, which never report.
 
 
 ## Clearing is durable, and how
@@ -150,11 +243,12 @@ dimension they were given. Two commands, and the difference between them matters
 | Command | What it does | When |
 |---|---|---|
 | `analytics:reclassify` | Moves stored `path` rows into `probe` where the current rules say so. In place, idempotent, no log needed. | The path list is polluted and you still want the counts. |
-| `analytics:rebuild [access.log] [ownHost]` | **Deletes** every log-derived dimension and re-derives them by re-reading the log from byte zero. | The browser/OS/device/referrer splits are polluted too. |
+| `analytics:rebuild [access.log] [ownHost]` | **Deletes** every log-derived dimension and re-derives them by re-reading the log from byte zero, under the current classifier. | The browser/OS/device/referrer splits are polluted too, or a classifier rule changed. |
+| `analytics:rollup [--from YYYY-MM-DD --to YYYY-MM-DD]` | Recomputes the materialized rollups from `analytics_hourly`. With no range it catches both grains up; with a range it recomputes those Berlin days. Idempotent. | Both commands above already finish with a full rollup. Run this on its own to catch up after downtime, or after an interrupted rebuild. |
 
-Both default their arguments from the server's own config — the log path from
+Both of the first two default their arguments from the server's own config: the log path from
 `ACCESS_LOG`, the host from `ANALYTICS_OWN_HOST` (falling back to the `WEB_ORIGIN`
-host) — so in a configured deployment they take none.
+host), so in a configured deployment they take none.
 
 ### Running them in Docker
 
@@ -167,8 +261,17 @@ commands are part of it — so invoke them with plain `node`:
 # Safe form: the in-process ingest can't race the rebuild if the server is down.
 docker compose stop server
 docker compose run --rm server node dist/analytics/rebuild-cli.js
+# Only needed on its own (the rebuild already ends with a full rollup):
+docker compose run --rm server node dist/analytics/rollup-cli.js
 docker compose start server
 ```
+
+After a classifier change, the full repair is `analytics:rebuild`, then
+`analytics:rollup` if you want to be certain the rollups match (in development
+`pnpm analytics:rebuild` followed by `pnpm analytics:rollup`; the rebuild already
+runs the same catch-up as its last step, so the second command is a no-op when
+nothing was interrupted). Without the rebuild, existing rows keep the verdict they
+were given at ingest.
 
 `docker compose run` starts a throwaway container from the same image with the
 same volumes, so it sees the same store at `/data` and the same log at `/logs`.
@@ -195,7 +298,10 @@ four behind, which is how a dashboard ends up reporting "Probes: 1,300" and
 The log is the source of truth and the aggregates are a projection of it, so the
 complete repair is to rebuild the projection. **Rebuild deletes before it
 re-reads, and it can only restore what the log file still covers** — check what
-your rotation keeps first. Engagement data (sections, clicks, dwell, visits) is
+your rotation keeps first. That includes the day rollups: the rebuild also deletes
+the stored rollup rows of the log-derived dimensions, so history older than both
+the log and the 90-day hourly retention is not re-derived and does not come back.
+Engagement data (sections, clicks, dwell, visits) is
 never touched: it comes from the browser beacon, and no log replay can
 reconstruct it.
 
@@ -211,8 +317,9 @@ page views with both values; nothing links it to a visitor.
   hour (`PAIR_KEY_CAP_PER_HOUR`). Past that, new combinations are dropped for the
   hour and known ones keep counting. The table is bounded by 10 x 300 rows an
   hour whatever the traffic.
-- **Retention is unchanged.** Pairs live in `analytics_hourly` and roll up into
-  `analytics_daily` with everything else.
+- **Pairs are not rolled up.** They live in `analytics_hourly` only and are pruned
+  with it, so a filter narrows the other lists within the hourly retention (90
+  days by default), not over the full day-rollup history.
 - **History needs a rebuild.** Pairs are written as lines are ingested, so traffic
   from before they shipped has none. `analytics:rebuild` drops and re-derives the
   pairs along with the other log dimensions, so it also backfills them for

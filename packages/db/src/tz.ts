@@ -85,3 +85,58 @@ export function eachHourSlot(
     add(weekday, hour, overlap);
   }
 }
+
+/**
+ * The zone `analytics_rollup` day buckets are expressed in. A day rollup is a
+ * wall-clock fact, so it can only serve readers in the zone it was cut in.
+ */
+export const ROLLUP_TIME_ZONE = "Europe/Berlin";
+
+/** A UTC hour bucket label, `YYYY-MM-DDTHH`. */
+export function hourBucket(epochMs: number): string {
+  return new Date(epochMs).toISOString().slice(0, 13);
+}
+
+/** A calendar-day label shifted by a whole number of days (may be negative). */
+export function shiftDay(day: string, deltaDays: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + deltaDays * 24 * HOUR_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * How far a zone's wall clock runs ahead of UTC at a given instant, in ms.
+ *
+ * `zonedParts` resolves to the hour, so the instant is floored to the hour before
+ * comparing; otherwise the minutes would show up as a bogus sub-hour offset.
+ */
+function zoneOffsetMs(atMs: number, timeZone: string): number {
+  const p = zonedParts(atMs, timeZone);
+  const asIfUtc = Date.parse(`${p.day}T${String(p.hour).padStart(2, "0")}:00:00Z`);
+  return asIfUtc - Math.floor(atMs / HOUR_MS) * HOUR_MS;
+}
+
+/**
+ * The UTC instant at which a local calendar day begins.
+ *
+ * Two passes: the offset at the naive guess may not be the one that applies at the
+ * answer, because on a DST changeover the clock moves between them.
+ */
+export function localDayStartMs(day: string, timeZone: string): number {
+  const wall = Date.parse(`${day}T00:00:00Z`);
+  const first = wall - zoneOffsetMs(wall, timeZone);
+  return wall - zoneOffsetMs(first, timeZone);
+}
+
+/**
+ * The inclusive UTC hour-bucket span of one local day. A day is 23, 24 or 25
+ * hours long across a DST change, which is why this can't be `T00`..`T23`.
+ */
+export function dayHourSpan(day: string, timeZone: string): { fromB: string; toB: string; hours: number } {
+  const start = localDayStartMs(day, timeZone);
+  const next = localDayStartMs(shiftDay(day, 1), timeZone);
+  return { fromB: hourBucket(start), toB: hourBucket(next - HOUR_MS), hours: Math.round((next - start) / HOUR_MS) };
+}
+
+/** The local day an hour bucket (`YYYY-MM-DDTHH`, UTC) falls on. */
+export function bucketDay(bucket: string, timeZone: string): string {
+  return zonedParts(Date.parse(`${bucket}:00:00Z`), timeZone).day;
+}

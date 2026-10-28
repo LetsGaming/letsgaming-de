@@ -89,7 +89,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // Client-visible. `apiUrl` for browser calls to the API ("" = same origin);
+      // Client-visible. `apiUrl` for browser calls to the API (empty disables the tracker);
       // `siteUrl` is the canonical origin SmartLink uses to tell internal from
       // external. Overridable at runtime via NUXT_PUBLIC_API_URL / NUXT_PUBLIC_SITE_URL.
       apiUrl: process.env.PUBLIC_API_URL ?? "",

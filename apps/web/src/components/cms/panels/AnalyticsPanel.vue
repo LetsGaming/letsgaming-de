@@ -3,26 +3,36 @@ import { computed, onUnmounted, ref } from "vue";
 import type { AnalyticsCardId } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 import { STACK_COLORS } from "../../../composables/useAnalytics";
-import { dwellHistograms, formatSecondPage, parseTransition, scrollFunnels } from "../../../lib/engagement-keys";
+import {
+	HEADLINE_TILES,
+	HEADLINE_TILE_IDS,
+	comparisonCaption,
+	deltaView,
+	formatTileValue,
+	sparkLabel,
+	sparkValues,
+} from "../../../lib/analytics-view";
 import AnalyticsCard from "../AnalyticsCard.vue";
+import HelpTip from "../HelpTip.vue";
+import SectionFlow from "../SectionFlow.vue";
+import SourceShares from "../SourceShares.vue";
+import Sparkline from "../Sparkline.vue";
+import TrafficQuality from "../TrafficQuality.vue";
 
 // View-only panel. All state and handlers come from the shared CMS context.
 const {
 	METRIC_LABELS,
 	METRIC_SOURCES,
 	SOURCE_LABELS,
-	tileKeys,
+	metricKeys,
 	RANGES,
 	analytics,
 	analyticsAt,
 	chart,
 	loadingA,
 	metric,
-	metricTotals,
-	comparison,
 	zone,
 	activeZone,
-	medianVisitLength,
 	at,
 	atLabel,
 	setAt,
@@ -31,7 +41,6 @@ const {
 	filterKey,
 	selectDimension,
 	clearDimensionFilter,
-	filteredComparison,
 	chips,
 	clearFilters,
 	referrerRules,
@@ -50,10 +59,9 @@ const {
 } = useCmsContext();
 
 /** Custom from/to picker: a disclosure like the referrer-rule editor, open or
- *  closed independent of whether a custom range is actually active — closing
+ *  closed independent of whether a custom range is actually active, closing
  *  it doesn't clear a range already applied. */
 const showCustomRange = ref(false);
-const secondPage = computed(() => (analytics.value?.secondPage ? formatSecondPage(analytics.value.secondPage) : null));
 const todayStr = new Date().toISOString().slice(0, 10);
 const customFromInput = ref(customRange.value?.from ?? "");
 const customToInput = ref(customRange.value?.to ?? "");
@@ -69,7 +77,7 @@ function clearCustomRangeAndClose() {
 	showCustomRange.value = false;
 }
 
-/** "vs previous 72h" for a preset, "vs previous 6 days" for a custom span —
+/** "vs previous 72h" for a preset, "vs previous 6 days" for a custom span -
  *  the axis caption's comparison line needs a window length either way. */
 const comparisonLabel = computed(() => {
 	if (customRange.value) {
@@ -81,7 +89,7 @@ const comparisonLabel = computed(() => {
 });
 
 /**
- * "updated 12s ago" — the panel refreshes itself now, so it has to be able to
+ * "updated 12s ago", the panel refreshes itself now, so it has to be able to
  * say how old what you're reading is. A number that changes on its own and can't
  * tell you when it last changed is the site's own worst bug wearing a dashboard.
  *
@@ -99,7 +107,7 @@ onUnmounted(() => clearInterval(tick));
  * The SVG is `width: 100%` over a fixed 720-unit viewBox, so it renders at
  * whatever the panel is wide and client pixels are not viewBox units. Scaling by
  * the rendered width is what lets the hover resolve to the right bucket at any
- * panel size — reading `offsetX` directly would drift further off the more the
+ * panel size, reading `offsetX` directly would drift further off the more the
  * chart was stretched.
  */
 function onPointer(e: PointerEvent) {
@@ -140,15 +148,27 @@ const muted = ref(new Set<string>());
 /** Whether the data table is on screen as well as in the accessibility tree. */
 const showTable = ref(false);
 
-const funnels = computed(() =>
-	scrollFunnels(analytics.value?.engagement?.scroll ?? [], analytics.value?.engagement?.tabs ?? []),
-);
-const histograms = computed(() => dwellHistograms(analytics.value?.engagement?.dwell ?? []));
-const pct = (share: number) => `${Math.round(share * 100)}%`;
-const arrow = (key: string) => {
-	const t = parseTransition(key);
-	return t ? `${t.from} -> ${t.to}` : key;
-};
+const tiles = computed(() => {
+	const h = analytics.value?.headline;
+	const unit = analytics.value?.chart.unit ?? "day";
+	if (!h) return [];
+	return HEADLINE_TILE_IDS.map((id) => {
+		const m = h[id];
+		const spec = HEADLINE_TILES[id];
+		return {
+			id,
+			label: spec.label,
+			explainer: spec.explainer,
+			value: formatTileValue(id, m),
+			delta: deltaView(m.deltaPct),
+			caption: comparisonCaption(m, comparisonLabel.value),
+			spark: sparkValues(m),
+			sparkLabel: sparkLabel(spec.label, m, unit),
+		};
+	});
+});
+
+const confirmedUnmeasured = computed(() => analytics.value?.headline.confirmedVisits.measured === false);
 
 /** Where to draw the held marker for the selected bucket. */
 const atColumn = computed(() =>
@@ -184,37 +204,6 @@ function toggleSeries(key: string) {
 	if (!next.delete(key)) next.add(key);
 	muted.value = next;
 }
-
-/** "+18%" / "−4%" / "+7" when there's no percentage to give (a rise from zero). */
-function deltaText(k: string): string {
-	const c = comparison.value?.[k as keyof NonNullable<typeof comparison.value>];
-	if (!c || c.delta === 0) return "";
-	const sign = c.delta > 0 ? "+" : "−";
-	return c.pct === null
-		? `${sign}${Math.abs(c.delta)}`
-		: `${sign}${Math.abs(Math.round(c.pct))}%`;
-}
-
-/** Which way the arrow points — `""` when there's nothing to compare. */
-function deltaDirection(k: string): "up" | "down" | "" {
-	const c = comparison.value?.[k as keyof NonNullable<typeof comparison.value>];
-	if (!c || c.delta === 0) return "";
-	return c.delta > 0 ? "up" : "down";
-}
-
-/** Same shape as `deltaText`/`deltaDirection`, for the single filtered-dimension
- *  tile rather than one of the six per-metric ones. */
-const filteredDeltaText = computed(() => {
-	const c = filteredComparison.value;
-	if (!c || c.delta === 0) return "";
-	const sign = c.delta > 0 ? "+" : "−";
-	return c.pct === null ? `${sign}${Math.abs(c.delta)}` : `${sign}${Math.abs(Math.round(c.pct))}%`;
-});
-const filteredDeltaDirection = computed<"up" | "down" | "">(() => {
-	const c = filteredComparison.value;
-	if (!c || c.delta === 0) return "";
-	return c.delta > 0 ? "up" : "down";
-});
 
 const age = computed(() => {
 	if (!analyticsAt.value) return "";
@@ -256,27 +245,85 @@ const ingestStatus = computed(() => {
   <section class="pane">
         <div v-if="!analytics" class="muted">Loading…</div>
         <template v-else>
+          <div class="panelhead">
+            <p class="muted privacyline">
+              Cookieless, anonymous aggregates only: no cookies, no IPs, nothing personal stored.
+            </p>
+            <div class="seg ranges" role="group" aria-label="Time range">
+              <button
+                v-for="r in RANGES"
+                :key="r.hours"
+                type="button"
+                :class="{ on: !customRange && rangeHours === r.hours }"
+                :aria-pressed="!customRange && rangeHours === r.hours"
+                @click="setRange(r.hours)"
+              >
+                {{ r.label }}
+              </button>
+              <button
+                type="button"
+                :class="{ on: !!customRange }"
+                :aria-pressed="!!customRange"
+                :aria-expanded="showCustomRange"
+                @click="showCustomRange = !showCustomRange"
+              >
+                {{ customRange ? `${customRange.from} – ${customRange.to}` : "Custom" }}
+              </button>
+            </div>
+          </div>
+          <div v-if="showCustomRange" class="customrange">
+            <label>
+              From
+              <input v-model="customFromInput" type="date" :max="todayStr" />
+            </label>
+            <label>
+              To
+              <input v-model="customToInput" type="date" :max="todayStr" />
+            </label>
+            <button type="button" class="btn" @click="applyCustomRange">Apply</button>
+            <button v-if="customRange" type="button" class="btn ghost" @click="clearCustomRangeAndClose">
+              Back to presets
+            </button>
+          </div>
+          <p v-if="analytics.range.approximateZone" class="muted zonenote">
+            Day columns for this time zone are rebuilt from hourly data, so they are approximate and only
+            reach back about 90 days.
+          </p>
+          <ul class="tilegrid" aria-label="Headline metrics">
+            <li v-for="t in tiles" :key="t.id" class="tile" :class="{ unmeasured: t.value.state === 'unmeasured' }">
+              <div class="tile-top">
+                <span class="slabel">{{ t.label }}</span>
+                <HelpTip :text="t.explainer" />
+              </div>
+              <div class="tile-value">
+                <span v-if="t.value.state === 'unmeasured'" class="sval muted">Not measured yet</span>
+                <span v-else-if="t.value.state === 'empty'" class="sval muted">No data</span>
+                <span v-else class="sval">{{ t.value.text }}</span>
+                <em v-if="t.delta.text" class="delta" :class="t.delta.direction">{{ t.delta.text }}</em>
+              </div>
+              <p v-if="t.value.state === 'unmeasured'" class="muted tile-cap">Not recorded for this range.</p>
+              <p v-else-if="t.caption" class="muted tile-cap">{{ t.caption }}</p>
+              <Sparkline v-if="t.spark.length > 1" :values="t.spark" :label="t.sparkLabel" :width="140" :height="28" />
+            </li>
+          </ul>
           <div class="card chartcard">
             <p v-if="analytics.filtered" class="muted filternote">
               <b>Filtered to {{ filterDim }} = {{ filterKey }}.</b>
-              The chart and total show that value over time. Access-log lists below are
-              narrowed to matching page views; in-page script cards can't be filtered.
+              The chart shows that value over time. Access-log lists below are narrowed to matching
+              page views; headline tiles and in-page script cards stay whole-range.
             </p>
             <div class="charthead">
-              <div class="seg tiles" role="group" aria-label="Metric" :aria-disabled="!!(filterDim && filterKey)">
+              <div class="seg tiles" role="group" aria-label="Chart metric" :aria-disabled="!!(filterDim && filterKey)">
                 <template v-if="filterDim && filterKey">
                   <button type="button" class="on" aria-pressed="true">
                     <span class="slabel">{{ filterDim }}: {{ filterKey }}</span>
                     <span class="sval">{{ analytics?.filtered?.total ?? 0 }}</span>
-                    <span class="sunit">
-                      filtered
-                      <em v-if="filteredDeltaText" :class="filteredDeltaDirection">{{ filteredDeltaText }}</em>
-                    </span>
+                    <span class="sunit">filtered</span>
                   </button>
                 </template>
                 <template v-else>
                   <button
-                    v-for="k in tileKeys"
+                    v-for="k in metricKeys"
                     :key="k"
                     type="button"
                     :class="{ on: metric === k }"
@@ -284,53 +331,10 @@ const ingestStatus = computed(() => {
                     @click="metric = k"
                   >
                     <span class="slabel">{{ METRIC_LABELS[k] }}</span>
-                    <span class="sval">{{ metricTotals[k] }}</span>
-                    <span class="sunit">
-                      {{ SOURCE_LABELS[METRIC_SOURCES[k]] }}
-                      <em v-if="deltaText(k)" :class="deltaDirection(k)">{{ deltaText(k) }}</em>
-                    </span>
+                    <span class="sunit">{{ SOURCE_LABELS[METRIC_SOURCES[k]] }}</span>
                   </button>
                 </template>
-              </div>              <div class="seg ranges" role="group" aria-label="Time range">
-                <button
-                  v-for="r in RANGES"
-                  :key="r.hours"
-                  type="button"
-                  :class="{ on: !customRange && rangeHours === r.hours }"
-                  :aria-pressed="!customRange && rangeHours === r.hours"
-                  @click="setRange(r.hours)"
-                >
-                  {{ r.label }}
-                </button>
-                <button
-                  type="button"
-                  :class="{ on: !!customRange }"
-                  :aria-pressed="!!customRange"
-                  :aria-expanded="showCustomRange"
-                  @click="showCustomRange = !showCustomRange"
-                >
-                  {{ customRange ? `${customRange.from} – ${customRange.to}` : "Custom" }}
-                </button>
               </div>
-            </div>
-            <p v-if="secondPage" class="secondpage" data-testid="second-page">
-              <span>Visits that reach a second page</span>
-              <b>{{ secondPage.value }}</b>
-              <span class="muted">{{ secondPage.detail }} · {{ SOURCE_LABELS.script }}</span>
-            </p>
-            <div v-if="showCustomRange" class="customrange">
-              <label>
-                From
-                <input v-model="customFromInput" type="date" :max="todayStr" />
-              </label>
-              <label>
-                To
-                <input v-model="customToInput" type="date" :max="todayStr" />
-              </label>
-              <button type="button" class="btn" @click="applyCustomRange">Apply</button>
-              <button v-if="customRange" type="button" class="btn ghost" @click="clearCustomRangeAndClose">
-                Back to presets
-              </button>
             </div>
             <!-- The plot is wrapped so an HTML tooltip can be positioned over it;
                  SVG can't lay out wrapping text, and a foreignObject would just be
@@ -410,7 +414,10 @@ const ingestStatus = computed(() => {
               </div>
             </div>
             <p v-if="chart && chart.total === 0 && filterDim && filterKey" class="muted empty">
-              No data for {{ filterKey }} in this range — the source name may have changed since.
+              No data for {{ filterKey }} in this range. The source name may have changed since.
+            </p>
+            <p v-else-if="chart && chart.total === 0 && metric === 'visits' && confirmedUnmeasured" class="muted empty">
+              Confirmed visits were not measured yet in this range.
             </p>
             <p v-else-if="chart && chart.total === 0" class="muted empty">
               No {{ METRIC_LABELS[metric].toLowerCase() }} recorded in this range yet.
@@ -428,10 +435,6 @@ const ingestStatus = computed(() => {
                 <i :style="{ background: STACK_COLORS[l.colorIndex % STACK_COLORS.length] }" />{{ l.label }} <b>{{ l.total }}</b>
               </button>
             </div>
-            <p v-if="metric === 'visitLength' && medianVisitLength" class="muted medianline desk-only">
-              Median visit length: <b>{{ medianVisitLength }}</b> — the chart bands are the
-              spread of visit lengths over time.
-            </p>
             <div v-if="chart" class="axistip desk-only">
               <span>
                 <b v-if="filterDim && filterKey">{{ filterDim }}: {{ filterKey }}</b>
@@ -439,14 +442,14 @@ const ingestStatus = computed(() => {
                 per {{ chart.unit === "hour" ? "hour" : "day" }} (vertical) ·
                 {{ zone === "utc" ? "UTC" : activeZone }} (horizontal)
                 <template v-if="filterDim && filterKey">
-                  <template v-if="filteredComparison"> · vs previous {{ comparisonLabel }}</template>
+                  <template v-if="analytics.filtered?.previous != null">
+                    · previous {{ comparisonLabel }}: {{ analytics.filtered.previous }}
+                  </template>
                   <template v-else> · no earlier data to compare</template>
                 </template>
-                <template v-else-if="comparison"> · vs previous {{ comparisonLabel }}</template>
-                <template v-else> · no earlier data to compare</template>
               </span>
               <span v-if="pollFailing" class="syncstatus failed">
-                Couldn't reach the server — retrying
+                Couldn't reach the server, retrying
                 <button class="link" :disabled="loadingA" @click="refreshAnalytics">retry now</button>
               </span>
               <span v-else-if="loadingA" class="muted">updating…</span>
@@ -497,22 +500,29 @@ const ingestStatus = computed(() => {
             </div>
           </div>
           <p v-if="analytics && !analytics?.paths?.length" class="muted" style="margin-top: 4px">
-            No traffic stats yet. These come from the reverse-proxy access log — set
+            No traffic stats yet. These come from the reverse-proxy access log. Set
             <b>ACCESS_LOG</b> on the server (see <code>.env.example</code>). The cookieless
             engagement stats below don't need it.
           </p>
           <!-- What's currently narrowing the view, and one way back for all of
                it. Always rendered, so the default state is a visible choice
-               rather than an absence — you can't clear a filter you didn't
+               rather than an absence, you can't clear a filter you didn't
                know was on. -->
           <div class="filterbar" role="group" aria-label="Active filters">
             <span v-if="!chips.length" class="muted">Showing the whole range</span>
             <button v-for="c in chips" :key="c.id" type="button" class="chip" @click="c.clear()">
               {{ c.label }} <span aria-hidden="true">✕</span>
-              <span class="visually-hidden">— remove filter</span>
+              <span class="visually-hidden">remove filter</span>
             </button>
             <button v-if="chips.length" type="button" class="link" @click="clearFilters">Clear all</button>
           </div>
+          <SectionFlow :sections="analytics.sections" :note="scriptNote" :note-title="scriptNoteTitle" />
+          <TrafficQuality
+            :quality="analytics.quality"
+            :clicks="analytics.headline.clicks.total"
+            :note="scriptNote"
+            :note-title="scriptNoteTitle"
+          />
           <div class="cols">
             <AnalyticsCard
               title="Top paths"
@@ -523,6 +533,7 @@ const ingestStatus = computed(() => {
               empty="No page views in this range. Fills from the access log (ACCESS_LOG)."
               @select="(k) => selectDimension('path', k)"
             />
+            <SourceShares :sources="analytics.sources" :note="scriptNote ? '(not filterable)' : undefined" />
             <AnalyticsCard
               title="Referrers"
               :rows="analytics?.referrers"
@@ -588,9 +599,9 @@ const ingestStatus = computed(() => {
                a crawler or scanner answers all of them with noise. -->
           <details class="quality desk-only">
             <summary>
-              Traffic quality
+              Bots and scanners
               <span class="muted">
-                {{ metricTotals.bots }} bot hits, {{ metricTotals.probes }} scans, not counted as visits
+                {{ analytics.headline.bots.total ?? 0 }} bot hits, {{ analytics.headline.probes.total ?? 0 }} scans, not counted as visits
               </span>
             </summary>
             <div class="cols">
@@ -617,65 +628,8 @@ const ingestStatus = computed(() => {
             </div>
           </details>
           <template v-if="analytics?.engagement">
-            <h3 class="desk-only" style="margin-top: 8px">Engagement <span class="muted">(cookieless, in-page script)</span></h3>
+            <h3 class="desk-only" style="margin-top: 8px">Engagement details <span class="muted">(cookieless, in-page script)</span></h3>
             <div class="cols desk-only">
-              <AnalyticsCard
-                title="Sections viewed"
-                :note="scriptNote"
-                :note-title="scriptNoteTitle"
-                :rows="analytics.engagement.tabs"
-                empty="Recorded when a visitor opens a section."
-              />
-              <AnalyticsCard
-                title="Transitions"
-                :note="scriptNote"
-                :note-title="scriptNoteTitle"
-                :rows="analytics.engagement.transitions"
-                :format="arrow"
-                empty="Recorded when a visitor moves from one section to another."
-              />
-              <AnalyticsCard
-                title="Exited from"
-                :note="scriptNote"
-                :note-title="scriptNoteTitle"
-                :rows="analytics.engagement.exits"
-                empty="Recorded when a visit ends, naming the last section seen."
-              />
-              <div class="card">
-                <h3>Scroll depth <span v-if="scriptNote" class="muted" :title="scriptNoteTitle">{{ scriptNote }}</span></h3>
-                <ul v-if="funnels.length" class="funnels">
-                  <li v-for="fn in funnels" :key="fn.section">
-                    <div class="funnelhead">
-                      <span class="rowkey">{{ fn.section }}</span>
-                      <span class="muted">{{ fn.entered }} entered</span>
-                    </div>
-                    <div v-for="s in fn.steps" :key="s.depth" class="funnelrow">
-                      <span class="muted">{{ s.depth }}%</span>
-                      <span class="bar" aria-hidden="true"><i :style="{ width: pct(s.share) }" /></span>
-                      <b>{{ s.count }}</b>
-                    </div>
-                  </li>
-                </ul>
-                <p v-else class="muted">Recorded when a visitor scrolls a section to 25, 50, 75 or 100 percent.</p>
-              </div>
-              <div class="card">
-                <h3>Dwell / section <span v-if="scriptNote" class="muted" :title="scriptNoteTitle">{{ scriptNote }}</span></h3>
-                <ul v-if="histograms.length" class="histos">
-                  <li v-for="h in histograms" :key="h.section">
-                    <div class="funnelhead">
-                      <span class="rowkey">{{ h.section }}</span>
-                      <span class="muted">{{ h.total }} views</span>
-                    </div>
-                    <div class="histo" role="img" :aria-label="`${h.section} dwell: ${h.buckets.map((b) => `${b.bucket} ${b.count}`).join(', ')}`">
-                      <span v-for="b in h.buckets" :key="b.bucket" class="col" :title="`${b.bucket}: ${b.count}`">
-                        <i :style="{ height: pct(b.share) }" />
-                        <small>{{ b.bucket }}</small>
-                      </span>
-                    </div>
-                  </li>
-                </ul>
-                <p v-else class="muted">Recorded when a visitor leaves a section, bucketed by time spent.</p>
-              </div>
               <AnalyticsCard
                 title="Clicks"
                 :note="scriptNote"
@@ -698,13 +652,6 @@ const ingestStatus = computed(() => {
                 empty="Recorded once per visit from the browser window size."
               />
               <AnalyticsCard
-                title="Sections / visit"
-                :note="scriptNote"
-                :note-title="scriptNoteTitle"
-                :rows="analytics.engagement.sessionTabs"
-                empty="Recorded when a visit ends: how many sections it covered."
-              />
-              <AnalyticsCard
                 title="Visit length"
                 :note="scriptNote"
                 :note-title="scriptNoteTitle"
@@ -720,7 +667,6 @@ const ingestStatus = computed(() => {
               />
             </div>
           </template>
-          <p class="muted">Anonymous aggregates only — no cookies, no IPs, nothing personal stored.</p>
         </template>
       </section>
 </template>

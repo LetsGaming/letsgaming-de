@@ -119,7 +119,8 @@ test("the previous period is summarised for comparison", async () => {
 });
 
 test("the previous period is omitted, not zeroed, when nothing precedes the window", async () => {
-  const { body } = await seededAnalytics("hours=168&tz=UTC", 167);
+  // A 7d day-unit range is seven whole days; seeding only the last six keeps every hit inside it.
+  const { body } = await seededAnalytics("hours=168&tz=UTC", 24 * 6);
   assert.equal(body.previous, undefined, "no comparison rather than a −100% cliff");
 });
 
