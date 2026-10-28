@@ -231,26 +231,34 @@ export function registerPresenceMediaRoutes(
 	app: FastifyInstance,
 	store: Store,
 ): void {
-	/** Serve an allow-listed image from cache or upstream; null when unavailable.
+	/** Serve an allow-listed image from cache or upstream; false when unavailable. A boolean
+	 *  rather than the reply: Fastify's Reply is a thenable, so returning it from an async
+	 *  function resolves to undefined and reads as "not served".
 	 *  `dark` asks for the dark theme's version of an image that has one; the two
 	 *  versions are cached apart. */
 	async function serveImage(
 		reply: FastifyReply,
 		imageUrl: string,
 		dark = false,
-	): Promise<FastifyReply | null> {
+	): Promise<boolean> {
 		const key = dark ? `dark|${imageUrl}` : imageUrl;
 		const cached = cacheGet(key);
-		if (cached) return sendBytes(reply, cached, 604_800);
+		if (cached) {
+			sendBytes(reply, cached, 604_800);
+			return true;
+		}
 		const fresh = await fetchUpstream(imageUrl, dark);
 		if (fresh) {
 			cacheSet(key, fresh);
-			return sendBytes(reply, fresh, 604_800);
+			sendBytes(reply, fresh, 604_800);
+			return true;
 		}
 		// The upstream refused (a rate limit, an outage): the last good copy beats a
 		// missing image, with a short lifetime so the next visit tries again.
 		const stale = cacheGet(key, true);
-		return stale ? sendBytes(reply, stale, 300) : null;
+		if (!stale) return false;
+		sendBytes(reply, stale, 300);
+		return true;
 	}
 
 	app.get<{ Querystring: { u?: string; game?: string; theme?: string } }>(
@@ -260,8 +268,7 @@ export function registerPresenceMediaRoutes(
 
 			// 1) The image the caller handed us (Discord activity art, an album cover).
 			if (u) {
-				const served = await serveImage(reply, u, theme === "dark");
-				if (served) return served;
+				if (await serveImage(reply, u, theme === "dark")) return reply;
 				// fell through: upstream missing/blocked — try the fallbacks below
 			}
 
@@ -273,8 +280,7 @@ export function registerPresenceMediaRoutes(
 					.getAll()
 					.get(gameMetaKey(game))?.coverUrl;
 				if (coverUrl) {
-					const served = await serveImage(reply, coverUrl);
-					if (served) return served;
+					if (await serveImage(reply, coverUrl)) return reply;
 				}
 				// 3) Last resort: a per-game override if we ship one, else an initials tile.
 				return sendTile(reply, GAME_ART[slug(game)] ?? gameTile(game));
