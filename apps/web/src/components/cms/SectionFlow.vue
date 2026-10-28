@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { AnalyticsSections } from "@lg/core";
 import { areaScrollFunnels, bucketBars, flowRows, moduleRows, sectionsEmpty } from "../../lib/analytics-view";
 
@@ -10,7 +10,12 @@ const props = defineProps<{
 }>();
 
 const empty = computed(() => sectionsEmpty(props.sections));
-const modules = computed(() => moduleRows(props.sections.modules));
+const allModules = computed(() => moduleRows(props.sections.modules));
+const showUnseen = ref(false);
+const unseenCount = computed(() => allModules.value.filter((m) => m.seen === 0).length);
+const modules = computed(() =>
+  showUnseen.value ? allModules.value : allModules.value.filter((m) => m.seen > 0),
+);
 const flows = computed(() => flowRows(props.sections.flow));
 const perVisit = computed(() => bucketBars(props.sections.sessionModules));
 const scroll = computed(() => areaScrollFunnels(props.sections.scrollDepth));
@@ -74,6 +79,9 @@ const histoLabel = (id: string, buckets: { bucket: string; count: number }[]) =>
           </div>
         </li>
       </ul>
+      <button v-if="unseenCount > 0" type="button" class="link" @click="showUnseen = !showUnseen">
+        {{ showUnseen ? "Hide sections nobody saw" : `Show ${unseenCount} sections nobody saw` }}
+      </button>
 
       <div class="cols sf-extra">
         <div>
