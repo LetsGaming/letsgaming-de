@@ -1,7 +1,7 @@
 import { nextTick } from "vue";
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock, type MockInstance } from "vitest";
 import { cms } from "../../src/lib/cms";
-import { createAutosave } from "../../src/composables/useAutosave";
+import { createAutosave, type SavedEdit } from "../../src/composables/useAutosave";
 import { useEntityList } from "../../src/composables/useEntityList";
 
 interface Row {
@@ -12,9 +12,9 @@ interface Row {
 
 const row = (id: string, sort: number): Row => ({ id, title: { en: id }, sort });
 
-let put: ReturnType<typeof vi.fn>;
+let put: Mock<(path: string, body: unknown, opts: { keepalive: boolean }) => Promise<unknown>>;
 let del: MockInstance<(path: string) => Promise<unknown>>;
-let onSaved: ReturnType<typeof vi.fn>;
+let onSaved: Mock<(edit: SavedEdit) => void>;
 
 function list() {
   put = vi.fn(async () => ({ ok: true }));
