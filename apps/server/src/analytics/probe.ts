@@ -44,32 +44,38 @@ export type ProbeFamily = (typeof PROBE_FAMILY)[keyof typeof PROBE_FAMILY];
  * `/wp-login.php` is a WordPress probe rather than a generic PHP one, and
  * `/phpmyadmin/index.php` is an admin-panel probe rather than either.
  */
-const RULES: { family: ProbeFamily; test: RegExp }[] = [
+export interface ProbeRule {
+  id: string;
+  family: ProbeFamily;
+  test: RegExp;
+}
+
+export const PROBE_RULES: readonly ProbeRule[] = [
   // Panel software, before the generic .php rule catches their index files.
-  { family: PROBE_FAMILY.admin, test: /\/(phpmyadmin|pma|myadmin|adminer|dbadmin|mysqladmin|manager\/html)(\/|$)/i },
+  { id: "probe-admin-panel", family: PROBE_FAMILY.admin, test: /\/(phpmyadmin|pma|myadmin|adminer|dbadmin|mysqladmin|manager\/html)(\/|$)/i },
 
   // WordPress, by far the loudest family on any site that isn't WordPress.
-  { family: PROBE_FAMILY.wordpress, test: /\/(wp-admin|wp-content|wp-includes|wp-json|wp-login\.php|wp-config|xmlrpc\.php|wlwmanifest\.xml)/i },
+  { id: "probe-wordpress", family: PROBE_FAMILY.wordpress, test: /\/(wp-admin|wp-content|wp-includes|wp-json|wp-login\.php|wp-config|xmlrpc\.php|wlwmanifest\.xml)/i },
 
   // Credentials and version control left in a web root.
-  { family: PROBE_FAMILY.secrets, test: /\/\.(env|git|svn|hg|aws|ssh|npmrc|htpasswd|DS_Store|vscode|idea)(\/|$|\.)/i },
-  { family: PROBE_FAMILY.secrets, test: /\/(credentials|secrets?|id_rsa|\.env\.[a-z]+|config\.(json|ya?ml|ini))$/i },
+  { id: "probe-secrets-dotfile", family: PROBE_FAMILY.secrets, test: /\/\.(env|git|svn|hg|aws|ssh|npmrc|htpasswd|DS_Store|vscode|idea)(\/|$|\.)/i },
+  { id: "probe-secrets-file", family: PROBE_FAMILY.secrets, test: /\/(credentials|secrets?|id_rsa|\.env\.[a-z]+|config\.(json|ya?ml|ini))$/i },
 
   // Someone else's database, hopefully left lying around.
-  { family: PROBE_FAMILY.backup, test: /\.(sql|bak|old|swp|zip|tar|tgz|tar\.gz|7z|rar|dump)$/i },
-  { family: PROBE_FAMILY.backup, test: /\/(backup|backups|dump|db_backup)(\/|$)/i },
+  { id: "probe-backup-file", family: PROBE_FAMILY.backup, test: /\.(sql|bak|old|swp|zip|tar|tgz|tar\.gz|7z|rar|dump)$/i },
+  { id: "probe-backup-dir", family: PROBE_FAMILY.backup, test: /\/(backup|backups|dump|db_backup)(\/|$)/i },
 
   // Remote execution: CGI, appliance endpoints, and the classic webshell names.
-  { family: PROBE_FAMILY.shell, test: /\/(cgi-bin|boaform|goform|shell|cmd|console|actuator|solr|jenkins|struts|hudson|jmx-console)(\/|$)/i },
-  { family: PROBE_FAMILY.shell, test: /\/(wso|alfa|r57|c99|indoxploit|mini|marijuana|priv8|bypass|shell\d*)\.php$/i },
-  // `..%2f`, `..%5c` and friends — always an attack, never a browser.
-  { family: PROBE_FAMILY.shell, test: /(\.\.(%2f|%5c|\/|\\)){1,}/i },
+  { id: "probe-shell-endpoint", family: PROBE_FAMILY.shell, test: /\/(cgi-bin|boaform|goform|shell|cmd|console|actuator|solr|jenkins|struts|hudson|jmx-console)(\/|$)/i },
+  { id: "probe-webshell", family: PROBE_FAMILY.shell, test: /\/(wso|alfa|r57|c99|indoxploit|mini|marijuana|priv8|bypass|shell\d*)\.php$/i },
+  // `..%2f`, `..%5c` and friends: always an attack, never a browser.
+  { id: "probe-traversal", family: PROBE_FAMILY.shell, test: /(\.\.(%2f|%5c|\/|\\)){1,}/i },
 
   // Anything else server-side that this site simply doesn't run.
-  { family: PROBE_FAMILY.php, test: /\.(php\d?|phtml|asp|aspx|jsp|jspx|cfm|cgi|pl)($|\/)/i },
+  { id: "probe-server-script", family: PROBE_FAMILY.php, test: /\.(php\d?|phtml|asp|aspx|jsp|jspx|cfm|cgi|pl)($|\/)/i },
 
   // Generic scanner furniture.
-  { family: PROBE_FAMILY.other, test: /\/(vendor\/phpunit|eval-stdin|telescope\/requests|\.well-known\/traffic-advice|autodiscover\/autodiscover\.xml)/i },
+  { id: "probe-scanner-furniture", family: PROBE_FAMILY.other, test: /\/(vendor\/phpunit|eval-stdin|telescope\/requests|\.well-known\/traffic-advice|autodiscover\/autodiscover\.xml)/i },
 ];
 
 /**
@@ -110,12 +116,16 @@ function normalizePath(path: string): string {
  * `%20` evasion, and keeping the raw catches the traversal patterns that only
  * exist *because* they're encoded (`..%2f`).
  */
-export function probeFamily(path: string): ProbeFamily | null {
+export function probeRuleFor(path: string): ProbeRule | null {
   if (!path || path === "/") return null;
   const normalized = normalizePath(path);
   if (!normalized || normalized === "/") return null;
-  for (const rule of RULES) {
-    if (rule.test.test(path) || rule.test.test(normalized)) return rule.family;
+  for (const rule of PROBE_RULES) {
+    if (rule.test.test(path) || rule.test.test(normalized)) return rule;
   }
   return null;
+}
+
+export function probeFamily(path: string): ProbeFamily | null {
+  return probeRuleFor(path)?.family ?? null;
 }

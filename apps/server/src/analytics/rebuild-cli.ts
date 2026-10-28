@@ -22,22 +22,13 @@
  * sets. That is the point: a rebuild says "re-derive everything the log holds",
  * so anything previously cleared *will* come back if the log still has it.
  */
-import { PAIR_DIMENSIONS } from "@lg/core";
+import { LOG_DIMENSIONS, PAIR_DIMENSIONS } from "@lg/core";
 import { openStore, type StoredDimension } from "@lg/db";
 import { loadEnv } from "../env.js";
 import { ingestLog } from "./ingest.js";
 
 /** Everything `lineToHits` can produce. Keep in step with parse.ts. */
-const LOG_DERIVED: readonly StoredDimension[] = [
-  "path",
-  "referrer",
-  "browser",
-  "os",
-  "device",
-  "bot",
-  "probe",
-  ...PAIR_DIMENSIONS,
-];
+const LOG_DERIVED: readonly StoredDimension[] = [...LOG_DIMENSIONS, ...PAIR_DIMENSIONS];
 
 const env = loadEnv();
 

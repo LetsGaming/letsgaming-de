@@ -56,7 +56,11 @@ test("a browser is not a bot", () => {
 test("a bot is counted, but only as a bot", () => {
   const hits = lineToHits(line("/", "curl/8.7.1"));
   // Counted — a crawler silently dropped is a gap you'd spend an afternoon on.
-  assert.deepEqual(hits, [{ bucket: "2026-07-17T10", dimension: "bot", key: BOT_FAMILY.tool }]);
+  assert.deepEqual(hits, [
+    { bucket: "2026-07-17T10", dimension: "bot", key: BOT_FAMILY.tool },
+    { bucket: "2026-07-17T10", dimension: "exclusion", key: "ua-http-library" },
+    { bucket: "2026-07-17T10", dimension: "traffic", key: "bot" },
+  ]);
   // And nowhere else: path/browser/os/device describe people. Half the "Other"
   // in Browsers and OS was curl.
   assert.ok(!hits.some((h) => ["path", "browser", "os", "device"].includes(h.dimension)));

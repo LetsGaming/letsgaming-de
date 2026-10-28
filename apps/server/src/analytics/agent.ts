@@ -62,14 +62,32 @@ export type BotFamily = (typeof BOT_FAMILY)[keyof typeof BOT_FAMILY];
  * "Other" rather than search; and the generic rule said `monitoring`, which
  * misses every agent that calls itself `monitor-something`.
  */
-const BOT_PATTERNS: readonly (readonly [RegExp, BotFamily])[] = [
-  [/googlebot|googleother|google-inspectiontool|storebot-google|adsbot-google|mediapartners-google|apis-google|bingbot|bingpreview|msnbot|yandex(bot)?|duckduckbot|baiduspider|slurp|applebot|petalbot|seznambot|qwantify|sogou|exabot|mojeek/, BOT_FAMILY.search],
-  [/gptbot|claudebot|anthropic|ccbot|perplexity|bytespider|google-extended|cohere|amazonbot|meta-externalagent|diffbot|omgili|timpibot|youbot|imagesift/, BOT_FAMILY.ai],
-  [/facebookexternalhit|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|linkedinbot|embedly|pinterest|skype ?uri ?preview|vkshare|redditbot|iframely|bitlybot|tumblr|nuzzel|flipboard|cardyb|opengraph|linkpreview|google-read-aloud/, BOT_FAMILY.social],
-  [/uptimerobot|pingdom|statuscake|betteruptime|newrelic|datadog|site24x7|hetrixtool|uptime|nodeping|freshping|updown\.io|zabbix|nagios|prometheus|blackbox|monitis|checkly|statping|healthcheck|health-check|kube-probe|googlehc|gtmetrix|pagespeed|webpagetest/, BOT_FAMILY.monitor],
-  [/curl|wget|python-requests|python-urllib|python-httpx|aiohttp|go-http-client|quic-go|fasthttp|colly|okhttp|axios|node-fetch|undici|libwww|libcurl|httpie|postman|insomnia|java\/|apache-httpclient|jakarta|scrapy|puppeteer|playwright|headless|phantom|selenium|webdriver|cypress|pa11y|jsdom|lighthouse|zgrab|masscan|nmap|censys|shodan|nuclei|reqwest|restsharp|guzzle|winhttp|powershell|\bperl\b|\bruby\b|\bphp\//, BOT_FAMILY.tool],
-  [/bot\b|crawler|crawl|spider|scraper|feedfetcher|archiver|monitor|checker|validator|preview|^node$|^mozilla\/\d\.\d$/, BOT_FAMILY.other],
+export interface BotRule {
+  id: string;
+  family: BotFamily;
+  test: RegExp;
+}
+
+export const BOT_RULES: readonly BotRule[] = [
+  { id: "ua-search-engine", family: BOT_FAMILY.search, test: /googlebot|googleother|google-inspectiontool|storebot-google|adsbot-google|mediapartners-google|apis-google|bingbot|bingpreview|msnbot|yandex(bot)?|duckduckbot|baiduspider|slurp|applebot|petalbot|seznambot|qwantify|sogou|exabot|mojeek/ },
+  { id: "ua-ai-crawler", family: BOT_FAMILY.ai, test: /gptbot|claudebot|anthropic|ccbot|perplexity|bytespider|google-extended|cohere|amazonbot|meta-externalagent|diffbot|omgili|timpibot|youbot|imagesift/ },
+  { id: "ua-link-preview", family: BOT_FAMILY.social, test: /facebookexternalhit|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|linkedinbot|embedly|pinterest|skype ?uri ?preview|vkshare|redditbot|iframely|bitlybot|tumblr|nuzzel|flipboard|cardyb|opengraph|linkpreview|google-read-aloud/ },
+  { id: "ua-monitor", family: BOT_FAMILY.monitor, test: /uptimerobot|pingdom|statuscake|betteruptime|newrelic|datadog|site24x7|hetrixtool|uptime|nodeping|freshping|updown\.io|zabbix|nagios|prometheus|blackbox|monitis|checkly|statping|healthcheck|health-check|kube-probe|googlehc|gtmetrix|pagespeed|webpagetest/ },
+  { id: "ua-headless", family: BOT_FAMILY.tool, test: /puppeteer|playwright|headless|phantom|selenium|webdriver|cypress|pa11y|jsdom|lighthouse/ },
+  { id: "ua-http-library", family: BOT_FAMILY.tool, test: /curl|wget|python-requests|python-urllib|python-httpx|aiohttp|go-http-client|quic-go|fasthttp|colly|okhttp|axios|node-fetch|undici|libwww|libcurl|httpie|postman|insomnia|java\/|apache-httpclient|jakarta|scrapy|zgrab|masscan|nmap|censys|shodan|nuclei|reqwest|restsharp|guzzle|winhttp|powershell|\bperl\b|\bruby\b|\bphp\// },
+  { id: "ua-generic-bot", family: BOT_FAMILY.other, test: /bot\b|crawler|crawl|spider|scraper|feedfetcher|archiver|monitor|checker|validator|preview|^node$|^mozilla\/\d\.\d$/ },
 ];
+
+/** Real browsers always name a platform; a UA with no Mozilla/ prefix and no platform token is a program. */
+const PLATFORM_TOKEN = /windows|android|iphone|ipad|ios|mac os x|macintosh|linux|cros|x11|cpu os|bsd|sunos/;
+export const NO_PLATFORM_RULE_ID = "ua-no-platform";
+export const NO_AGENT_RULE_ID = "ua-empty";
+
+export function hasPlatformlessAgent(ua: string): boolean {
+  const s = ua.trim().toLowerCase();
+  if (NO_AGENT.test(s)) return false;
+  return !s.startsWith("mozilla/") && !PLATFORM_TOKEN.test(s);
+}
 
 /**
  * An empty or absent UA.
@@ -78,7 +96,7 @@ const BOT_PATTERNS: readonly (readonly [RegExp, BotFamily])[] = [
  * sends one; nothing that omits it is a person at a keyboard. It's the cheapest
  * true signal in the file.
  */
-const NO_AGENT = /^-?$/;
+export const NO_AGENT = /^-?$/;
 
 /**
  * Classify. Returns the bot family, or null for "could be a person".
@@ -90,8 +108,8 @@ const NO_AGENT = /^-?$/;
 export function botFamily(ua: string): BotFamily | null {
   const s = ua.trim().toLowerCase();
   if (NO_AGENT.test(s)) return BOT_FAMILY.other;
-  for (const [pattern, family] of BOT_PATTERNS) {
-    if (pattern.test(s)) return family;
+  for (const rule of BOT_RULES) {
+    if (rule.test.test(s)) return rule.family;
   }
   return null;
 }

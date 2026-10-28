@@ -37,7 +37,7 @@ test("ingest stores pairs beside the counters and does not count them as hits", 
   writeFileSync(file, [line("/docs/a", "https://www.bing.com/", CHROME_WIN), ""].join("\n"));
   try {
     const r = ingestLog(store, file, "letsgaming.de");
-    assert.equal(r.hits, 5);
+    assert.equal(r.hits, 7);
     assert.deepEqual(store.analytics.topCross("referrer", ["www.bing.com"], "path", "2026-10-10T00", "2026-10-10T23"), [
       { key: "/docs/a", count: 1 },
     ]);

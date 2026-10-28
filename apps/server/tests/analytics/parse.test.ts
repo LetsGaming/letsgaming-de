@@ -57,3 +57,47 @@ test("user-agent families", () => {
     "Safari",
   );
 });
+
+test("page view writes traffic and source dimensions alongside the existing keys", () => {
+  const hits = lineToHits(CHROME, "letsgaming.de");
+  assert.ok(hits.some((h) => h.dimension === "traffic" && h.key === "pageview"));
+  assert.ok(hits.some((h) => h.dimension === "source" && h.key === "referral"));
+  assert.ok(hits.some((h) => h.dimension === "referrer" && h.key === "news.ycombinator.com"));
+  assert.ok(!hits.some((h) => h.dimension === "exclusion"));
+  assert.ok(lineToHits(IPHONE, "letsgaming.de").some((h) => h.dimension === "source" && h.key === "direct"));
+});
+
+test("tagged visit is a campaign unless the tag names a known network", () => {
+  const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36";
+  const line = (q: string) =>
+    `203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /?${q} HTTP/1.1" 200 512 "-" "${ua}"`;
+  const src = (q: string) => lineToHits(line(q), "letsgaming.de").find((h) => h.dimension === "source")!.key;
+  assert.equal(src("utm_source=newsletter"), "campaign");
+  assert.equal(src("utm_source=discord"), "social");
+});
+
+test("bot and probe hits record exclusion rule and traffic class", () => {
+  const probe =
+    '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET /wp-login.php HTTP/1.1" 404 10 "-" "Mozilla/5.0 (Windows NT 10.0) Chrome/120"';
+  const bot =
+    '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "GET / HTTP/1.1" 200 10 "-" "curl/8.4.0"';
+  const p = lineToHits(probe, "letsgaming.de");
+  assert.deepEqual(
+    p.map((h) => [h.dimension, h.key]),
+    [["probe", "WordPress probe"], ["exclusion", "probe-wordpress"], ["traffic", "probe"]],
+  );
+  const b = lineToHits(bot, "letsgaming.de");
+  assert.deepEqual(
+    b.map((h) => [h.dimension, h.key]),
+    [["bot", "Script or tool"], ["exclusion", "ua-http-library"], ["traffic", "bot"]],
+  );
+  assert.ok(!JSON.stringify([p, b]).includes("203.0.113.7"));
+});
+
+test("HEAD requests count as bots, other non-GET methods stay ignored", () => {
+  const head =
+    '203.0.113.7 - - [10/Oct/2026:13:55:36 +0000] "HEAD / HTTP/1.1" 200 0 "-" "Mozilla/5.0 (Windows NT 10.0) Chrome/120"';
+  const post = head.replace('"HEAD /', '"POST /');
+  assert.ok(lineToHits(head).some((h) => h.dimension === "exclusion" && h.key === "http-head"));
+  assert.equal(lineToHits(post).length, 0);
+});

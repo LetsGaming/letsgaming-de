@@ -8,7 +8,11 @@ import { lineToHits } from "../../src/analytics/parse.js";
  * actual bytes rather than something reconstructed to suit the parser.
  */
 const OWN = "letsgaming.de";
-const dims = (line: string) => lineToHits(line, OWN).map((h) => `${h.dimension}:${h.key}`);
+const DERIVED = new Set(["exclusion", "traffic", "source"]);
+const dims = (line: string) =>
+  lineToHits(line, OWN)
+    .filter((h) => !DERIVED.has(h.dimension))
+    .map((h) => `${h.dimension}:${h.key}`);
 
 // The proxy upgrades HTTP to HTTPS with a 301, so a single visit writes two
 // lines and a single probe writes one before its HTTPS request 404s.
@@ -60,10 +64,10 @@ test("the admin surface and the sitemap are never page views", () => {
   assert.deepEqual(dims(sitemap), []);
 });
 
-test("a HEAD request is not a page view", () => {
+test("a HEAD request is a bot hit, not a page view", () => {
   const line =
     '104.23.199.162 - - [24/Jul/2026:11:18:43 +0200] "HEAD / HTTP/2.0" 200 0 "-" "quic-go-HTTP/3"';
-  assert.deepEqual(dims(line), []);
+  assert.deepEqual(dims(line), ["bot:Script or tool"]);
 });
 
 test("a tagged link names its source even with no Referer at all", () => {
