@@ -21,7 +21,7 @@ import type { HourlyHit, Store } from "@lg/db";
 import type { FastifyInstance } from "fastify";
 import { badRequest, tooManyRequests } from "../errors.js";
 
-const MAX_EVENTS = 40; // a whole visit fits comfortably; caps abuse
+const MAX_EVENTS = 80; // a whole visit fits comfortably; caps abuse
 
 /** Current UTC hour bucket, "YYYY-MM-DDTHH". */
 function isoHour(d: Date): string {
@@ -81,11 +81,16 @@ export function registerTrackRoutes(app: FastifyInstance, store: Store): void {
     if (!Array.isArray(events)) throw badRequest("events must be an array.");
 
     const sectionIds = collectNavIds(store.ia.getNav());
+    const moduleIds = new Set(store.ia.getModules().map((m) => m.id));
     const bucket = isoHour(new Date());
     const hits: HourlyHit[] = [];
     for (const e of events.slice(0, MAX_EVENTS)) {
       if (!e || typeof e !== "object") continue;
-      const valid = validateTrackEvent(e as { d: EngagementDimension; k: string }, sectionIds);
+      const valid = validateTrackEvent(
+        e as { d: EngagementDimension; k: string },
+        sectionIds,
+        moduleIds,
+      );
       if (valid) hits.push({ bucket, dimension: valid.dimension, key: valid.key });
     }
     if (hits.length) store.analytics.recordHourly(hits);

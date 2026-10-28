@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CLEAR_RANGES,
+  type TrackEvent,
+  VISIT_DWELL_MS,
+  VISIT_SCROLL_DEPTH,
+  VISIT_TRIGGERS,
   dwellBucket,
   dwellKey,
   scrollDepthsReached,
@@ -10,6 +14,7 @@ import {
   sessionTabsBucket,
   transitionKey,
   validateTrackEvent,
+  visitTrigger,
 } from "../src/engagement.js";
 
 test("secondPageFigure counts every bucket above one section as reached", () => {
@@ -132,4 +137,53 @@ test("analytics: the click allow-list has no dead or missing entries", () => {
   // A generic `more` used to sit here unemitted, which typechecks at a call site
   // and then lands in the CMS as a bucket that can't say which link it counted.
   assert.equal(validateTrackEvent({ d: "click", k: "more" }, sections), null);
+});
+
+const SECTIONS = new Set(["home", "code"]);
+const MODULES = new Set(["hero", "now"]);
+const check = (d: string, k: string, modules?: ReadonlySet<string>) =>
+  validateTrackEvent({ d: d as TrackEvent["d"], k }, SECTIONS, modules);
+
+test("validateTrackEvent accepts the module and visit dimensions", () => {
+  for (const trigger of VISIT_TRIGGERS) assert.ok(check("visit", trigger));
+  assert.ok(check("module", "hero", MODULES));
+  assert.ok(check("module_entry", "now", MODULES));
+  assert.ok(check("module_exit", "now", MODULES));
+  assert.ok(check("module_dwell", "hero|5-15s", MODULES));
+  assert.ok(check("module_flow", "hero>now", MODULES));
+  assert.ok(check("session_modules", "4+"));
+  assert.ok(check("tab", "code", MODULES));
+});
+
+test("validateTrackEvent rejects unknown modules and malformed module keys", () => {
+  assert.equal(check("visit", "load"), null);
+  assert.equal(check("module", "ghost", MODULES), null);
+  assert.equal(check("module_flow", "hero>ghost", MODULES), null);
+  assert.equal(check("module_flow", "hero", MODULES), null);
+  assert.equal(check("module_dwell", "hero|9h", MODULES), null);
+  assert.equal(check("module_dwell", "ghost|<5s", MODULES), null);
+  assert.equal(check("session_modules", "7", MODULES), null);
+});
+
+test("module dimensions are dropped without a module id set", () => {
+  assert.equal(check("module", "hero"), null);
+  assert.equal(check("module", "hero", new Set()), null);
+  assert.equal(check("module_entry", "hero"), null);
+  assert.equal(check("module_dwell", "hero|<5s"), null);
+  assert.ok(check("tab", "home"));
+});
+
+test("visitTrigger never fires on a bare load", () => {
+  const bare = { scrollPct: 0, modulesSeen: 0, visibleMs: 0, clicked: false };
+  assert.equal(visitTrigger(bare), null);
+  assert.equal(visitTrigger({ ...bare, scrollPct: VISIT_SCROLL_DEPTH - 1 }), null);
+  assert.equal(visitTrigger({ ...bare, visibleMs: VISIT_DWELL_MS - 1 }), null);
+});
+
+test("visitTrigger names the first real signal", () => {
+  const bare = { scrollPct: 0, modulesSeen: 0, visibleMs: 0, clicked: false };
+  assert.equal(visitTrigger({ ...bare, scrollPct: VISIT_SCROLL_DEPTH }), "scroll");
+  assert.equal(visitTrigger({ ...bare, modulesSeen: 1 }), "section");
+  assert.equal(visitTrigger({ ...bare, visibleMs: VISIT_DWELL_MS }), "dwell");
+  assert.equal(visitTrigger({ ...bare, clicked: true }), "click");
 });

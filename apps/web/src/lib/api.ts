@@ -1,12 +1,11 @@
 /**
  * The API origin, in one place.
  *
- * `PUBLIC_API_URL` points the browser at the API (empty = same origin). This was
- * previously re-derived — `(import.meta.env.PUBLIC_API_URL ?? "").replace(...)` —
- * in six files; now they all import from here so the rule lives once.
+ * `PUBLIC_API_URL` points the browser at the API. Empty is not same-origin: paths
+ * become relative to the site, and the engagement tracker stays off entirely.
  */
 
-/** API origin with any trailing slash stripped ("" when same-origin). */
+/** API origin with any trailing slash stripped ("" when unset). */
 export const apiBase = (import.meta.env.PUBLIC_API_URL ?? "").replace(
 	/\/$/,
 	"",
