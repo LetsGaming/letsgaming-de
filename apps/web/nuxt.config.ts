@@ -33,6 +33,8 @@ export default defineNuxtConfig({
   // the SSR site loader vanish with no error.
   srcDir: "src/",
   serverDir: "src/server",
+  // Nuxt 4 looks for public/ under the project root; the favicon and share card live here.
+  dir: { public: "src/public" },
   // Opts into Nitro/Nuxt behaviour as of this date; bump deliberately, not casually.
   compatibilityDate: "2026-07-22",
 
