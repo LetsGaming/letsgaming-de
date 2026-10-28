@@ -180,8 +180,8 @@ importers:
         specifier: ^5
         version: 5.2.9
       marked:
-        specifier: ^18.0.7
-        version: 18.0.7
+        specifier: ^18.1.1
+        version: 18.1.1
       nuxt:
         specifier: ^3
         version: 3.21.9(@types/node@22.20.0)(@vue/compiler-sfc@3.5.40)(cac@6.7.14)(db0@0.3.4)(esbuild@0.28.1)(ioredis@5.11.1(supports-color@10.2.2))(magicast@0.5.3)(rollup-plugin-visualizer@7.0.1(rollup@4.62.2))(rollup@4.62.2)(srvx@0.11.22)(supports-color@10.2.2)(terser@5.49.0)(tsx@4.23.0)(typescript@5.9.3)(vite@7.3.6(@types/node@22.20.0)(jiti@2.7.0)(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0))(vue-tsc@2.2.12(typescript@5.9.3))(yaml@2.9.0)
@@ -2858,8 +2858,8 @@ packages:
   magicast@0.5.3:
     resolution: {integrity: sha512-pVKE4UdSQ7DvHzivsCIFx2BJn1mHG6KsyrFcaxFx6tONdneEuThrDx0Cj3AMg58KyN4pzYT+LHOotxDQDjNvkw==}
 
-  marked@18.0.7:
-    resolution: {integrity: sha512-iDVQ5ldaiKXn6b2JroX5kgRfmwgqolW7NpaEzTl1k/2Zh1njIEN9yniyLV/mOvWwtsE8OGgkjsCYvijuPk1dtA==}
+  marked@18.1.1:
+    resolution: {integrity: sha512-zEGgrtUG8crk+TrMacJSVABU4DYDDkS8uqgU3ohrn/2fW9C2AEfUrO3m6IhpIpQpl7YcVpiXXC9cSMWDANT3dg==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -5062,7 +5062,7 @@ snapshots:
       tinyexec: 1.2.4
       ufo: 1.6.4
       unplugin: 2.3.11
-      vitest-environment-nuxt: 1.0.1(@vue/test-utils@2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.40)(vue@3.5.40(typescript@5.9.3)))(crossws@0.4.10(srvx@0.11.22))(happy-dom@20.10.6)(magicast@0.5.3)(typescript@5.9.3)(vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.0)(happy-dom@20.10.6)(jiti@2.7.0)(supports-color@10.2.2)(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0))
+      vitest-environment-nuxt: 1.0.1
       vue: 3.5.40(typescript@5.9.3)
     optionalDependencies:
       '@vue/test-utils': 2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.40)(vue@3.5.40(typescript@5.9.3))
@@ -6886,7 +6886,7 @@ snapshots:
       '@babel/types': 7.29.7
       source-map-js: 1.2.1
 
-  marked@18.0.7: {}
+  marked@18.1.1: {}
 
   mdn-data@2.0.28: {}
 
@@ -8334,23 +8334,9 @@ snapshots:
       tsx: 4.23.0
       yaml: 2.9.0
 
-  vitest-environment-nuxt@1.0.1(@vue/test-utils@2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.40)(vue@3.5.40(typescript@5.9.3)))(crossws@0.4.10(srvx@0.11.22))(happy-dom@20.10.6)(magicast@0.5.3)(typescript@5.9.3)(vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.0)(happy-dom@20.10.6)(jiti@2.7.0)(supports-color@10.2.2)(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0)):
+  vitest-environment-nuxt@1.0.1:
     dependencies:
       '@nuxt/test-utils': 3.23.0(@vue/test-utils@2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.40)(vue@3.5.40(typescript@5.9.3)))(crossws@0.4.10(srvx@0.11.22))(happy-dom@20.10.6)(magicast@0.5.3)(typescript@5.9.3)(vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.0)(happy-dom@20.10.6)(jiti@2.7.0)(supports-color@10.2.2)(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0))
-    transitivePeerDependencies:
-      - '@cucumber/cucumber'
-      - '@jest/globals'
-      - '@playwright/test'
-      - '@testing-library/vue'
-      - '@vitest/ui'
-      - '@vue/test-utils'
-      - crossws
-      - happy-dom
-      - jsdom
-      - magicast
-      - playwright-core
-      - typescript
-      - vitest
 
   vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.0)(happy-dom@20.10.6)(jiti@2.7.0)(supports-color@10.2.2)(terser@5.49.0)(tsx@4.23.0)(yaml@2.9.0):
     dependencies:
