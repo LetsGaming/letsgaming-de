@@ -31,7 +31,7 @@ export function openDatabase(path: string): DB {
 }
 
 /** Locate the migrations directory in both dev (src/) and built (dist/) layouts. */
-function resolveMigrationsDir(): string {
+export function resolveMigrationsDir(): string {
   // In dist/ the migrations are copied alongside the JS (dist/migrations); in src/
   // (tsx dev/tests) they sit next to this file.
   const candidates = [join(here, "migrations"), join(here, "..", "src", "migrations")];
