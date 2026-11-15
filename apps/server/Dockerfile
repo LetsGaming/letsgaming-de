@@ -51,6 +51,10 @@ COPY --from=build --chown=node:node /prod .
 
 # /data is the mounted store+media volume; owning it here means a fresh named
 # volume inherits node ownership.
+# The package manager CLIs are unused at runtime and bundle their own vulnerable dependencies.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
 RUN mkdir -p /data && chown node:node /data
 
 USER node

@@ -68,6 +68,10 @@ COPY --from=build --chown=node:node /app/openapi.yml /openapi.yml
 ENV DOCS_DIR=/docs
 ENV OPENAPI_PATH=/openapi.yml
 
+# The package manager CLIs are unused at runtime and bundle their own vulnerable dependencies.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
 USER node
 EXPOSE 4321
 CMD ["node", "server/index.mjs"]
