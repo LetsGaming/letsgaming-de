@@ -603,9 +603,9 @@ footer {
   border-radius: 4px;
 }
 
-/* Freshness. Only `fresh` earns the accent and the glow: purple means now, and
-   the whole point of the other states is that they aren't. Stale is legible but
-   quiet — old-and-labelled beats old-and-pretending. */
+/* Freshness marker. It renders only when data is not current, and never in the
+   accent: purple means now, and these states are the opposite. Stale is legible
+   but quiet; failed is the one that uses the error colour. */
 .fresh {
   font-family: var(--f-b);
   font-variant-numeric: tabular-nums;
@@ -615,15 +615,8 @@ footer {
   align-items: center;
   gap: var(--sp-6);
 }
-.fresh.fr-fresh {
-  color: var(--live-ink);
-}
-.fresh .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--live-ink);
-  animation: pulse var(--dur-pulse) ease-in-out infinite;
+.fresh.fr-failed {
+  color: var(--danger-ink);
 }
 @keyframes pulse {
   50% {

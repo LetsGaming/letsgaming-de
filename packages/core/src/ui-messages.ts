@@ -168,6 +168,8 @@ const EN = {
   backToTopArtists: "← back to top artists",
   backToTopGames: "← back to top games",
   whenIPlay: "When I play",
+  heatLess: "less",
+  heatMore: "more",
   localTime: "Local",
   /** The owner's clock, when the viewer is in a different zone. `{city}` is the
    *  IANA zone's city ("Berlin"), a name, so it isn't translated, only framed. */
@@ -382,6 +384,8 @@ const DE: Messages = {
   backToTopArtists: "← zurück zu den Top-Künstler:innen",
   backToTopGames: "← zurück zu den Top-Spielen",
   whenIPlay: "Wann ich spiele",
+  heatLess: "weniger",
+  heatMore: "mehr",
   localTime: "Lokal",
   ownerTime: "Zeit in {city}",
   showTimesIn: "Zeiten anzeigen in",

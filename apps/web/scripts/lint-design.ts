@@ -53,8 +53,8 @@ const ACCENT_MAX: Record<string, number> = {
   "apps/web/src/components/presence/PresenceWidget.vue": 1, // live game activity
   "apps/web/src/components/sections/HeroSection.vue": 2, // live presence dot
   "apps/web/src/components/ui/CardHeader.vue": 1, // is-live note variant
-  "apps/web/src/components/ui/HeatGrid.vue": 2, // focus and selection outline
-  "apps/web/src/styles/app.css": 6, // primary button, focus ring, fresh marker
+  "apps/web/src/components/ui/HeatGrid.vue": 1, // keyboard focus ring
+  "apps/web/src/styles/app.css": 2, // primary button, focus ring
   "apps/web/src/error.vue": 1, // the one primary button
 };
 

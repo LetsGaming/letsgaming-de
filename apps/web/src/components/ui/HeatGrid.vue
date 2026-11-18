@@ -6,7 +6,7 @@
 export interface HeatCell {
   /** Intensity bucket 0 to 4; 0 is the empty base and gets no `data-l`. */
   level: number;
-  /** Mark this cell as "today/now", a subtle ring, never the selection accent. */
+  /** Mark this cell as "today". With activity it is the one violet cell; without, it gets a ring. */
   today?: boolean;
   /** Native tooltip for the cell. */
   title?: string;
@@ -18,18 +18,18 @@ export interface HeatCell {
  * A column-flow grid of intensity-bucketed cells, the shape GitHub's
  * contribution graph, the weekday×hour playtime heatmap, and (as a single row)
  * the per-day listening/playtime strips all draw. One visual language: `--heat-0..4`
- * buckets, an optional legend, a "today" ring.
+ * neutral buckets, an optional legend, and one violet "today" cell.
  *
  * Two modes:
  *  - **static** (default): `<i>` cells, a read-only heatmap.
  *  - **selectable**: `<button>` cells that emit `select` with the cell index and
  *    highlight `selectedIndex`. This is how the day strips drill in.
  *
- * "Today" and "selected" are deliberately different marks. Today keeps its level
- * colour and gets a faint inset ring (like GitHub's border on the current day);
- * selection is a bold accent outline with the rest dimmed. Filling today with the
- * accent, as this used to, made it read as permanently selected, which is the
- * bug this fixes.
+ * "Today" and "selected" are different marks. Today is filled with the accent
+ * (`--heat-today`) when it has activity, because it is the one cell that is "now";
+ * with no activity yet it keeps the neutral base and a faint ring. Selection is an
+ * ink outline with the rest dimmed, never the accent. The only other accent here is
+ * the keyboard focus ring.
  *
  * Sizing: cells are square and fill the width by default (good when there are many
  * columns). Pass `cellHeight` to fix a short height instead, the right call for a
@@ -40,6 +40,7 @@ export interface HeatCell {
  * is entirely from `--heat-*` tokens, so light/dark follow the theme.
  */
 import { computed } from "vue";
+import { useT } from "~/composables/useT";
 
 const {
   cells,
@@ -49,6 +50,7 @@ const {
   legend = false,
   selectable = false,
   selectedIndex = null,
+  label = undefined,
 } = defineProps<{
   cells: HeatCell[];
   /** Cells per column. 7 = a week (calendars); 1 = a single horizontal strip. */
@@ -64,7 +66,11 @@ const {
   selectable?: boolean;
   /** Index of the highlighted cell, or null when nothing is drilled in. */
   selectedIndex?: number | null;
+  /** Accessible name for a static grid (one summary instead of one stop per cell). */
+  label?: string;
 }>();
+
+const { t } = useT();
 
 const emit = defineEmits<{ select: [index: number] }>();
 
@@ -83,6 +89,8 @@ const gridStyle = computed(() => ({
     class="hg"
     :class="{ dim: dimmed, 'fixed-h': cellHeight != null }"
     :style="gridStyle"
+    :role="!selectable && label ? 'img' : undefined"
+    :aria-label="!selectable ? label : undefined"
   >
     <component
       :is="selectable ? 'button' : 'i'"
@@ -94,14 +102,15 @@ const gridStyle = computed(() => ({
       :data-l="c.level || null"
       :data-now="c.today ? '' : null"
       :title="c.title || undefined"
+      :aria-label="selectable ? c.title || undefined : undefined"
       :aria-pressed="selectable ? i === selectedIndex : undefined"
       @click="selectable ? emit('select', i) : undefined"
     />
   </div>
   <div v-if="legend" class="hg-legend">
-    <span>less</span>
+    <span>{{ t("heatLess") }}</span>
     <i v-for="n in 5" :key="n" :data-l="(n - 1) || null" />
-    <span>more</span>
+    <span>{{ t("heatMore") }}</span>
   </div>
 </template>
 
@@ -143,10 +152,12 @@ const gridStyle = computed(() => ({
 .hg-c[data-l="4"] {
   background: var(--heat-4);
 }
-/* Today: keep the level colour, add a faint inset ring, never the accent, so it
-   can't be mistaken for the selection. */
-.hg-c[data-now] {
-  outline: 1.5px solid var(--heat-today);
+/* Today: the one accent cell when it has activity; a faint ring when it has none. */
+.hg-c[data-now][data-l] {
+  background: var(--heat-today);
+}
+.hg-c[data-now]:not([data-l]) {
+  outline: 1.5px solid var(--muted);
   outline-offset: -1.5px;
 }
 
@@ -163,13 +174,13 @@ button.hg-c:hover {
 .hg.dim button.hg-c {
   opacity: 0.4;
 }
-/* Selection: bold accent ring, full opacity, lifted above neighbours so no
-   adjacent cell paints over its ring. Wins over the today ring when today is
-   selected. The container's padding keeps the ring from being clipped. */
+/* Selection: bold ink ring, full opacity, lifted above neighbours so no adjacent
+   cell paints over its ring. Wins over the today ring when today is selected. The
+   container's padding keeps the ring from being clipped. */
 .hg.dim button.hg-c.on,
 button.hg-c.on {
   opacity: 1;
-  outline: 2px solid var(--live-ink);
+  outline: 2px solid var(--ink-strong);
   outline-offset: 1px;
   position: relative;
   z-index: 1;

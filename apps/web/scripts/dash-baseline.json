@@ -54,7 +54,6 @@
   "apps/web/src/components/ui/CardHeader.vue": 1,
   "apps/web/src/components/ui/DrillPanel.vue": 3,
   "apps/web/src/components/ui/Duration.vue": 2,
-  "apps/web/src/components/ui/Freshness.vue": 2,
   "apps/web/src/components/ui/HeatStrip.vue": 2,
   "apps/web/src/components/ui/LanguageBars.vue": 2,
   "apps/web/src/components/ui/ListFooter.vue": 2,

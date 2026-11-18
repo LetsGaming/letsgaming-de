@@ -133,7 +133,8 @@ The accent hue is fixed at OKLCH hue 293. Surfaces and text use the same hue at 
 | `--delta-up` | `#5ed8a9` | `#036f4f` | Positive change. 8.13:1 (dark), 5.41:1 (light) |
 | `--line-1` | `#26252c` | `#e1e0e6` | Decorative divider. Not a control boundary |
 | `--line-control` | `#75727f` | `#868491` | Input and control borders. 3.06:1 minimum (dark), 3.41:1 (light) |
-| `--heat-0..4` | `#211f27 #3f355e #5e4d92 #7f67c5 #a487fa` | `#e8e7ee #c5bde8 #a191dd #8063cf #6231ba` | Heat scale. Top step vs card: 6.36:1 (dark), 7.75:1 (light) |
+| `--heat-0..4` | `#211f27 #383740 #504e59 #696774 #807e8d` | `#e8e7ec #ceccd5 #b4b2be #9896a4 #807e8d` | Neutral heat scale (never the accent). Adjacent steps at least 1.29:1; top step on a card 4.53:1 (dark), 3.91:1 (light) |
+| `--heat-today` | `--live` | `--live` | The one violet cell: today, when it has activity |
 
 Theme-independent and imported (never retuned): Spotify, YouTube, Twitch and Discord brand colors; GitHub language colors; game and album art. CMS chart colors (`--stack-*`) stay inside the CMS.
 

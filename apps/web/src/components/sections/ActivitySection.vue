@@ -59,7 +59,7 @@ const contributionCells = computed<HeatCell[]>(() => {
           :title='t("contributions")'
           :note='t("contributionsScope", { n: module.data.contributions.total })'
         />
-        <HeatGrid :cells="contributionCells" :min-cell="8" legend />
+        <HeatGrid :cells="contributionCells" :min-cell="8" :label='t("contributions")' legend />
       </div>
       <div class="dash2__side">
         <CardHeader :title='t("languages")' :note='t("languagesScope")' />

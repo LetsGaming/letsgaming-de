@@ -276,3 +276,9 @@ These refine the phases above. Where a finding contradicts the plan text, the fi
   - Tool caveat found: `\uXXXX` escapes typed into a file write are converted to literal characters before the write, which tripped the no-dash hook. The dash patterns are built from char codes instead.
   - Gate caveat: after a type change in `packages/core`, rebuild it (`pnpm --filter @lg/core build`) before the web typecheck.
   - Verified in a dev session: label font changed, no middle dots in rendered Home, Code and Life text, no overflow at 390px (DE).
+- Phase 2 done. Deviations, with reasons:
+  - Heat ramp is neutral (`--heat-0..4`), with the top step on a card at 4.53:1 (dark) and 3.91:1 (light). Computed so violet "today" is clearly lighter or darker than its neighbours (1.4:1 or more), since hue alone is a weak signal.
+  - `--heat-today` is now `--live`: the today cell is violet when it has activity, a ring when it does not. The old rule "today never the accent" existed only because selection used the accent; selection now uses `--ink-strong`, so the two marks no longer collide.
+  - `HeatGrid` gained an accessible name for static grids (`label` prop, `role="img"`), `aria-label` on selectable cells, and `heatLess` and `heatMore` message keys (the legend words were hardcoded English; this pulls that German-pass item forward).
+  - `Freshness.vue` renders nothing when data is fresh; stale, never and empty stay muted, failed uses the error colour. The pulse dot and `.fresh.fr-fresh` accent are gone. The page-level "synced" line stays in the footer until the strip (Phase 4) takes it.
+  - Measured on Code: 0 accent-coloured elements in both themes, 0 freshness markers (all fresh). Today cells appear on the Life day strips; they are checked in the Phase 3 and 4 browser passes.

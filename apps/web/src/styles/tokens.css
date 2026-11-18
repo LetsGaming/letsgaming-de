@@ -90,11 +90,11 @@
      meant to be quiet. Only today is purple, which also makes "did he commit
      today" readable at a glance — an all-violet grid can't do that. */
   --heat-0: #211f27;
-  --heat-1: #3f355e;
-  --heat-2: #5e4d92;
-  --heat-3: #7f67c5;
-  --heat-4: #a487fa;
-  --heat-today: var(--muted);
+  --heat-1: #383740;
+  --heat-2: #504e59;
+  --heat-3: #696774;
+  --heat-4: #807e8d;
+  --heat-today: var(--live);
 
   --track: var(--surf-2);
 
@@ -236,11 +236,11 @@
   --sh-card: none;
   --sh-anchor: 0 2px 6px rgba(18, 16, 26, 0.08), 0 12px 32px rgba(18, 16, 26, 0.1);
 
-  --heat-0: #e8e7ee;
-  --heat-1: #c5bde8;
-  --heat-2: #a191dd;
-  --heat-3: #8063cf;
-  --heat-4: #6231ba;
+  --heat-0: #e8e7ec;
+  --heat-1: #ceccd5;
+  --heat-2: #b4b2be;
+  --heat-3: #9896a4;
+  --heat-4: #807e8d;
 
   --track: var(--line-1);
 

@@ -3,14 +3,15 @@ import type { FreshnessState, FreshnessView, MessageKey } from "@lg/core";
 import { useT } from "~/composables/useT";
 
 /**
- * A synced module's own age, said out loud.
+ * A synced module's own age, said out loud, when it is not current.
  *
  * The site's claim is that it updates itself, so the worst available bug is
- * rendering old data as current — that's the failure mode ("it goes stale")
- * wearing the success state. Only `fresh` gets the accent and the pulse: purple
- * means now, and stale isn't now.
+ * rendering old data as current. Fresh data says nothing here (the page-level
+ * "synced" line already says it, once). This marker speaks only for stale, failed,
+ * never and empty, so it is a signal and not a repeated label. Purple means now,
+ * so none of these states uses the accent.
  *
- * The five states were a five-branch `v-if` ladder of hardcoded English — the
+ * The five states were a five-branch `v-if` ladder of hardcoded English, the
  * component sits in six modules, so it was the site's most-rendered untranslated
  * string. A `state → MessageKey` map is both the fix and the shape the branch
  * ladder wanted: typing it as `Record<FreshnessState, …>` makes a new state a
@@ -30,8 +31,7 @@ const MESSAGE: Record<FreshnessState, MessageKey> = {
 </script>
 
 <template>
-  <span v-if="freshness" class="fresh" :class="'fr-' + freshness.state">
-    <span v-if="freshness.state === 'fresh'" class="dot" />
+  <span v-if="freshness && freshness.state !== 'fresh'" class="fresh" :class="'fr-' + freshness.state">
     {{ t(MESSAGE[freshness.state], { age: freshness.relative ?? "" }) }}
   </span>
 </template>
