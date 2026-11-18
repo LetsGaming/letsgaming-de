@@ -180,40 +180,35 @@ const idle = computed(
 
 <style scoped>
 .pw {
-  background: linear-gradient(180deg, var(--surf-2), var(--surf-1) 46%);
+  background: var(--surf-3);
   border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-  box-shadow: var(--sh-card);
+  border-radius: var(--r-3);
+  padding: var(--space-4);
+  color: var(--ink);
 }
 
-/* profile panel */
 .pw-unit {
-  border-radius: var(--r-card);
-  background: var(--surf-2);
-  border: 1px solid var(--line-1);
-  overflow: hidden;
+  min-width: 0;
 }
 .pw-who {
   display: flex;
-  gap: var(--sp-12);
+  gap: var(--space-3);
   align-items: center;
-  padding: 13px;
 }
 .pw-avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-round);
   flex: none;
   position: relative;
   display: grid;
   place-items: center;
   font-family: var(--f-d);
   font-weight: 700;
-  font-size: 16px;
-  color: var(--on-live);
-  background: linear-gradient(140deg, var(--ink), var(--surf-3));
-  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
+  font-size: var(--fs-body);
+  color: var(--ink-strong);
+  background: var(--surf-2);
+  border: 1px solid var(--line-2);
 }
 .pw-av {
   position: absolute;
@@ -221,7 +216,7 @@ const idle = computed(
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   display: block;
 }
 .pw-avatar :deep(picture) {
@@ -232,17 +227,17 @@ const idle = computed(
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   display: block;
 }
 .pw-pip {
   position: absolute;
   right: -1px;
   bottom: -1px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  border: 3px solid var(--surf-2);
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-round);
+  border: 3px solid var(--surf-3);
   display: grid;
   place-items: center;
   background: var(--muted);
@@ -254,7 +249,7 @@ const idle = computed(
   content: "";
   position: absolute;
   inset: -4px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   border: 2px solid var(--discord-online);
   opacity: 0.5;
   animation: pw-ping 2.6s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
@@ -271,12 +266,12 @@ const idle = computed(
   width: 56%;
   height: 2.5px;
   border-radius: 2px;
-  background: var(--surf-2);
+  background: var(--surf-3);
 }
 .pw-pip.pw-s-offline {
   background: transparent;
-  border-color: var(--surf-2);
-  box-shadow: inset 0 0 0 2px var(--muted);
+  border-color: var(--surf-3);
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 .pw-idcol {
@@ -291,28 +286,29 @@ const idle = computed(
   line-height: 1.15;
 }
 .pw-handle {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   font-weight: 400;
-  color: var(--muted);
-  margin-left: var(--sp-4);
+  color: var(--ink);
+  margin-left: var(--space-2);
 }
 .pw-stat {
   display: flex;
   align-items: center;
-  gap: var(--sp-6);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  margin-top: var(--sp-2);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--fs-meta);
+  color: var(--ink);
+  margin-top: var(--space-1);
 }
 .pw-lbl {
   font-weight: 600;
 }
 .pw-cstat {
-  font-size: 11.5px;
-  color: var(--muted);
+  font-size: var(--fs-meta);
+  color: var(--ink);
   line-height: 1.35;
-  margin-top: 5px;
+  margin-top: var(--space-1);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -320,7 +316,7 @@ const idle = computed(
 }
 .pw-q {
   font-family: var(--f-d);
-  color: color-mix(in srgb, var(--ink) 65%, var(--muted));
+  color: var(--ink);
   margin-right: 1px;
 }
 .pw-q-close {
@@ -328,33 +324,30 @@ const idle = computed(
   margin-left: 1px;
 }
 
-/* activity */
 .pw-act {
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  padding: 11px 13px;
-  border-top: 1px solid var(--line-1);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-2);
 }
-/* One activity = an icon-left / text-right row, matching the profile row above.
-   (The art used to stack above the text because this wrapper had no layout of its
-   own.) */
 .pw-actitem {
   display: flex;
-  gap: 11px;
+  gap: var(--space-3);
   align-items: center;
   min-width: 0;
 }
 .pw-art {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-3);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-2);
   flex: none;
   object-fit: cover;
-  box-shadow: 0 5px 12px -6px rgba(0, 0, 0, 0.55);
 }
 .pw-art-ph {
-  background: linear-gradient(135deg, var(--ink), var(--surf-3));
+  background: var(--surf-2);
+  border: 1px solid var(--line-2);
 }
 .pw-abody {
   min-width: 0;
@@ -363,32 +356,30 @@ const idle = computed(
 .pw-src {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   font-family: var(--f-b);
   font-size: var(--fs-meta);
   font-weight: 600;
 }
 .pw-atitle {
-  font-size: var(--fs-meta);
+  font-size: var(--fs-small);
   font-weight: 600;
-  color: var(--ink);
-  margin-top: 3px;
+  color: var(--ink-strong);
+  margin-top: var(--space-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .pw-asub {
-  font-size: 11.5px;
-  color: var(--muted);
+  font-size: var(--fs-meta);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .pw-off {
-  color: var(--muted);
+  color: var(--ink);
   font-size: var(--fs-meta);
-  justify-content: center;
-  padding: 13px;
 }
 
 /* themed motion — inherits currentColor from .pw-src */
@@ -475,10 +466,10 @@ const idle = computed(
 .pw-watch i {
   position: absolute;
   top: 50%;
-  margin-top: -var(--sp-2);
+  margin-top: -2px;
   width: 4px;
   height: 4px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: currentColor;
   animation: pw-scrub 1.9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
@@ -573,6 +564,9 @@ const idle = computed(
 
 .pw-muted {
   color: var(--muted);
+}
+.pw .pw-muted {
+  color: var(--ink);
 }
 .pw-np {
   font-size: var(--fs-meta);

@@ -68,30 +68,30 @@ const { t } = useT();
 <style scoped>
 .drill__back {
   font: inherit;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  color: var(--ink);
   background: none;
   border: 0;
   cursor: pointer;
   padding: 0;
 }
 .drill__back:hover {
-  color: var(--ink);
+  text-decoration: underline;
 }
 .drill__dim {
   color: var(--muted);
   font-size: var(--fs-meta);
-  padding: var(--sp-8) 0;
+  padding: var(--space-2) 0;
 }
 .drill__empty {
   text-align: center;
-  padding: var(--sp-16) 0;
+  padding: var(--space-4) 0;
 }
 .drill__sum {
-  font-family: var(--f-m);
   font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--space-2);
 }
 </style>

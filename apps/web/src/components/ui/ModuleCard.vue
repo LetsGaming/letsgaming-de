@@ -18,8 +18,7 @@
 .module-card {
   background: var(--surf-1);
   border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-18);
-  box-shadow: var(--sh-card);
+  border-radius: var(--r-3);
+  padding: var(--space-5);
 }
 </style>

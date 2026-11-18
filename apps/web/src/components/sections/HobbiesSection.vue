@@ -12,85 +12,67 @@ defineProps<{
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
-    <div class="hobbies">
-      <p v-if="!module.data.hobbies.length" class="sub">{{ t("nothingHere") }}</p>
-      <div v-for="h in module.data.hobbies" :key="h.id" class="tile" :class="'t-' + h.tone">
-        <div>
-          <div class="ic" v-html="h.icon ? icons[h.icon] : ''" />
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="group">
+    <p v-if="!module.data.hobbies.length" class="sub">{{ t("nothingHere") }}</p>
+    <ul v-else class="hobbies">
+      <li v-for="h in module.data.hobbies" :key="h.id" class="hobby">
+        <span class="ic" aria-hidden="true" v-html="h.icon ? icons[h.icon] : ''" />
+        <div class="hobby-text">
           <h3>{{ h.title }}</h3>
           <p>{{ h.blurb }}</p>
         </div>
-      </div>
-    </div>
+      </li>
+    </ul>
   </ModuleSection>
 </template>
 
 <style scoped>
-/* Hobby tiles, scoped. The svg comes from v-html (h.icon), so `.tile .ic svg`
- * becomes :deep(svg). `.sub` stays global. */
 .hobbies {
   display: grid;
-  gap: var(--sp-16);
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.tile {
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-card);
-  padding: var(--sp-20) var(--sp-18);
-  box-shadow: var(--sh-card);
-  transition: box-shadow 0.25s ease;
-  min-height: 142px;
+@container (min-width: 560px) {
+  .hobbies {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.hobby {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--line-1);
+  min-width: 0;
 }
-.tile:hover {
-  box-shadow: var(--sh-anchor);
-}
-.tile .ic {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-2);
+.ic {
+  flex: none;
   display: grid;
   place-items: center;
-  margin-bottom: var(--sp-12);
+  width: var(--space-6);
+  height: var(--space-6);
+  color: var(--ink);
 }
-.tile .ic :deep(svg) {
-  width: 22px;
-  height: 22px;
+/* The svg comes from v-html (h.icon), so it needs :deep() to be reached. */
+.ic :deep(svg) {
+  width: var(--space-5);
+  height: var(--space-5);
 }
-.tile h3 {
+.hobby-text {
+  min-width: 0;
+}
+.hobby h3 {
   font-family: var(--f-b);
   font-weight: 600;
-  font-size: 18px;
+  font-size: var(--fs-body);
   color: var(--ink-strong);
 }
-.tile p {
-  font-size: var(--fs-meta);
+.hobby p {
+  font-size: var(--fs-small);
   color: var(--muted);
-  margin-top: 3px;
-}
-.tile.t-purple {
-  background: var(--tile-purple);
-}
-.tile.t-mint {
-  background: var(--tile-mint);
-}
-.tile.t-coral {
-  background: var(--tile-coral);
-}
-.tile.t-sun {
-  background: var(--tile-sun);
-}
-
-/* The responsive step has to live here: once `.hobbies` moved into this scoped
-   block, `.hobbies[data-v]` out-specifies a global `@media .hobbies`, so the
-   breakpoint only wins from inside the same scope. Two columns on a phone, four on
-   the desktop — matching the stats grid. */
-@media (max-width: 720px) {
-  .hobbies {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  margin-top: var(--space-1);
 }
 </style>

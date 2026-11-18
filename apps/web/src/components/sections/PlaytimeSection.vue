@@ -229,17 +229,12 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
       {{ t("emptyPlaytime") }}
     </p>
 
-    <div v-else class="pt-cards">
-      <ModuleCard>
-      <CardHeader as="span" tone="live" :title='t("played")'>
-        <template #note>
-          <span v-if="selected" class="pt-scope">{{ day(selected) }}</span>
-          <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
-        </template>
-      </CardHeader>
+    <template v-else>
+      <div class="pt-bar">
+        <span v-if="selected" class="pt-scope">{{ day(selected) }}</span>
+        <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
+      </div>
 
-      <!-- Two inert stats — a play has one dimension (the game), so unlike
-           Listening's song/artist tabs there's nothing to switch between. -->
       <div class="pt-stats">
         <StatTile :label='t("timePlayed")'>
           <template #value><Duration :minutes="d.totalHours * 60" /></template>
@@ -257,7 +252,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         @select="onSelect"
       />
 
-      <!-- One content region: the top-games list, or a day's games. -->
       <DrillPanel
         :title='t("topGames")'
         :day-title="selected ? day(selected) : ''"
@@ -273,7 +267,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           <Duration :minutes="dayMinutes" /> · {{ dayGameCount }} {{ plural("game", dayGameCount) }}
         </template>
 
-        <!-- a day's games -->
         <template #day>
           <RankedRow
             v-for="(g, i) in shownDayRows"
@@ -283,7 +276,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
             :subtitle="g.genre"
             :art="cover(g.coverUrl, g.name)"
             :highlight="i === 0"
-            fallback="🎮"
           >
             <Duration :minutes="g.minutes" /><small v-if="!g.exact"> +</small>
           </RankedRow>
@@ -295,7 +287,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           />
         </template>
 
-        <!-- the top-games list -->
         <RankedRow
           v-for="(g, i) in shownGames"
           :key="g.name"
@@ -304,7 +295,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           :subtitle="g.genre"
           :art="cover(g.coverUrl, g.name)"
           :highlight="i === 0"
-          fallback="🎮"
         >
           <Duration :minutes="g.minutes" /><small v-if="!g.exact"> +</small>
         </RankedRow>
@@ -315,10 +305,8 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           @toggle="gamesOpen = !gamesOpen"
         />
       </DrillPanel>
-    </ModuleCard>
 
-      <!-- ── the weekday×hour heatmap: Playtime's own second card ── -->
-      <ModuleCard v-if="d.heat.length">
+      <ModuleCard v-if="d.heat.length" class="pt-heatcard">
         <CardHeader as="span" :title='t("whenIPlay")'>
           <template #note>
             <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
@@ -333,57 +321,51 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           </div>
         </div>
       </ModuleCard>
-    </div>
+    </template>
   </ModuleSection>
 </template>
 
 <style scoped>
-/* Playtime's own bits only. The shell, cards, headers and list footers are shared
-   primitives (ModuleSection / ModuleCard / CardHeader / ListFooter), the drill
-   region is DrillPanel, and the timezone toggle is SegmentedControl. What stays:
-   the empty state, the two-card stack, the two-up stat grid, and the weekday×hour
-   heatmap, which is Playtime's alone. */
-.pt-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-16);
-}
 .pt-empty {
   color: var(--muted);
   font-size: var(--fs-body);
 }
-/* Card-2's zone label matches CardHeader's live note (card-1 uses that note
-   directly; here it's a slot, since the note is either this label or the toggle). */
+.pt-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
 .pt-scope {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  color: var(--muted);
 }
 .pt-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-10);
-  margin-bottom: var(--sp-16);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+}
+.pt-heatcard {
+  margin-top: var(--space-7);
 }
 
-/* ── weekday×hour heatmap: day labels beside a 24-column grid, hour axis below.
-   `align-items: start` keeps the labels pinned to the top (the grid), not
-   stretched over the legend + axis below it; the fixed 13px rows + 3px gap + 4px
-   pad mirror the grid's fixed-height cells (`:cell-height="13"`) so the seven
-   labels line up with the seven cell rows exactly. ── */
+/* Fixed 13px rows and a 3px gap mirror the grid's fixed-height cells
+   (:cell-height="13"), so the seven weekday labels line up with the seven rows. */
 .pt-heat {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--sp-8);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
   align-items: start;
 }
 .pt-heat-days {
   display: grid;
   grid-template-rows: repeat(7, 13px);
   gap: 3px;
-  padding: var(--sp-4) 0;
-  font-family: var(--f-m);
-  font-size: 9px;
+  padding: var(--space-1) 0;
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  line-height: 1;
   color: var(--muted);
 }
 .pt-heat-days span {
@@ -395,9 +377,9 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   display: flex;
   justify-content: space-between;
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
-  margin-top: var(--sp-6);
-  padding: 0 var(--sp-4);
+  margin-top: var(--space-2);
+  padding: 0 var(--space-1);
 }
 </style>

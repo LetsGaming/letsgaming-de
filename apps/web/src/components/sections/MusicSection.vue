@@ -30,8 +30,6 @@ import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import { useLimitedList } from "../../composables/useLimitedList";
 import ModuleSection from "../ui/ModuleSection.vue";
-import ModuleCard from "../ui/ModuleCard.vue";
-import CardHeader from "../ui/CardHeader.vue";
 import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
 import StatTile from "../ui/StatTile.vue";
@@ -146,20 +144,16 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
 
 <template>
   <ModuleSection :id="module.id" :heading="d.heading" :note="d.note">
-    <!-- Empty state: nothing recorded until the sampler catches Spotify playing. -->
     <p v-if="!hasData" class="mu-empty">
       {{ t("emptyMusic") }}
     </p>
 
-    <ModuleCard v-else>
-      <CardHeader as="span" tone="live" :title='t("listening")'>
-        <template #note>
-          <span v-if="selected" class="mu-scope">{{ day(selected) }}</span>
-          <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
-        </template>
-      </CardHeader>
+    <template v-else>
+      <div class="mu-bar">
+        <span v-if="selected" class="mu-scope">{{ day(selected) }}</span>
+        <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
+      </div>
 
-      <!-- Stats double as tabs. "time listening" is inert (no list behind it). -->
       <div class="mu-stats">
         <StatTile :label='t("timeListening")'>
           <template #value><Duration :minutes="d.totalHours * 60" /></template>
@@ -190,7 +184,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         @select="onSelect"
       />
 
-      <!-- One content region: a top list, or a day's rows (tracks or artists). -->
       <DrillPanel
         :title='t(list === "songs" ? "topSongs" : "topArtists")'
         :day-title="selected ? day(selected) : ''"
@@ -207,7 +200,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           {{ dayArtistCount }} {{ plural("artist", dayArtistCount) }}
         </template>
 
-        <!-- a day's rows -->
         <template #day>
           <RankedRow
             v-for="(row, i) in dayRows"
@@ -217,7 +209,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
             :subtitle="row.secondary"
             :art="artSrc(row.art)"
             :highlight="i === 0"
-            fallback="♪"
           >
             <Duration :minutes="row.minutes" /><small> · {{ row.plays }}×</small>
           </RankedRow>
@@ -229,7 +220,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           />
         </template>
 
-        <!-- a top list -->
         <RankedRow
           v-for="(r, i) in mainRows"
           :key="`${r.name}-${i}`"
@@ -238,7 +228,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           :subtitle="r.by"
           :art="artSrc(r.artUrl)"
           :highlight="i === 0"
-          fallback="♪"
         >
           <Duration :minutes="r.minutes" /><small> · {{ r.plays }}×</small>
         </RankedRow>
@@ -249,31 +238,29 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           @toggle="mainOpen = !mainOpen"
         />
       </DrillPanel>
-    </ModuleCard>
+    </template>
   </ModuleSection>
 </template>
 
 <style scoped>
-/* Music's own bits only. Everything structural is a shared primitive now — the
-   shell, card and header (ModuleSection / ModuleCard / CardHeader), the capped
-   list (ListFooter), and the whole drill region including its back control and
-   status lines (DrillPanel). What's left is the empty state and the three-up
-   stat/tab grid, which is Music's alone: its stats double as tabs. */
 .mu-empty {
   color: var(--muted);
   font-size: var(--fs-body);
 }
-/* The drilled-in day replaces the range picker in the header note, so it has to
-   read as the same caption CardHeader would have rendered. */
+.mu-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
 .mu-scope {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  color: var(--muted);
 }
 .mu-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-10);
-  margin-bottom: var(--sp-16);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
 }
 </style>

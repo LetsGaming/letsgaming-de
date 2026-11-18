@@ -551,3 +551,11 @@ committed) using the WCAG 2.x formula on the final token values.
   - `HeatGrid` legend ("less", "more") and `CodingSection` "h tracked" are English-only literals. Not changed. They need message keys.
   - Global `.dash`, `.grid`, `.card` rules in `app.css` look unused. Step 10 checks and removes them.
   - Pinned thumbnails show flat placeholders in the dev data (no offline images).
+- Step 7 done, built by a Sonnet subagent and reviewed by me. I switched the Wrapped window on in a dev session through the CMS API (`PUT /api/cms/wrapped`, `fromDate` 2026-10-10, every 1 month, 4 weeks) and checked it at 1280px (layout, no clipping) and at 390px in EN and DE (no overflow). Deviations:
+  - The card titles "Played", "Listening" and the Wrapped title were removed because they repeated the section heading. The message keys stay in the catalog (unused; Step 10 sweeps them).
+  - New message key `periodRange` ("{from} to {to}" / "{from} bis {to}") replaces the em dash in the Wrapped period.
+  - `StatTile` is now a bare figure (`size`: "figure" | "display"); selected tabs use an ink top rule. `RankedRow` lost the emoji fallbacks.
+  - `--tile-*` tokens are deleted. The `tone` field stays in the data, unused. A comment in `packages/core/src/content.ts` still mentions it.
+  - The gallery had no lightbox or link behaviour, so nothing was lost.
+  - Wrapped shows three of four lists in the dev data (no genre data), so the grid has one empty cell. The layout handles it.
+  - The range pickers on Time played and Listening look tight at 390px. Not changed.

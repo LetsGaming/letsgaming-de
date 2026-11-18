@@ -106,13 +106,6 @@
   --discord-idle: #f0b232;
   --discord-dnd: #f23f43;
 
-  /* Hobby tile tones — CMS-authored, one per hobby. Not a palette filling slots:
-     the owner picks these, which is authorship, not invention. */
-  --tile-purple: linear-gradient(160deg, #251d47, #1c1633);
-  --tile-mint: linear-gradient(160deg, #16342f, #171a33);
-  --tile-coral: linear-gradient(160deg, #341f2a, #1e1830);
-  --tile-sun: linear-gradient(160deg, #37301c, #1e1a31);
-
   /* ── Categorical palette for the CMS analytics chart. Admin surface, real
      categorical data, no better source to import from — the one place a
      palette is still allowed to invent. Theme-independent. */
@@ -250,12 +243,6 @@
   --sh-card: none;
   --sh-anchor: 0 2px 6px rgba(18, 16, 26, 0.08), 0 12px 32px rgba(18, 16, 26, 0.1);
 
-  /* Tile tones, light. Same four authored hues, inverted: the gradient carries
-     the tone and the ink stays dark. */
-  --tile-purple: linear-gradient(160deg, #ebe6fb, #f6f4fd);
-  --tile-mint: linear-gradient(160deg, #dff3ec, #f2f8fb);
-  --tile-coral: linear-gradient(160deg, #fbe6ec, #f8f2fb);
-  --tile-sun: linear-gradient(160deg, #f7efd9, #f8f5fb);
   --heat-0: #e8e7ee;
   --heat-1: #c5bde8;
   --heat-2: #a191dd;

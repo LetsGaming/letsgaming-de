@@ -23,29 +23,44 @@ defineProps<{
 </template>
 
 <style scoped>
-/* Gallery-specific rules, scoped so they can't leak or be out-specified. The
- * shell is ModuleSection; `.sub` (the empty-state caption) stays global. */
+/* The first image spans two columns once there are three or more to a row; the rest
+   fill a regular grid. Captions sit under the frame, never over it. */
 .gal {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--sp-12);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-4);
+}
+@container (min-width: 720px) {
+  .gal {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .gal-item:first-child {
+    grid-column: span 2;
+  }
 }
 .gal-item {
   margin: 0;
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
-  overflow: hidden;
+  min-width: 0;
 }
 .gal-item :deep(img) {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
+  border-radius: var(--r-2);
+  background: var(--surf-2);
+}
+.gal-item:first-child :deep(img) {
+  aspect-ratio: 16 / 9;
 }
 .gal-item figcaption {
-  padding: var(--sp-8) var(--sp-12);
+  padding-top: var(--space-2);
   font-size: var(--fs-meta);
   color: var(--muted);
+}
+@container (max-width: 719px) {
+  .gal-item:first-child {
+    grid-column: 1 / -1;
+  }
 }
 </style>

@@ -42,8 +42,8 @@ withDefaults(defineProps<Props>(), { as: "h3", tone: "muted" });
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-12);
-  margin-bottom: var(--sp-14);
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-3);
 }
 .card-header__title {
   font-family: var(--f-d);
@@ -61,12 +61,10 @@ withDefaults(defineProps<Props>(), { as: "h3", tone: "muted" });
   white-space: nowrap;
 }
 .card-header__note {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  flex: 0 0 auto;
-}
-.card-header__note.is-muted {
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   color: var(--muted);
+  flex: 0 0 auto;
 }
 .card-header__note.is-live {
   color: var(--live-ink);

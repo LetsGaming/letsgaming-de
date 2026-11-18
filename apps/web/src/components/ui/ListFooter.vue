@@ -34,8 +34,8 @@ const emit = defineEmits<{ toggle: [] }>();
 .list-footer {
   display: flex;
   align-items: baseline;
-  gap: var(--sp-10);
-  padding-top: var(--sp-8);
+  gap: var(--space-3);
+  padding-top: var(--space-3);
 }
 /* Hidden when neither the toggle nor the cap note renders (mirrors the old foot). */
 .list-footer:empty {
@@ -43,9 +43,9 @@ const emit = defineEmits<{ toggle: [] }>();
 }
 .list-footer__more {
   font: inherit;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
+  font-family: var(--f-b);
+  font-size: var(--fs-small);
+  color: var(--ink);
   background: none;
   border: 0;
   cursor: pointer;
@@ -55,8 +55,8 @@ const emit = defineEmits<{ toggle: [] }>();
   text-decoration: underline;
 }
 .list-footer__cap {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
 </style>

@@ -54,26 +54,28 @@ const { t } = useT();
 
 <style scoped>
 .hs {
-  margin-bottom: var(--sp-16);
+  margin-bottom: var(--space-6);
 }
 .hs-lbl {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  gap: var(--space-1) var(--space-3);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   color: var(--muted);
-  margin-bottom: var(--sp-8);
+  margin-bottom: var(--space-2);
 }
 .hs-axis {
   display: flex;
   justify-content: space-between;
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   color: var(--muted);
-  margin-top: var(--sp-6);
+  margin-top: var(--space-2);
 }
 .hs-axis .now {
-  color: var(--live-ink);
+  color: var(--ink);
 }
 </style>

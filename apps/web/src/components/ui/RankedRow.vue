@@ -51,39 +51,38 @@ watch(
 <style scoped>
 .rr {
   display: grid;
-  grid-template-columns: 18px 34px 1fr auto;
-  gap: var(--sp-10);
+  grid-template-columns: var(--space-5) 48px minmax(0, 1fr) auto;
+  gap: var(--space-3);
   align-items: center;
-  padding: var(--sp-6) 0;
+  padding: var(--space-3) 0;
   border-top: 1px solid var(--line-1);
 }
-.rr:first-child {
-  border-top: none;
-}
 .rr-rank {
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
+  font-family: var(--f-b);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
   text-align: right;
 }
 .rr-1 .rr-rank {
-  color: var(--live-ink);
+  font-weight: 700;
+  color: var(--ink-strong);
 }
 .rr-art {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--r-chip);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-2);
   object-fit: cover;
   display: block;
-  background: var(--surf-3);
+  background: var(--surf-2);
 }
 .rr-mono {
   display: grid;
   place-items: center;
   font-family: var(--f-d);
-  font-size: var(--fs-body);
-  color: var(--live-ink);
-  background: linear-gradient(135deg, var(--surf-3), var(--surf-1));
+  font-size: var(--fs-h3);
+  color: var(--ink);
+  border: 1px solid var(--line-1);
 }
 .rr-body {
   min-width: 0;
@@ -107,6 +106,7 @@ watch(
 .rr-val {
   font-family: var(--f-m);
   font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
   white-space: nowrap;
   text-align: right;
