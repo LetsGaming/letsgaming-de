@@ -1,0 +1,48 @@
+# Copy sheet for the production CMS
+
+The seed only fills a fresh database. The live site keeps the text stored in its CMS, so the new wording must be pasted in by hand. Each row below says where it goes.
+
+Rules used for every string: no em or en dashes, sentence case, no stock adverbs ("quietly", "genuinely"), one label per intent, and no new facts. Every fact comes from the old copy.
+
+## Hero and about (CMS: Site content)
+
+| Field | EN | DE |
+|---|---|---|
+| Headline, before | `I build websites. After hours I ` | `Ich baue Websites. Nach Feierabend ` |
+| Headline, highlighted word | `tinker` | `bastle` |
+| Headline, after | `.` | ` ich.` |
+| Lede | `Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung**. Outside work: plant sensors, LED strips, and a home lab.` | `Webentwickler in Vollzeit, gelernter **Fachinformatiker Anwendungsentwicklung**. Nach der Arbeit: Pflanzensensoren, LED-Streifen und ein Home Lab.` |
+| Bio, paragraph 1 | `I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into interfaces that are easy to use.` | `Ich bin Webentwickler in Vollzeit und über eine Ausbildung zum Fachinformatiker für Anwendungsentwicklung hierhergekommen. Den größten Teil des Tages baue ich Oberflächen, die sich leicht bedienen lassen.` |
+| Bio, paragraph 2 | `Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby, usually attached to a plant, an LED strip, or a corner of my home lab that did not need automating.` | `Nach der Arbeit bin ich am glücklichsten mit einem Lötkolben oder einem Raspberry Pi in Reichweite, meistens an einer Pflanze, einem LED-Streifen oder einer Ecke im Home Lab, die man nicht hätte automatisieren müssen.` |
+| Bio, paragraph 3 | `This site is a project too. A small custom CMS holds the text, and a backend pulls data from GitHub (and whatever I connect next), so the pages stay current without me.` | `Diese Seite ist auch so ein Projekt. Ein kleines, selbstgebautes CMS hält die Texte, ein Backend holt Daten von GitHub (und was ich als Nächstes anschließe), damit die Seiten ohne mich aktuell bleiben.` |
+
+## Lately ("Now" items)
+
+| Item | EN value | DE value |
+|---|---|---|
+| building | `**plantcare-tracker** (watering schedules)` | `**plantcare-tracker** (Gießpläne)` |
+
+The other three items had no tell and stay as they are.
+
+## Links
+
+| Link | EN label | DE label |
+|---|---|---|
+| Primary (contact) | `Contact` | `Kontakt` |
+
+## Module headings (CMS: Layout, heading per module)
+
+| Module | EN | DE |
+|---|---|---|
+| teasers | `Areas` | `Bereiche` |
+| projects | `Projects` | `Projekte` |
+| hobbies | `Hobbies` | `Hobbys` |
+| gallery | `Photos` | `Fotos` |
+| contact | `Contact` | `Kontakt` |
+
+Other headings stay (At a glance, Featured, Recent, This week, Right now, Time played, Listening, Wrapped, Lately, Guestbook, About, Blog).
+
+## Not changed on purpose
+
+- The four hobby blurbs ("where the name comes from", "more than I can count", "lights that do things", "automating the boring bits"). They carry no tell of their own, and a rewrite would risk inventing a claim (for example, "lights that react to things" says more than the original).
+- Interface strings (empty states, form messages, error page, link text) are in the code catalog and need no CMS change.

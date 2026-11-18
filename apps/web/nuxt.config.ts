@@ -112,7 +112,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: "en" },
-      title: "Domenic — web dev & tinkerer",
+      title: "Domenic, web developer",
       meta: [
         { charset: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },

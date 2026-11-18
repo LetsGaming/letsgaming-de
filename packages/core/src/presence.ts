@@ -335,7 +335,7 @@ export function normalizePresence(
     cards.push({
       category,
       title: a.name,
-      ...(a.details || a.state ? { subtitle: [a.details, a.state].filter(Boolean).join(" — ") } : {}),
+      ...(a.details || a.state ? { subtitle: [a.details, a.state].filter(Boolean).join(", ") } : {}),
       ...(assetUrl(a) ? { image: assetUrl(a) } : {}),
       ...(a.timestamps?.start ? { since: a.timestamps.start } : {}),
     });

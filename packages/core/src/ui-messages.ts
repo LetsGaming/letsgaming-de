@@ -37,6 +37,11 @@ const EN = {
   lastSynced: "last synced",
   docs: "Docs",
   privacy: "Privacy",
+  errorNotFoundTitle: "Page not found",
+  errorGenericTitle: "Something went wrong",
+  errorNotFoundText: "This address does not exist (any more). It may have moved, or the link has a typo.",
+  errorGenericText: "Something unexpected broke. Trying again from this page rarely helps.",
+  errorHome: "Back to the homepage",
   backToStart: "← back to the homepage",
   openMenu: "Open menu",
   closeMenu: "Close menu",
@@ -55,9 +60,9 @@ const EN = {
   // and a second key would be two strings to keep saying the same thing.
   analyticsTitle: "Anonymous usage analytics",
   analyticsDesc:
-    "Helps me see which sections are useful. No cookies, no IP, no identifier — just aggregate counts.",
+    "Helps me see which sections are useful. No cookies, no IP, no identifier: just aggregate counts.",
   analyticsDetails: "Details",
-  analyticsDnt: "Turned off automatically — your browser sends a “Do Not Track” signal, which I respect.",
+  analyticsDnt: "Turned off automatically. Your browser sends a “Do Not Track” signal, which I respect.",
   languageNote: "Reloads the page in your language. Untranslated bits fall back to English.",
 
   // Generic empty + error states
@@ -67,20 +72,20 @@ const EN = {
 
   // Section-specific empty states
   emptyActivity: "Nothing synced from GitHub yet.",
-  emptyGlance: "Nothing synced from GitHub yet — check back shortly.",
+  emptyGlance: "Nothing from GitHub yet. Check back shortly.",
   emptyCoding: "No coding time synced yet.",
   emptyFeatured: "Nothing pinned right now.",
   /** Badge on a repo pinned on the owner's GitHub profile. */
   featuredPinned: "Pinned",
   emptyProjects: "No projects to show.",
   emptyGallery: "No pictures yet.",
-  emptyGuestbook: "No notes yet — be the first to sign.",
+  emptyGuestbook: "No notes yet. Be the first to sign.",
   emptyPosts: "Nothing published yet.",
   emptyNow: "Nothing written here lately.",
   emptyMusic:
-    "Nothing recorded yet. Tracks show up here after the presence sampler catches Spotify playing — give it a day.",
+    "Nothing recorded yet. Tracks show up here after the presence sampler catches Spotify playing. Give it a day.",
   emptyPlaytime:
-    "Nothing recorded yet. Games show up here after the presence sampler catches you playing — give it a day.",
+    "Nothing recorded yet. Games show up here after the presence sampler catches you playing. Give it a day.",
   emptyDayPlaytime: "Nothing played this day.",
   emptyDayMusic: "Nothing played this day.",
 
@@ -99,7 +104,7 @@ const EN = {
   languagesScope: "across all public repos",
   recentEvents: "Recent events",
   newestFirst: "newest first",
-  fullActivity: "full activity →",
+  fullActivity: "All activity",
 
   // Glance stats. These were literals in `resolve.ts` — the numbers are synced,
   // but the words around them are chrome, and chrome belongs here. It's why a
@@ -132,8 +137,8 @@ const EN = {
   eventGistNamed: "Shared a gist: {description}",
 
   // Projects / featured
-  seeAllWork: "see all my work →",
-  allReposGitHub: "all repos on GitHub →",
+  seeAllWork: "All projects",
+  allReposGitHub: "All repos on GitHub",
 
   // Music / playtime
   listening: "Listening",
@@ -187,7 +192,7 @@ const EN = {
   presenceUnreachable: "Can't reach Discord",
   presenceLoading: "· loading…",
   presenceUnknown: "· status unknown",
-  presenceOfflineIdle: "Offline right now — nothing to show",
+  presenceOfflineIdle: "Offline right now. Nothing to show.",
   presenceNoActivity: "No activity to display right now",
   presenceNothing: "Nothing to show here right now.",
   presenceSrcMusic: "Listening to Spotify",
@@ -219,7 +224,7 @@ const EN = {
   waveLimited: "Too many waves for now, try again later.",
 
   // Teaser cards on the home page.
-  teasersHeading: "Jump in",
+  teasersHeading: "Areas",
   teaserHoursWeek: "{n} h played this week",
   teaserTopArtist: "Top artist: {name}",
   teaserLatest: "{text} · {age} ago",
@@ -234,7 +239,7 @@ const EN = {
   /** Shown once, above the module list, when several synced modules are
    *  simultaneously cold — see coldModuleCount in SitePanels.vue. Reframes a
    *  page that would otherwise read as five separate "nothing here"s. */
-  coldStart: "Still warming up — a few things haven't synced yet.",
+  coldStart: "Still warming up. A few things haven't synced yet.",
 
   // Contact. The module offers a form when the relay is configured and a mailto
   // when it isn't, so both paths need copy — the mailto branch is the one an
@@ -245,9 +250,9 @@ const EN = {
   contactFormMessage: "Message",
   contactSend: "Send message",
   contactSending: "Sending…",
-  contactSent: "Thanks — your message is on its way. I'll get back to you soon.",
-  contactUnconfigured: "The contact form isn't set up right now — try email instead.",
-  contactTooMany: "Too many messages just now — please try again a little later.",
+  contactSent: "Thanks, your message is on its way. I'll get back to you soon.",
+  contactUnconfigured: "The contact form isn't set up right now. Try email instead.",
+  contactTooMany: "Too many messages just now. Please try again a little later.",
 
   // Guestbook form (the empty-list copy lives with the section, above).
   guestbookFormName: "Name",
@@ -255,7 +260,7 @@ const EN = {
   guestbookSend: "Sign the guestbook",
   guestbookSending: "Signing…",
   guestbookSent: "Thanks for signing! Your note will appear here once I've had a chance to approve it.",
-  guestbookTooMany: "That's a few too many just now — please try again a little later.",
+  guestbookTooMany: "That's a few too many just now. Please try again a little later.",
 
   // Coding
   codingScope: "{range} · {hours}h tracked",
@@ -270,6 +275,11 @@ const DE: Messages = {
   lastSynced: "zuletzt synchronisiert",
   docs: "Doku",
   privacy: "Datenschutz",
+  errorNotFoundTitle: "Seite nicht gefunden",
+  errorGenericTitle: "Etwas ist schiefgelaufen",
+  errorNotFoundText: "Die Adresse existiert nicht (mehr). Vielleicht wurde sie verschoben oder falsch eingegeben.",
+  errorGenericText: "Ein unerwarteter Fehler ist aufgetreten. Ein neuer Versuch von dieser Seite aus hilft meistens nicht.",
+  errorHome: "Zur Startseite",
   backToStart: "← zurück zur Startseite",
   openMenu: "Menü öffnen",
   closeMenu: "Menü schließen",
@@ -283,10 +293,10 @@ const DE: Messages = {
   themeDark: "Dunkel",
   analyticsTitle: "Anonyme Nutzungsstatistik",
   analyticsDesc:
-    "Hilft mir zu sehen, welche Bereiche nützlich sind. Keine Cookies, keine IP, keine Kennung — nur zusammengefasste Zahlen.",
+    "Hilft mir zu sehen, welche Bereiche nützlich sind. Keine Cookies, keine IP, keine Kennung: nur zusammengefasste Zahlen.",
   analyticsDetails: "Details",
   analyticsDnt:
-    "Automatisch deaktiviert — dein Browser sendet ein „Do Not Track“-Signal, und das respektiere ich.",
+    "Automatisch deaktiviert. Dein Browser sendet ein „Do Not Track“-Signal, und das respektiere ich.",
   languageNote: "Lädt die Seite in deiner Sprache neu. Nicht Übersetztes fällt auf Englisch zurück.",
 
   nothingHere: "Hier ist noch nichts.",
@@ -294,19 +304,19 @@ const DE: Messages = {
   loadPreviewFailed: "Vorschau konnte nicht erstellt werden.",
 
   emptyActivity: "Noch nichts von GitHub synchronisiert.",
-  emptyGlance: "Noch nichts von GitHub synchronisiert — schau gleich nochmal vorbei.",
+  emptyGlance: "Noch nichts von GitHub. Schau gleich nochmal vorbei.",
   emptyCoding: "Noch keine Coding-Zeit synchronisiert.",
   emptyFeatured: "Gerade nichts angepinnt.",
   featuredPinned: "Angepinnt",
   emptyProjects: "Keine Projekte vorhanden.",
   emptyGallery: "Noch keine Bilder.",
-  emptyGuestbook: "Noch keine Einträge — trag dich als Erste:r ein.",
+  emptyGuestbook: "Noch keine Einträge. Trag dich als Erste:r ein.",
   emptyPosts: "Noch nichts veröffentlicht.",
   emptyNow: "Hier steht gerade nichts.",
   emptyMusic:
-    "Noch nichts aufgezeichnet. Songs erscheinen hier, sobald der Presence-Sampler Spotify beim Abspielen erwischt — gib ihm einen Tag.",
+    "Noch nichts aufgezeichnet. Songs erscheinen hier, sobald der Presence-Sampler Spotify beim Abspielen erwischt. Gib ihm einen Tag.",
   emptyPlaytime:
-    "Noch nichts aufgezeichnet. Spiele erscheinen hier, sobald der Presence-Sampler dich beim Spielen erwischt — gib ihm einen Tag.",
+    "Noch nichts aufgezeichnet. Spiele erscheinen hier, sobald der Presence-Sampler dich beim Spielen erwischt. Gib ihm einen Tag.",
   emptyDayPlaytime: "An diesem Tag nichts gespielt.",
   emptyDayMusic: "An diesem Tag nichts gehört.",
 
@@ -321,7 +331,7 @@ const DE: Messages = {
   languagesScope: "über alle öffentlichen Repos",
   recentEvents: "Letzte Aktivitäten",
   newestFirst: "neueste zuerst",
-  fullActivity: "gesamte Aktivität →",
+  fullActivity: "Gesamte Aktivität",
 
   areasHeading: "Wo es weitergeht",
   areaModules: "{n} Bereiche",
@@ -347,8 +357,8 @@ const DE: Messages = {
   eventGist: "Gist geteilt",
   eventGistNamed: "Gist geteilt: {description}",
 
-  seeAllWork: "alle Projekte ansehen →",
-  allReposGitHub: "alle Repos auf GitHub →",
+  seeAllWork: "Alle Projekte",
+  allReposGitHub: "Alle Repos auf GitHub",
 
   listening: "Gehört",
   played: "Gespielt",
@@ -389,7 +399,7 @@ const DE: Messages = {
   presenceUnreachable: "Discord nicht erreichbar",
   presenceLoading: "· lädt…",
   presenceUnknown: "· Status unbekannt",
-  presenceOfflineIdle: "Gerade offline — nichts zu zeigen",
+  presenceOfflineIdle: "Gerade offline. Nichts zu zeigen.",
   presenceNoActivity: "Gerade keine Aktivität",
   presenceNothing: "Hier gibt es gerade nichts zu sehen.",
   presenceSrcMusic: "Hört Spotify",
@@ -414,7 +424,7 @@ const DE: Messages = {
   waveDone: "Gewinkt",
   waveLimited: "Gerade zu oft gewinkt, versuch es später erneut.",
 
-  teasersHeading: "Reinschauen",
+  teasersHeading: "Bereiche",
   teaserHoursWeek: "{n} Std. diese Woche gespielt",
   teaserTopArtist: "Top-Künstler: {name}",
   teaserLatest: "{text} · vor {age}",
@@ -425,7 +435,7 @@ const DE: Messages = {
   freshNever: "noch nicht synchronisiert",
   freshEmpty: "nichts synchronisiert",
   ago: "vor {age}",
-  coldStart: "Noch am Warmlaufen — einiges ist noch nicht synchronisiert.",
+  coldStart: "Noch am Warmlaufen. Einiges ist noch nicht synchronisiert.",
 
   contactEmailMe: "Schreib mir eine E-Mail",
   contactFormName: "Name",
@@ -433,16 +443,16 @@ const DE: Messages = {
   contactFormMessage: "Nachricht",
   contactSend: "Nachricht senden",
   contactSending: "Wird gesendet…",
-  contactSent: "Danke — deine Nachricht ist unterwegs. Ich melde mich bald.",
-  contactUnconfigured: "Das Kontaktformular ist gerade nicht eingerichtet — schreib mir stattdessen eine E-Mail.",
-  contactTooMany: "Gerade zu viele Nachrichten — bitte versuch es etwas später noch einmal.",
+  contactSent: "Danke, deine Nachricht ist unterwegs. Ich melde mich bald.",
+  contactUnconfigured: "Das Kontaktformular ist gerade nicht eingerichtet. Schreib mir stattdessen eine E-Mail.",
+  contactTooMany: "Gerade zu viele Nachrichten. Bitte versuch es etwas später noch einmal.",
 
   guestbookFormName: "Name",
   guestbookFormMessage: "Nachricht",
   guestbookSend: "Ins Gästebuch eintragen",
   guestbookSending: "Wird eingetragen…",
   guestbookSent: "Danke fürs Eintragen! Dein Eintrag erscheint hier, sobald ich ihn freigegeben habe.",
-  guestbookTooMany: "Gerade ein bisschen viele — bitte versuch es etwas später noch einmal.",
+  guestbookTooMany: "Gerade ein bisschen viele. Bitte versuch es etwas später noch einmal.",
 
   codingScope: "{range} · {hours} Std. erfasst",
 };

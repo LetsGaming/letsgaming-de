@@ -11,7 +11,7 @@ import SmartLink from "~/components/ui/SmartLink.vue";
 useSeo({
   locale: "de",
   path: "/datenschutz",
-  title: "Datenschutzerklärung — letsgaming.de",
+  title: "Datenschutzerklärung | letsgaming.de",
   description:
     "Datenschutzerklärung für letsgaming.de: welche Daten erhoben werden, " +
     "wie sie verarbeitet werden und welche Rechte Besucher haben.",
@@ -20,15 +20,15 @@ useSeo({
 
 <template>
 <main class="wrap">
-  <div class="prose" style="max-width:680px">
-    <h1 style="font-size:clamp(30px,6vw,44px);margin-bottom:24px">Datenschutzerklärung</h1>
+  <div class="prose">
+    <h1>Datenschutzerklärung</h1>
 
     <p>
       Diese Seite ist ein privates Projekt. Es werden so wenige Daten wie möglich
       verarbeitet — im Zweifel gar keine (Datenschutz durch Vermeidung).
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Server-Logs</h2>
+    <h2>Server-Logs</h2>
     <p>
       Beim Aufruf der Seite fallen technische Zugriffsdaten an. Diese werden
       ausschließlich zu anonymen, aggregierten Statistiken verarbeitet
@@ -37,7 +37,7 @@ useSeo({
       keine personenbezogenen Einzeldatensätze vorgehalten.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Cookies &amp; Tracking</h2>
+    <h2>Cookies &amp; Tracking</h2>
     <p>
       Es werden <b>keine</b> Cookies zu Analyse- oder Werbezwecken gesetzt, keine
       seitenübergreifenden Tracker, kein Fingerprinting und keine Dienste Dritter zum
@@ -46,7 +46,7 @@ useSeo({
       Seitenbetreibers ins eigene Redaktionssystem verwendet.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Nutzungsmessung (ohne Cookies)</h2>
+    <h2>Nutzungsmessung (ohne Cookies)</h2>
     <p>
       Zur Verbesserung der Seite wird gemessen, wie die Inhalte genutzt werden — welcher
       Bereich der Seite angesehen wird, ungefähr wie lange (in groben Zeitspannen, nicht
@@ -78,7 +78,7 @@ useSeo({
       Nutzungsstatistik“.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Speicherdauer der Statistik</h2>
+    <h2>Speicherdauer der Statistik</h2>
     <p>
       Gespeichert werden ausschließlich zusammengefasste Zählwerte je Stunde — also etwa
       „Bereich <i>Life</i>, 14 Uhr, 7 Aufrufe“. Ältere Stundenwerte werden automatisch zu
@@ -88,13 +88,13 @@ useSeo({
       zu erkennen geben, werden getrennt gezählt und nicht als Besuche gewertet.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Schriftarten</h2>
+    <h2>Schriftarten</h2>
     <p>
       Alle Schriftarten werden lokal von diesem Server ausgeliefert. Es besteht
       <b>keine</b> Verbindung zu Google Fonts oder anderen externen Anbietern.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Kontakt</h2>
+    <h2>Kontakt</h2>
     <p>
       Über das Kontaktformular gesendete Nachrichten werden ausschließlich per
       E-Mail weitergeleitet und <b>nicht</b> in einer Datenbank gespeichert. Die
@@ -103,7 +103,7 @@ useSeo({
       Profile möglich.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Gästebuch</h2>
+    <h2>Gästebuch</h2>
     <p>
       Im Gästebuch können Besucher freiwillig einen <b>Namen</b> und eine <b>Nachricht</b>
       hinterlassen. Gespeichert werden ausschließlich diese Angaben sowie ein Zeitstempel —
@@ -114,7 +114,7 @@ useSeo({
       sensiblen personenbezogenen Daten ein.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Content-Delivery / Cloudflare</h2>
+    <h2>Content-Delivery / Cloudflare</h2>
     <p>
       Diese Seite wird über das Content-Delivery-Network von <b>Cloudflare</b> (Cloudflare, Inc.,
       101 Townsend St, San Francisco, CA 94107, USA) ausgeliefert. Cloudflare verarbeitet dabei
@@ -127,7 +127,7 @@ useSeo({
       <SmartLink href="https://www.cloudflare.com/privacypolicy/">Cloudflare-Datenschutzerklärung</SmartLink>.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Bilder im Modul „Right now-ish“</h2>
+    <h2>Bilder im Modul „Right now-ish“</h2>
     <p>
       Das Modul „Right now-ish“ (Bereich <b>Life</b>) zeigt Bilder wie das
       Discord-Profilbild, Aktivitäts- bzw. Spielgrafiken und — bei Spotify — Albumcover.
@@ -139,7 +139,7 @@ useSeo({
       wird eine lokal erzeugte Kachel angezeigt.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Suchmaschinen &amp; Vorschaubilder</h2>
+    <h2>Suchmaschinen &amp; Vorschaubilder</h2>
     <p>
       Die Seiten enthalten strukturierte Daten und Vorschau-Angaben für Suchmaschinen und
       Messenger (Titel, Beschreibung, Sprache, Vorschaubild sowie Name, Handle und öffentlich
@@ -149,13 +149,13 @@ useSeo({
       eingebunden.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Externe Links</h2>
+    <h2>Externe Links</h2>
     <p>
       Diese Seite verlinkt auf externe Angebote (z. B. GitHub). Für deren Inhalte
       und Datenschutz sind ausschließlich die jeweiligen Anbieter verantwortlich.
     </p>
 
-    <h2 style="font-family:var(--f-d);margin:28px 0 10px">Ihre Rechte</h2>
+    <h2>Ihre Rechte</h2>
     <p>
       Über die anonyme Nutzungsmessung und die Server-Logs werden keine
       personenbezogenen Einzeldatensätze gespeichert. Wenn Sie das Gästebuch nutzen,
@@ -164,12 +164,12 @@ useSeo({
       Nachricht über die oben genannten Kontaktwege genügt.
     </p>
 
-    <p style="margin-top:28px;color:var(--muted);font-size:14px">
+    <p class="note">
       Hinweis: allgemeine Informationen, keine Rechtsberatung.
     </p>
 
-    <p style="margin-top:24px">
-      <SmartLink href="/" style="color:var(--ink)">← zurück zur Startseite</SmartLink>
+    <p>
+      <SmartLink href="/">← zurück zur Startseite</SmartLink>
     </p>
   </div>
 </main>

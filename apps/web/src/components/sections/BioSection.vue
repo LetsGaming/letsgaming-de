@@ -21,28 +21,8 @@ defineProps<{
 </template>
 
 <style scoped>
-/* Bio-specific styling, scoped. Two things need :deep() — the <img> is rendered
- * by the AssetPicture child, and the <p>/<b> come from v-html, which Vue does not
- * stamp with the scope attribute. Both would silently lose their styles without
- * it, which is the whole reason this extraction is done carefully per section. */
-.prose {
-  max-width: 600px;
-  font-size: 16px;
-  color: var(--ink);
-}
-.prose :deep(p) {
-  margin-bottom: var(--sp-16);
-}
-.prose :deep(p:last-child) {
-  margin-bottom: 0;
-}
-.prose :deep(b) {
-  color: var(--ink-strong);
-  font-weight: 600;
-}
-.bio-img {
-  margin: var(--sp-18) 0;
-}
+/* Text styling is the global `.prose`. The <img> is rendered by the AssetPicture
+ * child, so it needs :deep(). */
 .bio-img :deep(img) {
   max-width: 100%;
   height: auto;

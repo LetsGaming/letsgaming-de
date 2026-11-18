@@ -16,5 +16,5 @@
  * content model. Until then, one accurate sentence beats four useless ones.
  */
 export const SITE_DESCRIPTION =
-  "Personal homepage of Domenic (@LetsGaming) — full-time web developer in Germany. " +
-  "Clean interfaces by day; plant sensors and LED strips by night.";
+  "Personal homepage of Domenic (@LetsGaming), full-time web developer in Germany. " +
+  "Code, games and music, updated from GitHub, Wakapi and Discord.";

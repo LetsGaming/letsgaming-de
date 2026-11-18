@@ -45,8 +45,8 @@ const crumbs = computed<Crumb[]>(() => [
 useSeo({
   locale: "en",
   path: canonicalPath.value,
-  title: `${data.value?.title ?? "Docs"} — letsgaming.de docs`,
-  description: plainExcerpt(data.value?.html ?? "") || `${data.value?.title ?? "Documentation"} — letsgaming.de documentation.`,
+  title: `${data.value?.title ?? "Docs"} | letsgaming.de docs`,
+  description: plainExcerpt(data.value?.html ?? "") || `${data.value?.title ?? "Documentation"}: letsgaming.de documentation.`,
   // Only crumbs with a real URL become `ListItem`s — the group label has no page
   // of its own, so it's a visual-only crumb and sits out of the graph.
   jsonLd: [

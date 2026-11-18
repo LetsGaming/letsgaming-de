@@ -19,7 +19,7 @@ import CmsApp from "~/components/cms/CmsApp.vue";
 // is the case a Disallow line can't cover — it blocks crawling, not indexing of an
 // already-found URL.
 useHead({
-  title: "CMS — letsgaming.de",
+  title: "CMS | letsgaming.de",
   meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 definePageMeta({ layout: "default" });

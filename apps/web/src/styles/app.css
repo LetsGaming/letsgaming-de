@@ -142,6 +142,7 @@ h1 {
   font-stretch: 75%;
   line-height: 1;
   letter-spacing: -0.01em;
+  text-wrap: balance;
   font-size: var(--fs-display);
   margin: var(--sp-6) 0 var(--sp-16);
   color: var(--ink-strong);
@@ -659,6 +660,91 @@ footer {
   border-radius: var(--r-chip);
   padding: var(--sp-8) var(--sp-12);
   margin-bottom: var(--sp-20);
+}
+
+/* Reading surfaces: Bio, blog posts, the legal page. One column, no containers. */
+.md-wrap h1,
+.prose h1 {
+  font-size: var(--fs-h1);
+  font-stretch: 100%;
+  line-height: 1.1;
+  margin: 0 0 var(--space-5);
+}
+.prose {
+  max-width: 66ch;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.prose > * + * {
+  margin-top: var(--space-4);
+}
+.prose h2 {
+  font-family: var(--f-d);
+  font-size: var(--fs-h2);
+  line-height: 1.15;
+  color: var(--ink-strong);
+  margin-top: var(--space-6);
+}
+.prose h3 {
+  font-size: var(--fs-h3);
+  line-height: 1.2;
+  color: var(--ink-strong);
+  margin-top: var(--space-5);
+}
+.prose a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.prose b,
+.prose strong {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+.prose ul,
+.prose ol {
+  padding-left: var(--space-5);
+}
+.prose li + li {
+  margin-top: var(--space-1);
+}
+.prose code {
+  font-family: var(--f-m);
+  font-size: 0.9em;
+  background: var(--surf-2);
+  padding: 1px var(--space-1);
+  border-radius: var(--r-1);
+}
+.prose pre {
+  overflow-x: auto;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
+  font-size: var(--fs-meta);
+  line-height: 1.55;
+}
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+.prose blockquote {
+  padding-left: var(--space-4);
+  color: var(--muted);
+}
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--r-2);
+}
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--line-1);
+  margin: var(--space-6) 0;
+}
+.prose .note {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  margin-top: var(--space-5);
 }
 
 

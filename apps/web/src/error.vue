@@ -5,19 +5,17 @@
 // canonical, indexable page, so it gets a `noindex` instead of the tags that would
 // make search engines treat it as real content.
 import SmartLink from "~/components/ui/SmartLink.vue";
+import { useT } from "~/composables/useT";
 
 const props = defineProps<{ error: { statusCode: number; statusMessage?: string } }>();
 
+const { t } = useT();
 const isNotFound = computed(() => props.error.statusCode === 404);
-const heading = computed(() => (isNotFound.value ? "Seite nicht gefunden" : "Etwas ist schiefgelaufen"));
-const message = computed(() =>
-  isNotFound.value
-    ? "Die Adresse existiert nicht (mehr) — vielleicht wurde sie verschoben oder falsch eingegeben."
-    : "Ein unerwarteter Fehler ist aufgetreten. Der Versuch, hier weiterzumachen, hilft meistens nicht.",
-);
+const heading = computed(() => t(isNotFound.value ? "errorNotFoundTitle" : "errorGenericTitle"));
+const message = computed(() => t(isNotFound.value ? "errorNotFoundText" : "errorGenericText"));
 
 useHead({
-  title: `${props.error.statusCode} — letsgaming.de`,
+  title: `${props.error.statusCode} | letsgaming.de`,
   meta: [{ name: "robots", content: "noindex" }],
 });
 
@@ -33,7 +31,7 @@ function goHome() {
     <p class="code">{{ error.statusCode }}</p>
     <h1>{{ heading }}</h1>
     <p class="msg">{{ message }}</p>
-    <SmartLink href="/" as="button" class="home" @click="goHome">Zur Startseite</SmartLink>
+    <SmartLink href="/" as="button" class="home" @click="goHome">{{ t("errorHome") }}</SmartLink>
   </main>
 </template>
 

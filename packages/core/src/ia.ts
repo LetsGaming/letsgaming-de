@@ -116,24 +116,24 @@ export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
  */
 export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "hero", kind: "hero" },
-  { id: "teasers", kind: "teasers", heading: l("Jump in", "Reinschauen") },
+  { id: "teasers", kind: "teasers", heading: l("Areas", "Bereiche") },
   { id: "glance", kind: "glance", heading: l("At a glance", "Auf einen Blick") },
   { id: "featured", kind: "featured", heading: l("Featured", "Ausgewählt") },
   // One stream. A release is an event, and "Recently shipped" was a second
   // lookalike box sorted by the same key — so `highlights` folded in here.
   { id: "activity", kind: "activity", heading: l("Recent", "Zuletzt") },
   { id: "coding", kind: "coding", heading: l("This week", "Diese Woche") },
-  { id: "projects", kind: "projects", heading: l("Stuff I make", "Was ich baue") },
+  { id: "projects", kind: "projects", heading: l("Projects", "Projekte") },
   { id: "presence", kind: "presence", heading: l("Right now", "Gerade jetzt") },
   { id: "playtime", kind: "playtime", heading: l("Time played", "Spielzeit") },
   { id: "music", kind: "music", heading: l("Listening", "Gehört") },
   { id: "wrapped", kind: "wrapped", heading: l("Wrapped", "Rückblick") },
-  { id: "hobbies", kind: "hobbies", heading: l("Off the clock", "Nach Feierabend") },
-  { id: "gallery", kind: "gallery", heading: l("Snapshots", "Schnappschüsse") },
+  { id: "hobbies", kind: "hobbies", heading: l("Hobbies", "Hobbys") },
+  { id: "gallery", kind: "gallery", heading: l("Photos", "Fotos") },
   { id: "now", kind: "now", heading: l("Lately", "In letzter Zeit") },
   { id: "guestbook", kind: "guestbook", heading: l("Guestbook", "Gästebuch") },
   { id: "bio", kind: "bio", heading: l("About", "Über mich") },
-  { id: "contact", kind: "contact", heading: l("Get in touch", "Kontakt") },
+  { id: "contact", kind: "contact", heading: l("Contact", "Kontakt") },
   { id: "posts", kind: "posts", heading: l("Blog", "Blog") },
 ];
 

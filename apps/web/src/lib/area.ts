@@ -34,6 +34,6 @@ export function areaMeta(
   // sentence. Never `role`: the two words "web developer" as the description of
   // every page is strictly worse than one accurate sentence repeated.
   const description = area?.description || SITE_DESCRIPTION;
-  if (!area || isHome) return { title: `${name} — ${role}`, description };
-  return { title: `${area.label} — ${name}`, description };
+  if (!area || isHome) return { title: `${name}, ${role}`, description };
+  return { title: `${area.label} | ${name}`, description };
 }

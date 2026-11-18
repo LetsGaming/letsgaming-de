@@ -42,27 +42,27 @@ const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
     role: l("web developer", "Webentwickler"),
   },
   headline: {
-    before: l("I build for the web — and ", "Ich baue fürs Web — und "),
+    before: l("I build websites. After hours I ", "Ich baue Websites. Nach Feierabend "),
     highlight: l("tinker", "bastle"),
-    after: l(" after hours.", " nach Feierabend."),
+    after: l(".", " ich."),
   },
   lede: l(
-    "Full-time web developer, **Fachinformatiker Anwendungsentwicklung**. Clean, usable interfaces by day; plant sensors and LED strips by night.",
-    "Webentwickler in Vollzeit, **Fachinformatiker Anwendungsentwicklung**. Tagsüber klare, benutzbare Oberflächen; nachts Pflanzensensoren und LED-Streifen.",
+    "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung**. Outside work: plant sensors, LED strips, and a home lab.",
+    "Webentwickler in Vollzeit, gelernter **Fachinformatiker Anwendungsentwicklung**. Nach der Arbeit: Pflanzensensoren, LED-Streifen und ein Home Lab.",
   ),
   status: { verb: l("building", "baue"), now: l("plantcare-tracker", "plantcare-tracker") },
   bio: [
     l(
-      "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into making interfaces that are genuinely pleasant to use.",
-      "Ich bin Webentwickler in Vollzeit und über eine Ausbildung zum Fachinformatiker für Anwendungsentwicklung hierhergekommen. Den größten Teil des Tages verbringe ich damit, Oberflächen zu bauen, die sich wirklich angenehm bedienen lassen.",
+      "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into interfaces that are easy to use.",
+      "Ich bin Webentwickler in Vollzeit und über eine Ausbildung zum Fachinformatiker für Anwendungsentwicklung hierhergekommen. Den größten Teil des Tages baue ich Oberflächen, die sich leicht bedienen lassen.",
     ),
     l(
-      "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby — usually attached to a plant, an LED strip, or some corner of my home lab that didn't strictly need automating.",
-      "Nach der Arbeit bin ich am glücklichsten mit einem Lötkolben oder einem Raspberry Pi in Reichweite — meistens angeschlossen an eine Pflanze, einen LED-Streifen oder irgendeine Ecke meines Home Labs, die man nicht zwingend hätte automatisieren müssen.",
+      "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby, usually attached to a plant, an LED strip, or a corner of my home lab that did not need automating.",
+      "Nach der Arbeit bin ich am glücklichsten mit einem Lötkolben oder einem Raspberry Pi in Reichweite, meistens an einer Pflanze, einem LED-Streifen oder einer Ecke im Home Lab, die man nicht hätte automatisieren müssen.",
     ),
     l(
-      "This site is its own little project: a small custom CMS feeds the content, and a backend quietly accumulates data from GitHub (and whatever I plug in next) so it stays current on its own.",
-      "Diese Seite ist selbst so ein Projekt: Ein kleines, selbstgebautes CMS liefert die Inhalte, und ein Backend sammelt im Hintergrund Daten von GitHub (und was ich als Nächstes anschließe), damit sie sich von allein aktuell hält.",
+      "This site is a project too. A small custom CMS holds the text, and a backend pulls data from GitHub (and whatever I connect next), so the pages stay current without me.",
+      "Diese Seite ist auch so ein Projekt. Ein kleines, selbstgebautes CMS hält die Texte, ein Backend holt Daten von GitHub (und was ich als Nächstes anschließe), damit die Seiten ohne mich aktuell bleiben.",
     ),
   ],
 };
@@ -105,14 +105,14 @@ const HOBBIES: Hobby[] = [
 
 const LINKS: Link[] = [
   { id: "github", label: l("GitHub", "GitHub"), href: "https://github.com/LetsGaming", icon: "gh", primary: false },
-  { id: "contact", label: l("Get in touch", "Kontakt aufnehmen"), href: "#contact", icon: "mail", primary: true },
+  { id: "contact", label: l("Contact", "Kontakt"), href: "#contact", icon: "mail", primary: true },
 ];
 
 const NOW: NowItem[] = [
   {
     id: "building",
     key: l("building", "baue"),
-    value: l("**plantcare-tracker** — watering schedules", "**plantcare-tracker** — Gießpläne"),
+    value: l("**plantcare-tracker** (watering schedules)", "**plantcare-tracker** (Gießpläne)"),
   },
   {
     id: "playing",

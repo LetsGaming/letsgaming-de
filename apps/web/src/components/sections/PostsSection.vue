@@ -20,7 +20,7 @@ defineProps<{
           <time :datetime="p.at">{{ t("ago", { age: p.relative }) }}</time>
           <!-- Tags are display-only: chips, not links. Tag pages would need
                routes and an area, and the nav is at its breadth cap. -->
-          <span v-for="t in p.tags" :key="t" class="tag">{{ t }}</span>
+          <span v-for="t in p.tags" :key="t" class="post-tag">{{ t }}</span>
         </p>
       </li>
     </ul>
@@ -29,7 +29,7 @@ defineProps<{
 </template>
 
 <style scoped>
-/* Post list, scoped. `.tag` and `.sub` stay global — shared chips/typography. */
+/* Post list, scoped. `.sub` stays global. */
 .posts {
   list-style: none;
   margin: 0;
@@ -59,11 +59,14 @@ defineProps<{
   margin: var(--sp-4) 0 var(--sp-6);
 }
 .post-m {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
   display: flex;
-  align-items: center;
-  gap: var(--sp-8);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+.post-m time {
+  font-family: var(--f-m);
 }
 </style>

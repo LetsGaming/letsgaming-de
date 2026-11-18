@@ -56,11 +56,11 @@
         "data": {
           "eyebrow": "DOMENIC · WEB DEVELOPER · GERMANY",
           "headline": {
-            "before": "I build for the web — and ",
+            "before": "I build websites. After hours I ",
             "highlight": "tinker",
-            "after": " after hours."
+            "after": "."
           },
-          "lede": "Full-time web developer, **Fachinformatiker Anwendungsentwicklung**. Clean, usable interfaces by day; plant sensors and LED strips by night.",
+          "lede": "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung**. Outside work: plant sensors, LED strips, and a home lab.",
           "status": {
             "verb": "building",
             "now": "plantcare-tracker"
@@ -81,7 +81,7 @@
             },
             {
               "id": "contact",
-              "label": "Get in touch",
+              "label": "Contact",
               "href": "/about#contact",
               "icon": "mail",
               "primary": false
@@ -95,7 +95,7 @@
         "id": "teasers",
         "kind": "teasers",
         "data": {
-          "heading": "Jump in",
+          "heading": "Areas",
           "teasers": [
             {
               "id": "about",
@@ -174,7 +174,7 @@
         "id": "projects",
         "kind": "projects",
         "data": {
-          "heading": "Stuff I make",
+          "heading": "Projects",
           "freshness": {
             "state": "never",
             "source": "github"
@@ -231,7 +231,7 @@
         "id": "hobbies",
         "kind": "hobbies",
         "data": {
-          "heading": "Off the clock",
+          "heading": "Hobbies",
           "hobbies": [
             {
               "id": "gaming",
@@ -268,7 +268,7 @@
         "id": "gallery",
         "kind": "gallery",
         "data": {
-          "heading": "Snapshots",
+          "heading": "Photos",
           "images": []
         }
       },
@@ -281,7 +281,7 @@
             {
               "id": "building",
               "key": "building",
-              "value": "**plantcare-tracker** — watering schedules"
+              "value": "**plantcare-tracker** (watering schedules)"
             },
             {
               "id": "playing",
@@ -309,15 +309,15 @@
           "blocks": [
             {
               "kind": "text",
-              "text": "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into making interfaces that are genuinely pleasant to use."
+              "text": "I'm a full-time web developer in Germany who came up through a Fachinformatiker Anwendungsentwicklung apprenticeship. Most of my day goes into interfaces that are easy to use."
             },
             {
               "kind": "text",
-              "text": "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby — usually attached to a plant, an LED strip, or some corner of my home lab that didn't strictly need automating."
+              "text": "Outside work I'm happiest with a soldering iron or a Raspberry Pi nearby, usually attached to a plant, an LED strip, or a corner of my home lab that did not need automating."
             },
             {
               "kind": "text",
-              "text": "This site is its own little project: a small custom CMS feeds the content, and a backend quietly accumulates data from GitHub (and whatever I plug in next) so it stays current on its own."
+              "text": "This site is a project too. A small custom CMS holds the text, and a backend pulls data from GitHub (and whatever I connect next), so the pages stay current without me."
             }
           ]
         }
@@ -326,7 +326,7 @@
         "id": "contact",
         "kind": "contact",
         "data": {
-          "heading": "Get in touch",
+          "heading": "Contact",
           "links": [
             {
               "id": "github",
@@ -337,7 +337,7 @@
             },
             {
               "id": "contact",
-              "label": "Get in touch",
+              "label": "Contact",
               "href": "/about#contact",
               "icon": "mail",
               "primary": true
@@ -407,11 +407,11 @@
         "data": {
           "eyebrow": "DOMENIC · WEBENTWICKLER · DEUTSCHLAND",
           "headline": {
-            "before": "Ich baue fürs Web — und ",
+            "before": "Ich baue Websites. Nach Feierabend ",
             "highlight": "bastle",
-            "after": " nach Feierabend."
+            "after": " ich."
           },
-          "lede": "Webentwickler in Vollzeit, **Fachinformatiker Anwendungsentwicklung**. Tagsüber klare, benutzbare Oberflächen; nachts Pflanzensensoren und LED-Streifen.",
+          "lede": "Webentwickler in Vollzeit, gelernter **Fachinformatiker Anwendungsentwicklung**. Nach der Arbeit: Pflanzensensoren, LED-Streifen und ein Home Lab.",
           "status": {
             "verb": "baue",
             "now": "plantcare-tracker"
@@ -432,7 +432,7 @@
             },
             {
               "id": "contact",
-              "label": "Kontakt aufnehmen",
+              "label": "Kontakt",
               "href": "/about#contact",
               "icon": "mail",
               "primary": false
@@ -446,7 +446,7 @@
         "id": "teasers",
         "kind": "teasers",
         "data": {
-          "heading": "Reinschauen",
+          "heading": "Bereiche",
           "teasers": [
             {
               "id": "about",
@@ -525,7 +525,7 @@
         "id": "projects",
         "kind": "projects",
         "data": {
-          "heading": "Was ich baue",
+          "heading": "Projekte",
           "freshness": {
             "state": "never",
             "source": "github"
@@ -582,7 +582,7 @@
         "id": "hobbies",
         "kind": "hobbies",
         "data": {
-          "heading": "Nach Feierabend",
+          "heading": "Hobbys",
           "hobbies": [
             {
               "id": "gaming",
@@ -619,7 +619,7 @@
         "id": "gallery",
         "kind": "gallery",
         "data": {
-          "heading": "Schnappschüsse",
+          "heading": "Fotos",
           "images": []
         }
       },
@@ -632,7 +632,7 @@
             {
               "id": "building",
               "key": "baue",
-              "value": "**plantcare-tracker** — Gießpläne"
+              "value": "**plantcare-tracker** (Gießpläne)"
             },
             {
               "id": "playing",
@@ -660,15 +660,15 @@
           "blocks": [
             {
               "kind": "text",
-              "text": "Ich bin Webentwickler in Vollzeit und über eine Ausbildung zum Fachinformatiker für Anwendungsentwicklung hierhergekommen. Den größten Teil des Tages verbringe ich damit, Oberflächen zu bauen, die sich wirklich angenehm bedienen lassen."
+              "text": "Ich bin Webentwickler in Vollzeit und über eine Ausbildung zum Fachinformatiker für Anwendungsentwicklung hierhergekommen. Den größten Teil des Tages baue ich Oberflächen, die sich leicht bedienen lassen."
             },
             {
               "kind": "text",
-              "text": "Nach der Arbeit bin ich am glücklichsten mit einem Lötkolben oder einem Raspberry Pi in Reichweite — meistens angeschlossen an eine Pflanze, einen LED-Streifen oder irgendeine Ecke meines Home Labs, die man nicht zwingend hätte automatisieren müssen."
+              "text": "Nach der Arbeit bin ich am glücklichsten mit einem Lötkolben oder einem Raspberry Pi in Reichweite, meistens an einer Pflanze, einem LED-Streifen oder einer Ecke im Home Lab, die man nicht hätte automatisieren müssen."
             },
             {
               "kind": "text",
-              "text": "Diese Seite ist selbst so ein Projekt: Ein kleines, selbstgebautes CMS liefert die Inhalte, und ein Backend sammelt im Hintergrund Daten von GitHub (und was ich als Nächstes anschließe), damit sie sich von allein aktuell hält."
+              "text": "Diese Seite ist auch so ein Projekt. Ein kleines, selbstgebautes CMS hält die Texte, ein Backend holt Daten von GitHub (und was ich als Nächstes anschließe), damit die Seiten ohne mich aktuell bleiben."
             }
           ]
         }
@@ -688,7 +688,7 @@
             },
             {
               "id": "contact",
-              "label": "Kontakt aufnehmen",
+              "label": "Kontakt",
               "href": "/about#contact",
               "icon": "mail",
               "primary": true

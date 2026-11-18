@@ -58,7 +58,7 @@ const crumbs = computed<Crumb[]>(() => [
 useSeo({
   locale: siteData.value?.locale ?? "en",
   path: canonicalPath.value,
-  title: `${data.value?.title ?? "Not found"} — ${siteData.value?.site.meta.name ?? "letsgaming.de"}`,
+  title: `${data.value?.title ?? "Not found"} | ${siteData.value?.site.meta.name ?? "letsgaming.de"}`,
   description: description.value,
   ogType: "article",
   // Deliberately not `localized`: a post is written in one language, and `?lang`
@@ -91,9 +91,9 @@ useSeo({
 </script>
 
 <template>
-  <main v-if="data" class="md-wrap">
+  <main v-if="data" class="wrap md-wrap">
     <Breadcrumbs :items="crumbs" />
-    <p v-if="data.draft" class="md-draft">Draft — visible via preview link only.</p>
+    <p v-if="data.draft" class="md-draft">Draft. Visible via preview link only.</p>
     <h1>{{ data.title }}</h1>
     <article class="prose" v-html="data.html" />
   </main>

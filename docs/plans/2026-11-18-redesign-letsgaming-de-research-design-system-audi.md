@@ -518,3 +518,28 @@ committed) using the WCAG 2.x formula on the final token values.
   - Favicon: gradient replaced by a flat `#7a4fd9` square with the same "D" glyph. `public/og-image.png` is a raster and not regenerated; it likely still carries the old look. Owner decision: replace it with a new export.
   - `.chrome` gap is 16px so the tabs do not touch the settings button.
   - Checked: 1280px (DE) header and footer, 390px overflow for four routes in EN and DE, footer content and links.
+- Step 5 done (a7591b1), built by a Sonnet subagent and reviewed by me (diff scan, gates, browser check). Deviations:
+  - The CMS status line (`status.verb`, `status.now`) is no longer rendered in the hero, to stay within four text elements. The data field stays, and the same fact still shows under "Lately".
+  - The Wave button always renders, as a text button next to the status line.
+  - Glance shows one large figure; the other stats are inline text. `StatGrid` and `StatTile` are unused on Home.
+  - `ModuleSection` use on Home: Areas is the only `ruled` section; Featured and Guestbook use `gap="group"`.
+  - Added `text-wrap: balance` to `h1` after the hero broke as "After hours I / tinker."
+  - The Featured screenshot is a blank white box in the dev data (the generated GitHub card is white and no image loads offline). Not a design fault; check on the live site.
+- Step 8 done (committed with Step 9 below). Deviations:
+  - `ContactSection`/`ContactForm` unchanged: labels already sit above inputs, and the mailto branch keeps its button. Reason: the plain-link variant would remove the one primary action on the About page.
+  - The About "Contact" link button points at its own section (`/about#contact`). Found, not changed: it is CMS link data, and it needs an owner decision.
+  - Post tags are now plain text, not chips; the meta line has no separators.
+  - `.prose` is global (`app.css`); `.md-wrap h1` and `.prose h1` use `--fs-h1`.
+  - Error page strings moved to the catalog (`errorNotFoundTitle`, `errorGenericTitle`, `errorNotFoundText`, `errorGenericText`, `errorHome`) in EN and DE. The error page follows the stored locale, which defaults to English.
+- Step 9 done. Wording is applied from the plan drafts with these changes, because the drafts added claims or changed meaning:
+  - H1 is "I build websites. After hours I tinker." (DE "Ich baue Websites. Nach Feierabend bastle ich."), not "...build everything else", which overstated the original "tinker".
+  - Empty-state for Glance keeps the original meaning: "Nothing from GitHub yet. Check back shortly." The draft "The next sync runs soon." would have been a new claim.
+  - Bio 3 says "A small custom CMS" (EN), not "a CMS I wrote".
+  - Hobby blurbs are unchanged (see the copy sheet).
+  - Meta description: "Personal homepage of Domenic (@LetsGaming), full-time web developer in Germany. Code, games and music, updated from GitHub, Wakapi and Discord."
+  - Titles use ", " (home) and " | " (areas, docs, errors, legal, CMS) instead of the em dash. `presence.ts` joins activity details with ", ".
+  - Link messages lost their trailing arrows: "All activity", "All projects", "All repos on GitHub" (EN); "Gesamte Aktivität", "Alle Projekte", "Alle Repos auf GitHub" (DE).
+  - Module headings: Areas, Projects, Hobbies, Photos, Contact (DE: Bereiche, Projekte, Hobbys, Fotos, Kontakt). The primary link label is "Contact" / "Kontakt".
+  - `fallback-site.json` regenerated with `pnpm --filter web gen:fallback`, not edited by hand.
+  - Not done: em dashes inside the German legal text in `datenschutz.vue` (legal wording, owner should review), the Wrapped date range separator (Step 7), and comments in code. Code comments keep their older dashes; only user-visible strings were cleaned.
+  - Owner action: paste `docs/research/2026-11-18-copy-sheet.md` into the production CMS. Seed edits do not change the live database.

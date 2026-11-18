@@ -13,24 +13,24 @@ Status column: `open` until the step in `docs/plans/` resolves it. At the end of
 | D5 | resolved (Step 2) | `TeasersSection.vue:60`, `app.css:369`, `PresenceWidget.vue:369`, `SettingsModal.vue` | Uppercase tracked mono labels: template-chrome tell. |
 | D6 | partial (Step 2) | `tokens.css:144-155`, `StatTile.vue:92,99`, many | Body 15px (under the 16px floor). Meta 11 and 12px. `--fs-display` and `--fs-lede` unused. Raw sizes 9, 10, 11.5, 13, 14, 17, 18, 20, 24, 34px off the scale. |
 | D7 | resolved (Step 3; round shapes, 2px bars and the settings switch track stay) | `app.css:176`, tabs, toggle, brand mark, `HeroSection.vue:241`, gallery, modal | Radius drift: raw 9/11/12/15/16/24px beside the 8/10/14/18 tokens. |
-| D8 | open | `HeroSection.vue`, `seed.ts:45-47` | Hero: one accented word with a tilted underline bar (named tell); em dash in the H1; 8 stacked elements (avatar, H1, lede, status, presence line, synced, two buttons, "Wave" pill). |
+| D8 | resolved (Step 5) | `HeroSection.vue`, `seed.ts:45-47` | Hero: one accented word with a tilted underline bar (named tell); em dash in the H1; 8 stacked elements (avatar, H1, lede, status, presence line, synced, two buttons, "Wave" pill). |
 | D9 | resolved (Step 3) | `HeroSection.vue:165,199`, `app.css:645` | `--glow-live` has three call sites; the rule says one. The status line pulses even when nothing is live. |
 | D10 | resolved (Step 3) | `app.css:646` | Bug: global `animation: pulse` points at a scoped (hashed) keyframe, so the freshness dot never pulses. |
 | D11 | open | `HobbiesSection.vue`, `tokens.css:112-115,242-245` | Four invented gradient tones in a 4-column identical tile grid. Breaks the system's own imported-color rule. |
-| D12 | open | `TeasersSection.vue` | Auto-fit grid of identical boxes (label, value, detail): stat-banner tell. |
+| D12 | resolved (Step 5) | `TeasersSection.vue` | Auto-fit grid of identical boxes (label, value, detail): stat-banner tell. |
 | D13 | open | Activity, Coding, Playtime, Music, Wrapped, Presence sections | Six modules in `ModuleCard`. Life renders four card sections in a row: section-layout repetition. |
 | D14 | resolved (Step 4) | `ui/ModuleSection.vue:55-58` | Every module gets the same heading row and the same 52px gap. No rhythm difference between related and unrelated sections. |
 | D15 | resolved (Step 3) | `app.css:246-256`, `tokens.css:237-238` | Light-mode card has border and shadow at rest: ghost card. |
-| D16 | open | Featured, Glance, Projects links | `→` appended to link text ("see all my work →", "full activity →"); round arrow badges on cards. |
+| D16 | partial (Steps 5 and 9: link text and Featured done; project card arrow badge in Step 6) | Featured, Glance, Projects links | `→` appended to link text ("see all my work →", "full activity →"); round arrow badges on cards. |
 | D17 | resolved (Step 4) | `shell/AreaPage.vue:90-94` | Footer `last synced · @handle · Docs · Privacy`: middle-dot string. |
 | D18 | resolved (Step 4) | `AreaPage.vue` header | Brand mark "D" in a 30px rounded tinted square: generic lettermark. |
-| D19 | open | `seed.ts:50,56,60-61,64,79-100,115`, `lib/site-meta.ts:18-20`, `ui-messages.ts`, `nuxt.config.ts:121` | Copy: "by day / by night" construction three times; "genuinely" and "quietly" (current AI word list); four hobby blurbs as a matched set; em dashes in H1, bio, now items, empty states, page title. |
+| D19 | resolved (Step 9) | `seed.ts:50,56,60-61,64,79-100,115`, `lib/site-meta.ts:18-20`, `ui-messages.ts`, `nuxt.config.ts:121` | Copy: "by day / by night" construction three times; "genuinely" and "quietly" (current AI word list); four hobby blurbs as a matched set; em dashes in H1, bio, now items, empty states, page title. |
 | D20 | resolved (Step 3) | `SettingsModal.vue:140-141` | `backdrop-filter: blur(4px)` on the overlay: decoration, not meaning. The docs top bar blur at `app.css:510` stays: chrome over content. |
-| D21 | open | `pages/md/[...slug].vue`, `datenschutz.vue` | Bug: `.prose` has no global styles, so blog posts are unstyled; the legal page uses inline styles. |
-| D22 | open | `error.vue` | German only while the site defaults to English. (`datenschutz.vue` stays German: German legal text.) |
+| D21 | resolved (Step 8) | `pages/md/[...slug].vue`, `datenschutz.vue` | Bug: `.prose` has no global styles, so blog posts are unstyled; the legal page uses inline styles. |
+| D22 | resolved (Step 8) | `error.vue` | German only while the site defaults to English. (`datenschutz.vue` stays German: German legal text.) |
 | D23 | resolved (Step 2) | `styles/cms.css:26` | Bug: `--cms-font-value: var(--cms-font-value)` refers to itself; CMS values lose their mono face. Touched because the font swap changes this token. |
 | D24 | open | `PresenceWidget.vue:183,215,357` | Gradient washes on the widget and avatars. |
-| D25 | open | `FeaturedSection.vue` | Card kit: screenshot, round arrow, language chip, "Pinned" pill, 3-line clamp, identical cells. |
+| D25 | resolved (Step 5) | `FeaturedSection.vue` | Card kit: screenshot, round arrow, language chip, "Pinned" pill, 3-line clamp, identical cells. |
 | D26 | resolved (Step 3) | Media queries 720/680/560/520 | No breakpoint system; four nearby values. |
 | D27 | open | `SegmentedControl.vue` (selected option), range note in `PlaytimeSection.vue` and siblings | Accent used for a selected state and for a static range label. Breaks "purple means now". Found while checking Step 1 in the browser. Resolve in Steps 6 and 7 with the section rebuilds. |
 

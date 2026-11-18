@@ -22,10 +22,10 @@ const { data } = await useFetch<{ ref: ApiReference; tree: DocGroup[] }>("/api/o
 useSeo({
   locale: "en",
   path: "/docs/api",
-  title: `API reference — ${data.value?.ref.info.title ?? "API"}`,
+  title: `API reference | ${data.value?.ref.info.title ?? "API"}`,
   description:
     plainExcerpt(data.value?.ref.info.description ?? "") ||
-    `${data.value?.ref.info.title ?? "API"} reference — letsgaming.de documentation.`,
+    `${data.value?.ref.info.title ?? "API"} reference: letsgaming.de documentation.`,
 });
 
 /**
