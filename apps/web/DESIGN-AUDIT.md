@@ -19,11 +19,11 @@ Status column: `open` until the step in `docs/plans/` resolves it. At the end of
 | D11 | open | `HobbiesSection.vue`, `tokens.css:112-115,242-245` | Four invented gradient tones in a 4-column identical tile grid. Breaks the system's own imported-color rule. |
 | D12 | open | `TeasersSection.vue` | Auto-fit grid of identical boxes (label, value, detail): stat-banner tell. |
 | D13 | open | Activity, Coding, Playtime, Music, Wrapped, Presence sections | Six modules in `ModuleCard`. Life renders four card sections in a row: section-layout repetition. |
-| D14 | open | `ui/ModuleSection.vue:55-58` | Every module gets the same heading row and the same 52px gap. No rhythm difference between related and unrelated sections. |
+| D14 | resolved (Step 4) | `ui/ModuleSection.vue:55-58` | Every module gets the same heading row and the same 52px gap. No rhythm difference between related and unrelated sections. |
 | D15 | resolved (Step 3) | `app.css:246-256`, `tokens.css:237-238` | Light-mode card has border and shadow at rest: ghost card. |
 | D16 | open | Featured, Glance, Projects links | `→` appended to link text ("see all my work →", "full activity →"); round arrow badges on cards. |
-| D17 | open | `shell/AreaPage.vue:90-94` | Footer `last synced · @handle · Docs · Privacy`: middle-dot string. |
-| D18 | open | `AreaPage.vue` header | Brand mark "D" in a 30px rounded tinted square: generic lettermark. |
+| D17 | resolved (Step 4) | `shell/AreaPage.vue:90-94` | Footer `last synced · @handle · Docs · Privacy`: middle-dot string. |
+| D18 | resolved (Step 4) | `AreaPage.vue` header | Brand mark "D" in a 30px rounded tinted square: generic lettermark. |
 | D19 | open | `seed.ts:50,56,60-61,64,79-100,115`, `lib/site-meta.ts:18-20`, `ui-messages.ts`, `nuxt.config.ts:121` | Copy: "by day / by night" construction three times; "genuinely" and "quietly" (current AI word list); four hobby blurbs as a matched set; em dashes in H1, bio, now items, empty states, page title. |
 | D20 | resolved (Step 3) | `SettingsModal.vue:140-141` | `backdrop-filter: blur(4px)` on the overlay: decoration, not meaning. The docs top bar blur at `app.css:510` stays: chrome over content. |
 | D21 | open | `pages/md/[...slug].vue`, `datenschutz.vue` | Bug: `.prose` has no global styles, so blog posts are unstyled; the legal page uses inline styles. |

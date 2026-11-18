@@ -21,12 +21,16 @@ interface Props {
    * badge, a segmented control), use the `note` slot instead of this prop.
    */
   note?: string;
+  /** `ruled` opens the section with a hairline, to start a new group. */
+  variant?: "plain" | "ruled";
+  /** `group` leaves the larger gap before an unrelated group of modules. */
+  gap?: "related" | "group";
 }
-defineProps<Props>();
+withDefaults(defineProps<Props>(), { variant: "plain", gap: "related" });
 </script>
 
 <template>
-  <section :id="id" class="module-section">
+  <section :id="id" class="module-section" :class="[`is-${variant}`, `gap-${gap}`]">
     <header class="module-section__head">
       <h2 class="module-section__title">{{ heading }}</h2>
       <slot name="note">
@@ -40,10 +44,17 @@ defineProps<Props>();
 <style scoped>
 .module-section {
   container-type: inline-size;
-  margin-top: var(--sp-section);
+  margin-top: var(--space-7);
+}
+.module-section.gap-group {
+  margin-top: var(--space-9);
 }
 .module-section:first-child {
-  margin-top: var(--sp-8);
+  margin-top: var(--space-2);
+}
+.module-section.is-ruled {
+  border-top: 1px solid var(--line-1);
+  padding-top: var(--space-4);
 }
 .module-section__head {
   display: flex;

@@ -79,8 +79,7 @@ provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
       <h1 v-if="!isHome" class="visually-hidden">{{ area.label }}</h1>
       <div class="top">
         <SmartLink class="brand" :href="areaHref(site.nav, site.nav[0]?.id ?? AREA.home)">
-          <span class="mark">D</span>
-          <span>{{ site.meta.name }}</span>
+          {{ site.meta.name }}
         </SmartLink>
         <SiteChrome :nav="site.nav" :locale="site.locale" :current="area.id" />
       </div>
@@ -88,9 +87,12 @@ provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
       <SitePanels :site="site" :area="area.id" />
 
       <footer>
-        <span class="m">{{ t("lastSynced") }} {{ site.syncedAt ?? "—" }}</span> · @{{ site.meta.handle }} ·
-        <SmartLink href="/docs">{{ t("docs") }}</SmartLink> ·
-        <SmartLink href="/datenschutz">{{ t("privacy") }}</SmartLink>
+        <p v-if="site.syncedRelative" class="foot-sync">{{ t("freshFresh", { age: site.syncedRelative }) }}</p>
+        <nav class="foot-links" aria-label="Footer">
+          <span>@{{ site.meta.handle }}</span>
+          <SmartLink href="/docs">{{ t("docs") }}</SmartLink>
+          <SmartLink href="/datenschutz">{{ t("privacy") }}</SmartLink>
+        </nav>
       </footer>
     </div>
   </main>

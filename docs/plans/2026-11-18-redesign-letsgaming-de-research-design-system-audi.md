@@ -511,3 +511,10 @@ committed) using the WCAG 2.x formula on the final token values.
   - Primary and ghost buttons share one keycap: a 4px solid edge, 3px press. The ambient shadow layer on the ghost button is gone.
   - Light-mode `.card:hover` no longer adds a shadow; hover is border and surface only.
   - Incident: a scripted radius mapping rewrote `b` as `o` in 11 files (a PowerShell array unrolling bug). Found from a file-change notice, restored with `git checkout -- <those files>` (they held no other uncommitted work), mapping redone, diff reviewed. Lesson: review `git diff --stat` after every scripted edit.
+- Step 4 done. Deviations, with reasons:
+  - `ModuleSection` gets `variant` (plain, ruled) and `gap` (related 48px, group 96px) props, default plain and related. No module sets them yet. Reason: each section is rebuilt in Steps 5 to 7, and the choice per module belongs with each layout. The old 52px gap is now 48px for every module.
+  - Footer sync line uses the hero's relative message (`freshFresh`, "synced 1m ago") instead of the raw ISO timestamp the old footer printed. It hides when there is no sync time. `lastSynced` stays in the catalog, now unused (Step 9 removes it).
+  - Wordmark is the name only, in Archivo at width 75. Lettermark square removed.
+  - Favicon: gradient replaced by a flat `#7a4fd9` square with the same "D" glyph. `public/og-image.png` is a raster and not regenerated; it likely still carries the old look. Owner decision: replace it with a new export.
+  - `.chrome` gap is 16px so the tabs do not touch the settings button.
+  - Checked: 1280px (DE) header and footer, 390px overflow for four routes in EN and DE, footer content and links.

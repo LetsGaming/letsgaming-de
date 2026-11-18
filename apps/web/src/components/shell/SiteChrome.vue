@@ -25,8 +25,8 @@ onMounted(() => initSite(props.nav, props.current));
 
 <template>
 
-  <!-- Four labels fit at 380px; they always did. What didn't fit was the pill,
-       the display face and the nested padding — all of which the rules removed. -->
+  <!-- Four labels fit at 380px. The selected tab is marked by an underline and
+       ink-strong text, never the accent hue. -->
   <div class="chrome">
     <nav class="tabs" aria-label="Sections">
       <SmartLink
