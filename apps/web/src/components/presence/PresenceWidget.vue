@@ -348,7 +348,7 @@ const idle = computed(
 .pw-art {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--r-3);
   flex: none;
   object-fit: cover;
   box-shadow: 0 5px 12px -6px rgba(0, 0, 0, 0.55);

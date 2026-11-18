@@ -26,6 +26,8 @@
   /* The accent under white text: 5.32:1. One consumer: `.btn-primary`'s fill.
      Same rule as --glow-live: grep before adding a second. */
   --live-solid: #7a4fd9;
+  /* The solid edge under a primary button, same keycap as the ghost button's. */
+  --live-edge: color-mix(in srgb, var(--live-solid) 62%, #000);
 
   /* Error. Not decoration and not "now": a form that can't say what went wrong
      is broken, and red-for-error is a convention old enough to count as
@@ -122,11 +124,16 @@
   --stack-6: #f472b6;
   --stack-7: #94a3b8;
 
-  /* ── Radius. Scales with the object; 26px on a 90px box was most of the box. */
-  --r-anchor: 18px;
-  --r-card: 14px;
-  --r-control: 10px;
-  --r-chip: 8px;
+  /* ── Radius, by role. No pills: --r-round is for avatars and the live dot. */
+  --r-1: 4px; /* chips, tags, heat cells */
+  --r-2: 6px; /* buttons, inputs, controls, images */
+  --r-3: 10px; /* cards, the presence widget, the modal */
+  --r-round: 50%;
+  /* Aliases, removed once every consumer uses the names above. */
+  --r-anchor: var(--r-3);
+  --r-card: var(--r-3);
+  --r-control: var(--r-2);
+  --r-chip: var(--r-1);
   --r-pill: 999px;
 
   /* ── Type. Archivo (variable, width and weight axes) carries the wordmark,
@@ -162,6 +169,17 @@
      the ones in use, and spacing doesn't differ between themes. */
   /* Width every module's content (forms, grids) may fill; the page cap itself is .wrap. */
   --module-content-width: 100%;
+
+  /* The group scale: big steps between groups, small inside them. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
 
   --sp-2: 2px;
   --sp-4: 4px;
@@ -228,8 +246,9 @@
   --line-control: #868491;
 
   --ghost-shadow: rgba(18, 16, 26, 0.22);
-  --sh-card: 0 1px 2px rgba(18, 16, 26, 0.06), 0 6px 16px rgba(18, 16, 26, 0.07);
-  --sh-anchor: 0 2px 6px rgba(18, 16, 26, 0.08), 0 16px 40px rgba(18, 16, 26, 0.1);
+  /* Cards rest on --line-1 alone. Only things that float cast a shadow. */
+  --sh-card: none;
+  --sh-anchor: 0 2px 6px rgba(18, 16, 26, 0.08), 0 12px 32px rgba(18, 16, 26, 0.1);
 
   /* Tile tones, light. Same four authored hues, inverted: the gradient carries
      the tone and the ink stays dark. */
@@ -259,10 +278,10 @@
   --cms-font-value: var(--f-m);
   --fs-small: 13px;
   --fs-h1: 22px;
-  --r-anchor: 14px;
-  --r-card: 10px;
-  --r-control: 8px;
-  --r-chip: 6px;
+  --r-anchor: 10px;
+  --r-card: 6px;
+  --r-control: 4px;
+  --r-chip: 4px;
 
   --fs-h2: 17px;
   --fs-h3: 14px;

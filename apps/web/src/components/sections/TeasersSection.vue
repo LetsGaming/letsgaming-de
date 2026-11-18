@@ -44,7 +44,7 @@ defineProps<{
   gap: var(--sp-4);
   padding: var(--sp-14) var(--sp-16);
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--r-3);
   color: inherit;
   text-decoration: none;
   min-width: 0;

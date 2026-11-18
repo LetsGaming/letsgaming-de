@@ -249,7 +249,7 @@ function open(name: string) {
   font-size: var(--fs-micro);
   font-weight: 700;
   padding: var(--sp-4) var(--sp-10);
-  border-radius: 999px;
+  border-radius: var(--r-1);
   background: var(--surf-2);
   color: var(--ink-strong);
   border: 1px solid var(--line-2);

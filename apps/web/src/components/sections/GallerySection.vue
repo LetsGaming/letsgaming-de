@@ -34,7 +34,7 @@ defineProps<{
   margin: 0;
   background: var(--surf-1);
   border: 1px solid var(--line-1);
-  border-radius: 14px;
+  border-radius: var(--r-3);
   overflow: hidden;
 }
 .gal-item :deep(img) {

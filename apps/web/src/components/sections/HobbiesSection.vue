@@ -51,7 +51,7 @@ defineProps<{
 .tile .ic {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--r-2);
   display: grid;
   place-items: center;
   margin-bottom: var(--sp-12);
@@ -88,7 +88,7 @@ defineProps<{
    block, `.hobbies[data-v]` out-specifies a global `@media .hobbies`, so the
    breakpoint only wins from inside the same scope. Two columns on a phone, four on
    the desktop — matching the stats grid. */
-@media (max-width: 680px) {
+@media (max-width: 720px) {
   .hobbies {
     grid-template-columns: repeat(2, 1fr);
   }

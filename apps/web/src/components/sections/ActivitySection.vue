@@ -129,7 +129,7 @@ const contributionCells = computed<HeatCell[]>(() => {
 .ev .ei {
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: var(--r-2);
   background: var(--surf-2);
   display: grid;
   place-items: center;

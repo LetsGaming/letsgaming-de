@@ -77,7 +77,7 @@ const model = defineModel<T>({ required: true });
 }
 .seg--md .seg__opt {
   font-size: var(--fs-meta);
-  border-radius: 9px;
+  border-radius: var(--r-2);
   padding: 7px var(--sp-16);
 }
 .seg--md .seg__opt.on {

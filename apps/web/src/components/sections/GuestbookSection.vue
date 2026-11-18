@@ -76,7 +76,7 @@ const { shown, expanded, moreCount } = useLimitedList({
 .gb-entry {
   background: var(--surf-1);
   border: 1px solid var(--line-1);
-  border-radius: 14px;
+  border-radius: var(--r-3);
   padding: var(--sp-16) var(--sp-18);
   margin: 0;
 }

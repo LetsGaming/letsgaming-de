@@ -48,14 +48,14 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
    * shape as the hardcoded 5px this replaced, since border-radius can't exceed
    * half a box's own dimension. Using the token instead of a magic number that
    * was already being silently clamped by the browser. */
-  border-radius: var(--r-pill);
+  border-radius: var(--r-1);
   background: var(--track);
   overflow: hidden;
 }
 .bar b {
   display: block;
   height: 100%;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-1);
 }
 .pc {
   font-family: var(--f-m);

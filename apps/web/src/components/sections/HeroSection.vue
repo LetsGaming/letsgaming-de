@@ -135,7 +135,7 @@ h1 .pop::after {
   height: 0.2em;
   background: var(--line-2);
   opacity: 0.35;
-  border-radius: 6px;
+  border-radius: var(--r-1);
   z-index: -1;
   transform: rotate(-1deg);
 }
@@ -160,10 +160,8 @@ h1 .pop::after {
 .status .dot {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
-  background: var(--live-ink);
-  box-shadow: var(--glow-live);
-  animation: pulse 2.2s infinite;
+  border-radius: var(--r-round);
+  background: var(--muted);
 }
 .status b {
   color: var(--ink);
@@ -191,13 +189,13 @@ h1 .pop::after {
   flex: none;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--line-2);
 }
 .live .dot.on {
   background: var(--live-ink);
   box-shadow: var(--glow-live);
-  animation: pulse 2.2s infinite;
+  animation: pulse var(--dur-pulse) ease-in-out infinite;
 }
 .wave {
   display: inline-flex;
@@ -210,7 +208,7 @@ h1 .pop::after {
   color: var(--muted);
   background: none;
   border: 1px solid var(--line-1);
-  border-radius: 999px;
+  border-radius: var(--r-2);
   cursor: pointer;
 }
 .wave:hover:not(:disabled) {
@@ -224,13 +222,7 @@ h1 .pop::after {
   font-family: var(--f-m);
   color: var(--ink);
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.32;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .status .dot,
   .live .dot.on {
     animation: none;
   }
@@ -238,7 +230,7 @@ h1 .pop::after {
 .avatar :deep(img) {
   width: 104px;
   height: 104px;
-  border-radius: 24px;
+  border-radius: var(--r-round);
   object-fit: cover;
   margin-bottom: var(--sp-18);
   border: 1px solid var(--line-1);

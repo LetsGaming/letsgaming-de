@@ -137,8 +137,7 @@ watch(
 .overlay {
   position: fixed;
   inset: 0;
-  background: color-mix(in srgb, var(--surf-0) 70%, transparent);
-  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--surf-0) 82%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,7 +149,7 @@ watch(
   max-width: 440px;
   background: var(--surf-1);
   border: 1px solid var(--line-1);
-  border-radius: 18px;
+  border-radius: var(--r-3);
   padding: var(--sp-20) var(--sp-22) var(--sp-24);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
   color: var(--ink);
@@ -163,7 +162,7 @@ header {
 }
 header h2 {
   font-family: var(--f-d);
-  font-size: 22px;
+  font-size: var(--fs-h3);
   color: var(--ink-strong);
 }
 .x {
@@ -173,7 +172,7 @@ header h2 {
   font-size: 16px;
   cursor: pointer;
   padding: var(--sp-6);
-  border-radius: 8px;
+  border-radius: var(--r-2);
 }
 .x:hover {
   color: var(--ink);
@@ -213,7 +212,7 @@ section h3 {
   width: 46px;
   height: 27px;
   border-radius: 999px;
-  border: 1px solid var(--line-1);
+  border: 1px solid var(--line-control);
   background: var(--surf-0);
   cursor: pointer;
   padding: 0;
@@ -227,7 +226,7 @@ section h3 {
   left: 2px;
   width: 21px;
   height: 21px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--muted);
   transition:
     transform 0.15s ease,

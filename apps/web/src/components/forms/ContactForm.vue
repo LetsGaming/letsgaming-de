@@ -49,7 +49,7 @@ const { state, error, submit } = useSubmit({
 <style scoped>
 /* Only the contact-specific layout remains; shared styles live in BaseForm. */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-12); }
-@media (max-width: 520px) {
+@media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }
 }
 </style>

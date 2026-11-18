@@ -69,7 +69,7 @@ withDefaults(defineProps<Props>(), { columns: 4, separation: "tiles" });
 }
 
 /* Same breakpoint the global `.stats` used, so nothing reflows differently. */
-@media (max-width: 680px) {
+@media (max-width: 720px) {
   .statgrid--3,
   .statgrid--4 {
     grid-template-columns: repeat(2, 1fr);

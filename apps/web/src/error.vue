@@ -76,7 +76,7 @@ h1 {
 .home {
   margin-top: var(--sp-12);
   padding: var(--sp-12) var(--sp-20);
-  border-radius: 15px;
+  border-radius: var(--r-2);
   border: none;
   background: var(--live-solid);
   color: #fff;

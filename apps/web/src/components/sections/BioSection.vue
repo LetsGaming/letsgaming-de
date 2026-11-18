@@ -46,7 +46,7 @@ defineProps<{
 .bio-img :deep(img) {
   max-width: 100%;
   height: auto;
-  border-radius: 14px;
+  border-radius: var(--r-3);
   border: 1px solid var(--line-1);
 }
 </style>

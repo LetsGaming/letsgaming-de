@@ -127,7 +127,7 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
 
 /* Two up on a phone, and the first-child exception no longer matches the row
    start, so it's recomputed for the new column count. */
-@media (max-width: 680px) {
+@media (max-width: 720px) {
   .areas {
     grid-template-columns: repeat(2, 1fr);
   }

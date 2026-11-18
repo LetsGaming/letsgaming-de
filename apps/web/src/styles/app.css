@@ -65,7 +65,7 @@ a {
 .brand .mark {
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: var(--r-2);
   background: var(--surf-2);
   border: 1px solid var(--line-2);
   display: grid;
@@ -85,9 +85,8 @@ a {
   gap: var(--sp-6);
   background: var(--surf-1);
   padding: var(--sp-6);
-  border-radius: 16px;
+  border-radius: var(--r-3);
   border: 1px solid var(--line-1);
-  box-shadow: var(--sh-card);
   flex-wrap: wrap;
 }
 .tab {
@@ -100,7 +99,7 @@ a {
   border: none;
   cursor: pointer;
   padding: var(--sp-8) var(--sp-16);
-  border-radius: 11px;
+  border-radius: var(--r-2);
   transition:
     color 0.2s ease,
     background 0.2s ease;
@@ -115,14 +114,13 @@ a {
 .theme-toggle {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--r-2);
   border: 1px solid var(--line-1);
   background: var(--surf-1);
   color: var(--muted);
   cursor: pointer;
   display: grid;
   place-items: center;
-  box-shadow: var(--sh-card);
   transition:
     color 0.2s ease,
     transform 0.12s ease;
@@ -175,14 +173,17 @@ h1 {
   font-weight: 600;
   font-size: var(--fs-body);
   padding: var(--sp-12) var(--sp-20);
-  border-radius: 15px;
+  border-radius: var(--r-2);
   border: none;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  transition: transform 0.12s ease;
+  margin-bottom: var(--sp-4);
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out);
 }
 .btn svg {
   width: 17px;
@@ -195,26 +196,24 @@ h1 {
   width: 17px;
   height: 17px;
 }
+/* The keycap: a solid edge under the button that the press travels into. */
 .btn-primary {
   background: var(--live-solid);
   color: #fff;
-  transition: transform var(--dur-press) var(--ease-out);
-}
-.btn-primary:active {
-  transform: translateY(2px);
+  box-shadow: 0 4px 0 var(--live-edge);
 }
 .btn-ghost {
   background: var(--surf-2);
   color: var(--ink);
-  box-shadow:
-    0 5px 0 var(--ghost-shadow),
-    0 10px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 0 var(--ghost-shadow);
+}
+.btn-primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--live-edge);
 }
 .btn-ghost:active {
-  transform: translateY(4px);
-  box-shadow:
-    0 1px 0 var(--ghost-shadow),
-    0 3px 10px rgba(0, 0, 0, 0.15);
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ghost-shadow);
 }
 
 /* The section shell + heading + note now live in the ModuleSection component.
@@ -244,16 +243,14 @@ h1 {
   border: 1px solid var(--line-1);
   border-radius: var(--r-card);
   padding: var(--sp-24);
-  box-shadow: var(--sh-card);
   transition:
-    box-shadow 0.3s ease,
+    background 0.3s ease,
     border-color 0.3s ease;
   text-decoration: none;
   color: inherit;
   display: block;
 }
 .card:hover {
-  box-shadow: var(--sh-anchor);
   border-color: var(--line-2);
   background: var(--surf-2);
 }
@@ -262,7 +259,7 @@ h1 {
   font-size: var(--fs-meta);
   font-weight: 600;
   padding: var(--sp-4) var(--sp-10);
-  border-radius: 999px;
+  border-radius: var(--r-1);
   background: var(--surf-2);
   color: var(--ink);
   display: inline-block;
@@ -381,7 +378,7 @@ h1 {
 .doc-group a {
   display: block;
   padding: 5px var(--sp-10);
-  border-radius: 8px;
+  border-radius: var(--r-2);
   color: var(--ink);
   text-decoration: none;
   line-height: 1.35;
@@ -447,12 +444,12 @@ h1 {
   background: var(--surf-2);
   color: var(--ink);
   padding: 1px var(--sp-6);
-  border-radius: 6px;
+  border-radius: var(--r-1);
 }
 .doc-body pre {
   margin: 0 0 var(--sp-16);
   padding: var(--sp-14) var(--sp-16);
-  border-radius: 12px;
+  border-radius: var(--r-3);
   border: 1px solid var(--line-1);
   overflow-x: auto;
   font-size: var(--fs-meta);
@@ -562,7 +559,7 @@ footer b {
 
 /* entrance */
 
-@media (max-width: 680px) {
+@media (max-width: 720px) {
   .dash {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -642,8 +639,12 @@ footer b {
   height: 6px;
   border-radius: 50%;
   background: var(--live-ink);
-  box-shadow: var(--glow-live);
   animation: pulse var(--dur-pulse) ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.32;
+  }
 }
 
 /* At a glance: four stat cards became one muted line. They were the same four

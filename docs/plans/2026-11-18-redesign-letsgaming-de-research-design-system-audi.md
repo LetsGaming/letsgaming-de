@@ -501,3 +501,13 @@ committed) using the WCAG 2.x formula on the final token values.
   - Bug found and fixed because the larger type exposed it: at 390px `/code` overflowed by 11px. `CardHeader.vue` now wraps, and the mobile `.dash` track is `minmax(0, 1fr)`.
   - `.impeccable/design.json` is stale (describes the old system). Not touched. Regenerating it is a tool step for the owner (`/impeccable document`).
   - Checked: desktop at 1280px and iframes at 390px for four routes in EN and DE (no overflow), fonts loaded, H1 on two lines.
+- Step 3 done. Deviations, with reasons:
+  - Radius scale (4/6/10) is applied through the old token names as aliases, so unchanged components follow. CMS remap is now anchor 10, card 6, control 4, chip 4 (one step down).
+  - Breakpoints are 560 and 720, not 560 and 860 as the plan said. Reason: 680 and 720 merge cleanly, and 860 would change the layouts that break at 680. Recorded in DESIGN.md.
+  - Settings switch track stays fully round (documented exception in DESIGN.md).
+  - HeatGrid 2px cell radius and the presence equalizer bars (1.5 to 2px) are left as they are.
+  - Hero status dot (CMS text, not live data) is now static and muted; glow stays only on the live presence dot. The fresh-sync dot keeps the pulse, no glow.
+  - Hero avatar radius is now round (plan: avatars are round). The dev data has no avatar, so this is unchecked in the browser.
+  - Primary and ghost buttons share one keycap: a 4px solid edge, 3px press. The ambient shadow layer on the ghost button is gone.
+  - Light-mode `.card:hover` no longer adds a shadow; hover is border and surface only.
+  - Incident: a scripted radius mapping rewrote `b` as `o` in 11 files (a PowerShell array unrolling bug). Found from a file-change notice, restored with `git checkout -- <those files>` (they held no other uncommitted work), mapping redone, diff reviewed. Lesson: review `git diff --stat` after every scripted edit.

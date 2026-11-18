@@ -191,7 +191,11 @@ During migration the old `--sp-*` tokens stay as aliases. Plan Step 10 removes t
 | `--r-3` | 10px | Cards, the presence widget, the modal |
 | `--r-round` | 50% | Avatars and the live dot only |
 
-No pills. A radius that is a large part of its object (the old 24px on a small avatar, 15px on buttons) is a drift, not a style.
+No pills. The settings switch track and its knob are the only other fully round shapes, because a switch is read by its shape. A radius that is a large part of its object (the old 24px on a small avatar, 15px on buttons) is a drift, not a style.
+
+## Breakpoints
+
+Two for the public site: 560px (phone) and 720px (tablet). Container queries inside a module may use their own widths. The docs layout also breaks at 720px.
 
 ## Elevation and borders
 
