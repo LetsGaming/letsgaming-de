@@ -38,12 +38,12 @@ export function assetsRepo(db: DB) {
 
   /**
    * Build an Asset from a raw row, attaching its tags. The one place columns
-   * become a domain Asset — optional fields are only set when present.
+   * become a domain Asset: optional fields are only set when present.
    *
    * `kind` is checked, not asserted. It used to be `asText(r.kind) as AssetKind`,
    * which takes the store's word for a value the store has no opinion about:
    * `kind` is a bare TEXT column, so a row written by a version that knew a kind
-   * this one doesn't — or by hand — would flow into the site typed as something it
+   * this one doesn't, or by hand, would flow into the site typed as something it
    * isn't, and fail at whatever rendered it.
    *
    * Unrecognised falls back to `file` rather than throwing: `file` is the
@@ -208,7 +208,7 @@ export function assetsRepo(db: DB) {
      * Repoint a markdown asset at new bytes.
      *
      * Separate from `update` on purpose: that one is metadata, and `hash` is
-     * deliberately not in its type because for media the hash *is* the identity —
+     * deliberately not in its type because for media the hash *is* the identity:
      * letting a route patch it would break dedupe and orphan variants. A markdown
      * document is the exception: the id is the identity and the bytes change on
      * every save. Naming that here keeps the exception visible instead of widening

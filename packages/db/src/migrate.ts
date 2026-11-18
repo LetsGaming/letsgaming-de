@@ -7,7 +7,7 @@
  *     schema_migrations with its sha256 checksum;
  *   - an optional NNNN_name.down.sql reverses a migration (see migrateDown); the
  *     forward runner and its checksums ignore down files;
- *   - an already-applied migration whose file changed is a hard error — migrations
+ *   - an already-applied migration whose file changed is a hard error: migrations
  *     are immutable history, so a change means someone edited the past. Add a new
  *     file instead.
  *

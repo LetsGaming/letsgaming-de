@@ -5,4 +5,4 @@
 -- applied forward-only by the runner in migrate.ts (recorded in schema_migrations).
 --
 -- This file is kept only as a signpost so older links don't dead-end. Do not add
--- schema here — add a new migration instead.
+-- schema here: add a new migration instead.

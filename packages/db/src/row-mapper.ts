@@ -1,7 +1,7 @@
 /**
  * The one audited place where an untyped SQLite row becomes a typed value.
  *
- * node:sqlite returns rows as `unknown` — previously every repository cast that
+ * node:sqlite returns rows as `unknown`: previously every repository cast that
  * with `as unknown as Row[]`, which is `any` in disguise: a renamed/removed column
  * compiled fine and broke at runtime. Instead, reads go through `mapRows`/`mapRow`
  * with a per-table reader function, so the only unchecked step (row → object) lives
@@ -17,7 +17,7 @@ export type Row = Record<string, unknown>;
 /** Run a prepared statement and return raw rows. The single audited cast. */
 export function rows(stmt: StatementSync, ...params: SQLInputValue[]): Row[] {
   // `.all()` is typed `unknown[]`; each element is a column-keyed object. This is
-  // the only place we assert that shape — everything downstream is narrowed by hand.
+  // the only place we assert that shape: everything downstream is narrowed by hand.
   return stmt.all(...params) as Row[];
 }
 
@@ -52,7 +52,7 @@ export const SINGLETON_ID = 1;
  * `write()` (itself a `transact`) is called from within callers that may
  * already be inside one (e.g. seeding several content entities as one atomic
  * boot step). Only the outermost call opens/closes the real transaction;
- * inner calls just run `fn` — a thrown error still unwinds to the outermost
+ * inner calls just run `fn`: a thrown error still unwinds to the outermost
  * catch, which is the only one that issues ROLLBACK.
  */
 const txDepth = new WeakMap<DB, number>();
@@ -61,7 +61,7 @@ const txDepth = new WeakMap<DB, number>();
  * Run `fn` inside a transaction: commit on return, roll back on throw.
  *
  * The BEGIN / try / COMMIT / catch-ROLLBACK-rethrow block was written out eight
- * times across five repositories — identical every time, which is the point:
+ * times across five repositories: identical every time, which is the point:
  * it's mechanical, so it's the half that should be factored out while the SQL
  * stays where you can read it. Hand-copied, the copies drift (one of them had
  * an inverted sweep guard), and the copy that forgets its ROLLBACK leaves the

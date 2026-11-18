@@ -23,7 +23,7 @@ const toPublicEntry = (r: Row): PublicGuestbookEntry => ({
 /**
  * Repository for the pre-moderated guestbook. New entries land as `pending` and
  * are invisible to the public until the owner approves them. Only name, message
- * and a server timestamp are stored — no IP, no identifier (§ privacy).
+ * and a server timestamp are stored: no IP, no identifier (§ privacy).
  */
 export function guestbookRepo(db: DB) {
   return {

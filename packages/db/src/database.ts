@@ -6,7 +6,7 @@ import { runMigrations } from "./migrate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** The store handle type. node:sqlite is built in — no native build step, which
+/** The store handle type. node:sqlite is built in: no native build step, which
  *  keeps local dev, Docker, and CI free of node-gyp/prebuild surprises. */
 export type DB = DatabaseSync;
 

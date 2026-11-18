@@ -9,7 +9,7 @@ import { asText, mapRows, type Row } from "./row-mapper.js";
  * regardless of the casing/spacing Discord reported. The server's metadata sweep
  * writes it; the resolver reads the whole table into a Map and attaches it to the
  * playtime rows. A row with NULL cover/genre is a real "resolved, nothing found"
- * answer — its presence is what keeps the sweep from re-querying that name.
+ * answer: its presence is what keeps the sweep from re-querying that name.
  */
 export function gameMetaRepo(db: DatabaseSync) {
   const upsert = db.prepare(`

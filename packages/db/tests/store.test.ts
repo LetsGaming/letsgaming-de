@@ -37,7 +37,7 @@ test("seed populates content and IA", () => {
   const content = store.content.getContent();
   assert.equal(content.meta.name, "Domenic");
   // Projects are now driven by GitHub (pinned + recent), so the seed intentionally
-  // populates none — the seed provides identity, bio, hobbies, links and IA.
+  // populates none: the seed provides identity, bio, hobbies, links and IA.
   assert.equal(content.projects.length, 0);
   assert.ok(content.hobbies.length > 0);
   const nav = store.ia.getNav();
@@ -412,7 +412,7 @@ test("a content write archives the whole document, like a sync does", () => {
   assert.equal(revs.length, before + 2);
   assert.equal(revs[0]?.reason, "lede");
 
-  // Newest first, and the newest is the current state — as source_current is.
+  // Newest first, and the newest is the current state: as source_current is.
   const newest = store.content.getRevision(revs[0]!.id);
   assert.equal(newest?.lede.en, "second wording");
   const previous = store.content.getRevision(revs[1]!.id);
@@ -462,7 +462,7 @@ test("a failed write leaves no revision behind", () => {
   // NOT NULL, not a bad tone: `tone TEXT NOT NULL, -- 'purple' | 'coral' | …`
   // keeps its vocabulary in a *comment*, so the column accepts any string and a
   // bad tone doesn't throw here at all. (The write schema catches it at the API
-  // boundary; the store — PROJECT.md §2.2's "single source of truth" — has no
+  // boundary; the store, PROJECT.md §2.2's "single source of truth", has no
   // opinion. That's the fifth copy of TONES and the only unenforced one.)
   assert.throws(() =>
     store.content.upsertHobby(
@@ -475,7 +475,7 @@ test("a failed write leaves no revision behind", () => {
 
 test("if the archive fails, the write fails with it", () => {
   // The claim `write()` makes is that a save lands *with* its history or not at
-  // all. A write that throws proves nothing — the archive after it never runs
+  // all. A write that throws proves nothing: the archive after it never runs
   // either way, so archive-inside and archive-after-commit both pass. The only
   // case that discriminates is the archive itself failing, so: make it fail.
   const db = openDatabase(":memory:");
@@ -484,15 +484,15 @@ test("if the archive fails, the write fails with it", () => {
   db.exec("DROP TABLE site_content_revisions");
 
   assert.throws(() => content.setLede({ en: "written without history" }));
-  // Rolled back — not committed-then-unarchived.
+  // Rolled back: not committed-then-unarchived.
   assert.notEqual(content.getContent().lede.en, "written without history");
 });
 
 // ── the schema's comments are claims, and claims rot ──────────────────────────
 //
 // `tone TEXT NOT NULL, -- 'purple' | 'coral' | 'mint' | 'sun'` is the fifth copy
-// of TONES and the only unenforced one: SQLite takes any string, so the store —
-// PROJECT.md §2.2's "single source of truth" — has no opinion about its own
+// of TONES and the only unenforced one: SQLite takes any string, so the store,
+// PROJECT.md §2.2's "single source of truth", has no opinion about its own
 // vocabulary. A CHECK would be a sixth copy, and SQLite can't ADD CONSTRAINT to
 // an existing table anyway. So the comment stays and this makes it a claim that
 // gets checked, the same way storage-keys.test.ts checks an inline script that
@@ -519,7 +519,7 @@ test("the schema's tone comment lists exactly TONES", () => {
 test("an asset kind the vocabulary doesn't know falls back to file", () => {
   const store = openStore(":memory:");
 
-  // `kind` is a bare TEXT column — the store has no opinion about it. A row from
+  // `kind` is a bare TEXT column: the store has no opinion about it. A row from
   // an older version, or written by hand, used to be typed as whatever it claimed
   // and fail at whatever rendered it. `file` is the vocabulary's own word for
   // "bytes with no better name", so it's the defined answer, not an invented one.
@@ -615,7 +615,7 @@ test("restarting a game is a new session, and they sum", () => {
 test("an undated game accumulates across polls", () => {
   // The bug this exists for: `started_at = now` on every poll made each one its
   // own zero-length session, so a game Discord doesn't date accumulated *nothing,
-  // forever* — and silently, because PLAYTIME_MIN_SECONDS dropped every row. The
+  // forever*, and silently, because PLAYTIME_MIN_SECONDS dropped every row. The
   // poll extends the open session instead.
   const store = openStore(":memory:");
   for (const t of ["12:00", "12:05", "12:10", "12:15"]) {
@@ -642,7 +642,7 @@ test("an undated session that lapses is a new one, not an extension", () => {
     category: "game", name: "Solitaire", startedAt: "2026-07-17T12:05:00.000Z",
     seenAt: "2026-07-17T12:05:00.000Z", startedExact: false,
   });
-  // an hour later — a different sitting
+  // an hour later: a different sitting
   store.sessions.observe({
     category: "game", name: "Solitaire", startedAt: "2026-07-17T13:05:00.000Z",
     seenAt: "2026-07-17T13:05:00.000Z", startedExact: false,
@@ -703,7 +703,7 @@ test("heatmap spreads each session across the hours it spans", () => {
 
   const grid = store.sessions.heatmap("game", iso(2026, 6, 1, 0), "UTC");
   const at = (weekday: number, hour: number) => grid.find((c) => c.weekday === weekday && c.hour === hour)?.minutes ?? 0;
-  // Fri 21 = A's 30 + B's first 50; Fri 22 = B's spillover 10 — the whole point:
+  // Fri 21 = A's 30 + B's first 50; Fri 22 = B's spillover 10: the whole point:
   // a session that runs into the next hour credits both.
   assert.equal(at(5, 21), 80, "30 + 50 in Fri 21:00");
   assert.equal(at(5, 22), 10, "B's last 10 minutes land in Fri 22:00");
@@ -713,7 +713,7 @@ test("heatmap spreads each session across the hours it spans", () => {
 test("heatmap spreads a multi-hour session evenly", () => {
   const store = openStore(":memory:");
   const iso = (y: number, mo: number, d: number, h: number) => new Date(Date.UTC(y, mo, d, h)).toISOString();
-  // A clean 16:00–19:00 block: an hour in each of 16, 17, 18 — not 3h in 16.
+  // A clean 16:00 to 19:00 block: an hour in each of 16, 17, 18: not 3h in 16.
   store.sessions.observe({ category: "game", name: "Palworld", startedAt: iso(2026, 6, 17, 16), seenAt: iso(2026, 6, 17, 19), startedExact: true });
   const grid = store.sessions.heatmap("game", iso(2026, 6, 1, 0), "UTC");
   const at = (hour: number) => grid.find((c) => c.weekday === 5 && c.hour === hour)?.minutes ?? 0;
@@ -729,13 +729,13 @@ test("aggregation buckets in the given zone, not UTC", () => {
   const store = openStore(":memory:");
   store.sessions.observe({ category: "game", name: "X", startedAt: iso(22), seenAt: iso(23), startedExact: true });
 
-  // 22:00–23:00 UTC → in UTC that's Fri (weekday 5) hour 22, on the 17th.
+  // 22:00 to 23:00 UTC → in UTC that's Fri (weekday 5) hour 22, on the 17th.
   assert.equal(store.sessions.heatmap("game", since, "UTC").find((c) => c.weekday === 5 && c.hour === 22)?.minutes, 60);
   assert.deepEqual(store.sessions.dailyTotals("game", since, "UTC").map((d) => d.day), ["2026-07-17"]);
   assert.deepEqual(store.sessions.dayBreakdown("game", "2026-07-17", "UTC").map((g) => g.name), ["X"]);
 
-  // The same rows in Berlin (CEST = UTC+2 in July) are 00:00–01:00 the next day:
-  // Sat (weekday 6) hour 0, on the 18th. Same store, only the zone argument differs —
+  // The same rows in Berlin (CEST = UTC+2 in July) are 00:00 to 01:00 the next day:
+  // Sat (weekday 6) hour 0, on the 18th. Same store, only the zone argument differs,
   // which is the whole point of bucketing from raw rows rather than a fixed process zone.
   assert.equal(store.sessions.heatmap("game", since, "Europe/Berlin").find((c) => c.weekday === 6 && c.hour === 0)?.minutes, 60);
   assert.deepEqual(store.sessions.dailyTotals("game", since, "Europe/Berlin").map((d) => d.day), ["2026-07-18"]);
@@ -746,8 +746,8 @@ test("aggregation buckets in the given zone, not UTC", () => {
 test("bucketing is DST-exact — a winter and a summer session land on different local hours", () => {
   const store = openStore(":memory:");
   const since = new Date(Date.UTC(2026, 0, 1)).toISOString();
-  // Identical UTC wall-clock (21:30–22:00Z), six months apart. Berlin is +01:00 in
-  // January (CET) and +02:00 in July (CEST), so the *local* hour differs by season —
+  // Identical UTC wall-clock (21:30 to 22:00Z), six months apart. Berlin is +01:00 in
+  // January (CET) and +02:00 in July (CEST), so the *local* hour differs by season,
   // which a single fixed offset (or a rotation of a collapsed grid) can't get right,
   // but per-instant bucketing does.
   store.sessions.observe({ category: "game", name: "W", startedAt: "2026-01-15T21:30:00.000Z", seenAt: "2026-01-15T22:00:00.000Z", startedExact: true });
@@ -763,7 +763,7 @@ test("dailyTotals is one row per day that has play, ordered", () => {
   store.sessions.observe({ category: "game", name: "A", startedAt: iso(17, 20), seenAt: iso(17, 21), startedExact: true });
   store.sessions.observe({ category: "game", name: "B", startedAt: iso(17, 22), seenAt: iso(17, 22) + "", startedExact: true });
   store.sessions.observe({ category: "game", name: "A", startedAt: iso(19, 10), seenAt: iso(19, 11), startedExact: true });
-  // note: 2026-07-18 has nothing — must be absent, not a zero row
+  // note: 2026-07-18 has nothing: must be absent, not a zero row
   const days = store.sessions.dailyTotals("game", iso(1, 0), "UTC");
   assert.deepEqual(days.map((d) => d.day), ["2026-07-17", "2026-07-19"]);
   assert.equal(days[0]?.minutes, 60);
@@ -805,7 +805,7 @@ test("the pre-0004 row (no sample column) reads sample as show", () => {
   // (the migration made the columns nullable exactly so this case reads cleanly)
   store.content.setPresence({ show: ["game", "music"], sample: [], retentionDays: null, hidden: [] });
   // now null out sample to mimic pre-migration
-  // — done via a fresh settings write that clears it is not possible through the
+  // Clearing it with a fresh settings write is not possible through the
   //   API, so assert the fallback logic directly on a default-shaped read instead:
   const got = store.content.getPresence();
   assert.ok(Array.isArray(got.sample), "sample is always an array, never undefined");

@@ -7,13 +7,13 @@ import { buildSiteView, openStore } from "../src/index.js";
  * Which contact affordance a deployment gets.
  *
  * The module used to render its form unconditionally and discover on submit that
- * no relay existed — a form that looked like it worked, took a typed message, and
+ * no relay existed: a form that looked like it worked, took a typed message, and
  * only then said "not configured". The capability is knowable at render time, so
  * these pin the three states it resolves to.
  *
  * `buildSiteView` reads the environment for this, and the relay condition it
  * applies (`SMTP_HOST` *and* `CONTACT_TO`) is a deliberate copy of the server's
- * `ServerEnv` — `@lg/db` can't import the server without depending on it. Copies
+ * `ServerEnv`: `@lg/db` can't import the server without depending on it. Copies
  * drift, so the last test here fails if they stop agreeing.
  */
 
@@ -57,7 +57,7 @@ test("no relay but a published address renders a mailto", async () => {
 });
 
 test("CONTACT_TO is the fallback address when nothing is published explicitly", async () => {
-  // Host missing, so there's no relay — but the destination address is still a
+  // Host missing, so there's no relay, but the destination address is still a
   // real way to reach the owner, and it's what the form would have used.
   const channel = await channelFor({ CONTACT_TO: "me@example.com" });
   assert.deepEqual(channel, { kind: "mailto", email: "me@example.com" });
@@ -80,7 +80,7 @@ test("an empty value is unset, not an address", async () => {
 
 test("a form is offered whenever the relay works, never a mailto as well", async () => {
   // Two ways to do one thing under one heading, and the mailto is the worse of
-  // them whenever the form works — so the relay wins outright rather than adding.
+  // them whenever the form works, so the relay wins outright rather than adding.
   const channel = await channelFor({
     SMTP_HOST: "smtp.example.com",
     CONTACT_TO: "me@example.com",

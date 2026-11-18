@@ -72,13 +72,13 @@ export function openStore(path: string): Store {
 /**
  * Open the store read-only, for a process that must not write.
  *
- * The web app reads the store directly to build each SSR page — no HTTP hop to
+ * The web app reads the store directly to build each SSR page: no HTTP hop to
  * the API. But the API is the writer: it runs migrations, seeds, and takes the
  * sync/CMS writes. If web also ran migrations or seeded, two processes would race
  * the same file on boot. Opening read-only makes that impossible at the SQLite
  * level: this handle can only read, so there's nothing to race. It also skips
  * `seedIfEmpty`/`reconcileIa` (writes the API already did) and doesn't run the
- * migration runner — the schema is whatever the writer brought it to.
+ * migration runner: the schema is whatever the writer brought it to.
  *
  * WAL matters here: a read-only connection sees committed writes from the writer
  * without blocking it, so SSR reads stay live as the sync worker updates the

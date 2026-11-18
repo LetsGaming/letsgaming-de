@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm db:migrate:down --to <version> [--db <path>]` — revert every applied
+ * `pnpm db:migrate:down --to <version> [--db <path>]`: revert every applied
  * migration newer than <version>, newest first, using its NNNN_name.down.sql.
  *
  * Stop the server and copy the database file first. Opens the file without running

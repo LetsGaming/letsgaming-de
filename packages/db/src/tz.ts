@@ -4,10 +4,10 @@
  * The observed-activity aggregations (the day strips, the "when I play" heatmap,
  * the day drill-in) all group by a wall-clock unit, and *which* wall clock is a
  * choice: the owner's zone by default, a visitor's zone on request. SQLite's
- * `'localtime'` can't express that — it reads the one process `TZ`, which is
+ * `'localtime'` can't express that: it reads the one process `TZ`, which is
  * global and can't vary per request. So the grouping is done here in JS from the
  * raw UTC rows, with the zone as a parameter, using `Intl` (the same system tz
- * database) so each instant is bucketed by *its own* offset — a July session at
+ * database) so each instant is bucketed by *its own* offset: a July session at
  * +02:00 and a January one at +01:00 both land on the right wall-clock hour,
  * exact across DST.
  *
@@ -41,7 +41,7 @@ function formatter(timeZone: string): Intl.DateTimeFormat {
 // to change when this moved off `'localtime'`.
 const WEEKDAY: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
-/** The wall-clock weekday (0=Sun), hour (0–23) and day (`YYYY-MM-DD`) of a UTC
+/** The wall-clock weekday (0=Sun), hour (0 to 23) and day (`YYYY-MM-DD`) of a UTC
  *  instant in `timeZone`. */
 export function zonedParts(epochMs: number, timeZone: string): { weekday: number; hour: number; day: string } {
   const parts = formatter(timeZone).formatToParts(epochMs);
@@ -64,7 +64,7 @@ export function zonedDay(iso: string, timeZone: string): string {
  * Walk a session `[startIso, endIso]` hour by hour, calling `add` with each slot's
  * local weekday/hour and the milliseconds of the session that fall in it. Spans
  * that cross an hour (or a midnight, or a DST change) are split across the slots
- * they touch — this is what lets the heatmap show every hour a long session
+ * they touch: this is what lets the heatmap show every hour a long session
  * covered, not just the one it began in.
  */
 export function eachHourSlot(

@@ -22,7 +22,7 @@ export function sessionsRepo(db: DatabaseSync) {
    * Record that an activity was seen running.
    *
    * Idempotent by construction. `(category, name, started_at)` is the session's
-   * identity — Discord dates the start, so two polls of the same session are the
+   * identity: Discord dates the start, so two polls of the same session are the
    * same row and only `last_seen_at` moves. Polling twice, replaying a poll, or
    * running two samplers cannot inflate a total; the worst they can do is agree.
    *
@@ -79,7 +79,7 @@ export function sessionsRepo(db: DatabaseSync) {
      *   are merged into one spanning both: the earliest start, the latest sighting.
      *   Playing is one stretch of time, never counted once per report.
      * - **Undated**: there's no key. `started_at = now` would make every poll its
-     *   own zero-length session, so the game would accumulate nothing *forever* —
+     *   own zero-length session, so the game would accumulate nothing *forever*:
      *   silently, since `PLAYTIME_MIN_SECONDS` drops each one. So the poll extends
      *   whatever undated session is still open (`PRESENCE_SESSION_GAP_MS`), and
      *   only opens a new one when nothing is.
@@ -162,7 +162,7 @@ export function sessionsRepo(db: DatabaseSync) {
           minutes: Math.round(asNumber(r.seconds) / 60),
           sessions: asNumber(r.sessions),
           // One inexact session makes the whole total a floor, so the flag is a
-          // MIN, not an OR — the chart is holding a lower bound either way and
+          // MIN, not an OR: the chart is holding a lower bound either way and
           // should say the weaker thing.
           exact: asNumber(r.exact) === 1,
         }),
@@ -192,11 +192,11 @@ export function sessionsRepo(db: DatabaseSync) {
     /**
      * When a category is played, as a weekday × hour grid, in `timeZone`.
      *
-     * 7 rows (Sun–Sat) × 24 columns, each cell the minutes played in that slot over
+     * 7 rows (Sun to Sat) × 24 columns, each cell the minutes played in that slot over
      * the window. A session's minutes are **spread across every hour it spans** (see
      * `eachHourSlot`), so the grid answers "when am I actually playing", not "when
      * do I start". The zone is a parameter, bucketed from the raw UTC rows via
-     * `Intl` — so the owner's zone and any visitor's zone come off the same code,
+     * `Intl`, so the owner's zone and any visitor's zone come off the same code,
      * each session credited by its own DST offset.
      */
     heatmap(category: PresenceCategory, sinceIso: string, timeZone: string): PlaytimeHeatCell[] {
@@ -219,7 +219,7 @@ export function sessionsRepo(db: DatabaseSync) {
     /**
      * Daily totals for a category over a window, one row per local day (in
      * `timeZone`) that has any play, oldest first. A session counts on the day it
-     * started — the same attribution `dayBreakdown` uses, so a column and its
+     * started: the same attribution `dayBreakdown` uses, so a column and its
      * drill-in always agree. Days with no play are absent; the caller fills the
      * calendar, because a gap is a real answer.
      */
@@ -246,7 +246,7 @@ export function sessionsRepo(db: DatabaseSync) {
     },
 
     /**
-     * What was played on one local day (in `timeZone`) — the drill-in behind a
+     * What was played on one local day (in `timeZone`): the drill-in behind a
      * clicked column. A session belongs to the day it started in that zone. Fetches
      * a UTC window bracketing the day (any zone offset is < 24h) and filters to the
      * exact local day, so it agrees with `dailyTotals`.

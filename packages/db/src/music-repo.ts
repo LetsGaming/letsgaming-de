@@ -11,7 +11,7 @@ import { zonedDay } from "./tz.js";
  * Spotify track plays, accumulated from presence polls.
  *
  * Separate from `sessionsRepo` because a track is three subjects (song, artist,
- * album), not one — see `0005_music_plays.sql`. Idempotent by `(track_id,
+ * album), not one: see `0005_music_plays.sql`. Idempotent by `(track_id,
  * started_at)`: Discord dates each track, so the same song scrobbles once no
  * matter how often the sampler catches it.
  */
@@ -70,7 +70,7 @@ export function musicRepo(db: DatabaseSync) {
     },
 
     /**
-     * Songs over a window — grouped by track, most-listened first.
+     * Songs over a window: grouped by track, most-listened first.
      *
      * Every distinct track that was seen playing is returned (no cap), and there's
      * no sub-minute floor: this list is meant to reconcile exactly with the
@@ -114,7 +114,7 @@ export function musicRepo(db: DatabaseSync) {
      * Joins through `music_play_artists`, so a collaboration counts toward every
      * artist on it. Grouped by the lower-cased key but displayed with the casing
      * Discord sent. `limit` is the CMS display cap (maxCount) applied as a query
-     * LIMIT — the frontend never receives more than this. No sub-minute floor: the
+     * LIMIT: the frontend never receives more than this. No sub-minute floor: the
      * rows that do come back must still reconcile with what a day's tracks add up
      * to. The "different artists" headline is a separate COUNT (`distinctArtists`)
      * and is deliberately *not* capped, so a count larger than the list is expected.
@@ -196,7 +196,7 @@ export function musicRepo(db: DatabaseSync) {
       );
     },
 
-    /** Distinct tracks played since a cutoff — the "tracks played" headline. A
+    /** Distinct tracks played since a cutoff: the "tracks played" headline. A
      *  count of tracks, not plays: two listens of one song is one track. */
     distinctTracks(sinceIso: string): number {
       const row = db
@@ -205,7 +205,7 @@ export function musicRepo(db: DatabaseSync) {
       return row ? Number(row.n) : 0;
     },
 
-    /** Distinct artists since a cutoff — the "different artists" headline. Counts
+    /** Distinct artists since a cutoff: the "different artists" headline. Counts
      *  the split artist keys, so a collaboration's members each count once. */
     distinctArtists(sinceIso: string): number {
       const row = db
@@ -219,7 +219,7 @@ export function musicRepo(db: DatabaseSync) {
       return row ? Number(row.n) : 0;
     },
 
-    /** Minutes listened per local day (in `timeZone`), oldest first — the
+    /** Minutes listened per local day (in `timeZone`), oldest first: the
      *  timeline, same shape as the playtime ledger so the module reuses the strip. */
     dailyTotals(sinceIso: string, timeZone: string): { day: string; minutes: number }[] {
       const rows = mapRows(
@@ -240,10 +240,10 @@ export function musicRepo(db: DatabaseSync) {
     },
 
     /**
-     * The tracks played on one local day (in `timeZone`) — the drill-in, fetched
+     * The tracks played on one local day (in `timeZone`): the drill-in, fetched
      * when a timeline column is clicked (parallel to `sessions.dayBreakdown`).
      * Grouped by track so a song played twice is one row with two plays; most-
-     * listened first. No sub-minute floor — the day view is a faithful account.
+     * listened first. No sub-minute floor: the day view is a faithful account.
      * Fetches a UTC window bracketing the day, then filters to the exact local day.
      */
     dayBreakdown(day: string, timeZone: string): { song: string; artist: string; minutes: number; plays: number; artUrl?: string }[] {

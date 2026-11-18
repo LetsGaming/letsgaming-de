@@ -4,17 +4,17 @@ import { asNullableText, asText, json, mapRow, mapRows, transact, type Row } fro
 
 /**
  * Repository for source-owned data. Every sync does two writes: append an
- * immutable snapshot (the archive — §4 accumulation) and upsert the "current"
+ * immutable snapshot (the archive: §4 accumulation) and upsert the "current"
  * copy the site reads. History can't be re-fetched, so the snapshot table is the
  * thing that must be backed up (§10).
  */
 
-/** Snapshots per `history()` page — enough for a trend, small enough to hold. */
+/** Snapshots per `history()` page: enough for a trend, small enough to hold. */
 const HISTORY_LIMIT = 100;
 
 export function sourceRepo(db: DB) {
   return {
-    /** Append + upsert in one transaction — a sync is atomic. */
+    /** Append + upsert in one transaction: a sync is atomic. */
     record(sourceId: SourceId, syncedAt: string, data: unknown) {
       const payload = JSON.stringify(data);
       const appendStmt = db.prepare(
@@ -43,7 +43,7 @@ export function sourceRepo(db: DB) {
      * All current source data, assembled into the typed SourceData registry.
      *
      * `source_id` is TEXT, so a row for a retired source (or a typo in an old
-     * write) is a string with no field to land in — hence the narrowing rather
+     * write) is a string with no field to land in, hence the narrowing rather
      * than an if-chain of literals: the chain silently dropped anything it didn't
      * name, and had to be edited by hand for every new source.
      */
@@ -74,7 +74,7 @@ export function sourceRepo(db: DB) {
 
     /** Last successful sync per source. `latestSyncedAt` collapses these to a
      *  single max, which is fine for a "last updated" line and useless for
-     *  staleness — GitHub being 7h old says nothing about Discord. */
+     *  staleness: GitHub being 7h old says nothing about Discord. */
     syncedAtBySource(): Partial<Record<SourceId, string>> {
       const rows = mapRows(db.prepare("SELECT source_id, synced_at FROM source_current"), (r) => ({
         sourceId: asText(r.source_id),
@@ -87,7 +87,7 @@ export function sourceRepo(db: DB) {
       return out;
     },
 
-    /** History for a source, newest first — the raw material for long-range trends. */
+    /** History for a source, newest first: the raw material for long-range trends. */
     history<T>(sourceId: SourceId, limit = HISTORY_LIMIT): { syncedAt: string; data: T }[] {
       return mapRows(
         db.prepare(

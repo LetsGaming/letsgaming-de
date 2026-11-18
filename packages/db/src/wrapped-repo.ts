@@ -21,7 +21,7 @@ const MIN_SESSION_SECONDS = 60;
 
 /** The `presence_sessions.category` games are stored under. Named rather than
  *  inlined because it must match what the sampler writes and what the playtime
- *  module queries — a mismatch reads as "you played nothing", not as an error. */
+ *  module queries: a mismatch reads as "you played nothing", not as an error. */
 const GAME_CATEGORY = "game";
 
 export interface WrappedRankRow {
@@ -68,7 +68,7 @@ export function wrappedRepo(db: DatabaseSync) {
 
     /**
      * Top artists in `[startIso, endIso)`. Joins through `music_play_artists` so a
-     * collaboration counts toward everyone on it — the same rule the Listening
+     * collaboration counts toward everyone on it: the same rule the Listening
      * module uses, so the two can't disagree about who you listened to.
      */
     topArtists(startIso: string, endIso: string, limit: number): WrappedRankRow[] {
@@ -79,7 +79,7 @@ export function wrappedRepo(db: DatabaseSync) {
             SUM(strftime('%s', p.last_seen_at) - strftime('%s', p.started_at)) AS seconds,
             COUNT(*) AS plays,
             -- An artist has no cover of its own in the presence data, so borrow the
-            -- art of this artist's most-listened track *within the same window* —
+            -- art of this artist's most-listened track *within the same window*:
             -- the same rule the Listening module uses, so the two agree on who looks
             -- like what. A monogram fills in when even that has none.
             (
@@ -107,7 +107,7 @@ export function wrappedRepo(db: DatabaseSync) {
           plays: asNumber(r.plays),
           ...(r.art ? { artUrl: asText(r.art) } : {}),
         }),
-        // The correlated subquery's bounds bind first — SQLite numbers parameters
+        // The correlated subquery's bounds bind first: SQLite numbers parameters
         // by position in the statement text, and the subquery appears before the
         // outer WHERE.
         startIso,
@@ -121,7 +121,7 @@ export function wrappedRepo(db: DatabaseSync) {
     /**
      * Top games in `[startIso, endIso)`. Returns every game over the floor rather
      * than a LIMIT, because hidden names are filtered *after* the query (the hidden
-     * list is CMS content, not a column) — trimming here would let a hidden game
+     * list is CMS content, not a column): trimming here would let a hidden game
      * eat a slot and silently shorten the list.
      */
     topGames(startIso: string, endIso: string): WrappedRankRow[] {
@@ -161,7 +161,7 @@ export function wrappedRepo(db: DatabaseSync) {
       return minutes(row?.seconds ?? 0);
     },
 
-    /** Total minutes played in the period, all games — including hidden ones, since
+    /** Total minutes played in the period, all games: including hidden ones, since
      *  this is a total (shape), not a list (identity), matching the playtime rule. */
     minutesPlayed(startIso: string, endIso: string): number {
       const row = db

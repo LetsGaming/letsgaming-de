@@ -10,7 +10,7 @@ import { rollupRepo } from "./analytics-rollup-repo.js";
 import type { DB } from "./database.js";
 import { asNumber, asText, mapRow, mapRows, SINGLETON_ID, transact, type Row } from "./row-mapper.js";
 
-// The vocabulary is core's — this file held a second copy of all sixteen, in a
+// The vocabulary is core's: this file held a second copy of all sixteen, in a
 // different order, and the store is the thing that refuses to record a dimension
 // it doesn't know.
 export type { AnalyticsDimension } from "@lg/core";
@@ -49,7 +49,7 @@ const toSeriesRow = (r: Row): SeriesRow => ({
   key: asText(r.key),
   count: asNumber(r.count),
 });
-/** A row being moved between dimensions during `reclassify` — see there. */
+/** A row being moved between dimensions during `reclassify`: see there. */
 const toReclassifyRow = (r: Row): { period: string; key: string; count: number } => ({
   period: asText(r.period),
   key: asText(r.key),
@@ -137,7 +137,7 @@ export function analyticsRepo(db: DB) {
     /**
      * Move rows from one dimension to another, remapping their keys.
      *
-     * Built for reclassification after a rule changes — when the probe detector
+     * Built for reclassification after a rule changes: when the probe detector
      * learned to recognise scanner paths, the rows already in the store were
      * still filed as `path`, and the alternative to fixing them was waiting out
      * the 90-day retention with a dashboard that read 1,361 page views on a site
@@ -227,7 +227,7 @@ export function analyticsRepo(db: DB) {
      * Top keys for an engagement dimension over an inclusive hour-bucket range.
      *
      * `keys`, when given, narrows to exactly those stored keys (a dimension
-     * filter — see `filterKeys` in the analytics route for why a *label* like a
+     * filter: see `filterKeys` in the analytics route for why a *label* like a
      * grouped referrer source has to be expanded to its member keys first).
      * `keys: []` means "no keys matched" and short-circuits to an empty result
      * rather than running a query with an empty `IN ()`, which SQLite would
@@ -258,7 +258,7 @@ export function analyticsRepo(db: DB) {
     },
 
     /**
-     * Per-time-bucket, per-key counts for an engagement dimension — the data
+     * Per-time-bucket, per-key counts for an engagement dimension: the data
      * behind the stacked chart. `unit` picks hourly ("YYYY-MM-DDTHH") or daily
      * ("YYYY-MM-DD") buckets. `keys` narrows to those stored keys; see `topHourly`.
      */
@@ -291,14 +291,14 @@ export function analyticsRepo(db: DB) {
      * Delete every row for the given dimensions, in both tables.
      *
      * For rebuilding a derived set from its source. The aggregates keep no link
-     * between the rows one request produced — a probe that was mistaken for a
+     * between the rows one request produced: a probe that was mistaken for a
      * page view wrote a `path` row *and* a `browser`, `os`, `device` and
      * `referrer` row, and nothing records that they belong together. So a
      * misclassification can't be surgically undone: the only honest repair is to
      * drop the whole derived set and re-derive it from the access log, which is
      * the actual source of truth.
      *
-     * Beacon dimensions are never passed here — they come from the browser, not
+     * Beacon dimensions are never passed here: they come from the browser, not
      * the log, and re-reading a log cannot rebuild them.
      */
     clearDimensions(dimensions: readonly StoredDimension[]): number {
@@ -377,7 +377,7 @@ export function analyticsRepo(db: DB) {
      * `lastSuccessAt` is "the last time this worked" and only ever moves
      * forward on an actual success. `lastError` is the most recent attempt's
      * error, present only when that attempt (which may postdate
-     * `lastSuccessAt`) failed — a later success clears it, so its mere
+     * `lastSuccessAt`) failed: a later success clears it, so its mere
      * presence already means "still broken as of the last try."
      */
     getIngestStatus(source: string): { lastSuccessAt?: string; lastError?: string } {
@@ -391,7 +391,7 @@ export function analyticsRepo(db: DB) {
       };
     },
 
-    /** Record a successful ingest run. Clears any prior error — this run just
+    /** Record a successful ingest run. Clears any prior error: this run just
      *  proved the pipeline works again. */
     recordIngestSuccess(source: string, at: string): void {
       db.prepare(
@@ -400,7 +400,7 @@ export function analyticsRepo(db: DB) {
       ).run(source, at);
     },
 
-    /** Record a failed attempt. Deliberately leaves `last_success_at` alone —
+    /** Record a failed attempt. Deliberately leaves `last_success_at` alone:
      *  a failure doesn't change when the pipeline last actually worked. */
     recordIngestFailure(source: string, error: string): void {
       db.prepare(

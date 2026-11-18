@@ -116,7 +116,7 @@ export function contentRepo(db: DB) {
     const show = sanitizePresenceShow(json<unknown>(row.show));
     return {
       show,
-      // NULL sample predates 0004 — fall back to "record what you show", which is
+      // NULL sample predates 0004: fall back to "record what you show", which is
       // the behaviour that row was created under (the sampler ignored the list).
       sample: row.sample === null ? show : sanitizePresenceShow(json<unknown>(row.sample)),
       retentionDays: sanitizeRetentionDays(row.retention_days),
@@ -125,7 +125,7 @@ export function contentRepo(db: DB) {
   };
 
   /** Listening list-display config, one JSON column on the singleton content row;
-   *  a NULL — a fresh install or the pre-0007 row — reads back as the default. */
+   *  a NULL, a fresh install or the pre-0007 row, reads back as the default. */
   const readMusic = (): MusicSettings => {
     const row = db
       .prepare("SELECT music FROM site_content WHERE id = ?")
@@ -135,7 +135,7 @@ export function contentRepo(db: DB) {
   };
 
   /** Wrapped schedule + list size, one JSON column on the singleton row; a NULL
-   *  — a fresh install or the pre-0010 row — reads back as the default (disabled). */
+   * (a fresh install or the pre-0010 row) reads back as the default (disabled). */
   const readWrapped = (): WrappedSettings => {
     const row = db
       .prepare("SELECT wrapped FROM site_content WHERE id = ?")
@@ -145,7 +145,7 @@ export function contentRepo(db: DB) {
   };
 
   /** Custom referrer rules (CMS-owned), applied when the dashboard is read so a
-   *  new rule relabels history. NULL — a fresh install or a pre-0011 row — reads
+   *  new rule relabels history. NULL, a fresh install or a pre-0011 row, reads
    *  back as no rules, which is what the dashboard did before they existed. */
   const readReferrerRules = (): ReferrerRule[] => {
     const row = db
@@ -169,10 +169,10 @@ export function contentRepo(db: DB) {
    *
    * Runs inside the caller's transaction, so a save either lands with its history
    * or doesn't land. Archiving afterwards would lose exactly the revisions where
-   * something went wrong — the ones you'd want.
+   * something went wrong: the ones you'd want.
    *
    * Reads `getContent()` *after* the write, so the newest revision is the current
-   * state. Restore is then a write, not a replay — the same relationship
+   * state. Restore is then a write, not a replay: the same relationship
    * `source_current` has with `source_snapshots`.
    */
   const archive = (reason: string): void => {
@@ -194,7 +194,7 @@ export function contentRepo(db: DB) {
    *
    * A seam rather than `transact(db, () => { …; archive("x") })` at seventeen call
    * sites, because seventeen hand-copied pairs is sixteen chances to forget the
-   * second half — and the one that forgets doesn't fail, it quietly stops keeping
+   * second half, and the one that forgets doesn't fail, it quietly stops keeping
    * history for that field. Same shape as the seven TTLs. Here it's structural:
    * there is no path that writes content without archiving it, because this is the
    * only path that writes.
@@ -315,7 +315,7 @@ export function contentRepo(db: DB) {
      * `sort` is rewritten to the position in `ids`, which also *normalizes* it:
      * items are created with `sort = <list length at the time>`, so a delete
      * followed by an add produces duplicates, and `ORDER BY sort, id` then breaks
-     * the tie by id — an order nobody chose. Renumbering the list on every reorder
+     * the tie by id: an order nobody chose. Renumbering the list on every reorder
      * means the column can't drift away from what the CMS shows.
      *
      * The whole list, not the moved items: dragging the last image to the front
@@ -429,7 +429,7 @@ export function contentRepo(db: DB) {
      * rewrite isn't one.
      *
      * Scalars only, deliberately. The lists are real tables with their own ids
-     * and foreign keys, and replaying them means reconciling deletes — a
+     * and foreign keys, and replaying them means reconciling deletes: a
      * different job with a different failure mode, and doing half of it silently
      * would be worse than not offering it. `listsDiffer` tells the caller when
      * that limit is actually being hit rather than leaving them to find out.
