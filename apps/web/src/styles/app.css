@@ -467,7 +467,6 @@ h1 {
 .doc-body blockquote {
   margin: 0 0 var(--sp-16);
   padding: var(--sp-4) var(--sp-16);
-  border-left: 3px solid var(--line-2);
   color: var(--muted);
 }
 .doc-body table {
