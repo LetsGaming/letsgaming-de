@@ -1,7 +1,7 @@
 /**
  * RAWG fetch layer (rawg.io Video Games Database API).
  *
- * Unlike the Steam integration this replaced, RAWG is cross-platform — it resolves
+ * Unlike the Steam integration this replaced, RAWG is cross-platform: it resolves
  * a bare game *name* (which is all Discord/Lanyard gives us) to cover art and a
  * genre for any title, not just Steam ones. A single API key, passed as a query
  * param; runs server-side during the metadata sweep. Kept separate from
@@ -37,7 +37,7 @@ const HOST = "https://api.rawg.io/api";
 /**
  * Search RAWG for a game by name, returning the top match (or null if none).
  *
- * `search_precise` biases toward exact-name hits over fuzzy ones — the sampler
+ * `search_precise` biases toward exact-name hits over fuzzy ones: the sampler
  * hands over the name Discord detected, which is usually the real title, so a
  * precise match is what's wanted. Returns a typed Result: a down/slow RAWG is
  * expected, and the sweep degrades (leaves the name unresolved, retries next run)

@@ -1,5 +1,5 @@
 /**
- * The GitHub adapter — one implementation of `Source<GitHubRaw, GitHubData>`.
+ * The GitHub adapter: one implementation of `Source<GitHubRaw, GitHubData>`.
  *
  * `normalize` is pure: raw GitHub shapes in, the normalized common shape out.
  * That's the only thing anything downstream ever sees. `fetch` is the impure

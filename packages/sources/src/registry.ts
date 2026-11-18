@@ -4,7 +4,7 @@
  *
  * Selection is by config: with a GitHub token we register the real adapter; in
  * dev without one we fall back to the deterministic mock so the site still
- * renders. The rest of the system can't tell the difference — both emit the same
+ * renders. The rest of the system can't tell the difference: both emit the same
  * normalized `GitHubData`.
  */
 
@@ -38,14 +38,14 @@ export function getSources(env: SourcesEnv): RegisteredSource[] {
   const sources: RegisteredSource[] = [];
   const mocks = env.useMocks ?? false;
 
-  // GitHub — real with a token, else the dev mock (keeps the site alive offline).
+  // GitHub: real with a token, else the dev mock (keeps the site alive offline).
   if (env.githubToken) {
     sources.push({ source: githubSource({ username, token: env.githubToken }), mock: false });
   } else {
     sources.push({ source: githubMockSource(), mock: true });
   }
 
-  // Wakapi — LAN-only; register only when configured (else mock in dev).
+  // Wakapi: LAN-only; register only when configured (else mock in dev).
   if (env.wakapiUrl && env.wakapiKey) {
     sources.push({ source: wakapiSource({ url: env.wakapiUrl, key: env.wakapiKey }), mock: false });
   } else if (mocks) {

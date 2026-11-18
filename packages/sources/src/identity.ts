@@ -1,7 +1,7 @@
 /**
  * Who the site is about, when nothing says otherwise.
  *
- * A default identity is config, not data — but it was written twice: once in
+ * A default identity is config, not data, but it was written twice: once in
  * `env.ts` (`GITHUB_USERNAME ?? "LetsGaming"`) and once in the registry, for the
  * caller that passes no username. Two literals, one meaning, in packages that
  * can't see each other. Whichever one you found first would look authoritative.

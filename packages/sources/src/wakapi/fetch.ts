@@ -1,7 +1,7 @@
 /**
  * Wakapi fetch layer. Wakapi is a self-hosted, WakaTime-compatible coding-time
  * tracker; we hit its WakaTime-compat stats endpoint over the LAN (never public
- * — the sync worker calls it server-side; the browser only ever reads the store).
+ * since the sync worker calls it server-side; the browser only ever reads the store).
  *
  * Kept separate from normalize() so the mapping stays a pure, testable function.
  */

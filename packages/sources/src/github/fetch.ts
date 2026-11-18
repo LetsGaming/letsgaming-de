@@ -55,7 +55,7 @@ export interface RawContributionDay {
 export interface GitHubRaw {
   login: string;
   /** The account's true non-fork public repo count (GraphQL `totalCount`). Can
-   *  exceed `repos.length` — see the cap note on the `repositories(...)` query. */
+   *  exceed `repos.length`: see the cap note on the `repositories(...)` query. */
   repositoriesTotal: number;
   /** The 100 most recently pushed non-fork public repos, not every repo. Used
    *  for the language mix and repo cards; `repositoriesTotal` is the displayed
@@ -69,7 +69,7 @@ export interface GitHubRaw {
   allTimeCommits: number;
   calendarTotal: number;
   days: RawContributionDay[];
-  /** Recent public events for the feed (from REST — GraphQL's feed is awkward). */
+  /** Recent public events for the feed (from REST: GraphQL's feed is awkward). */
   events: RawEvent[];
   /** Latest release per repo, flattened (§ GitHub extras). */
   releases?: RawRelease[];
@@ -134,8 +134,8 @@ query($login: String!) {
     # Deliberate top-100-most-recently-pushed cap, same shape as pinnedItems/
     # pullRequests/gists below. Past 100 non-fork public repos, repositoriesTotal
     # (totalCount, used for the displayed repo count) and this list diverge:
-    # totalCount still reports every repo, but the list — and everything derived
-    # from it in normalize() (language mix, repo cards) — only reflects the 100
+    # totalCount still reports every repo, but the list, and everything derived
+    # from it in normalize() (language mix, repo cards), only reflects the 100
     # most recently pushed. No cursor pagination on purpose: recency ordering
     # means an account with more repos than this just shows its most-active
     # slice, which is what the dashboard wants anyway.
@@ -164,7 +164,7 @@ query($login: String!) {
     }
     gists(first: 8, privacy: PUBLIC, orderBy: {field: UPDATED_AT, direction: DESC}) {
       # Explicit cap: Gist.files takes "limit" (it's [GistFile], not a real
-      # connection) — unlike every other field here, "first" doesn't apply.
+      # connection): unlike every other field here, "first" doesn't apply.
       # Omitting it falls back to the schema's own default, which would
       # silently undercount g.files.length below for any gist with more files.
       nodes { description url updatedAt files(limit: 20) { name } }
@@ -236,7 +236,7 @@ export async function fetchGitHub(config: GitHubConfig): Promise<Result<GitHubRa
       })),
     ),
     // A merged PR whose source repo was since deleted/renamed reports
-    // `repository: null` — drop it rather than surface a card with a blank repo
+    // `repository: null`: drop it rather than surface a card with a blank repo
     // name; a card that can't say what it was merged into isn't useful.
     mergedPrs: (user.pullRequests?.nodes ?? [])
       .filter((p): p is typeof p & { repository: { name: string } } => p.repository !== null)
@@ -328,7 +328,7 @@ async function fetchEvents(config: GitHubConfig): Promise<RawEvent[]> {
   if (!res.ok) return []; // events are non-critical: a failure just means none shown
   const raw = res.value;
   // An event whose source repo was since deleted/renamed reports no `repo.name`
-  // — drop it rather than surface a feed card with a blank repo name.
+  // so drop it rather than surface a feed card with a blank repo name.
   return raw.flatMap((e) => {
     const repoName = e.repo?.name;
     if (!repoName) return [];

@@ -1,5 +1,5 @@
 /**
- * The Wakapi adapter — one implementation of Source<WakapiRaw, WakapiData>.
+ * The Wakapi adapter: one implementation of Source<WakapiRaw, WakapiData>.
  * `normalize` is pure (raw WakaTime-compat shapes in, the common shape out).
  */
 
@@ -28,7 +28,7 @@ export function normalizeWakapi(raw: WakapiRaw): WakapiData {
   };
 }
 
-/** Build the Wakapi source. Polls a bit more often than GitHub — coding time moves. */
+/** Build the Wakapi source. Polls a bit more often than GitHub: coding time moves. */
 export function wakapiSource(config: WakapiConfig): Source<WakapiRaw, WakapiData> {
   return {
     id: "wakapi",

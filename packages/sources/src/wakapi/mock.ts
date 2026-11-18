@@ -1,7 +1,7 @@
 /**
  * A stand-in Wakapi source for local dev when no instance is configured. Returns
  * the normalized shape directly (identity normalize), so the widget renders
- * end-to-end offline. Deterministic — no RNG — so dev builds are stable.
+ * end-to-end offline. Deterministic, no RNG, so dev builds are stable.
  */
 
 import { ok, SOURCE_TTL } from "@lg/core";
