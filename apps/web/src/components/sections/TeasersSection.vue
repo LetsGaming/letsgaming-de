@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A compact grid of previews, one per area, each a real link into it. The data is
+ * A ruled index list, one row per area, each row a real link into it. The data is
  * resolved with the rest of the view, so this renders on first paint like any
  * other module.
  */
@@ -15,57 +15,60 @@ defineProps<{
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
-    <div class="teasers">
-      <SmartLink
-        v-for="c in module.data.teasers"
-        :key="c.id"
-        class="teaser"
-        :href="c.href"
-        @click="trackClick('teaser')"
-      >
-        <span class="teaser__label">{{ c.label }}</span>
-        <span class="teaser__value">{{ c.value }}</span>
-        <span v-if="c.detail" class="teaser__detail">{{ c.detail }}</span>
-      </SmartLink>
-    </div>
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" variant="ruled">
+    <ul class="index">
+      <li v-for="c in module.data.teasers" :key="c.id">
+        <SmartLink class="row" :href="c.href" @click="trackClick('teaser')">
+          <span class="row__name">{{ c.label }}</span>
+          <span class="row__value">{{ c.value }}</span>
+          <span v-if="c.detail" class="row__detail">{{ c.detail }}</span>
+        </SmartLink>
+      </li>
+    </ul>
   </ModuleSection>
 </template>
 
 <style scoped>
-.teasers {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: var(--sp-12);
+.index {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.teaser {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  padding: var(--sp-14) var(--sp-16);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
+.index li {
+  border-bottom: 1px solid var(--line-1);
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+  align-items: baseline;
+  padding: var(--space-3) 0;
   color: inherit;
   text-decoration: none;
-  min-width: 0;
 }
-.teaser:hover,
-.teaser:focus-visible {
-  border-color: var(--line-2);
-}
-.teaser__label {
-  font-family: var(--f-b);
-  font-size: var(--fs-meta);
+.row__name {
+  font-size: var(--fs-h3);
   font-weight: 600;
-  color: var(--muted);
-}
-.teaser__value {
   color: var(--ink-strong);
-  font-weight: 600;
+}
+.row:hover .row__name,
+.row:focus-visible .row__name {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.row__value {
+  grid-column: 2;
+  grid-row: 1;
+  max-width: 14em;
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.teaser__detail {
-  font-size: var(--fs-meta);
+.row__detail {
+  grid-column: 1 / -1;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 </style>

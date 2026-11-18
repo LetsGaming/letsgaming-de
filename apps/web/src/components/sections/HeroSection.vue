@@ -6,7 +6,6 @@ import { mdBold } from "../../lib/text";
 import { trackClick } from "../../lib/track";
 import AssetPicture from "../ui/AssetPicture.vue";
 import { computed } from "vue";
-import { useSyncedRelative } from "~/composables/syncedContext";
 import { usePresence } from "~/composables/usePresence";
 import { useWave } from "~/composables/useWave";
 import { useT } from "~/composables/useT";
@@ -15,13 +14,7 @@ const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "hero" }>;
 }>();
 
-// "It's alive" is the product's whole positioning claim (PRODUCT.md), and the
-// hero's status line — CMS-authored, not synced — can't carry that proof by
-// itself. This is the one real, honest signal of it: reuses the exact copy
-// (freshFresh) and visual language (mono, muted) every other synced value on
-// the site already uses, so it reads as the same kind of fact, not a new one.
 const { t } = useT();
-const syncedRelative = useSyncedRelative();
 
 // Live status comes from the server-filtered presence relay, so Show switches and
 // hidden activities are already applied. Only games and songs are surfaced here;
@@ -48,53 +41,28 @@ const liveText = computed(() => {
 
 const { count: waves, waved, wave } = useWave(props.module.data.waves);
 
-/**
- * Report the click. Don't intercept it.
- *
- * This used to `preventDefault()` on any `#` href and hand the target to
- * `goAnchor` — "so they switch tab + scroll instead of no-oping", from when areas
- * were tabs and `#contact` pointed at something not in the DOM. Areas have been
- * routes for a while; the resolver now answers `#contact` with `/about#contact`,
- * and a browser has known what to do with that since 1993.
- *
- * The interception wasn't merely redundant, it was load-bearing in the wrong
- * direction: `safeHref` had been flattening `#contact` to `"#"` because the href
- * pattern didn't allow fragments, and this handler swallowed the click before
- * anyone could notice the CTA was dead.
- */
+// Report the click, do not intercept it: the browser already follows `/about#contact`.
 const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsWith("#") ? "hero-cta" : "social");
 </script>
 
 <template>
-  <!--
-    A root, so this module is one element like the other thirteen.
-
-    It was a fragment — avatar, h1, lede, status as siblings of `.panel` — which
-    is fine for the site and quietly false for anything counting modules: the
-    editor canvas mapped `.panel`'s Nth child to the Nth module and the hero alone
-    is five of them, so every handle after it belonged to the wrong section.
-
-    A plain <section> with no shell: ModuleSection carries the `margin-top` every
-    other module gets, and the hero is the top of the page, so it wants none. It
-    renders its own root directly and opts out of ModuleSection by design.
-  -->
-  <section :id="module.id">
-    <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" loading="eager" />
-    <h1>
-      {{ module.data.headline.before
-      }}<span class="pop">{{ module.data.headline.highlight }}</span
-      >{{ module.data.headline.after }}
-    </h1>
-    <p class="lede" v-html="mdBold(module.data.lede)" />
-    <div class="status">
-      <span class="dot" /> {{ module.data.status.verb }} <b>{{ module.data.status.now }}</b>
+  <!-- A plain root without the ModuleSection shell: the hero is the top of the page and takes no section margin. -->
+  <section :id="module.id" class="hero">
+    <div class="title">
+      <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" loading="eager" />
+      <h1>{{ module.data.headline.before }}{{ module.data.headline.highlight }}{{ module.data.headline.after }}</h1>
     </div>
-    <p v-if="module.data.presenceEnabled" class="live" aria-live="polite">
-      <template v-if="liveText"
-        ><span class="dot" :class="{ on: liveParts.length > 0 }" /> {{ liveText }}</template
-      >
-    </p>
-    <p v-if="syncedRelative" class="synced">{{ t("freshFresh", { age: syncedRelative }) }}</p>
+    <p class="lede" v-html="mdBold(module.data.lede)" />
+    <div class="status" aria-live="polite">
+      <template v-if="module.data.presenceEnabled && liveText">
+        <span class="dot" :class="{ on: liveParts.length > 0 }" />
+        <span class="status-text">{{ liveText }}</span>
+      </template>
+      <button type="button" class="wave" :disabled="waved" :aria-label="t('waveLabel')" @click="wave">
+        {{ waved ? t("waveDone") : t("waveButton") }}
+        <span v-if="waves > 0" class="wave-count">{{ waves }}</span>
+      </button>
+    </div>
     <div class="links">
       <SmartLink
         v-for="l in module.data.links"
@@ -110,129 +78,101 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
         />{{ l.label }}
       </SmartLink>
     </div>
-    <button type="button" class="wave" :disabled="waved" :aria-label="t('waveLabel')" @click="wave">
-      {{ waved ? t("waveDone") : t("waveButton") }}
-      <span v-if="waves > 0" class="wave-count">{{ waves }}</span>
-    </button>
   </section>
 </template>
 
 <style scoped>
-/* Hero-unique styling. Shared bits (.links, .btn, .btn-primary/ghost, .lico) stay
- * global. Two :deep() cases: `.lede b` is v-html, and `.avatar img` is inside the
- * AssetPicture child. `h1 .pop` targets the highlight span in this template. */
-h1 .pop {
-  color: var(--ink-strong);
-  position: relative;
-  white-space: nowrap;
+.hero {
+  max-width: 66ch;
 }
-h1 .pop::after {
-  content: "";
-  position: absolute;
-  left: -2%;
-  right: -2%;
-  bottom: 0.08em;
-  height: 0.2em;
-  background: var(--line-2);
-  opacity: 0.35;
-  border-radius: var(--r-1);
-  z-index: -1;
-  transform: rotate(-1deg);
+.title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-6) 0 var(--space-4);
+}
+.title h1 {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 14ch;
+}
+.avatar {
+  flex: none;
+}
+.avatar :deep(img) {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-round);
+  object-fit: cover;
 }
 .lede {
-  font-size: clamp(16px, 2.3vw, 20px);
+  font-size: var(--fs-h3);
+  line-height: 1.5;
   color: var(--muted);
-  max-width: 560px;
 }
 .lede :deep(b) {
   color: var(--ink);
   font-weight: 600;
 }
 .status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-10);
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-4);
+  font-size: var(--fs-small);
   color: var(--muted);
-  margin-top: var(--sp-22);
 }
 .status .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: var(--r-round);
-  background: var(--muted);
-}
-.status b {
-  color: var(--ink);
-  font-weight: 400;
-}
-/* Same typographic convention as Freshness.vue's .fresh (mono + micro + muted):
- * this is the same kind of fact — a synced value — not a new visual language. */
-.synced {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--muted);
-  margin-top: var(--sp-6);
-}
-.live {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-  min-height: 1.6em;
-  margin-top: var(--sp-10);
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--muted);
-}
-.live .dot {
   flex: none;
+  align-self: center;
   width: 7px;
   height: 7px;
   border-radius: var(--r-round);
-  background: var(--line-2);
+  background: var(--muted);
 }
-.live .dot.on {
+.status .dot.on {
   background: var(--live-ink);
   box-shadow: var(--glow-live);
   animation: pulse var(--dur-pulse) ease-in-out infinite;
 }
+.status-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .wave {
   display: inline-flex;
-  align-items: center;
-  gap: var(--sp-8);
-  margin-top: var(--sp-14);
-  padding: var(--sp-4) var(--sp-12);
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
   font: inherit;
-  font-size: var(--fs-meta);
-  color: var(--muted);
+  color: var(--ink);
   background: none;
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-2);
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
   cursor: pointer;
 }
 .wave:hover:not(:disabled) {
-  color: var(--ink);
-  border-color: var(--line-2);
+  color: var(--ink-strong);
 }
 .wave:disabled {
   cursor: default;
+  text-decoration: none;
+  color: var(--muted);
 }
 .wave-count {
   font-family: var(--f-m);
   color: var(--ink);
 }
+.links {
+  margin-top: var(--space-5);
+}
 @media (prefers-reduced-motion: reduce) {
-  .live .dot.on {
+  .status .dot.on {
     animation: none;
   }
-}
-.avatar :deep(img) {
-  width: 104px;
-  height: 104px;
-  border-radius: var(--r-round);
-  object-fit: cover;
-  margin-bottom: var(--sp-18);
-  border: 1px solid var(--line-1);
 }
 </style>

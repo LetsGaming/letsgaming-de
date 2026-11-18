@@ -12,12 +12,10 @@ const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "guestbook" }>;
 }>();
 
-// The API caps approved entries at 100 (guestbook-repo.ts's listApproved), but a
-// homepage module showing up to 100 cards at once is still a wall, not a glance —
-// same useLimitedList/ListFooter pair the activity modules already use, so the
-// "collapse small, expand to what's on hand" rule lives in one place, not
-// reinvented here. `max` is just the fetched length: there's no further server
-// page beyond the 100-entry fetch, so nothing is left as an "and N more" note.
+// The API caps approved entries at 100, which is still a wall on a homepage. The
+// same useLimitedList/ListFooter pair as the activity modules collapses it small
+// and expands to what is on hand. `max` is the fetched length: there is no
+// further server page beyond the 100-entry fetch.
 const { shown, expanded, moreCount } = useLimitedList({
   rows: () => props.module.data.entries,
   initial: 6,
@@ -26,7 +24,7 @@ const { shown, expanded, moreCount } = useLimitedList({
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="group">
     <div class="gb-layout" :class="{ 'gb-layout--split': module.data.entries.length }">
       <div class="gb-entries">
         <template v-if="module.data.entries.length">
@@ -46,62 +44,63 @@ const { shown, expanded, moreCount } = useLimitedList({
 </template>
 
 <style scoped>
-/* Guestbook entries, scoped. `.tm` stays global but is styled here as a descendant
- * of the entry's figcaption — it's a real element in this template, so no :deep
- * needed. The GuestbookForm child brings its own styles. */
 /* Entries left, form right once the module (a size container, see ModuleSection)
  * is wide enough; stacked below that. */
 .gb-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-18);
+  gap: var(--space-5);
   align-items: start;
 }
 @container (min-width: 720px) {
   .gb-layout--split {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-    gap: var(--sp-22);
+    gap: var(--space-6);
   }
   .gb-layout--split .gb-form {
     position: sticky;
-    top: var(--sp-16);
+    top: var(--space-4);
   }
+}
+.gb-form {
+  padding: var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
 }
 .gb-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--sp-14);
-  margin-bottom: var(--sp-6);
+  gap: var(--space-5);
+  max-width: 66ch;
+  margin-bottom: var(--space-3);
 }
 .gb-entry {
-  background: var(--surf-1);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
-  padding: var(--sp-16) var(--sp-18);
   margin: 0;
 }
 .gb-entry blockquote {
-  margin: 0 0 var(--sp-10);
+  margin: 0 0 var(--space-2);
   color: var(--ink);
   font-size: var(--fs-body);
-  line-height: 1.5;
+  line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .gb-entry figcaption {
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--ink-strong);
   display: flex;
   align-items: baseline;
-  gap: var(--sp-8);
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-strong);
 }
 .gb-entry figcaption .tm {
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
+  font-weight: 400;
   color: var(--muted);
-  margin-left: auto;
 }
 .gb-empty {
   color: var(--muted);
-  margin-bottom: var(--sp-6);
+  margin-bottom: var(--space-3);
 }
 </style>
