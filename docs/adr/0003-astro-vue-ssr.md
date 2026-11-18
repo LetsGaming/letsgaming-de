@@ -18,7 +18,7 @@ current `SiteView` from the read API, briefly cached.
 - The web tier is a small Node process instead of static files; trivial next to the
   API process it already runs beside. A CDN can still front it via cache headers.
 
-## Amendment — areas are routes, not hash tabs
+## Amendment: areas are routes, not hash tabs
 
 The original shipped every area into one document and switched between them with
 a hash and an `[hidden]` attribute. That was cheap and it worked, until three
@@ -32,14 +32,14 @@ things landed at once:
    two URL schemes.
 3. **Per-area OG cards were impossible.** A hash never reaches the server, so
    every link pasted into a chat unfurled as the homepage regardless of what it
-   pointed at — and chat is how this site gets shared.
+   pointed at, and chat is how this site gets shared.
 
 So: `/`, `/code`, `/life`, `/about`, one area per document. The tab store, its
 setter, the hash reader and the hidden panels are gone.
 
 **This changes how many areas one document renders. It doesn't change the
 decision.** Astro + Vue islands + SSR-from-the-local-store all stand, and Astro
-was already a file router — `/docs` and `/md/[...slug]` proved it. "Nothing
+was already a file router: `/docs` and `/md/[...slug]` proved it. "Nothing
 fetched on page load" still holds.
 
 One thing fell out for free: the resolver strips hidden nodes, so `[area].astro`

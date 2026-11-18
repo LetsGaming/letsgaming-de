@@ -20,7 +20,7 @@ and a hand-maintained one would drift the first time an area was renamed.
 
 **The `robots.txt` rule was self-defeating.** That file is world-readable, so
 `Disallow: /admin` published the location of the admin surface to anyone who
-fetched it — the opposite of the intent.
+fetched it, the opposite of the intent.
 
 ## Decision
 
@@ -30,8 +30,8 @@ fetched it — the opposite of the intent.
   Graph, Twitter card, and the `Person` / `WebSite` / `BlogPosting` JSON-LD
   graphs. Pure, dependency-free, unit-tested against exact output.
 - **`useSeo()`** is a thin Nuxt wrapper that reads the origin from
-  `runtimeConfig.public.siteUrl` — the same canonical origin `SmartLink` uses to
-  tell internal from external — and pushes the result through `useHead`. It owns
+  `runtimeConfig.public.siteUrl` (the same canonical origin `SmartLink` uses to
+  tell internal from external) and pushes the result through `useHead`. It owns
   `<title>` and `<meta name="description">` as well as the social tags, because a
   head composable that emits only some head tags leaves the rest inheriting the
   site-wide defaults in `nuxt.config`, silently.
@@ -46,7 +46,7 @@ origin, whichever locale rendered.
 **`hreflang` is opt-in, and only areas opt in.** `SeoInput.localized` defaults to
 *off*. Areas re-render from the store in whatever language `?lang` asks for, so
 they genuinely exist in both. The blog, the docs and the privacy page are
-single-language documents — `?lang=de` on a post serves the same English words —
+single-language documents (`?lang=de` on a post serves the same English words),
 and advertising an alternate that returns identical content is a Search Console
 error, not a harmless extra. Defaulting to off means the unsafe case is the one
 you have to ask for.
@@ -55,7 +55,7 @@ The sitemap is **derived from `site.nav`**, which gives two properties for free:
 drafts can't appear (the resolver strips them before this sees them), and
 `/admin` can't appear (it isn't a content area). Absence by construction, rather
 than by an exclusion rule someone has to remember. Blog posts are listed too, and
-are the only entries with a meaningful `lastmod` — a real publication date rather
+are the only entries with a meaningful `lastmod`: a real publication date rather
 than the sync timestamp the areas share.
 
 `robots.txt` names `/api/` only. The admin surface stays private by being
@@ -67,8 +67,8 @@ unlinked and absent from the sitemap; naming it in a public file would undo that
   sitemap with no further edits.
 - A new page type gets SEO by calling `useSeo`; it must decide `localized`
   explicitly, which is the point.
-- `/og-image.png` is a committed asset, self-hosted and versioned with the site —
-  same rule as the fonts, no third-party CDN. Its spec lives beside it in
+- `/og-image.png` is a committed asset, self-hosted and versioned with the site,
+  the same rule as the fonts, no third-party CDN. Its spec lives beside it in
   `docs/reference/og-image.md`, and the generator is `pnpm --filter=@lg/web gen:og`.
 - Structured data publishes the owner's name, handle, role and public profile
   links. That is deliberately published information about the site owner; no

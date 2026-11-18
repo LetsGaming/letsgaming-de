@@ -1,12 +1,12 @@
 # @lg/web
 
-Nuxt 3 (SSR). The public site, the `/admin` CMS, and the on-site docs — one Vue
+Nuxt 3 (SSR). The public site, the `/admin` CMS, and the on-site docs: one Vue
 app, no island directives.
 
 | Path | Role |
 |---|---|
 | `pages/index.vue`, `pages/[area].vue` | The dashboard. One area per route; a hidden area 404s because the resolver strips it from `nav`. |
-| `server/utils/site.ts` | Resolves the `SiteView` per request by opening the store **read-only** — a local read, not an HTTP hop. Falls back to the API, then to the committed fixture. Server-only. |
+| `server/utils/site.ts` | Resolves the `SiteView` per request by opening the store **read-only**: a local read, not an HTTP hop. Falls back to the API, then to the committed fixture. Server-only. |
 | `server/api/site.get.ts` | What the pages fetch; picks the locale from `?lang` / `Accept-Language`. Called in-process during SSR. |
 | `components/shell/AreaPage.vue` | The dashboard shell: brand, `SiteChrome`, `SitePanels`, footer, per-area SEO. |
 | `components/shell/Module.vue` | Renders each module by kind (a `kind → component` map). |
@@ -16,7 +16,7 @@ app, no island directives.
 | `pages/docs/api.vue` | Generated API reference, read from repo-root `openapi.yml`. Prerendered. |
 | `pages/md/[...slug].vue` | Markdown assets published at `/md/<slug>`, fetched from the API. |
 | `pages/admin.vue`, `components/cms/CmsApp.vue` | The CMS. Auth and data are client-side against the API. |
-| `stores/site.ts` | Theme, as a Pinia store — per-request on the server, so state can't leak between visitors. |
+| `stores/site.ts` | Theme, as a Pinia store, per-request on the server, so state can't leak between visitors. |
 | `styles/tokens.css` | Dark and light design tokens; fonts self-hosted. `pnpm lint:tokens` fails the build if a `var()` resolves to nothing. |
 
 Two API URLs: `API_URL` (SSR, server-side) and `PUBLIC_API_URL` (browser, inlined

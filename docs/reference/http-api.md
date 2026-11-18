@@ -74,22 +74,22 @@ never learns the Discord id.
 
 ## Playtime and listening
 
-Day drill-ins behind the playtime and listening charts — one day's breakdown,
+Day drill-ins behind the playtime and listening charts: one day's breakdown,
 fetched when a column is clicked rather than shipped with the module (the strips
 run to hundreds of days and nobody wants every breakdown up front). Both are capped
-to the module's `maxCount` **server-side** — the response carries only the rows the
+to the module's `maxCount` **server-side**: the response carries only the rows the
 page may show, plus the true totals for the "and N more" note, never the whole day.
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
-| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games, total, minutes }` — `games` capped to `maxCount`, `total` the true distinct-game count, `minutes` the day's real total. Hidden activities are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
-| `GET /api/music/day?day=YYYY-MM-DD` | none | That day's listening. Returns `{ day, minutes, trackCount, artistCount, songs, artists }` — `songs` and `artists` each aggregated and capped to `maxCount`; the counts are the true distinct totals. `400` on a malformed date. |
+| `GET /api/playtime/day?day=YYYY-MM-DD` | none | That day's per-game minutes, from observed sessions. Returns `{ day, games, total, minutes }`. `games` capped to `maxCount`, `total` the true distinct-game count, `minutes` the day's real total. Hidden activities are filtered out. `400` if `day` isn't `YYYY-MM-DD`. |
+| `GET /api/music/day?day=YYYY-MM-DD` | none | That day's listening. Returns `{ day, minutes, trackCount, artistCount, songs, artists }`. `songs` and `artists` each aggregated and capped to `maxCount`; the counts are the true distinct totals. `400` on a malformed date. |
 
 ## Media proxy
 
 `GET /api/presence/media?u=<encoded-url>` re-serves an image from a small
 allow-list of CDNs (Discord, RAWG, Spotify), so the browser never talks to those
-hosts directly and the endpoint can't be turned into an open proxy — a URL off the
+hosts directly and the endpoint can't be turned into an open proxy: a URL off the
 allow-list is refused. Presence avatars/art and playtime cover art both load
 through it. An optional `&game=<name>` supplies a lettered-tile fallback rendered
 server-side when the image is missing.
@@ -182,7 +182,7 @@ over the window (default 720 hours; the response uses hourly buckets at or under
 unrecognised falls back rather than erroring. It decides **where a day starts**,
 which is a wall-clock fact and not a display detail: in a zone ahead of UTC the
 last hours of a UTC day already belong to the next local day, so day buckets are
-grouped in this zone server-side. Hour buckets stay UTC — an hour is an hour —
+grouped in this zone server-side. Hour buckets stay UTC (an hour is an hour)
 and only their labels shift client-side.
 
 For day units the window is also snapped to local midnight, so the oldest column
@@ -207,7 +207,7 @@ which can be up to 23 hours more than 168.
   "referrerRules": [ { "match": "steamcommunity.com", "label": "Steam" } ],
   "chart": { "unit": "day", "pageviews": [...], "sections": [...], "clicks": [...], "visitLength": [...], "bots": [...], "probes": [...] },
   // Totals over the window immediately before this one, for a "vs previous
-  // period" reading. OMITTED — not zeroed — when that window predates any data,
+  // period" reading. OMITTED (not zeroed) when that window predates any data,
   // so a fresh install shows "nothing to compare" rather than −100%.
   "previous": { "pageviews": 0, "sections": 0, "clicks": 0, "visitLength": 0, "bots": 0 },
   "engagement": { "tabs": [...], "exits": [...], "transitions": [...], "dwell": [...], "scroll": [...], "clicks": [...], "projects": [...], "viewport": [...], "theme": [...] },
@@ -266,7 +266,7 @@ For ranges in a zone other than `Europe/Berlin` the day columns come from the
 hourly rows, are limited to the hourly retention, and `range.approximateZone` is
 true.
 
-`referrers` is grouped by source before it leaves the server — built-in table
+`referrers` is grouped by source before it leaves the server: built-in table
 plus the custom rules, which are echoed back in `referrerRules`. Grouping happens
 on read, so `PUT /api/cms/referrer-rules` with `{ "rules": [{ "match", "label" }] }`
 relabels traffic that arrived before the rule existed.

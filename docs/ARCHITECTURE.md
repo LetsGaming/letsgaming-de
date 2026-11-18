@@ -36,7 +36,7 @@ time. It's recorded as [ADR-0005](./adr/0005-source-contract.md).
 |---|---|
 | `@lg/core` | Contracts and pure logic, no runtime deps: `Localized` and locale helpers, the `NavNode` tree plus the nav lint, the content model, the `Source` contract and normalized source shapes, the engagement/guestbook/presence/asset types, the render-ready `SiteView`, and `resolveSiteView()`. |
 | `@lg/db` | The SQLite store on `node:sqlite`: migrations plus repositories (content, source, IA, analytics, assets, guestbook, observed sessions, music, and the RAWG game-metadata cache) and the idempotent seed. The snapshot archive lives here. |
-| `@lg/sources` | Pluggable source adapters, each real plus a deterministic mock: `github` (GraphQL) and `wakapi` (self-hosted WakaTime), and the registry that selects them by config. Also the RAWG adapter for game metadata (not a `Source` — a by-name lookup) and the parked Steam client. |
+| `@lg/sources` | Pluggable source adapters, each real plus a deterministic mock: `github` (GraphQL) and `wakapi` (self-hosted WakaTime), and the registry that selects them by config. Also the RAWG adapter for game metadata (not a `Source`, a by-name lookup) and the parked Steam client. |
 | `@lg/server` | Fastify: the read API, the CMS API and auth, contact, guestbook, presence, the engagement beacon, asset serving, the analytics dashboard, the in-process sync worker, and the in-process access-log ingest. |
 | `@lg/web` | Nuxt 3 SSR: the public site, the `/admin` CMS, the on-site `/docs` renderer, and `/md/<slug>` pages for Markdown assets. |
 
@@ -130,7 +130,7 @@ folder under `docs/`). Markdown assets uploaded through the CMS publish at
 
 The client is pure presentation: it renders what the server resolved and caps,
 counts, or infers nothing it wasn't given. Every visibility toggle and every list
-limit — hardcoded or CMS-set — is enforced server-side (in the resolver, a query
+limit, hardcoded or CMS-set, is enforced server-side (in the resolver, a query
 `LIMIT`, or the day-drill-in routes), so the browser is never sent data it will
 only hide or trim. See [The CMS](concepts/the-cms.md) for how the row caps and the
 "and N more" totals work end to end.

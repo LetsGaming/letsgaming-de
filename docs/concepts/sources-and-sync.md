@@ -3,7 +3,7 @@
 A source is any external integration that feeds the site through one contract.
 There are two today: GitHub and Wakapi. They sit behind one interface, so adding a
 third is an adapter plus one line in the registry, and nothing downstream changes.
-(Game metadata also comes from an external API, RAWG, but it isn't a source — see
+(Game metadata also comes from an external API, RAWG, but it isn't a source. See
 [Game metadata](#game-metadata-not-a-source) below.)
 
 ## The contract
@@ -13,7 +13,7 @@ Every source implements `Source<Raw, Normalized>` from
 
 ```ts
 interface Source<Raw, Normalized> {
-  id: SourceId;                      // "github" — the store key, the SourceData field
+  id: SourceId;                      // "github": the store key, the SourceData field
   schedule: string;                  // cron-ish interval the worker reads
   ttl: number;                       // how long the answer stays true (from SOURCE_TTL)
   fetch(): Promise<Result<Raw>>;     // hit the external API; a typed failure, never a throw
@@ -23,8 +23,8 @@ interface Source<Raw, Normalized> {
 ```
 
 `targetArea?: string` used to sit in this list. Nothing ever read it, and by the
-time it was removed two of the three adapters still declared `targetArea: "work"`
-— an area renamed to `code` months earlier. That it could be wrong for that long
+time it was removed two of the three adapters still declared `targetArea: "work"`,
+an area renamed to `code` months earlier. That it could be wrong for that long
 without anything noticing is the argument for deleting it: a field nothing reads
 is a comment, and this one had gone stale like one. Placement is the nav tree's
 job anyway (a leaf's `modules`), which is why a module descriptor carries no area
@@ -76,12 +76,12 @@ the internet.
 The playtime module's recently-played games show cover art and a genre, resolved
 by name from RAWG (a cross-platform game database). RAWG is deliberately **not** a
 `Source`: a source produces one whole-integration snapshot per poll, but game
-metadata is a per-name lookup — resolve "Palworld" once, cache it, reuse it. So it
+metadata is a per-name lookup: resolve "Palworld" once, cache it, reuse it. So it
 sits beside the contract rather than inside it: a small adapter
 (`packages/sources/src/rawg/`), a cache keyed by normalized game name
 (`game_metadata`), and an hourly server-side sweep that resolves the shelf's names
 it hasn't seen yet. Cover art is re-served through the media proxy, so the browser
-never talks to RAWG directly. It's optional — `RAWG_API_KEY` turns it on; without
+never talks to RAWG directly. It's optional: `RAWG_API_KEY` turns it on; without
 it the shelf shows monograms and no genre.
 
 Playtime itself needs no key: the games, their minutes, the day-by-day ledger, and

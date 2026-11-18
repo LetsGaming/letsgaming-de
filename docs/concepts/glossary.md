@@ -20,7 +20,7 @@ beacon coverage, traffic class, rollup grain, and so on) are in
 | Source | An external integration behind the `Source` contract (GitHub, Wakapi). One adapter per source. See [sources-and-sync](./sources-and-sync.md). |
 | Adapter | The code that implements a source: `fetch()` hits the API, `normalize()` maps the raw response to the common shape. |
 | Normalized shape | The per-source common shape (`GitHubData`, `WakapiData`) that is the only thing the store, API, and frontend ever see. |
-| Game metadata | Cover art + genre for a game, resolved by name from RAWG and cached in `game_metadata`. Not a source — a per-name lookup, not a snapshot. Decorates the playtime shelf. See [sources-and-sync](./sources-and-sync.md#game-metadata-not-a-source). |
+| Game metadata | Cover art + genre for a game, resolved by name from RAWG and cached in `game_metadata`. Not a source: a per-name lookup, not a snapshot. Decorates the playtime shelf. See [sources-and-sync](./sources-and-sync.md#game-metadata-not-a-source). |
 | Mock source | A deterministic stand-in adapter used in dev when a source isn't configured, emitting the same normalized shape as the real one. |
 | Snapshot | One persisted sync result in `source_snapshots`. The append-only archive. Can't be re-fetched, so it's what you back up. |
 | Current | The latest snapshot per source in `source_current`. What a page render actually reads. |

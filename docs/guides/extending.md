@@ -27,7 +27,7 @@ only ever speak the normalized shape.
 Follow the existing adapters (`github`, `wakapi`) as templates, and add a
 `normalize` test next to the code. Not every external API is a source, though:
 game metadata uses RAWG as a by-name lookup kept *beside* the contract, not inside
-it — see
+it. See
 [sources-and-sync](../concepts/sources-and-sync.md#game-metadata-not-a-source).
 
 ## Add a module
@@ -45,7 +45,7 @@ switch-like spots and nothing on the request path beyond that.
    `apps/web/src/components/shell/Module.vue`, and write the section component
    in `apps/web/src/components/sections/`.
 5. Add the kind to `PANEL_FOR_KIND` in
-   `apps/web/src/composables/useLayoutEditor.ts` — it's a
+   `apps/web/src/composables/useLayoutEditor.ts`. It's a
    `Record<ModuleKind, …>` on purpose, so a new kind won't compile until it says
    which CMS panel clicking it opens (`null` is a valid answer for a synced
    module nothing edits).

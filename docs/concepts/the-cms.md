@@ -29,7 +29,7 @@ groups it:
 - Hobbies, links, and "right now" rows.
 - The asset library and the galleries (see below).
 - Presence curation: which Discord categories the widget may reveal.
-- Wrapped: the recurring retrospective's schedule — every N months, for M weeks,
+- Wrapped: the recurring retrospective's schedule: every N months, for M weeks,
   from an anchor date, plus how many rows each top list shows. Off by default.
   The schedule is the *only* control: outside a window the resolver omits the
   module, so there is no separate show/hide.
@@ -104,13 +104,13 @@ raw Lanyard data, never learns the Discord id, and never sees a category the own
 disabled. Which categories show is edited in the CMS; the Discord id lives in the
 environment.
 
-The same rule governs how much a list shows. Every row limit — whether hardcoded
-or set in the CMS — is enforced on the server, so the client is sent only the rows
+The same rule governs how much a list shows. Every row limit, whether hardcoded
+or set in the CMS, is enforced on the server, so the client is sent only the rows
 it may display and never a fuller payload to trim. This holds for **all** data
 fetched from the backend, not just the headline lists: the Listening and Playtime
 top lists come back already capped to `maxCount` (a query `LIMIT`, or a cap in the
 resolver), and the per-day drill-ins are aggregated and capped *before* the
-response is sent — the day endpoint returns the top-N songs, artists, or games for
+response is sent: the day endpoint returns the top-N songs, artists, or games for
 that day, never the whole day. Alongside the capped rows the server reports the
 true totals (distinct tracks, artists, or games, and the day's real minutes), so
 the page can say "and N more" without ever holding the rows the limit hid. The

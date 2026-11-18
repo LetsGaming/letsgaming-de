@@ -59,7 +59,7 @@ If the proxy is on a different box (an NPMplus LXC, say), the container can't re
 its filesystem. Sync the log into `ACCESS_LOG_DIR` on the Docker host first.
 
 **Use `scripts/ingest-analytics.sh`.** It scp's the log in and puts it where the
-container reads it. It does not parse anything — the server ingests `/logs` itself
+container reads it. It does not parse anything. The server ingests `/logs` itself
 every 5 minutes (ADR 0013), so this script's only job is to put a *readable* file
 there.
 
@@ -87,12 +87,12 @@ mv -f /opt/lg/logs/access.log.tmp /opt/lg/logs/access.log   # ← and nothing el
 
 `scp` propagates the source file's mode, and an nginx access log is `0640`. The
 container runs as `node` (see `apps/server/Dockerfile`), so the copy lands
-unreadable — the scp succeeds, the `mv` succeeds, the file is *right there* with
+unreadable: the scp succeeds, the `mv` succeeds, the file is *right there* with
 the right name and the right contents, and ingest reads nothing, for ever, with no
 error anywhere. `ingest-analytics.sh` exists for that one line; it `chmod 0644`s
 before the atomic `mv`, and since the file is recreated every run, it is the only
 thing that *can* own the mode. A host-side `chmod`, a `chgrp adm`, a
-`group_add: ["4"]` in compose — each fixes a file that the next copy replaces, so
+`group_add: ["4"]` in compose: each fixes a file that the next copy replaces, so
 each works exactly once and then stops with nothing having changed.
 
 If you already followed the old snippet: point the timer at
@@ -213,7 +213,7 @@ script load.
 ## Clearing is durable, and how
 
 Clearing a range from the CMS deletes the aggregate rows. It cannot delete the
-access log — that lives on the NPM host, it is the source these numbers are
+access log. That log lives on the NPM host, it is the source these numbers are
 derived from, and this server has no business editing it.
 
 The byte offset in `analytics_state` normally stops those lines being read twice.
@@ -221,7 +221,7 @@ But the offset resets whenever the file shrinks, and a shrinking file is exactly
 what a rotation looks like: one rotation after a clear and the entire current log
 is re-read, silently undoing the deletion.
 
-So a clear also records a **watermark** — the hour it happened — and the ingest
+So a clear also records a **watermark** (the hour it happened) and the ingest
 drops any line older than it. The deletion then survives a rotation, a re-copy, or
 a manual re-run.
 
@@ -255,7 +255,7 @@ host), so in a configured deployment they take none.
 `pnpm analytics:rebuild` is the **development** form. It won't work in the
 container: the image is pruned to production dependencies, so there is no `pnpm`,
 no `tsx` and no `src/`. What it does have is the compiled output, and these
-commands are part of it — so invoke them with plain `node`:
+commands are part of it, so invoke them with plain `node`:
 
 ```bash
 # Safe form: the in-process ingest can't race the rebuild if the server is down.
@@ -275,7 +275,7 @@ were given at ingest.
 
 `docker compose run` starts a throwaway container from the same image with the
 same volumes, so it sees the same store at `/data` and the same log at `/logs`.
-No arguments needed — the log path comes from `ACCESS_LOG`.
+No arguments needed: the log path comes from `ACCESS_LOG`.
 
 The stop/start matters. Analytics are ingested **in-process every 5 minutes**, and
 the rebuild works by rewinding the file offset to zero and re-reading. If the
@@ -290,14 +290,14 @@ docker compose exec server node dist/analytics/reclassify-cli.js
 
 Reclassify can only fix the dimension it moves, and that is a property of the
 storage rather than a shortcoming of the command. A request mistaken for a page
-view wrote five rows — `path`, `referrer`, `browser`, `os`, `device` — and the
+view wrote five rows (`path`, `referrer`, `browser`, `os`, `device`) and the
 aggregates record no link between them. Moving the `path` row leaves the other
 four behind, which is how a dashboard ends up reporting "Probes: 1,300" and
 "Chrome: 863" on a site with forty visitors.
 
 The log is the source of truth and the aggregates are a projection of it, so the
 complete repair is to rebuild the projection. **Rebuild deletes before it
-re-reads, and it can only restore what the log file still covers** — check what
+re-reads, and it can only restore what the log file still covers**. Check what
 your rotation keeps first. That includes the day rollups: the rebuild also deletes
 the stored rollup rows of the log-derived dimensions, so history older than both
 the log and the 90-day hourly retention is not re-derived and does not come back.

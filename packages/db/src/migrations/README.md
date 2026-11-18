@@ -6,7 +6,7 @@ The store schema is defined here and applied by `../migrate.ts`.
 
 - **Immutable.** Each file is applied once, in numeric order, and
   recorded in `schema_migrations` with a sha256 checksum. Once a migration has been
-  applied anywhere, **never edit it** — the runner treats a changed checksum as a
+  applied anywhere, **never edit it**. The runner treats a changed checksum as a
   hard error. Add a new file instead.
 - **Naming:** `NNNN_short_description.sql` (zero-padded, e.g. `0002_add_tags.sql`).
 - **Down files.** `0001`-`0020` are forward-only legacy. A new migration ships an
@@ -20,7 +20,7 @@ The store schema is defined here and applied by `../migrate.ts`.
 `0001_init.sql` is an idempotent baseline (`CREATE TABLE IF NOT EXISTS`). It creates
 the full schema on a fresh database, and no-ops on a database that predates the
 runner (which then simply records the baseline as applied). Connection pragmas
-(WAL, `synchronous`, `foreign_keys`, `busy_timeout`) are **not** here — they are set
+(WAL, `synchronous`, `foreign_keys`, `busy_timeout`) are **not** here. They are set
 per connection in `database.ts`.
 
 ## Adding a migration

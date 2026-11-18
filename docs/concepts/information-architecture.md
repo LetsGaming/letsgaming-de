@@ -28,7 +28,7 @@ Modules are defined in `packages/core/src/modules.ts` as a `ModuleKind` union:
 `wrapped`,
 `hobbies`, `gallery`, `now`, `guestbook`, `bio`, `contact`, `posts`.
 
-Listed flat, deliberately. They used to be grouped by area in comments — which
+Listed flat, deliberately. They used to be grouped by area in comments, which
 encoded exactly the coupling the next sentence forbids. A module descriptor
 carries no area of its own, because placement is the nav tree's job (a leaf's
 `modules: string[]`). The same module could be placed anywhere the IA decides.
@@ -104,7 +104,7 @@ To add or split a node in practice, see
 
 ## Drafts: the `hidden` flag
 
-A node can be `hidden` — it exists in the tree but isn't published. CMS-owned.
+A node can be `hidden`: it exists in the tree but isn't published. CMS-owned.
 
 Two rules, and the asymmetry is the point:
 
@@ -115,14 +115,14 @@ Two rules, and the asymmetry is the point:
 
 `hidden` means *not rendered and not routable*, not "rendered but unlinked". The
 resolver strips drafts from the nav it returns, so the router simply can't find
-one — the guarantee falls out of the architecture instead of relying on a check
+one. The guarantee falls out of the architecture instead of relying on a check
 somebody remembers to write.
 
 ### The hole this opens, and how it's closed
 
 `lint:nav` runs at build time; the visibility toggle runs at runtime. Once
 visibility is CMS state, publishing an empty node would break the IA without CI
-ever seeing it — the lint stops being a guarantee and becomes a suggestion.
+ever seeing it: the lint stops being a guarantee and becomes a suggestion.
 
 So the CMS calls `canPublish(nav, id)` before flipping the flag and refuses with
 the reason. Same rules, one implementation, both surfaces. Two implementations

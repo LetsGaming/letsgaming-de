@@ -5,7 +5,7 @@ what kind of text it is, and the split is the whole design.
 
 ## Two layers, two mechanisms
 
-**Content** — headings, the bio, link labels, hobby descriptions, "now" lines.
+**Content**: headings, the bio, link labels, hobby descriptions, "now" lines.
 Authored in the CMS, stored as `Localized`:
 
 ```json
@@ -14,9 +14,9 @@ Authored in the CMS, stored as `Localized`:
 
 `localize(value, locale)` resolves one, falling back to English (always present) when
 a German value hasn't been written yet. Translating content is therefore a CMS task,
-not a deploy — and partially-translated content is valid rather than a build error.
+not a deploy, and partially-translated content is valid rather than a build error.
 
-**UI strings** — text the components emit themselves: "show 3 more", "Nothing played
+**UI strings**: text the components emit themselves: "show 3 more", "Nothing played
 this day", "last 14 days", the footer. These have no CMS row to live in, so they come
 from a typed catalog: `packages/core/src/ui-messages.ts`.
 
@@ -40,7 +40,7 @@ const DE: Messages = { … };
 ```
 
 So a German entry that's missing or misspelled is a compile error, and adding a key
-forces both translations. That's the property worth having — the failure mode of an
+forces both translations. That's the property worth having: the failure mode of an
 untyped catalog is a stray English word in a German page, which nothing catches.
 
 Plurals are a separate table, because English and German don't split the same way
@@ -53,14 +53,14 @@ this size the library would weigh more than the problem.
 
 Server-side, per request, in this order:
 
-1. `?lang=de` — an explicit choice, and what the language switcher sets (it also
+1. `?lang=de`: an explicit choice, and what the language switcher sets (it also
    persists to `localStorage` and reloads, because the locale is resolved during SSR).
 2. The visitor's `Accept-Language`.
 3. `DEFAULT_LOCALE` (`en`).
 
 `pickLocale()` does this; the resolved locale travels with the `SiteView` and is
 published via `useLocale()`. Components read it through `useT()` rather than deriving
-it from `navigator.language` — a client that guessed would disagree with what the
+it from `navigator.language`: a client that guessed would disagree with what the
 server rendered and cause a hydration mismatch.
 
 ## Adding a string
@@ -71,6 +71,6 @@ server rendered and cause a hydration mismatch.
 
 ## What isn't translated
 
-The `/admin` CMS is English only. It's single-user, behind auth, and not indexed —
-the catalog is available if that ever changes, but translating ~200 admin strings
+The `/admin` CMS is English only. It's single-user, behind auth, and not indexed.
+The catalog is available if that ever changes, but translating ~200 admin strings
 buys nothing today. `/datenschutz` is German by nature.

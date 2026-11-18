@@ -159,7 +159,7 @@ Checking the agent first filed those under "Search engine", which was both wrong
 and flattering.
 
 `agent.ts` asks whether a request **claims** to be automated. That catches most of
-the volume — Googlebot, uptime pings, `curl` — and misses anything that lies.
+the volume (Googlebot, uptime pings, `curl`) and misses anything that lies.
 
 `probe.ts` asks whether what it requested **could have been asked for by a person
 on this site**. Scanners send a real browser user-agent, so before this existed
@@ -169,14 +169,14 @@ scanner noise.
 
 The signal is unusually clean because it's specific to this codebase. There is no
 PHP, no WordPress and no CGI anywhere in a Nuxt application, so `/wp-login.php`,
-`/.env` and `/wso.php` are not typos — those paths have never existed here. That
+`/.env` and `/wso.php` are not typos: those paths have never existed here. That
 makes the rule a statement about this server's routes rather than a guess about
 intent, which is why it can be applied with confidence.
 
 Probes are counted, not dropped: a scan burst is worth seeing, and it's the most
 useful thing in the log for knowing you're being enumerated. They just don't
 belong in `path`, `browser`, `os`, `device` or `referrer`, which exist to
-describe people — the same reasoning that separates bots.
+describe people, the same reasoning that separates bots.
 
 Both checks, and the rest, now live in one ordered rule table
 (`classify.ts`), first match wins. Every rule has a stable id, and the id of the
@@ -218,7 +218,7 @@ Three filters, in order, and the order matters.
 
 **Redirects are dropped.** The reverse proxy upgrades HTTP to HTTPS with a 301,
 so every request writes two log lines: the redirect, then the real answer.
-Counting both double-counts every visit *and* every scanner probe — this single
+Counting both double-counts every visit *and* every scanner probe. This single
 `status < 400` was most of what the dashboard was reporting. On a live 16-line
 sample it counted 10 page views where 4 pages were served.
 
@@ -243,8 +243,8 @@ engines, …) plus any custom rules from the CMS.
 Sources come from two places, tag first:
 
 1. **`?utm_source=` on the link** (also `ref`, `from`, `source`). This is the one
-   that survives. Native apps — the Discord desktop client, the Steam client,
-   most messengers — hand a URL to the browser as a fresh navigation with no
+   that survives. Native apps (the Discord desktop client, the Steam client,
+   most messengers) hand a URL to the browser as a fresh navigation with no
    previous page, so those visits arrive header-less and indistinguishable from
    someone typing the address. A tag answers anyway. The value is
    attacker-controlled, so it's capped to 32 characters of `[a-z0-9._-]` before
@@ -257,7 +257,7 @@ from `discord.com` land on one line rather than two.
 Reading-time grouping is the point of the ordering: classifying at ingest would
 bake today's rules into history, so a source added next month would only be
 labelled from next month. Grouping on read relabels everything that ever
-arrived. Unmatched hosts fall through to themselves — an unrecognised referrer
+arrived. Unmatched hosts fall through to themselves: an unrecognised referrer
 sending real traffic is exactly what's worth noticing, and it's the prompt to
 name it.
 
@@ -311,11 +311,11 @@ not cosmetic:
   is a wall-clock fact: in Berlin the 22:00 and 23:00 UTC hours already belong to
   the next local day. `substr(bucket, 1, 10)` would file them in the wrong column
   and no relabelling could fix it, so the regrouping is done in JS with
-  `zonedParts` (`@lg/db/tz.ts`) — the same DST-exact helper the playtime heatmap
+  `zonedParts` (`@lg/db/tz.ts`), the same DST-exact helper the playtime heatmap
   buckets with, applied per instant rather than as a fixed offset.
 - **Day windows snap to local midnight**, so the oldest column is a whole day.
   This was a real bug: the window used an *hour* bound while grouping by day, so
-  the first day silently lost every hour before the current hour-of-day — up to
+  the first day silently lost every hour before the current hour-of-day, up to
   23/24 of itself, varying with the time of day the dashboard happened to be
   open, while the chart drew it as complete.
 
@@ -353,7 +353,7 @@ them. See [reference/http-api](../reference/http-api.md) for the response shape.
 ## Reading it without a mouse
 
 The chart is an SVG with `aria-hidden`, paired with a real `<table>` carrying the
-same per-bucket numbers — hidden visually, present in the accessibility tree, and
+same per-bucket numbers, hidden visually, present in the accessibility tree, and
 revealable with a toggle. It used to carry `role="img"`, which makes assistive
 tech treat the whole plot as one opaque image and ignore anything inside it, so
 the values were mouse-only by construction.

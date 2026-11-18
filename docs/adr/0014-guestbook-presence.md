@@ -30,20 +30,20 @@ category curation is CMS-owned; the Discord id lives in the environment.
 - Both are single-user and add no plugin or platform surface, so the small-CMS
   rule still holds.
 
-## Amendment — presence stays whole, and unreachable is not offline
+## Amendment: presence stays whole, and unreachable is not offline
 
 **Presence is one present-tense subject.** Presence was nearly split into a Discord
 module and a gaming module. The live card shouldn't be split that way: "Right now"
-is *one* subject — the live moment — whether the activity is a game, a track, or a
+is *one* subject (the live moment), whether the activity is a game, a track, or a
 status, and two live cards would each answer half of it. What did legitimately move
 out is *history*: the accumulated played record is its own module ("Time played"),
 because a list of past games is a different question from the live dot. Presence
-draws only from Discord/Lanyard now — the Steam half that once laddered in (live
+draws only from Discord/Lanyard now. The Steam half that once laddered in (live
 activity, then a fortnight of Steam) is gone, and playtime is Lanyard-observed.
 Recorded so nobody re-splits the live card, and nobody folds history back into it.
 
 **Unreachable is not offline.** `status` falls back to `"offline"` when no
-snapshot has loaded, and the Lanyard fetch swallowed its errors — so a network
+snapshot has loaded, and the Lanyard fetch swallowed its errors, so a network
 failure rendered "Offline", a specific factual claim about a person, generated
 from not knowing.
 
@@ -53,5 +53,5 @@ something true rather than something confident. It now distinguishes: last
 snapshot when there is one (old-and-labelled beats blank), "Can't reach Discord ·
 status unknown" when there isn't.
 
-Note `live` in the resolved view only ever meant *Discord is configured* — never
+Note `live` in the resolved view only ever meant *Discord is configured*, never
 that it answered. The client half reports its own state.

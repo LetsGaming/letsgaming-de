@@ -7,7 +7,7 @@ system and are historical; where they differ, `DESIGN.md` wins. The 2026-11-18
 redesign is recorded in `docs/research/2026-11-18-redesign-research.md` and
 `apps/web/DESIGN-AUDIT.md`.
 
-The look was previously "locked from the prototype" — ported faithfully, never
+The look was previously "locked from the prototype": ported faithfully, never
 re-decided. This is the re-decision. It exists because the old system had one
 elevation for sixteen surfaces, an accent doing nine jobs, and three typefaces
 with no hierarchy between them, which is not a system: it's an absence of one.
@@ -26,11 +26,11 @@ rule, it's a preference.
 The third is real and worth naming rather than hiding as an exception. A focus
 ring is an accessibility floor: it needs the most visible colour available, and
 `--live-ink` is it. A rule with three stated exceptions beats a rule with one
-unstated one — the unstated exception is how you get back to nine.
+unstated one: the unstated exception is how you get back to nine.
 
 Nothing else. Not the active nav tab, not a selected setting, not a toggle, not a
-hover, not a chart series, not the page background. Selected states use contrast —
-ink versus muted — never hue. It previously did nine jobs, which is the same as
+hover, not a chart series, not the page background. Selected states use contrast
+(ink versus muted), never hue. It previously did nine jobs, which is the same as
 doing none: `grep -c 'var(--purple' app.css` returned 145.
 
 The specific purple is sampled from the LED strip on the shelf, photographed on
@@ -57,8 +57,8 @@ following this rule by accident.
 | CMS | Compact | Desktop-first. Fourteen panels, an asset library, a chart. Dense on purpose. |
 
 Both work on the other device. Only one is optimised for it. The split already
-existed as values — the old `tokens.css` carried a second radius set commented
-"tighter radii for dense admin/chrome UI (the CMS)" — it just wasn't written
+existed as values: the old `tokens.css` carried a second radius set commented
+"tighter radii for dense admin/chrome UI (the CMS)". It just wasn't written
 down as a principle, so nothing enforced it.
 
 One vocabulary, two ranges. `[data-density="compact"]` on the CMS root remaps
@@ -67,7 +67,7 @@ radius and spacing; nothing else changes.
 ## Elevation
 
 **On dark, lift is surface lightness, not shadow.** A drop shadow at `#131215`
-has nothing darker to fall onto — it's invisible. That is precisely why the old
+has nothing darker to fall onto, so it's invisible. That is precisely why the old
 `--sh-1` and `--sh-2` carried purple glow: the prototype needed depth, dark
 wouldn't give it a shadow, so it reached for a bloom. Reasonable move, wrong
 tool.
@@ -75,13 +75,13 @@ tool.
 | Level | Token | Holds |
 |---|---|---|
 | 0 | `--surf-0` | The page. Prose, headings, streams, the glance line. |
-| 1 | `--surf-1` | A group — an event stream, a readout, a set from one source. |
-| 2 | `--surf-2` | An object — a project, a note, a photo. Also the hover state of level 1. |
+| 1 | `--surf-1` | A group: an event stream, a readout, a set from one source. |
+| 2 | `--surf-2` | An object: a project, a note, a photo. Also the hover state of level 1. |
 | 3 | `--surf-3` | The anchor. One per page, maximum. Also the hover state of level 2. |
 
 Three usage rules:
 
-1. One anchor per page. Life has one (presence). Work has none, and that's fine —
+1. One anchor per page. Life has one (presence). Work has none, and that's fine.
    Work is dense, not loud.
 2. Never nest a level inside itself. The old presence module went card → card →
    card, which is what nesting looks like when every level is the same level.
@@ -102,14 +102,14 @@ it does none of those, it's deleted.
 | Press | You touched it | `translateY(2px)`, `--dur-press` |
 
 **Hover is an affordance, so it appears only on things that are actually
-interactive.** The old code tilted `.card, .tile` — `.card` is an `<a>`, so that
+interactive.** The old code tilted `.card, .tile`. `.card` is an `<a>`, so that
 was honest; `.tile` is a plain `<div>` that does nothing, so the hobby tiles
 advertised interactivity they didn't have. Under this rule the hobby photos
 either link to the repo behind them (plants → `plantcare-tracker`, shelf →
 `LED-Controller-Websocket`) or they don't hover. Pick one; don't lie.
 
-The `rise` entrance is gone. It fired on every element individually — avatar,
-eyebrow, h1, lede, status dot, each button — so the page performed before it
+The `rise` entrance is gone. It fired on every element individually (avatar,
+eyebrow, h1, lede, status dot, each button), so the page performed before it
 could be read. The tilt is gone with it: at ±6° it expressed character but
 communicated nothing, and hover now carries the affordance it was accidentally
 providing.
@@ -122,14 +122,14 @@ floor, not an option.
 > Glow marks one job: something is happening right now. Nowhere else.
 
 Ambient bloom behind a hero is the cheapest way to make a dark page look
-expensive: one CSS rule, instant atmosphere, no decision required — which is
+expensive: one CSS rule, instant atmosphere, no decision required, which is
 exactly why it's on every third site and therefore means nothing. This isn't
 that. It's a 7px dot with a 9px halo that pulses because something is happening right
-now — too small to read as atmosphere, too specific to read as decoration. It's
+now. It's too small to read as atmosphere, too specific to read as decoration. It's
 an LED, which is where the purple came from.
 
 **Grep `--glow-live`.** Two consumers today: the status dot and the freshness dot,
-which are the same job wearing two elements. That's fine. Six would not be — at
+which are the same job wearing two elements. That's fine. Six would not be: at
 that point it's atmosphere again, which is the thing the rule exists to prevent.
 
 The rule originally said *one element*, and meant *one job*. Worth knowing which,
@@ -147,7 +147,7 @@ has never been used by anybody.
 ### Freshness is a state, not a decoration
 
 The brief's failure mode is *it goes stale*. So the state that matters isn't
-`empty`, it's `stale` — and the site currently has no concept of it.
+`empty`, it's `stale`, and the site currently has no concept of it.
 
 | State | Meaning | Render |
 |---|---|---|
@@ -159,7 +159,7 @@ The brief's failure mode is *it goes stale*. So the state that matters isn't
 
 **A synced module must never render as if it were fresh when it isn't.** The
 site's entire claim is that it updates itself. Showing three-day-old data with no
-timestamp makes it lie about the one thing it promises — worse than showing
+timestamp makes it lie about the one thing it promises, which is worse than showing
 nothing. `syncedAt` already exists in the resolved view and is currently unused;
 this is what it's for.
 
@@ -173,10 +173,10 @@ fortnight of coding time is fine an hour old.
 | Discord | 2 min | It's "right now" or it's "last seen". |
 | GitHub | 1 h | Events, repos, contributions. |
 | Wakapi | 1 h | Tracked time. |
-| CMS | — | Local. Can't be stale. |
+| CMS | none | Local. Can't be stale. |
 
 So `Source<Raw, Normalized>` (ADR 0005) gains a `ttl`. One field on an existing
-interface, which is what that contract was built to absorb — "adding a source =
+interface, which is what that contract was built to absorb: "adding a source =
 one adapter + one registry line + one `SourceData` field."
 
 ### Per-module
@@ -195,7 +195,7 @@ one adapter + one registry line + one `SourceData` field."
 | `presence` | Discord | Offline · online, not playing · listening · can't reach Discord · live |
 | `playtime` | Sessions + RAWG | `empty` no plays yet · game without a cover (monogram) · no `RAWG_API_KEY` (covers/genres absent) · a played day |
 | `gallery` | Assets | `empty` · image fails to load |
-| `bio` | CMS | — |
+| `bio` | CMS | none |
 | `contact` | Form | Idle · submitting · sent · failed · validation error |
 | `posts` | Assets | `empty` · hidden · post not found ✓ exists |
 
@@ -207,7 +207,7 @@ anchor is the failure mode.
 ### Interaction states
 
 Every interactive element: `default` · `hover` (+1 surface) · `active`
-(`translateY(2px)`) · `focus-visible` (2px `--live` outline, 2px offset — already
+(`translateY(2px)`) · `focus-visible` (2px `--live` outline, 2px offset, already
 in `app.css`, stays). No `disabled`: keep controls enabled and respond on use.
 
 ## What dies
@@ -220,15 +220,15 @@ in `app.css`, stays). No `disabled`: keep controls enabled and respond on use.
 | `--tile-purple/coral/mint/sun` | The four hobby gradients. Photos. |
 | `--purple-wash` | Only consumer was `.eyebrow`, which dies. |
 | `--r`, `--r-sm` | Replaced by the radius scale. 26px on a 90px box is most of the box. |
-| `--heat-0..4` | Recoloured neutral. Only today is purple — which also makes "did he commit today" readable at a glance, which an all-violet grid can't do. |
+| `--heat-0..4` | Recoloured neutral. Only today is purple, which also makes "did he commit today" readable at a glance, which an all-violet grid can't do. |
 
 Verify `--ghost-bg`, `--ghost-shadow`, `--on-accent-soft` and `--stack-1..7`
-before touching them — `--stack-*` is the CMS analytics chart and is categorical
+before touching them. `--stack-*` is the CMS analytics chart and is categorical
 data on an admin surface, so it likely stays.
 
 Also not a token but the same pass: `langColors` in `apps/web/src/lib/icons.ts`
 gets linguist's real values, with a lightness floor for the dark background.
-JSON is `#292929` and PowerShell is `#012456` — invisible at `#131215` — so lift
+JSON is `#292929` and PowerShell is `#012456`, both invisible at `#131215`, so lift
 lightness, keep hue, and let JSON stay grey because JSON has no identity. CSS's
 real colour is `#663399`: a purple on the page that wasn't chosen and was earned.
 
@@ -237,7 +237,7 @@ real colour is `#663399`: a purple on the page that wasn't chosen and was earned
 Three decisions here a model wouldn't reach by default:
 
 1. The accent has exactly one semantic job, and it's greppable.
-2. Colour is imported, never invented — so the palette can't fake what the data
+2. Colour is imported, never invented, so the palette can't fake what the data
    doesn't have.
 3. The one glowing element is the live dot, and the purple is measured off a
    physical LED strip photographed on the same site.

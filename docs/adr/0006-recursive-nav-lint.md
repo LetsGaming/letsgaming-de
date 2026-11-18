@@ -16,10 +16,10 @@ depth >3, thin/empty nodes, leaf+branch, duplicate ids, orphan/dangling modules.
 - Adding a feature is placing a module in a node, not adding a tab.
 - Splitting an area later is adding a node, not rewriting the model + renderer.
 
-## Amendment — the root was never checked, and drafts
+## Amendment: the root was never checked, and drafts
 
 **The bug.** `MAX_CHILDREN` was checked inside `if (isBranch(node))`, against
-`node.children`. The top-level nav is a *forest* — it isn't any node's children —
+`node.children`. The top-level nav is a *forest* (it isn't any node's children),
 so the root row was never breadth-checked at all. A tenth area would have passed
 CI. The rule the whole IA rests on went unenforced at the only level that has
 ever had children.
@@ -38,4 +38,4 @@ refuses with the reason. One implementation, both surfaces.
 that resolves to nothing. It exists because CSS never errors: a renamed token
 leaves twelve dead references across six files while typecheck, tests and build
 all stay green and the page quietly renders wrong. Pure check, build gate, not
-discipline — the same argument as this ADR, applied to the stylesheet.
+discipline, the same argument as this ADR, applied to the stylesheet.

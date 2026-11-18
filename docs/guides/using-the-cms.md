@@ -39,8 +39,8 @@ it like this:
 | Structure & media | Asset library | Your central store of reusable files: images, SVGs, GIFs, PDFs, Markdown. Upload, organise (folders and tags), edit metadata, see where each is used. |
 | Structure & media | Gallery | Curate the image galleries on the site, picked from the library. |
 | Widgets | Presence | The "right now" widget and what the playtime charts record: which Discord categories to show live and which to record, how long to keep history, and a hidden-activities list (names never shown publicly, whatever the category). |
-| Widgets | Listening | How many rows the Listening lists show — before "show more" and at most. |
-| Widgets | Played | The same, for the Played lists — a separate setting, so the two can differ. |
+| Widgets | Listening | How many rows the Listening lists show, before "show more" and at most. |
+| Widgets | Played | The same, for the Played lists, a separate setting, so the two can differ. |
 | Community | Guestbook | Approve, reject, or delete visitor entries (nothing is public until you approve it). |
 | Insights | Analytics | Anonymous traffic and engagement. No cookies, no IPs, nothing personal. |
 
@@ -59,7 +59,7 @@ you can:
 - Move a module to a different area, or to Hidden to take it off the site, with
   the dropdown.
 - Bring a hidden module back by choosing an area for it.
-- Write the **search description** for the page you're previewing — one sentence,
+- Write the **search description** for the page you're previewing: one sentence,
   in both languages. This is what Google shows under the title and what appears
   when the page is shared in a chat. Leave it empty and the page falls back to
   the site-wide description, which is accurate but identical on every page, so
@@ -105,7 +105,7 @@ A note appears above the tiles when a time zone other than Europe/Berlin is
 selected: its day columns are rebuilt from hourly data and are approximate.
 
 **Local / UTC** switches which clock the chart is read in. Local is the default
-and is almost always what you want — on UTC, an evening's traffic in Germany
+and is almost always what you want: on UTC, an evening's traffic in Germany
 lands on the previous day's column. Switching re-groups the data, so it reloads.
 
 Hover anywhere on the chart for a breakdown of that hour or day. Click a legend
@@ -113,7 +113,7 @@ entry to mute that series. **Show data table** gives you the same numbers as tex
 you can read or copy, and is also what a screen reader gets.
 
 **The graph and the tables below it are one screen.** Click a column to drill the
-lists into that hour or day — the marker stays put, and everything under the
+lists into that hour or day. The marker stays put, and everything under the
 chart describes just that slice, which is how you find out what a spike was. The
 chart keeps showing the whole range so you can click somewhere else.
 
@@ -121,7 +121,7 @@ The cards also follow the metric you've selected: **Bots** or **Probes** shows
 the machine cards, **Page views** shows paths, referrers, browsers, OS and
 devices, and the engagement metrics show the engagement lists. A bar above the
 cards always says what's being shown, with **Clear selection**, **Show all
-cards** and **Reset to default** — you can't clear a filter you didn't know was
+cards** and **Reset to default**. You can't clear a filter you didn't know was
 on, so the default state is stated rather than implied.
 
 Note that changing the range or the clock clears a selected bucket: a new axis

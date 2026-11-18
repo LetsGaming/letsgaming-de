@@ -1,6 +1,6 @@
 # 0016: Analytics buckets are stored in UTC and grouped in the reader's zone
 
-Status: **Accepted** — extends [0012](./0012-engagement-analytics.md).
+Status: **Accepted**, extends [0012](./0012-engagement-analytics.md).
 
 ## Context
 
@@ -19,7 +19,7 @@ their own traffic.
 **The grouping was the real one.** A day boundary is a wall-clock fact, not a
 formatting choice. In `Europe/Berlin` the 22:00 and 23:00 UTC hours are already
 the next local day. Grouping by the UTC date prefix files an evening's traffic
-under the wrong column, and no amount of relabelling moves it back — the sum was
+under the wrong column, and no amount of relabelling moves it back: the sum was
 computed over the wrong set of hours.
 
 Alongside it sat a boundary bug with the same root: the window was computed as an
@@ -37,7 +37,7 @@ labels for hour buckets, on the client.**
 - `GET /api/cms/analytics` takes an IANA `tz`, defaulting to the owner's zone and
   falling back rather than erroring on anything unrecognised.
 - For `unit: "day"`, hourly rows are re-bucketed in JS with `zonedParts`
-  (`@lg/db/tz.ts`) — the same DST-exact helper the playtime heatmap and music day
+  (`@lg/db/tz.ts`), the same DST-exact helper the playtime heatmap and music day
   strips already use. Each instant is bucketed by *its own* offset, so a January
   and a July row both land on the right local day.
 - The day window snaps to local midnight, derived by correcting a UTC guess by
@@ -55,7 +55,7 @@ reasoning that moved the playtime aggregations off `'localtime'`, and the same
 helper serves both.
 
 Doing it in JS means the route pulls hourly rows into the process and groups them
-there. That is a local SQLite read on a personal-site row count — the cost is
+there. That is a local SQLite read on a personal-site row count, and the cost is
 nothing next to being right about which day a visit happened on.
 
 ## Consequences
@@ -66,6 +66,6 @@ nothing next to being right about which day a visit happened on.
   UTC. Consumers must read `range.timeZone` rather than assume.
 - The clear endpoint still operates on raw UTC hour buckets, which is correct: it
   deletes storage, not a view of it.
-- Two regression tests hold the line — that the first day of a day-unit range is
+- Two regression tests hold the line: that the first day of a day-unit range is
   complete, and that a 23:00 UTC hit is counted on the *next* Berlin day and not
   the UTC one. Both fail if the grouping moves back into SQL.

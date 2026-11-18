@@ -28,11 +28,11 @@ aren't, and simply absent in production when they aren't.
 - Wakapi is LAN-only; the worker reaches it server-side, so nothing is exposed to
   the internet.
 
-## Update — Steam removed, RAWG added (not as a source)
+## Update: Steam removed, RAWG added (not as a source)
 
 Steam was later dropped. Playtime is now built entirely from Lanyard-observed
-sessions (see [0014](./0014-guestbook-presence.md)), so the Steam source — which
-only ever knew Steam titles — earned its keep no longer. Its fetch client is
+sessions (see [0014](./0014-guestbook-presence.md)), so the Steam source (which
+only ever knew Steam titles) earned its keep no longer. Its fetch client is
 parked in `packages/sources/src/steam/`, decoupled and unregistered, so it can be
 revived without having rotted; it is not in `SourceData` and not on the sync
 schedule.
@@ -42,5 +42,5 @@ Game cover art and genre now come from RAWG, but RAWG is deliberately **not** a
 metadata is a per-name lookup resolved lazily for whatever the sampler has seen.
 So it's a small adapter (`packages/sources/src/rawg/`) plus a cache keyed by game
 name and a server-side sweep, sitting beside the source contract rather than
-inside it — the contract stayed the right shape by *not* being stretched to cover
+inside it. The contract stayed the right shape by *not* being stretched to cover
 a different problem.

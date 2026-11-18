@@ -37,7 +37,7 @@ absent so the defaults and fallbacks still apply.
 | `ACCESS_LOG_DIR` | unset | The host directory that holds the access log. Compose mounts it read-only at `/logs`. Set alongside `ACCESS_LOG`. |
 | `ANALYTICS_OWN_HOST` | derived from `WEB_ORIGIN` | Your own host, so self-referrals are dropped from the referrer list. |
 | `WAKAPI_URL` / `WAKAPI_KEY` | unset | Self-hosted Wakapi (coding time). Both required to activate. |
-| `RAWG_API_KEY` | unset | RAWG game database — resolves game names to cover art + genre for the playtime module. Optional. |
+| `RAWG_API_KEY` | unset | RAWG game database: resolves game names to cover art + genre for the playtime module. Optional. |
 
 `SESSION_SECRET` falls back to `CMS_TOKEN` and then to a dev default, but when the
 CMS is enabled the server refuses to start on an empty or default secret. Set a
@@ -59,7 +59,7 @@ different routes. In Docker: `API_URL=http://server:8787` (internal),
 
 `PUBLIC_SITE_URL` is more load-bearing than it looks. It is the single origin
 behind every canonical URL, `hreflang` alternate, `og:url`, JSON-LD `url`, the
-`Sitemap:` line in `robots.txt` and every `<loc>` in the sitemap — and it's what
+`Sitemap:` line in `robots.txt` and every `<loc>` in the sitemap, and it's what
 `SmartLink` uses to tell an internal link from an external one. Set it wrong and
 the site will still render perfectly while telling search engines that every page
 lives somewhere else. Change it in one place; nothing else hardcodes the domain.

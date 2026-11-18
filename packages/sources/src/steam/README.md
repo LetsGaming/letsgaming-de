@@ -1,4 +1,4 @@
-# Steam — parked
+# Steam: parked
 
 The Steam integration is **parked**. `client.ts` is all that remains: the raw
 Steam Web API fetch layer (`fetchSteam` → `SteamRaw`). Nothing in the live site
@@ -11,12 +11,12 @@ base rather than rebuilt from scratch.
 
 ## Why it can't rot
 
-`client.ts` imports **nothing internal** — not `@lg/core`, not `../http`. It has
+`client.ts` imports **nothing internal**: not `@lg/core`, not `../http`. It has
 its own `SteamResult`/`SteamFetchError` and its own small fetch wrapper, so the
 rest of the codebase can change its `Result` type, restructure the shared http
 client, or rename its errors without touching this file. It stays in the package
 build and has a test (`../../tests/steam-client.test.ts`), so a compile break or
-a broken request surfaces in CI immediately — parked, not abandoned.
+a broken request surfaces in CI immediately. It is parked, not abandoned.
 
 ## To revive
 
