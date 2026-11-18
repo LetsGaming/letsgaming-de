@@ -41,7 +41,8 @@ withDefaults(defineProps<Props>(), { as: "h3", tone: "muted" });
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--sp-12);
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-12);
   margin-bottom: var(--sp-14);
 }
 .card-header__title {

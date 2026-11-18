@@ -45,7 +45,7 @@ defineProps<{
 }
 .gal-item figcaption {
   padding: var(--sp-8) var(--sp-12);
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
 </style>

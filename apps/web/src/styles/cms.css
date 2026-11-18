@@ -23,7 +23,7 @@ html:has(.cms) {
   /* Type roles: headings use --f-d, UI text and labels --cms-font-ui, values
      (paths, keys, numbers, durations, code) --cms-font-value. */
   --cms-font-ui: var(--f-b);
-  --cms-font-value: var(--cms-font-value);
+  --cms-font-value: var(--f-m);
   --fs-help: 14px;
   /* Pulled toward --ink from --muted: 5.5:1 or better on the card surfaces in
      both themes, where --muted alone drops under 4.5:1 on the raised ones. */

@@ -9,9 +9,9 @@ Status column: `open` until the step in `docs/plans/` resolves it. At the end of
 | D1 | open | `styles/tokens.css:24,48`, heat-4 | Accent values are exact Tailwind violet-500 `#8b5cf6`, violet-400 `#a78bfa`, violet-800 `#5b21b6`. `DESIGN.md` says the violet was sampled off a real LED strip. The values say Tailwind default. |
 | D2 | open | `tokens.css:77-80` | All four dark surfaces are violet-tinted (`#0e0c18` to `#2d2650`). The whole page reads purple, the top user-reported tell. |
 | D3 | open | `tokens.css`, `cms.css:2068`, `error.vue:60`, `BaseForm.vue`, `SegmentedControl.vue` | Contrast fails. Dark `--live` as text: 4.10 / 3.74 / 3.30 on surf-1/2/3. `--muted` on surf-3: 4.44. `--line-1` as an input border: 1.17 (needs 3:1). White on `--live-solid`: 4.71 (passes, thin margin). |
-| D4 | open | `nuxt.config.ts:104-116`, `tokens.css:140-142` | Inter (weak tell) and Space Mono used as a "technical" costume. |
-| D5 | open | `TeasersSection.vue:60`, `app.css:369`, `PresenceWidget.vue:369`, `SettingsModal.vue` | Uppercase tracked mono labels: template-chrome tell. |
-| D6 | open | `tokens.css:144-155`, `StatTile.vue:92,99`, many | Body 15px (under the 16px floor). Meta 11 and 12px. `--fs-display` and `--fs-lede` unused. Raw sizes 9, 10, 11.5, 13, 14, 17, 18, 20, 24, 34px off the scale. |
+| D4 | resolved (Step 2) | `nuxt.config.ts:104-116`, `tokens.css:140-142` | Inter (weak tell) and Space Mono used as a "technical" costume. |
+| D5 | resolved (Step 2) | `TeasersSection.vue:60`, `app.css:369`, `PresenceWidget.vue:369`, `SettingsModal.vue` | Uppercase tracked mono labels: template-chrome tell. |
+| D6 | partial (Step 2) | `tokens.css:144-155`, `StatTile.vue:92,99`, many | Body 15px (under the 16px floor). Meta 11 and 12px. `--fs-display` and `--fs-lede` unused. Raw sizes 9, 10, 11.5, 13, 14, 17, 18, 20, 24, 34px off the scale. |
 | D7 | open | `app.css:176`, tabs, toggle, brand mark, `HeroSection.vue:241`, gallery, modal | Radius drift: raw 9/11/12/15/16/24px beside the 8/10/14/18 tokens. |
 | D8 | open | `HeroSection.vue`, `seed.ts:45-47` | Hero: one accented word with a tilted underline bar (named tell); em dash in the H1; 8 stacked elements (avatar, H1, lede, status, presence line, synced, two buttons, "Wave" pill). |
 | D9 | open | `HeroSection.vue:165,199`, `app.css:645` | `--glow-live` has three call sites; the rule says one. The status line pulses even when nothing is live. |
@@ -28,7 +28,7 @@ Status column: `open` until the step in `docs/plans/` resolves it. At the end of
 | D20 | open | `SettingsModal.vue:140-141` | `backdrop-filter: blur(4px)` on the overlay: decoration, not meaning. The docs top bar blur at `app.css:510` stays: chrome over content. |
 | D21 | open | `pages/md/[...slug].vue`, `datenschutz.vue` | Bug: `.prose` has no global styles, so blog posts are unstyled; the legal page uses inline styles. |
 | D22 | open | `error.vue` | German only while the site defaults to English. (`datenschutz.vue` stays German: German legal text.) |
-| D23 | open | `styles/cms.css:26` | Bug: `--cms-font-value: var(--cms-font-value)` refers to itself; CMS values lose their mono face. Touched because the font swap changes this token. |
+| D23 | resolved (Step 2) | `styles/cms.css:26` | Bug: `--cms-font-value: var(--cms-font-value)` refers to itself; CMS values lose their mono face. Touched because the font swap changes this token. |
 | D24 | open | `PresenceWidget.vue:183,215,357` | Gradient washes on the widget and avatars. |
 | D25 | open | `FeaturedSection.vue` | Card kit: screenshot, round arrow, language chip, "Pinned" pill, 3-line clamp, identical cells. |
 | D26 | open | Media queries 720/680/560/520 | No breakpoint system; four nearby values. |

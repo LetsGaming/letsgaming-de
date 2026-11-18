@@ -45,7 +45,7 @@ defineEmits<{ submit: [] }>();
 :slotted(textarea) { resize: vertical; }
 :slotted(.hp) { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-14); flex-wrap: wrap; }
-.err { color: var(--danger-ink); font-size: 13px; margin-right: auto; }
+.err { color: var(--danger-ink); font-size: var(--fs-meta); margin-right: auto; }
 .ok { background: var(--surf-2); color: var(--ink-strong); border: 1px solid var(--line-1); border-radius: 12px; padding: var(--sp-16) var(--sp-18); font-family: var(--f-m); }
 button:disabled { opacity: 0.6; cursor: default; }
 </style>

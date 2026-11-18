@@ -183,10 +183,9 @@ section {
   border-top: 1px solid var(--line-1);
 }
 section h3 {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--muted);
   margin-bottom: var(--sp-10);
 }
@@ -201,7 +200,7 @@ section h3 {
   color: var(--ink-strong);
 }
 .rowdesc {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   margin-top: 3px;
   line-height: 1.45;

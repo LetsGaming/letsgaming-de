@@ -11,8 +11,9 @@ html {
 }
 body {
   font-family: var(--f-b);
+  font-size: var(--fs-body);
   color: var(--ink);
-  line-height: 1.6;
+  line-height: 1.55;
   min-height: 100vh;
   overflow-x: hidden;
   background: var(--surf-0);
@@ -27,7 +28,7 @@ a {
 /* In the accessibility tree, off the screen — not `display: none`, which would
    remove it from that tree too. Used for headings that need to exist for
    document structure / SEO (one <h1> per page) without a visible slot in the
-   design (Fredoka Display is reserved for the hero H1 only, per DESIGN.md). */
+   design (display type is reserved for the hero H1 only, per DESIGN.md). */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -55,7 +56,7 @@ a {
   color: inherit;
   font-family: var(--f-d);
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--fs-h3);
   color: var(--ink-strong);
   display: flex;
   align-items: center;
@@ -93,7 +94,7 @@ a {
   text-decoration: none;
   font-family: var(--f-b);
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--fs-small);
   color: var(--muted);
   background: none;
   border: none;
@@ -156,9 +157,10 @@ a {
 h1 {
   font-family: var(--f-d);
   font-weight: 700;
-  line-height: 1.03;
+  font-stretch: 75%;
+  line-height: 1;
   letter-spacing: -0.01em;
-  font-size: clamp(38px, 7.5vw, 66px);
+  font-size: var(--fs-display);
   margin: var(--sp-6) 0 var(--sp-16);
   color: var(--ink-strong);
 }
@@ -218,8 +220,8 @@ h1 {
 /* The section shell + heading + note now live in the ModuleSection component.
    `.more` (below) is still a shared text-link, used by Glance and the Activity feed. */
 .more {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   color: var(--ink);
   background: none;
   border: 0;
@@ -256,9 +258,9 @@ h1 {
   background: var(--surf-2);
 }
 .tag {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  font-weight: 700;
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  font-weight: 600;
   padding: var(--sp-4) var(--sp-10);
   border-radius: 999px;
   background: var(--surf-2);
@@ -286,8 +288,8 @@ h1 {
    `.sub` stays as the shared muted caption — the "nothing here yet" empty states
    across the sections use it (previously it only resolved inside `.box`). */
 .sub {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
 .src-note {
@@ -328,7 +330,7 @@ h1 {
   max-height: calc(100dvh - 48px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  font-size: 14px;
+  font-size: var(--fs-small);
 }
 /* Docs nav drawer affordances — the bar + close + scrim only appear on mobile
    (media block near the end); on desktop the nav is just the sticky sidebar. */
@@ -364,10 +366,9 @@ h1 {
   margin-bottom: var(--sp-18);
 }
 .doc-group h4 {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  font-weight: 600;
   color: var(--muted);
   margin-bottom: var(--sp-8);
 }
@@ -396,7 +397,7 @@ h1 {
 /* Rendered markdown */
 .doc-body {
   max-width: 760px;
-  font-size: 15.5px;
+  font-size: var(--fs-body);
   line-height: 1.65;
   color: var(--ink);
 }
@@ -405,20 +406,20 @@ h1 {
 }
 .doc-body h1 {
   font-family: var(--f-d);
-  font-size: 30px;
+  font-size: var(--fs-h1);
   color: var(--ink-strong);
   margin: var(--sp-4) 0 var(--sp-18);
 }
 .doc-body h2 {
   font-family: var(--f-d);
-  font-size: 22px;
+  font-size: var(--fs-h2);
   color: var(--ink-strong);
   margin: 34px 0 var(--sp-12);
   padding-top: var(--sp-14);
   border-top: 1px solid var(--line-1);
 }
 .doc-body h3 {
-  font-size: 17px;
+  font-size: var(--fs-h3);
   color: var(--ink-strong);
   margin: var(--sp-24) 0 var(--sp-8);
 }
@@ -454,7 +455,7 @@ h1 {
   border-radius: 12px;
   border: 1px solid var(--line-1);
   overflow-x: auto;
-  font-size: 13px;
+  font-size: var(--fs-meta);
   line-height: 1.55;
 }
 .doc-body pre code {
@@ -473,7 +474,7 @@ h1 {
   width: 100%;
   border-collapse: collapse;
   margin: 0 0 var(--sp-16);
-  font-size: 14px;
+  font-size: var(--fs-small);
 }
 .doc-body th,
 .doc-body td {
@@ -564,7 +565,7 @@ footer b {
 
 @media (max-width: 680px) {
   .dash {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 /* Projects/featured grid stays two-up on phones (a pinned card spans the full

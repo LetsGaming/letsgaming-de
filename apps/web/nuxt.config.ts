@@ -102,15 +102,9 @@ export default defineNuxtConfig({
   // Self-hosted fonts + design tokens + base styles (were imported in Layout.astro).
   // Order matters: fonts first so --f-d/--f-b/--f-m resolve, then tokens, then app.
   css: [
-    "@fontsource/fredoka/400.css",
-    "@fontsource/fredoka/500.css",
-    "@fontsource/fredoka/600.css",
-    "@fontsource/fredoka/700.css",
-    "@fontsource/inter/400.css",
-    "@fontsource/inter/500.css",
-    "@fontsource/inter/600.css",
-    "@fontsource/space-mono/400.css",
-    "@fontsource/space-mono/700.css",
+    "@fontsource-variable/archivo/wdth.css",
+    "@fontsource-variable/atkinson-hyperlegible-next/wght.css",
+    "@fontsource-variable/atkinson-hyperlegible-mono/wght.css",
     "~/styles/tokens.css",
     "~/styles/app.css",
   ],

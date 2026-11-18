@@ -72,7 +72,7 @@ provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
   <main v-if="area">
     <div class="wrap">
       <!-- Every area needs exactly one <h1>. The `hero` module (home only) already
-           renders one — Fredoka Display, per DESIGN.md's "hero H1 only" rule — so a
+           renders one — display type, per DESIGN.md's "hero H1 only" rule — so a
            second, visible one here would both duplicate it site-wide and break that
            rule. Other areas get the area's name as a screen-reader-only heading
            instead: same document structure and SEO signal, no visual surface. -->

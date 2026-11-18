@@ -364,13 +364,12 @@ const idle = computed(
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--f-m);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  font-weight: 600;
 }
 .pw-atitle {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   font-weight: 600;
   color: var(--ink);
   margin-top: 3px;
@@ -576,7 +575,7 @@ const idle = computed(
   color: var(--muted);
 }
 .pw-np {
-  font-size: 13px;
+  font-size: var(--fs-meta);
 }
 
 @media (prefers-reduced-motion: reduce) {

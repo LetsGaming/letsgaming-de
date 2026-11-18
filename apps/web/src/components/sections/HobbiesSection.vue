@@ -67,7 +67,7 @@ defineProps<{
   color: var(--ink-strong);
 }
 .tile p {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   margin-top: 3px;
 }

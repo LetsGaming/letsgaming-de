@@ -490,3 +490,14 @@ committed) using the WCAG 2.x formula on the final token values.
   - Not changed: `public/favicon.svg` (gradient stop `#a78bfa`) and CMS `--stack-3`. Reason: out of Step 1 scope. The favicon needs a decision in Step 4.
   - Mobile (390px) visual check skipped for Step 1: a palette-only change. Desktop dark and light checked.
   - Added audit finding D27.
+- Step 2 done. Deviations, with reasons:
+  - Fontsource packages verified: `@fontsource-variable/archivo` (wdth.css has weight 100 to 900 and width 62% to 125%), `@fontsource-variable/atkinson-hyperlegible-next` and `-mono` (weight 200 to 800), all 5.3.0. Tabular figures verified in the browser for Atkinson Next (proportional "1111" 27.7px, tabular 43.0px, equal to "0000").
+  - Variable packages used instead of static `@fontsource/*`. Family names: "Archivo Variable", "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Mono Variable".
+  - Body 17px is set on `body`. `.cms` gets `font-size: 1rem` so the CMS keeps its old 16px base. `.cms` also overrides `--fs-small` (13px) and `--fs-h1` (22px).
+  - D6 is only partly resolved. Done: tokens, `body`, `h1`, `app.css`, and every 13px and 14px raw size outside the CMS mapped 1:1 to `--fs-meta` and `--fs-small`. Not done: the odd sizes (9, 10, 11.5, 15.5, 16, 17, 18, 20, 22, 24, 34, 48px) in `StatTile`, `PresenceWidget`, `PlaytimeSection`, `HeatGrid`, `FeaturedSection`, `HobbiesSection`, `ProjectCard`, `SettingsModal`, `BioSection`. Reason: those components are rebuilt in Steps 5 to 7, so each takes its tokens there. Step 10 runs a final sweep.
+  - `--fs-micro` and `--fs-section` stay as aliases (to `--fs-meta` and `--fs-h2`) until Step 10. `--fs-lede` removed (no consumers).
+  - Mono is not yet limited to numbers. Only `.more`, `.sub`, `.tag` and the five formerly uppercase labels moved to the body face. The remaining mono labels move with their sections in Steps 5 to 8.
+  - Uppercase kept in `FeaturedSection.vue` (single placeholder letter), removed from the five label rules.
+  - Bug found and fixed because the larger type exposed it: at 390px `/code` overflowed by 11px. `CardHeader.vue` now wraps, and the mobile `.dash` track is `minmax(0, 1fr)`.
+  - `.impeccable/design.json` is stale (describes the old system). Not touched. Regenerating it is a tool step for the owner (`/impeccable document`).
+  - Checked: desktop at 1280px and iframes at 390px for four routes in EN and DE (no overflow), fonts loaded, H1 on two lines.

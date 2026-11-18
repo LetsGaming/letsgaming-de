@@ -54,11 +54,10 @@ defineProps<{
   border-color: var(--line-2);
 }
 .teaser__label {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  font-weight: 600;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 .teaser__value {
   color: var(--ink-strong);

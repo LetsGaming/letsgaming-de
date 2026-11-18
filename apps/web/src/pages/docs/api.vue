@@ -318,10 +318,9 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
   margin-top: var(--sp-14);
 }
 .api-block h5 {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  font-weight: 600;
   color: var(--muted);
   margin: 0 0 var(--sp-6);
 }

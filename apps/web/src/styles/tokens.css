@@ -129,27 +129,25 @@
   --r-chip: 8px;
   --r-pill: 999px;
 
-  /* ── Type. Fredoka reaches the wordmark, the H1, section headings and card
-     titles — and stops. It has no body-text design in it: the counters close
-     up past ~16px down. Inter disappears, which is its job. Space Mono marks
-     machine-sourced values and nothing else, so a mono number reads as "synced"
-     without needing a label. */
-  --f-d: "Fredoka", system-ui, sans-serif;
-  --f-b: "Inter", system-ui, sans-serif;
-  --f-m: "Space Mono", ui-monospace, monospace;
+  /* ── Type. Archivo (variable, width and weight axes) carries the wordmark,
+     headings and big figures. Atkinson Hyperlegible Next is body and UI.
+     Atkinson Hyperlegible Mono marks machine-sourced numbers and timestamps, so
+     a mono value reads as "synced" without needing a label. */
+  --f-d: "Archivo Variable", system-ui, sans-serif;
+  --f-b: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+  --f-m: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
 
-  --fs-display: clamp(32px, 6.5vw, 56px);
-  /* The module section heading ("Recent", "Listening"). Sits a step above --fs-h2
-     (a card's own title) and below --fs-display (the hero). Was a raw clamp inlined
-     in `.sec-head h2`; named here so every ModuleSection heading is one size, and
-     deliberately not overridden in light mode (it never was). */
-  --fs-section: clamp(22px, 4vw, 30px);
-  --fs-h2: clamp(19px, 3.2vw, 25px);
-  --fs-h3: 16px;
-  --fs-lede: clamp(15px, 2vw, 18px);
-  --fs-body: 15px;
-  --fs-meta: 12px;
-  --fs-micro: 11px;
+  --fs-meta: 0.8125rem;
+  --fs-small: 0.9375rem;
+  --fs-body: 1.0625rem;
+  --fs-h3: 1.25rem;
+  --fs-h2: clamp(1.5rem, 1.2rem + 1.2vw, 1.875rem);
+  --fs-h1: clamp(2.25rem, 1.5rem + 3vw, 3.25rem);
+  --fs-display: clamp(2.5rem, 1.6rem + 4vw, 4.25rem);
+  --fs-figure: clamp(2rem, 1.4rem + 2.5vw, 3rem);
+  /* Aliases, removed once every consumer uses the names above. */
+  --fs-section: var(--fs-h2);
+  --fs-micro: var(--fs-meta);
 
   /* ── Motion. Communicates state change, directs attention, or expresses
      character — or it doesn't ship. --dur-fast is hover (this is interactive),
@@ -256,8 +254,11 @@
 .cms {
   /* Type roles: headings use --f-d, UI text and labels --cms-font-ui, values
      (paths, keys, numbers, durations, code) --cms-font-value. */
+  font-size: 1rem;
   --cms-font-ui: var(--f-b);
   --cms-font-value: var(--f-m);
+  --fs-small: 13px;
+  --fs-h1: 22px;
   --r-anchor: 14px;
   --r-card: 10px;
   --r-control: 8px;

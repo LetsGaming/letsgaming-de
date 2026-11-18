@@ -141,7 +141,7 @@ const contributionCells = computed<HeatCell[]>(() => {
   color: var(--ink);
 }
 .ev .et {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--ink);
 }
 .ev .et b {

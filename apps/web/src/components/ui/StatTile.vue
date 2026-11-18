@@ -133,7 +133,7 @@ const emit = defineEmits<{ select: [] }>();
 .st-tab .st-l::after {
   content: "›";
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--fs-small);
   margin-left: auto;
   transition: transform var(--dur-fast) var(--ease-out);
 }

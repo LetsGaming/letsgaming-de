@@ -41,7 +41,7 @@ defineProps<{
 </template>
 
 <style scoped>
-/* Label scale (Space Mono, 12px, muted) — the same typographic register as a
+/* Label scale (mono, meta size, muted) — the same typographic register as a
  * synced timestamp: wayfinding metadata, not prose, and not a heading. */
 .crumbs ol {
   display: flex;

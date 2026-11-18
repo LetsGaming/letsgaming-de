@@ -76,7 +76,7 @@ const model = defineModel<T>({ required: true });
   padding: 3px;
 }
 .seg--md .seg__opt {
-  font-size: 13px;
+  font-size: var(--fs-meta);
   border-radius: 9px;
   padding: 7px var(--sp-16);
 }

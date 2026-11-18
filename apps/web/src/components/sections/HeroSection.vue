@@ -153,7 +153,7 @@ h1 .pop::after {
   align-items: center;
   gap: var(--sp-10);
   font-family: var(--f-m);
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   margin-top: var(--sp-22);
 }
@@ -184,7 +184,7 @@ h1 .pop::after {
   min-height: 1.6em;
   margin-top: var(--sp-10);
   font-family: var(--f-m);
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
 .live .dot {
@@ -206,7 +206,7 @@ h1 .pop::after {
   margin-top: var(--sp-14);
   padding: var(--sp-4) var(--sp-12);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-meta);
   color: var(--muted);
   background: none;
   border: 1px solid var(--line-1);
