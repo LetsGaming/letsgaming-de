@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 
 /**
- * The CORS allow-list is hand-maintained and the routes are not, so it drifts —
+ * The CORS allow-list is hand-maintained and the routes are not, so it drifts:
  * PATCH was absent from it since the CMS was written and only surfaced when
  * something finally tried to edit an asset. Preflight failures never reach the
  * server, so there's no log line to find: the browser just refuses.

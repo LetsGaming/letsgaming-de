@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm analytics:reclassify` — re-file already-stored rows through the current
+ * `pnpm analytics:reclassify`: re-file already-stored rows through the current
  * classifiers, and report what moved.
  *
  * Classification happens at ingest, so rows written before a rule existed keep
  * their old dimension. When the probe detector was added, every scanner request
- * already in the store was still counted as a page view — and the only other way
+ * already in the store was still counted as a page view, and the only other way
  * to clear them was to wait out the 90-day retention or delete the range, which
  * would take the real traffic with it.
  *

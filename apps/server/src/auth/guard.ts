@@ -3,7 +3,7 @@
  *
  * Two ways in, both landing on the single allowed identity:
  *   1. A signed session cookie set by the GitHub OAuth flow (the CMS UI uses this).
- *   2. A bearer token (CMS_TOKEN) — handy for scripts and first setup.
+ *   2. A bearer token (CMS_TOKEN): handy for scripts and first setup.
  *
  * If neither a token nor OAuth is configured, the CMS API fails closed.
  */

@@ -6,14 +6,14 @@ import { DEFAULT_GITHUB_USERNAME } from "@lg/sources";
 
 export interface ServerEnv {
   /** True in production. Read here, not from `process.env.NODE_ENV` at the three
-   *  call sites that used to ask directly — a config read outside this file is a
+   *  call sites that used to ask directly: a config read outside this file is a
    *  default nobody can find. */
   isProduction: boolean;
   /** Pino level. */
   logLevel: string;
   port: number;
   host: string;
-  /** SQLite file path. The store is the archive — back this up (§10). */
+  /** SQLite file path. The store is the archive: back this up (§10). */
   dbPath: string;
   /** Allowed origin for the public site (CORS). */
   webOrigin: string;
@@ -22,7 +22,7 @@ export interface ServerEnv {
   github: { username: string; token?: string };
   /**
    * Simple bearer token guarding the CMS API for v1. GitHub OAuth (single user)
-   * is the intended replacement — see `auth/github-oauth.ts`.
+   * is the intended replacement: see `auth/github-oauth.ts`.
    */
   cmsToken?: string;
   oauth: { clientId?: string; clientSecret?: string; allowedLogin: string };
@@ -30,7 +30,7 @@ export interface ServerEnv {
   sessionSecret: string;
   /**
    * Signs draft preview links. Optional: unset means no previews at all, which
-   * fails closed — never "every draft is public". Rotating it revokes every
+   * fails closed: never "every draft is public". Rotating it revokes every
    * outstanding link at once, which is the whole reason the token is derived
    * rather than stored in the post.
    */
@@ -49,12 +49,12 @@ export interface ServerEnv {
   analyticsOwnHost?: string;
   /** Wakapi coding-time tracker (LAN-only). Both parts required to activate. */
   wakapi?: { url: string; key: string };
-  /** RAWG API key — resolves game names to cover art + genre for the playtime
+  /** RAWG API key: resolves game names to cover art + genre for the playtime
    *  module. Optional: without it the shelf just shows monograms and no genre. */
   rawg?: { apiKey: string };
 }
 
-/** The literal dev fallback — refused at boot when the CMS is enabled (SEC-01). */
+/** The literal dev fallback: refused at boot when the CMS is enabled (SEC-01). */
 export const DEV_SESSION_SECRET = "dev-insecure-secret-change-me-please";
 
 /** Node's own convention for the one NODE_ENV value that means anything to us. */
@@ -141,7 +141,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
 /**
  * Fail closed at boot rather than silently accepting a forgeable session (SEC-01).
  * When the CMS is reachable (a bearer token or OAuth is configured), the cookie
- * signing secret must be a real, operator-set value — never empty and never the
+ * signing secret must be a real, operator-set value: never empty and never the
  * shipped dev default, either of which an attacker could use to forge a session
  * cookie for the (public) allowed login.
  */

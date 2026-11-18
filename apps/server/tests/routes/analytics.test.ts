@@ -22,7 +22,7 @@ async function appWithStore() {
  *
  * Seeding the whole span rather than only the requested window matters: the
  * truncation bug this file was written for dropped hours at the *edge* of the
- * window, so a fixture that stops at the edge leaves nothing for it to drop —
+ * window, so a fixture that stops at the edge leaves nothing for it to drop,
  * which is exactly how the first draft of this test passed against the bug.
  */
 async function seededAnalytics(query: string, back: number) {
@@ -48,7 +48,7 @@ const perBucket = (body: AnalyticsResponse): Map<string, number> => {
 /**
  * The original regression: day-unit ranges used an *hour* lower bound while
  * grouping by day, so every hour of the first day before the current hour-of-day
- * was filtered out — the oldest column was short by up to 23/24, and the client
+ * was filtered out: the oldest column was short by up to 23/24, and the client
  * drew it as a complete day regardless.
  */
 test("a day-unit range includes the whole of its first day", async () => {
@@ -173,7 +173,7 @@ test("a selected bucket carries no period comparison", async () => {
 test("a day bucket selects the whole local day, not a substring of it", async () => {
   const { app, store } = await appWithStore();
   const now = new Date();
-  // 23:00 UTC is the next local day in Berlin — it must be included when that
+  // 23:00 UTC is the next local day in Berlin: it must be included when that
   // local day is selected, and excluded from the day before.
   const late = new Date(now.getTime() - 24 * HOUR);
   late.setUTCHours(23, 0, 0, 0);
@@ -310,7 +310,7 @@ test("a bucket click inside a custom range still narrows to just that bucket", a
 
 /**
  * `at` used to narrow the whole response, so the client needed a second
- * request just to keep the chart at full range — and that second response was
+ * request just to keep the chart at full range, and that second response was
  * never re-polled, which is how a drilled-in view went stale. Now one request
  * does both: the chart stays at the full range while the lists (and their
  * totals) narrow to the clicked bucket.

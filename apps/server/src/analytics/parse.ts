@@ -1,6 +1,6 @@
 /**
  * Access-log parsing for analytics (§9). Pure and testable. The IP field is
- * deliberately never captured — only path, referrer host, and coarse UA family
+ * deliberately never captured: only path, referrer host, and coarse UA family
  * survive, which is all the aggregates need. Nothing personal is derived.
  *
  * That constraint is also the ceiling on what this file can say about bots. With

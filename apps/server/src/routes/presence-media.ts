@@ -4,18 +4,18 @@
  * The presence widget and playtime shelf show images that originate at
  * third-party CDNs (Discord avatars/activity art, RAWG game cover art, Spotify
  * album covers). Loading those
- * directly in the browser would leak every visitor's IP to those providers — the
+ * directly in the browser would leak every visitor's IP to those providers: the
  * one place the site would otherwise break its "server is the boundary" stance.
  * So the browser asks *us* for the image and the server fetches it, exactly like
  * every other upstream: the visitor only ever talks to this origin.
  *
  * Because a URL-taking proxy is a classic SSRF vector, `u` is fetched ONLY when
  * its host is on a fixed allow-list (and only over https, with redirects
- * refused) — a crafted `u` can never reach an internal address.
+ * refused): a crafted `u` can never reach an internal address.
  *
  * Second job: fallbacks. When the handed-in image is missing or blocked,
- * `game=<name>` is resolved the same way the top-games list resolves cover art —
- * by name, from the RAWG metadata cache — so a live game with no Discord art still
+ * `game=<name>` is resolved the same way the top-games list resolves cover art:
+ * by name, from the RAWG metadata cache, so a live game with no Discord art still
  * shows its real cover. Only when that too comes up empty does it fall back to a
  * labelled tile: a per-game override if we ship one, otherwise a generated
  * initials tile, so the widget always has something tidy to show.
@@ -41,7 +41,7 @@ import { darkenRepoCard } from "./repo-card.js";
  *  and is never recoloured. */
 const GENERATED_CARD_HOST = "opengraph.githubassets.com";
 
-/** Exact hosts we will fetch from — nothing else. Keeps this from being an open proxy. */
+/** Exact hosts we will fetch from: nothing else. Keeps this from being an open proxy. */
 const ALLOWED_HOSTS = new Set([
 	"cdn.discordapp.com",
 	"media.discordapp.net",
@@ -110,7 +110,7 @@ async function fetchUpstream(raw: string, dark = false): Promise<Bytes | null> {
 
 	try {
 		const res = await fetch(url, {
-			redirect: "error", // a redirect could bounce off the allow-list — refuse it
+			redirect: "error", // a redirect could bounce off the allow-list: refuse it
 			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 			headers: { Accept: "image/*" },
 		});
@@ -150,12 +150,12 @@ async function fetchUpstream(raw: string, dark = false): Promise<Bytes | null> {
 					.toBuffer();
 				return { at: Date.now(), contentType: "image/webp", body };
 			} catch {
-				// not a decodable raster (or sharp failed) — fall through to the original
+				// not a decodable raster (or sharp failed): fall through to the original
 			}
 		}
 		return { at: Date.now(), contentType, body: buf };
 	} catch {
-		return null; // timeout, redirect, network, abort — caller falls back
+		return null; // timeout, redirect, network, abort: caller falls back
 	}
 }
 
@@ -168,7 +168,7 @@ function xmlEscape(s: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-/** Stable 0–359 hue from a string, so a given game always gets the same colour. */
+/** Stable 0 to 359 hue from a string, so a given game always gets the same colour. */
 function hueOf(s: string): number {
 	let h = 0;
 	for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
@@ -181,7 +181,7 @@ function slug(name: string): string {
 }
 
 /** Per-game art overrides (add entries as needed). Values are full SVG documents;
- *  keys are {@link slug}s of the game name. Left empty by default — the generated
+ *  keys are {@link slug}s of the game name. Left empty by default: the generated
  *  tile below already gives every game a clean labelled fallback. */
 const GAME_ART: Record<string, string> = {};
 
@@ -269,12 +269,12 @@ export function registerPresenceMediaRoutes(
 			// 1) The image the caller handed us (Discord activity art, an album cover).
 			if (u) {
 				if (await serveImage(reply, u, theme === "dark")) return reply;
-				// fell through: upstream missing/blocked — try the fallbacks below
+				// fell through: upstream missing/blocked, try the fallbacks below
 			}
 
 			if (game) {
 				// 2) No usable image, but we know the game: resolve its cover the same way
-				//    the top-games list does — by name, from the RAWG metadata cache — so a
+				//    the top-games list does (by name, from the RAWG metadata cache) so a
 				//    live game with no Discord art still shows its real cover.
 				const coverUrl = store.gameMeta
 					.getAll()

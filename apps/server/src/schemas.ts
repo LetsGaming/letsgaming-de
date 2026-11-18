@@ -7,7 +7,7 @@
  * `enum: ["purple", "coral", "mint", "sun"]` is a copy of a list that lives in
  * core, and the copies drift silently in the one direction that hurts: the schema
  * keeps accepting a value the renderer dropped, so the CMS saves a tone that
- * renders nothing. That exact pair — dropdown and renderer disagreeing — has
+ * renders nothing. That exact pair, dropdown and renderer disagreeing, has
  * already cost this project once.
  */
 
@@ -33,7 +33,7 @@ const localized = {
 
 const localizedArray = { type: "array", items: localized } as const;
 
-// href accepts http(s), mailto, or a site-relative path — never javascript:/data:
+// href accepts http(s), mailto, or a site-relative path: never javascript:/data:
 // (SEC-04). The pattern is core's, the same one `safeHref` enforces at read time:
 // these are belt-and-braces for one rule, and two spellings of one rule is one
 // rule and one bug. They already disagreed on case-sensitivity.
@@ -168,7 +168,7 @@ export const schemas = {
   },
   playtime: {
     type: "object",
-    // Same shape and bounds as `music` — a separate stored value so the two
+    // Same shape and bounds as `music`: a separate stored value so the two
     // modules' limits can differ; the sanitizer fills any omitted count.
     properties: {
       initialCount: { type: "integer", minimum: LIST_DISPLAY_BOUNDS.min, maximum: LIST_DISPLAY_BOUNDS.max },
@@ -181,7 +181,7 @@ export const schemas = {
     type: "object",
     // No required fields: sanitizeWrappedSettings fills every omitted field from the
     // default, so a partial body still writes a coherent row. Numeric bounds come
-    // from WRAPPED_BOUNDS in @lg/core — the same constant the CMS inputs and the
+    // from WRAPPED_BOUNDS in @lg/core: the same constant the CMS inputs and the
     // sanitizer use, so the three can't disagree.
     properties: {
       enabled: { type: "boolean" },
@@ -213,7 +213,7 @@ export const schemas = {
   /**
    * A whole gallery's order. `ids` is the list as the CMS shows it; the server
    * renumbers `sort` to match. The entire list rather than a diff, exactly as
-   * `layout` below sends every area's modules — one request that can't
+   * `layout` below sends every area's modules: one request that can't
    * half-succeed, and the same shape for the same job.
    */
   galleryOrder: {
@@ -278,8 +278,8 @@ export const schemas = {
    *
    * Its own endpoint rather than a field on `layout`, because it answers a
    * different question: `layout` is *where* modules go, this is *what they're
-   * called*. They're also edited at different moments — you drag a module once and
-   * rename it while writing German — and folding them together would mean every
+   * called*. They're also edited at different moments: you drag a module once and
+   * rename it while writing German, and folding them together would mean every
    * rename resending the whole placement tree, with `lintNav` gating a change that
    * can't affect the tree's shape.
    */

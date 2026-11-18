@@ -1,5 +1,5 @@
 /**
- * A one-click CMS login for local development — never for production.
+ * A one-click CMS login for local development: never for production.
  *
  * The real way in is GitHub OAuth (`github-oauth.ts`), which needs a registered
  * OAuth app and a round-trip to github.com. That's a lot of ceremony when the
@@ -10,7 +10,7 @@
  * deployed environment. Three independent guards, any one of which is sufficient:
  *
  *   1. The route is never registered when `NODE_ENV=production`. Not a check
- *      inside the handler — the endpoint does not exist, so there is nothing to
+ *      inside the handler: the endpoint does not exist, so there is nothing to
  *      probe, misconfigure past, or forget to check. Both Dockerfiles set
  *      `NODE_ENV=production`, so the deployed server never has this route.
  *   2. The handler serves loopback callers only. Even if a non-production build
@@ -23,7 +23,7 @@
  * the kind that ends up somewhere it shouldn't.
  *
  * Note this does not weaken `requireAuth`, which still fails closed when the CMS
- * isn't configured — so a local `.env` needs `SESSION_SECRET` plus one of
+ * isn't configured, so a local `.env` needs `SESSION_SECRET` plus one of
  * `CMS_TOKEN` / the OAuth pair for the CMS API to answer at all.
  */
 
@@ -37,17 +37,17 @@ import { returnUrl } from "./return-to.js";
 const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
 export function registerDevLoginRoutes(app: FastifyInstance, env: ServerEnv): void {
-  // Guard 1 — the route simply does not exist in production.
+  // Guard 1: the route simply does not exist in production.
   if (env.isProduction) return;
 
   app.get<{ Querystring: { returnTo?: string } }>("/auth/dev/login", async (req, reply) => {
-    // Guard 2 — loopback callers only.
+    // Guard 2: loopback callers only.
     //
     // `req.ip` is deliberately NOT used here: it reflects X-Forwarded-For
     // whenever `TRUST_PROXY` is set, which is a separate toggle from
     // `NODE_ENV`. A non-production build reachable behind a reverse proxy with
     // `TRUST_PROXY=true` would let anyone spoof `X-Forwarded-For: 127.0.0.1`
-    // and satisfy this check — a full auth bypass despite guard 1 not firing.
+    // and satisfy this check: a full auth bypass despite guard 1 not firing.
     // `req.socket.remoteAddress` is the actual TCP peer and ignores proxy
     // headers entirely, so this guard holds regardless of TRUST_PROXY.
     if (!LOOPBACK.has(req.socket.remoteAddress ?? "")) {

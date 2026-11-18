@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm analytics:rollup [--from YYYY-MM-DD --to YYYY-MM-DD]` — (re)build the
+ * `pnpm analytics:rollup [--from YYYY-MM-DD --to YYYY-MM-DD]`: (re)build the
  * materialized rollups from the hourly counters.
  *
  * Without a range it catches both grains up from where they stopped (or from the

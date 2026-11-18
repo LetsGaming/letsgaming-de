@@ -1,7 +1,7 @@
 /**
  * A coarse in-memory per-IP limiter for the two public write endpoints.
  *
- * It was written twice — once in `contact.ts`, once in `guestbook.ts` — as the
+ * It was written twice (once in `contact.ts`, once in `guestbook.ts`) as the
  * same class under the same name, differing only in the cap. The copies had
  * already drifted where it counts: one factored its sweep into a method guarded
  * by `now - lastSweep < windowMs` and returned early, the other inlined it with
@@ -10,7 +10,7 @@
  *
  * Deliberately naive and in-process: the server is one container (§10), so a
  * shared store would be infrastructure bought for a limiter that only needs to
- * make casual spam boring. It resets on restart, which is fine — a bot that waits
+ * make casual spam boring. It resets on restart, which is fine: a bot that waits
  * for a deploy has earned the message.
  */
 
@@ -50,7 +50,7 @@ export class RateLimiter {
   }
 
   /** Drop keys with no hits in the current window, so the map can't grow forever.
-   *  Once per window is enough — the per-key filter in `allow` does the exact work. */
+   *  Once per window is enough: the per-key filter in `allow` does the exact work. */
   private sweep(now: number): void {
     if (now - this.lastSweep < this.windowMs) return;
     this.lastSweep = now;

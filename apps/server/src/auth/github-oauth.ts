@@ -1,5 +1,5 @@
 /**
- * GitHub OAuth for the CMS — single user (PROJECT.md §3, §8).
+ * GitHub OAuth for the CMS: single user (PROJECT.md §3, §8).
  *
  * The full login path: redirect to GitHub → exchange the code → verify the
  * identity is `oauth.allowedLogin` → issue a signed, http-only session cookie
@@ -71,7 +71,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
 
       // Exchange the code for an access token. Timeout matches the other
       // outbound fetches in this codebase (e.g. presence-sampler.ts's Lanyard
-      // call) — a hanging github.com response would otherwise hold this login
+      // call): a hanging github.com response would otherwise hold this login
       // request open indefinitely.
       const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
         method: "POST",
@@ -82,7 +82,7 @@ export function registerOAuthRoutes(app: FastifyInstance, env: ServerEnv): void 
       const token = (await tokenRes.json()) as { access_token?: string };
       if (!token.access_token) throw unauthorized("Token exchange failed.");
 
-      // Verify identity — only the single allowed login may proceed.
+      // Verify identity: only the single allowed login may proceed.
       const userRes = await fetch("https://api.github.com/user", {
         headers: {
           Authorization: `bearer ${token.access_token}`,

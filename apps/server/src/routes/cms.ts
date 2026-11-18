@@ -1,5 +1,5 @@
 /**
- * CMS API (PROJECT.md §8). Small and custom on purpose — CRUD over the
+ * CMS API (PROJECT.md §8). Small and custom on purpose: CRUD over the
  * owner-edited content and nothing more. Every route is authed and every write
  * body is validated against a JSON schema before it can reach the store.
  *
@@ -59,7 +59,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
    * Shared by the layout save and the editor preview, because they ask the same
    * question ("is this order legal, and what does the nav look like with it?") and
    * differ only in what they do with the answer. Copied, the preview would have
-   * validated a little differently from the save — so the canvas would show you a
+   * validated a little differently from the save, so the canvas would show you a
    * layout the Save button then refuses, with no way to tell which one is lying.
    *
    * Works on a fresh copy from the store, so nothing is mutated unless the caller
@@ -91,8 +91,8 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     for (const entry of order) {
       const node = leaves.get(entry.area)!;
       node.modules = [...entry.modules];
-      // Only touched when the client sends the key at all, so the preview path —
-      // which doesn't — can't blank a description as a side effect of arranging
+      // Only touched when the client sends the key at all, so the preview path,
+      // which doesn't, can't blank a description as a side effect of arranging
       // modules. An all-empty value clears the field rather than storing `""`,
       // which keeps "unset" a single representable state for `areaMeta`.
       if (entry.description !== undefined) {
@@ -118,8 +118,8 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
 
   /**
    * Register the uniform CRUD pair shared by every sortable list entity:
-   *   PUT  <path>  — validate + upsert (with an optional `sort`)
-   *   DELETE <path> — remove by id
+   *   PUT  <path>: validate + upsert (with an optional `sort`)
+   *   DELETE <path>: remove by id
    * `after` runs an optional side effect on both (e.g. recomputing gallery usages).
    * Collapses what were five copy-pasted PUT+DELETE handlers.
    */
@@ -144,7 +144,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     });
   };
 
-  // Whoami — the CMS UI uses this to confirm the session.
+  // Whoami: the CMS UI uses this to confirm the session.
   app.get("/api/cms/me", guard, async (req) => ({ login: sessionLogin(req, env) }));
 
   // Full content read-back for the editor.
@@ -215,7 +215,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     write(schemas.music),
     async (req) => {
       // sanitizeMusicSettings clamps both counts and keeps initialCount ≤ maxCount,
-      // filling any omitted field — a partial body still writes a coherent row.
+      // filling any omitted field: a partial body still writes a coherent row.
       store.content.setMusic(sanitizeMusicSettings(req.body));
       return { ok: true };
     },
@@ -225,7 +225,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
     "/api/cms/playtime",
     write(schemas.playtime),
     async (req) => {
-      // Twin of the music route — a separate stored value so Played can carry its
+      // Twin of the music route: a separate stored value so Played can carry its
       // own limits; the sanitizer clamps and keeps initialCount ≤ maxCount.
       store.content.setPlaytime(sanitizePlaytimeSettings(req.body));
       return { ok: true };
@@ -235,8 +235,8 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   app.put<{
     Body: { enabled?: boolean; everyMonths?: number; forWeeks?: number; fromDate?: string; topCount?: number };
   }>("/api/cms/wrapped", write(schemas.wrapped), async (req) => {
-    // The Wrapped schedule. Nothing here decides visibility — the resolver reads
-    // these settings and omits the module outside a window — so this route only
+    // The Wrapped schedule. Nothing here decides visibility: the resolver reads
+    // these settings and omits the module outside a window, so this route only
     // stores intent. sanitizeWrappedSettings clamps the numbers and drops an
     // unparseable date, so a partial or hostile body still writes a valid row.
     store.content.setWrapped(sanitizeWrappedSettings(req.body));
@@ -275,7 +275,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   // N PUTs can half-succeed and leave an order nobody chose. `PUT /api/cms/layout`
   // already sends the whole order for modules; this is the same shape for images.
   /**
-   * Module headings and notes — the text above each section on the page.
+   * Module headings and notes: the text above each section on the page.
    *
    * These were code-defined in `LAUNCH_MODULES` and reconciled onto every store on
    * boot, which made them un-editable in practice: a CMS save would survive until
@@ -424,7 +424,7 @@ export function registerCmsRoutes(app: FastifyInstance, store: Store, env: Serve
   );
 
   /**
-   * What the site *would* look like with this order — resolved, not saved.
+   * What the site *would* look like with this order: resolved, not saved.
    *
    * The editor canvas renders real site components, so it needs a real `SiteView`,
    * which means the resolver, which means live source data and the asset lookup.

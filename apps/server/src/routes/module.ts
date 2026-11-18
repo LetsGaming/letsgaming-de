@@ -1,10 +1,10 @@
 /**
- * One resolved module by id — the live-refresh endpoint behind the modules that
+ * One resolved module by id: the live-refresh endpoint behind the modules that
  * poll (playtime, music).
  *
  * It resolves the same SiteView the SSR page builds and returns just the requested
- * module, so a widget can refresh its own slice in place — the way `/api/presence`
- * lets the presence card update without a reload — without re-fetching or
+ * module, so a widget can refresh its own slice in place (the way `/api/presence`
+ * lets the presence card update without a reload) without re-fetching or
  * re-rendering the whole site. Read-only, off the same local snapshot SSR reads;
  * nothing is fetched from an upstream on this path.
  *
@@ -36,7 +36,7 @@ export function registerModuleRoutes(app: FastifyInstance, store: Store, env: Se
       // absent one falls through to the owner's configured zone inside buildSiteView.
       const tz = req.query.tz;
       // The window the activity modules cover. Omitted (or unrecognised) falls
-      // through to each module's CMS-configured default inside buildSiteView —
+      // through to each module's CMS-configured default inside buildSiteView:
       // the same thing SSR gets, since a first paint has no selection yet. A
       // closed set, so this can't be turned into "aggregate everything I have".
       const days = Number(req.query.days);

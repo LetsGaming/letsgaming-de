@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm analytics <access.log> [ownHost]` — parse new log lines into anonymous
+ * `pnpm analytics <access.log> [ownHost]`: parse new log lines into anonymous
  * aggregates and exit. Point it at your reverse-proxy access log; schedule it
  * (cron/systemd timer) on the host. The IP is never stored.
  */
@@ -11,7 +11,7 @@ import { ingestLog } from "./ingest.js";
 const env = loadEnv();
 
 // Defaults to the log the server is already ingesting, so the path can't drift
-// from the one in ACCESS_LOG — inside the container that's a path under /logs.
+// from the one in ACCESS_LOG: inside the container that's a path under /logs.
 const file = process.argv[2] ?? env.accessLog;
 if (!file) {
   console.error("usage: analytics <access.log> [ownHost]   (or set ACCESS_LOG)");

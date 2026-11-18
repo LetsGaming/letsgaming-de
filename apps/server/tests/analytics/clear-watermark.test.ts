@@ -28,7 +28,7 @@ const paths = (store: ReturnType<typeof openStore>) =>
 /**
  * The failure this guards: clearing removes the aggregate rows, but the access
  * log on the proxy still holds every line that produced them. The byte offset
- * normally prevents a re-read — until the log rotates, the file shrinks, the
+ * normally prevents a re-read: until the log rotates, the file shrinks, the
  * offset resets, and the whole file is read again. One rotation and the deletion
  * is silently undone.
  */

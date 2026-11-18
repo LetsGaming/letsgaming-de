@@ -37,7 +37,7 @@ export class SyncRunner {
     this.registered = getSources(env);
   }
 
-  /** Bundle old hourly analytics into daily rows and prune — keeps the volume flat. */
+  /** Bundle old hourly analytics into daily rows and prune: keeps the volume flat. */
   runMaintenance(): void {
     try {
       const { rolledUp, pruned } = this.store.analytics.rollupAndPrune(this.retainHourlyDays);
@@ -93,7 +93,7 @@ export class SyncRunner {
     const syncedAt = new Date().toISOString();
 
     // A failed fetch is expected (slow/down upstream): log it and keep the
-    // last-good snapshot — don't record, don't throw.
+    // last-good snapshot: don't record, don't throw.
     const fetched = await source.fetch();
     if (!fetched.ok) {
       this.log(`[sync] ${source.id} FAILED (${fetched.error.kind}): ${fetched.error.message}`);
@@ -116,7 +116,7 @@ export class SyncRunner {
       this.log(`[sync] ${source.id} ok${mock ? " (mock)" : ""} @ ${syncedAt}`);
       return { sourceId: source.id, ok: true, mock, syncedAt };
     } catch (err) {
-      // normalize/persist are local — a throw here is a real bug, but still
+      // normalize/persist are local: a throw here is a real bug, but still
       // shouldn't crash the run.
       const message = err instanceof Error ? err.message : String(err);
       this.log(`[sync] ${source.id} FAILED (normalize/persist): ${message}`);

@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm analytics:rebuild <access.log> [ownHost]` — throw away everything derived
+ * `pnpm analytics:rebuild <access.log> [ownHost]`: throw away everything derived
  * from the access log and derive it again with the current rules.
  *
  * Reclassifying in place can only fix the dimension it moves. A request that was
- * mistaken for a page view wrote five rows — `path`, `referrer`, `browser`, `os`,
- * `device` — and the aggregates record no link between them, so moving the `path`
+ * mistaken for a page view wrote five rows: `path`, `referrer`, `browser`, `os`,
+ * `device`, and the aggregates record no link between them, so moving the `path`
  * row into `probe` leaves the other four behind. That's why a dashboard can show
  * "Probes: 1,300" and still report Chrome 863 on a site with forty visitors.
  *
@@ -14,8 +14,8 @@
  * clicks, dwell, visits) are untouched: they come from the browser, and no log
  * replay can reconstruct them.
  *
- * Only rebuilds what the given log file still covers. Rotated-away days are gone
- * — check what your rotation keeps before running this, because it deletes
+ * Only rebuilds what the given log file still covers. Rotated-away days are gone.
+ * So check what your rotation keeps before running this, because it deletes
  * first.
  *
  * This also lifts the "cleared through" watermark that `POST /analytics/clear`

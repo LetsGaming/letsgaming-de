@@ -2,7 +2,7 @@
  * Engagement tracking relay (PROJECT.md §9, privacy addendum).
  *
  * The public site sends small, cookieless (endpoint deliberately named neutrally so tracker-blockers do not match it) `navigator.sendBeacon` payloads
- * describing *anonymous, already-bucketed* engagement — which section was
+ * describing *anonymous, already-bucketed* engagement: which section was
  * viewed, for how long (bucketed), where the visitor moved to/from, how far
  * they scrolled, and named clicks. This endpoint validates every event against
  * the shared vocabulary and the live nav, then increments aggregate counters.
@@ -11,7 +11,7 @@
  *   - no cookie is read or set; no session id; no identifier of any kind.
  *   - the client IP is used only for a transient in-memory rate limit and is
  *     never stored (same posture as the contact relay).
- *   - only counters are written (day, dimension, key) — never raw event rows,
+ *   - only counters are written (day, dimension, key): never raw event rows,
  *     so a single visit can't be reconstructed.
  *   - the day is assigned by the server; the client sends no timestamps.
  */
@@ -28,7 +28,7 @@ function isoHour(d: Date): string {
   return d.toISOString().slice(0, 13);
 }
 
-/** All node ids in the nav tree — the set of valid section ids for tracking. */
+/** All node ids in the nav tree: the set of valid section ids for tracking. */
 function collectNavIds(nodes: NavNode[], into: Set<string> = new Set()): Set<string> {
   for (const n of nodes) {
     into.add(n.id);

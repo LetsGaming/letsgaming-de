@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm sync` — run every source once and exit. Handy for the first boot, for
+ * `pnpm sync`: run every source once and exit. Handy for the first boot, for
  * cron on the host, or for a manual refresh. Exits non-zero if any source failed.
  */
 import { openStore } from "@lg/db";

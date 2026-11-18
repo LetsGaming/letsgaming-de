@@ -1,12 +1,12 @@
 /**
  * Music API. One concern: historical Spotify listening. This is the drill-in
- * behind a clicked listening-timeline column — one day's tracks, fetched on
+ * behind a clicked listening-timeline column: one day's tracks, fetched on
  * demand (parallel to `/api/playtime/day`) rather than shipping a fortnight of
  * per-day track lists with the module.
  *
  * Split out of the presence route on purpose: presence is "right now" (the live
  * Discord/Spotify activity), this is the accumulated `music_plays` history. No
- * hidden-name filter — music has no per-track hide list, and the tracks are
+ * hidden-name filter: music has no per-track hide list, and the tracks are
  * Spotify's, not the owner's own games.
  */
 
@@ -26,7 +26,7 @@ export function registerMusicRoutes(app: FastifyInstance, store: Store): void {
       }
       const zone = resolveZone(req.query.tz);
       // Aggregate the raw plays into both views, then cap each to the module's
-      // maxCount — so the client is sent only the top-N songs and top-N artists it
+      // maxCount, so the client is sent only the top-N songs and top-N artists it
       // can show, never the whole day. The distinct counts and total minutes are
       // reported alongside (uncapped), for the summary and the "and N more" note.
       const max = store.content.getMusic().maxCount;

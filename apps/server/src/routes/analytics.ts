@@ -1,7 +1,7 @@
 /**
  * Analytics read + maintenance API (authed). Serves the aggregates the CMS
  * dashboard shows, and lets the owner clear ranges. Read-only over anonymous
- * counts — there's nothing personal to expose or protect.
+ * counts: there's nothing personal to expose or protect.
  *
  * Headline figures and lists are read from the materialized rollups
  * (`analytics_summary`, `analytics_rollup`): hour grain for ranges up to 72 hours,
@@ -82,7 +82,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
     { preHandler: requireAuth(env) },
     async (req) => {
       /**
-       * A dimension filter — the click on a row in the CMS ("Referrer: Bing").
+       * A dimension filter: the click on a row in the CMS ("Referrer: Bing").
        * Both-or-neither, like `from`/`to`: a lone `dim` or `key` is a broken
        * request, not a partial one, and a hand-typed deep link with a typo'd
        * `dim` must fail loudly rather than silently render as unfiltered.
@@ -102,7 +102,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
       }
 
       /**
-       * An arbitrary `from`/`to` span — the "Custom" range picker — as an
+       * An arbitrary `from`/`to` span, the "Custom" range picker, as an
        * alternative to the fixed `hours` presets. Both sides are required
        * together: a lone `from` or `to` reads as a broken request, not a
        * partial one, so it's rejected rather than silently guessed at.
@@ -388,8 +388,8 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
   // "all" also wipes the log-derived day stats.
   //
   // The window comes from CLEAR_RANGES, which the CMS's buttons are built from
-  // too. It used to be a switch that re-derived each window by hand — `back(72)`
-  // for "3d" — beside a client list that said 72 for the same id. Two lists, one
+  // too. It used to be a switch that re-derived each window by hand (`back(72)`
+  // for "3d") beside a client list that said 72 for the same id. Two lists, one
   // meaning, and the failure mode is deleting the wrong window with no undo.
   app.post<{ Body: { range?: string } }>(
     "/api/cms/analytics/clear",
@@ -424,7 +424,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance, store: Store, env:
        *
        * The rows are gone, but the access log on the proxy still holds every line
        * that produced them, and this server has no business editing it. The byte
-       * offset usually stops a re-read — until the log rotates, the file shrinks,
+       * offset usually stops a re-read: until the log rotates, the file shrinks,
        * the offset resets and the whole thing is read again. One rotation and the
        * deletion is undone.
        *

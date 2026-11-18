@@ -2,8 +2,8 @@
  * Is this request an attack probe?
  *
  * `agent.ts` asks whether a request *admits* to being a program. This asks a
- * different question — whether what it asked for could plausibly have been asked
- * for by a person on this site — and it catches the traffic `agent.ts` cannot,
+ * different question: whether what it asked for could plausibly have been asked
+ * for by a person on this site, and it catches the traffic `agent.ts` cannot,
  * because scanners lie about their user agent. A vulnerability scanner sends
  * `Mozilla/5.0 … Chrome/120`, so it lands in "Chrome / Windows / desktop" and its
  * requests land in Top paths, and a dashboard reporting 1,361 page views is
@@ -12,7 +12,7 @@
  * The signal here is unusually clean because it's specific to this codebase: this
  * site is a Nuxt application with no PHP, no WordPress and no CGI anywhere in it.
  * A request for `/wp-content/themes/pridmag/db.php` or `/wso.php` is not a person
- * who mistyped — those paths have never existed here, and the only software that
+ * who mistyped: those paths have never existed here, and the only software that
  * asks for them is looking for a known exploit. That makes this a statement about
  * *this* server's routes, not a guess about intent.
  *
@@ -20,7 +20,7 @@
  * coarse family, and keeps the family. Nothing is retained that could link two
  * requests to each other.
  *
- * Probes are counted, not dropped — a scan burst is worth seeing, and it's the
+ * Probes are counted, not dropped: a scan burst is worth seeing, and it's the
  * single most useful thing in the log for knowing you're being enumerated. They
  * just don't belong in `path`, `browser`, `os`, `device` or `referrer`, which
  * exist to describe people.
@@ -40,7 +40,7 @@ export const PROBE_FAMILY = {
 export type ProbeFamily = (typeof PROBE_FAMILY)[keyof typeof PROBE_FAMILY];
 
 /**
- * Ordered rules — first match wins, so the specific ones come before the general.
+ * Ordered rules: first match wins, so the specific ones come before the general.
  * `/wp-login.php` is a WordPress probe rather than a generic PHP one, and
  * `/phpmyadmin/index.php` is an admin-panel probe rather than either.
  */
@@ -90,7 +90,7 @@ export const PROBE_RULES: readonly ProbeRule[] = [
 /**
  * Percent-decode and strip trailing junk, without throwing on malformed input.
  *
- * Scanners append `%20` — an encoded space — precisely to defeat extension
+ * Scanners append `%20`, an encoded space, precisely to defeat extension
  * matching: `/xp.php%20` requests the same file as `/xp.php` on a sloppy server,
  * but `.php` is no longer at the end of the string. The live dashboard had a
  * column of them (`/xp.php%20`, `/wp-header.php%20`, `/fm.php%20`) sitting in Top

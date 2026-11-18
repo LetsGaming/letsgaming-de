@@ -29,7 +29,7 @@ const GAME_IMAGES_SWEEP_SCHEDULE = "*/5 * * * *";
 const ANALYTICS_INGEST_SCHEDULE = "*/5 * * * *";
 
 const env = loadEnv();
-// `TZ` is the owner's timezone — the default zone the observed-activity charts
+// `TZ` is the owner's timezone: the default zone the observed-activity charts
 // bucket in (the aggregation takes an explicit zone, so visitors can still override
 // with `?tz`). Docker sets it; this is the dev fallback. Rarely changes for a
 // single-user site, so an env var (edit + redeploy) is the right weight.
@@ -59,7 +59,7 @@ sampler.start();
 
 // Game metadata (cover art, genre) for the playtime shelf, resolved from RAWG by
 // name. Hourly is plenty: it only queries names it hasn't cached, so it's near-zero
-// cost once caught up, and game metadata doesn't change. Off without a key — the
+// cost once caught up, and game metadata doesn't change. Off without a key: the
 // shelf just shows monograms and no genre.
 let rawgTask: ReturnType<typeof cron.schedule> | undefined;
 if (env.rawg) {
@@ -103,7 +103,7 @@ if (env.accessLog) {
     try {
       const r = ingestLog(store, file, ownHost);
       // A run that returns instead of throwing is a working pipeline, even on
-      // a quiet day with zero hits — that's the distinction the CMS dashboard
+      // a quiet day with zero hits: that's the distinction the CMS dashboard
       // needs: "nothing happened" (this) vs. "ingest is broken" (the catch
       // below), which used to look identical from the numbers alone.
       store.analytics.recordIngestSuccess(file, new Date().toISOString());
@@ -124,13 +124,13 @@ if (env.accessLog) {
     } catch (err) {
       const message = (err as Error).message;
       // Recorded before the diagnostic branching below (which has its own
-      // early returns) so every failure path — ENOENT, EACCES, or anything
-      // else — updates the watermark the CMS dashboard reads, not just the
+      // early returns) so every failure path (ENOENT, EACCES, or anything
+      // else) updates the watermark the CMS dashboard reads, not just the
       // generic warning at the bottom.
       store.analytics.recordIngestFailure(file, message);
       // ACCESS_LOG_DIR is the HOST directory; ACCESS_LOG is the path INSIDE the
       // container, under the /logs mount. Both look like paths, and setting them
-      // consistently — the intuitive move — is wrong. "ENOENT" is technically
+      // consistently, the intuitive move, is wrong. "ENOENT" is technically
       // true and useless: the file exists, just not where we were told to look.
       // If the same basename is sitting under /logs, say the actual fix.
       if (message.includes("ENOENT") && !file.startsWith(`${LOG_MOUNT}/`)) {
@@ -147,7 +147,7 @@ if (env.accessLog) {
       // EACCES: the file is there and we can't read it. The container runs as
       // `node` (see Dockerfile) and a proxy access log is typically root:adm 0640,
       // so this is the default outcome, not an edge case. "permission denied" is
-      // true and unactionable — report who we are and what the file wants, so the
+      // true and unactionable: report who we are and what the file wants, so the
       // fix is arithmetic rather than a guess.
       if (message.includes("EACCES")) {
         try {
@@ -155,7 +155,7 @@ if (env.accessLog) {
           const mode = (st.mode & 0o777).toString(8).padStart(4, "0");
           // Lead with the writer, not with chmod. This file is replaced on a
           // schedule (scripts/ingest-analytics.sh scps it in), so a one-off chmod
-          // works exactly until the next copy and then silently stops — which
+          // works exactly until the next copy and then silently stops, which
           // reads as "it worked once and broke itself", the least debuggable
           // shape a problem can have. Whoever creates the file owns its mode.
           const owner = st.uid === 0 && st.gid === 0 ? "root:root" : `${st.uid}:${st.gid}`;

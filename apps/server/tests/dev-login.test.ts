@@ -28,7 +28,7 @@ test("dev login accepts a real loopback caller", async () => {
 
 test("dev login rejects a spoofed X-Forwarded-For even with TRUST_PROXY on (guard 2, SEC-audit)", async () => {
   // Before the fix, guard 2 checked `req.ip`, which reflects X-Forwarded-For
-  // whenever TRUST_PROXY is set — a non-production, publicly reachable
+  // whenever TRUST_PROXY is set: a non-production, publicly reachable
   // deployment behind a proxy could spoof this header and mint a session.
   // `req.socket.remoteAddress` (the fix) ignores the header entirely, so this
   // must still be rejected as coming from a non-loopback peer.

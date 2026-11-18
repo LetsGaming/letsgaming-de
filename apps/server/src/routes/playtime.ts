@@ -1,6 +1,6 @@
 /**
  * Playtime API. One concern: historical game playtime. This is the drill-in
- * behind a clicked ledger column — one day's per-game breakdown, fetched on
+ * behind a clicked ledger column: one day's per-game breakdown, fetched on
  * demand rather than shipped with the module (the strip is ~365 days and nobody
  * wants 365 breakdowns they didn't ask for).
  *
@@ -28,7 +28,7 @@ export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void
       // aggregate ledger and heatmap are shape (when / how much), not identity, so
       // they stay honest totals; this breakdown names games, so it filters.
       const hidden = store.content.getPresence().hidden;
-      // Cover art + genre, matched by name — same cache the top-games list uses, so
+      // Cover art + genre, matched by name: same cache the top-games list uses, so
       // a game looks the same drilled-in as it does in the list.
       const meta = store.gameMeta.getAll();
       const allGames = store.sessions
@@ -45,7 +45,7 @@ export function registerPlaytimeRoutes(app: FastifyInstance, store: Store): void
             ...(m?.genre ? { genre: m.genre } : {}),
           };
         });
-      // Cap to the module's maxCount before sending — the client never receives
+      // Cap to the module's maxCount before sending: the client never receives
       // games past the cap. `total` (distinct games) and `minutes` (the day's real
       // total, across every game) are reported uncapped for the summary + "and N more".
       const minutes = allGames.reduce((sum, g) => sum + g.minutes, 0);

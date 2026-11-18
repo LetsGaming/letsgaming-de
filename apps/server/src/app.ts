@@ -24,7 +24,7 @@ import { registerReactionRoutes } from "./routes/reactions.js";
 import { registerReadRoutes } from "./routes/read.js";
 import { registerTrackRoutes } from "./routes/track.js";
 
-/** Build the Fastify app with all routes registered. Pure — no listening. */
+/** Build the Fastify app with all routes registered. Pure: no listening. */
 export async function buildApp(
   store: Store,
   env: ServerEnv,
@@ -50,7 +50,7 @@ export async function buildApp(
   registerErrorHandler(app);
 
   // Minimal security headers on every response. Kept hand-rolled rather than
-  // pulling in helmet — the API serves JSON + images, so the surface is small.
+  // pulling in helmet: the API serves JSON + images, so the surface is small.
   // HSTS is safe to send behind the TLS-terminating proxy (browsers ignore it
   // over plain HTTP); the site's CSP is configured in the Nuxt app.
   app.addHook("onSend", async (_req, reply) => {
@@ -76,7 +76,7 @@ export async function buildApp(
     origin: allowAll ? true : env.webOrigin.split(",").map((o) => o.trim()),
     // Must list every method the routes register. PATCH was missing since the CMS
     // was written: it's how asset metadata (alt/caption/title/slug) is edited, and
-    // it fails at *preflight* — so the browser blocks it before the server sees a
+    // it fails at *preflight*, so the browser blocks it before the server sees a
     // request, and nothing appears in the server log to explain it. It stayed
     // hidden because an empty asset library never PATCHes anything.
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],

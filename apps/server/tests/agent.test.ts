@@ -55,7 +55,7 @@ test("a browser is not a bot", () => {
 
 test("a bot is counted, but only as a bot", () => {
   const hits = lineToHits(line("/", "curl/8.7.1"));
-  // Counted — a crawler silently dropped is a gap you'd spend an afternoon on.
+  // Counted: a crawler silently dropped is a gap you'd spend an afternoon on.
   assert.deepEqual(hits, [
     { bucket: "2026-07-17T10", dimension: "bot", key: BOT_FAMILY.tool },
     { bucket: "2026-07-17T10", dimension: "exclusion", key: "ua-http-library" },
@@ -71,7 +71,7 @@ test("a bot is counted, but only as a bot", () => {
 test("nothing recorded can tell two visitors apart", () => {
   // The rule: separate *a* human from *not a* human, never one human from
   // another. Two different people on the same page produce byte-identical hits,
-  // so no join is possible even in principle — there is nothing to join on.
+  // so no join is possible even in principle: there is nothing to join on.
   const a = lineToHits(
     `203.0.113.7 - - [17/Jul/2026:10:00:00 +0000] "GET /life HTTP/1.1" 200 512 "https://news.example/x" "${CHROME}"`,
   );

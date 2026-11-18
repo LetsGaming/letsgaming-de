@@ -1,6 +1,6 @@
 /**
  * Contact relay (PROJECT.md §9). Minimal fields, relays to email, stores NOTHING
- * in the DB — no message archive means little to no personal-data processing.
+ * in the DB: no message archive means little to no personal-data processing.
  * A honeypot field and a coarse in-memory rate limit keep casual spam down.
  */
 
@@ -15,7 +15,7 @@ interface ContactBody {
   name: string;
   email: string;
   message: string;
-  /** Honeypot — real users leave this empty. */
+  /** Honeypot: real users leave this empty. */
   website?: string;
 }
 

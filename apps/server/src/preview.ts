@@ -2,14 +2,14 @@
  * Preview tokens for draft posts.
  *
  * A draft is 404 to the public and readable with a secret link. The obvious
- * implementation puts the token in the post's frontmatter — and that writes a
+ * implementation puts the token in the post's frontmatter, and that writes a
  * secret into a content file, which gets committed the moment the blog moves to
  * a repo subdir. The portability the frontmatter decision buys would leak the
  * thing that guards the drafts.
  *
  * So the token is derived, not stored: HMAC(slug, secret) with a server-side
  * secret. Nothing to leak, nothing to migrate, and rotating the env var revokes
- * every outstanding link at once. Comparison is constant-time — a preview token
+ * every outstanding link at once. Comparison is constant-time: a preview token
  * is a bearer credential, and leaking it a byte at a time via response timing is
  * a real (if unglamorous) way to lose one.
  */

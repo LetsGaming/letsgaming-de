@@ -6,28 +6,28 @@
  *
  * `openStore()` (called from `apps/server/src/index.ts` on every boot) already
  * handles the baseline: schema migrations, the launch `site_content`/`site_ia`
- * seed (`seedIfEmpty`), and — since `NODE_ENV` isn't `production` in dev — the
+ * seed (`seedIfEmpty`), and, since `NODE_ENV` isn't `production` in dev, the
  * sync worker's deterministic GitHub/Wakapi mocks (`useMocks: !isProduction` in
  * `sync/runner.ts`), which populate repos, languages, the contribution graph,
  * and coding-time. None of that needs redoing here.
  *
  * What's left is the data that only ever arrives from a live Discord/Lanyard
  * connection (`PresenceSampler`), a real visitor (the guestbook form, the
- * `/api/pulse` beacon), or a production reverse-proxy access log — all
+ * `/api/pulse` beacon), or a production reverse-proxy access log: all
  * unreachable in an offline dev session:
- *   - `presence_sessions` (game/streaming/custom activity) — the Played module,
+ *   - `presence_sessions` (game/streaming/custom activity): the Played module,
  *     its heatmap, and Wrapped's game rankings.
- *   - `music_plays` (Spotify listening) — the Listening module and Wrapped's
+ *   - `music_plays` (Spotify listening): the Listening module and Wrapped's
  *     music rankings.
- *   - `guestbook` — a mix of approved (public pagination) and pending
+ *   - `guestbook`: a mix of approved (public pagination) and pending
  *     (moderation queue) entries.
- *   - `analytics_hourly` (log-derived traffic + beacon engagement) — the CMS
+ *   - `analytics_hourly` (log-derived traffic + beacon engagement): the CMS
  *     analytics dashboard. Without this the dashboard renders, but every
  *     chart and top-list is empty, which isn't a state a real install is ever
- *     in for long — so it's as untestable here as an empty guestbook would be.
+ *     in for long, so it's as untestable here as an empty guestbook would be.
  *
- * Meant to run once against a freshly created dev database — dev-up.mjs always
- * starts from an empty file — so it doesn't check for existing rows first.
+ * Meant to run once against a freshly created dev database: dev-up.mjs always
+ * starts from an empty file, so it doesn't check for existing rows first.
  *
  * Usage: DB_PATH=<path> tsx scripts/seed-mock-data.ts
  */
@@ -63,7 +63,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
 /** Deterministic-ish PRNG (mulberry32) so re-running produces the same-shaped
- *  data — makes a seeded session reproducible for screenshots/bug reports. */
+ *  data: makes a seeded session reproducible for screenshots/bug reports. */
 function rng(seed: number): () => number {
   let a = seed;
   return () => {
@@ -115,7 +115,7 @@ function seedPlaySessions(store: Store): void {
   let sessions = 0;
   for (let d = 0; d < windowDays; d++) {
     const dayStart = Date.now() - d * DAY_MS;
-    // Most days have some activity, a few are quiet — a real playtime ledger
+    // Most days have some activity, a few are quiet: a real playtime ledger
     // never has a perfectly full strip.
     if (rand() < 0.2) continue;
 
@@ -198,7 +198,7 @@ function seedMusicPlays(store: Store): void {
 }
 
 /**
- * Seeds `analytics_hourly` for the CMS analytics dashboard — traffic
+ * Seeds `analytics_hourly` for the CMS analytics dashboard: traffic
  * (log-derived) and engagement (beacon-derived) hits, both written through
  * `recordHourly` exactly like the real ingest (`analytics/ingest.ts`) and the
  * real `/api/pulse` route do, so this exercises the same read path the
@@ -206,7 +206,7 @@ function seedMusicPlays(store: Store): void {
  *
  * Section ids for tab/exit/transition/dwell/scroll come from `LAUNCH_NAV`
  * (skipping the hidden blog area) rather than being hard-coded, so this stays
- * valid if the nav ever changes — the same set the real `/api/pulse` route
+ * valid if the nav ever changes: the same set the real `/api/pulse` route
  * validates events against.
  */
 function seedAnalytics(store: Store): void {
@@ -240,7 +240,7 @@ function seedAnalytics(store: Store): void {
 
   // 60, not 30: the dashboard's longest range is a 30-day window compared
   // against the 30 days before it, so 30 days of seed data would leave that
-  // comparison with nothing to compare against — an untestable state a real
+  // comparison with nothing to compare against: an untestable state a real
   // install only sees in its first month.
   const windowDays = 60;
   const hits: HourlyHit[] = [];
@@ -251,7 +251,7 @@ function seedAnalytics(store: Store): void {
       const bucketDate = new Date(Date.now() - d * DAY_MS - h * HOUR_MS);
       const bucket = bucketDate.toISOString().slice(0, 13);
 
-      // Quiet overnight (UTC), busier the rest of the day — enough shape for
+      // Quiet overnight (UTC), busier the rest of the day: enough shape for
       // the chart to look like a real traffic curve rather than flat noise.
       const utcHour = bucketDate.getUTCHours();
       const activity = utcHour >= 5 && utcHour <= 22 ? 1 : 0.25;

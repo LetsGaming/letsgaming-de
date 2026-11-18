@@ -16,6 +16,6 @@ test("isValidPreviewToken: fails closed", () => {
   assert.equal(isValidPreviewToken("p", secret, previewToken("p", secret)), true);
   assert.equal(isValidPreviewToken("p", secret, "wrong"), false);
   assert.equal(isValidPreviewToken("p", secret, undefined), false);
-  // No secret configured means no previews — never "every draft is public".
+  // No secret configured means no previews: never "every draft is public".
   assert.equal(isValidPreviewToken("p", undefined, previewToken("p", secret)), false);
 });

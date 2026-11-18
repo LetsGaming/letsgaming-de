@@ -132,7 +132,7 @@ test("assets: metadata patch, folders, and delete", async () => {
  *
  * It went the whole way and failed at the last step for months. The PATCH's field
  * whitelist had no `slug`, so it dropped it and answered 200 with the unchanged
- * asset — the post stayed on the slug the *upload* derived from the filename, the
+ * asset: the post stayed on the slug the *upload* derived from the filename, the
  * panel asked for the one it thought it had set, and the 404 named the reader.
  */
 test("assets: a markdown slug is patchable, and the post is served under it", async () => {
@@ -173,7 +173,7 @@ test("assets: a slug another post owns is a conflict; keeping your own is not", 
     a.inject({ method: "PATCH", url: `/api/cms/assets/${id}`, headers: auth, payload: { slug } });
 
   assert.equal((await patch(one.id, "blog/post")).statusCode, 200);
-  // Taken — refused, rather than silently suffixed onto blog/post-2 (an explicit
+  // Taken: refused, rather than silently suffixed onto blog/post-2 (an explicit
   // rename that lands somewhere else is the bug we just fixed, wearing a hat).
   assert.equal((await patch(two.id, "blog/post")).statusCode, 409);
   // Re-saving a post under the slug it already owns isn't a collision with itself.
@@ -190,7 +190,7 @@ test("assets: a slug another post owns is a conflict; keeping your own is not", 
  * The editor reads its own drafts.
  *
  * It used to read the public `/md/<slug>` route, which 404s a draft without a
- * preview token — and the CMS has never held one. Since every new post is born a
+ * preview token, and the CMS has never held one. Since every new post is born a
  * draft, the editor could only open posts that no longer needed editing.
  */
 test("assets: the CMS reads a draft's source by id, the public path still won't", async () => {
@@ -208,7 +208,7 @@ test("assets: the CMS reads a draft's source by id, the public path still won't"
   // Authed route: no session, no source.
   assert.equal((await a.inject({ method: "GET", url: `/api/cms/assets/${draft.id}/content` })).statusCode, 401);
 
-  // The public path is exactly as strict as it was — 404 bare, readable with the
+  // The public path is exactly as strict as it was: 404 bare, readable with the
   // token the CMS route just handed the editor for its Preview link.
   const url = `/api/assets/md/${encodeURIComponent(draft.slug)}`;
   assert.equal((await a.inject({ method: "GET", url })).statusCode, 404);

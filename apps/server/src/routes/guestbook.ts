@@ -1,8 +1,8 @@
 /**
  * Public guestbook submit (§ roadmap). Cookieless, pre-moderated: an entry is
  * stored as `pending` and never shown until the owner approves it in the CMS
- * queue. Mirrors the contact relay's defences — a honeypot field and a coarse
- * in-memory per-IP rate limit — and stores only name + message + a server
+ * queue. Mirrors the contact relay's defences: a honeypot field and a coarse
+ * in-memory per-IP rate limit, and stores only name + message + a server
  * timestamp (no IP, no identifier). The auto-flag score only *sorts* the queue.
  */
 
@@ -15,7 +15,7 @@ import { RATE_LIMIT, RateLimiter } from "../rate-limit.js";
 interface GuestbookBody {
   name: string;
   message: string;
-  /** Honeypot — real users leave this empty. */
+  /** Honeypot: real users leave this empty. */
   website?: string;
 }
 
@@ -54,7 +54,7 @@ export function registerGuestbookRoutes(app: FastifyInstance, store: Store): voi
       const { score, flags } = scoreEntry(name, message);
       store.guestbook.add({ name, message, createdAt: new Date().toISOString(), flags, score });
 
-      // No id returned — the entry isn't public until it's approved.
+      // No id returned: the entry isn't public until it's approved.
       return { ok: true, pending: true };
     },
   );

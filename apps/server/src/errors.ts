@@ -51,7 +51,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
       req.log.error({ err }, "unhandled error");
       return reply.code(status).send({ error: "Internal server error." });
     }
-    // Known 4xx from Fastify (e.g. body too large) — its message is safe to surface.
+    // Known 4xx from Fastify (e.g. body too large): its message is safe to surface.
     return reply.code(status).send({ error: err.message });
   });
 }

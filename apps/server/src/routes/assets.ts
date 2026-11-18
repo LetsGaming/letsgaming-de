@@ -1,5 +1,5 @@
 /**
- * Asset library — storage + serving.
+ * Asset library: storage + serving.
  *
  * Upload hashes the bytes (sha256) and de-dupes: the same file is only ever
  * stored once, under `assets/<hash>.<ext>`. Images get a small thumbnail at
@@ -36,7 +36,7 @@ import { badRequest, conflict, notFound, payloadTooLarge, unsupportedMedia } fro
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB (covers PDFs)
 const THUMB_WIDTH = 320;
-// The only widths we'll ever generate — a fixed menu so a crafted URL can't ask
+// The only widths we'll ever generate: a fixed menu so a crafted URL can't ask
 // us to render thousands of arbitrary sizes.
 const ALLOWED_WIDTHS = [320, 640, 960, 1280, 1600] as const;
 const ALLOWED_FORMATS = new Set(["webp", "avif"]);
@@ -284,7 +284,7 @@ export async function registerAssetRoutes(
     return reply.send(createReadStream(out));
   });
 
-  // ── markdown raw (public) — the /md/<slug> page renders this in the site shell ─
+  // ── markdown raw (public): the /md/<slug> page renders this in the site shell ─
   app.get<{ Params: { slug: string }; Querystring: { preview?: string } }>(
     "/api/assets/md/:slug",
     async (req, reply) => {
@@ -353,14 +353,14 @@ export async function registerAssetRoutes(
    * Read a markdown asset's source for editing.
    *
    * The editor used to fetch the public `/api/assets/md/<slug>` and its comment
-   * said drafts were "already gated there by the preview token" — which is true,
+   * said drafts were "already gated there by the preview token", which is true,
    * and the reason it couldn't open one: nothing mints that token, and the CMS
    * never sent one. Every post is born `draft: true`, so the editor 404'd on
    * precisely the posts that only exist to be edited.
    *
    * Authenticating the *public* route would have been the smaller diff and the
    * wrong one: the read path stays free of session concerns. So the editor reads
-   * from the CMS API instead, by id, the same identity it saves against — and the
+   * from the CMS API instead, by id, the same identity it saves against, and the
    * draft gate on the public path is left exactly as strict as it was.
    */
   app.get<{ Params: { id: string } }>("/api/cms/assets/:id/content", guard, async (req) => {
@@ -383,12 +383,12 @@ export async function registerAssetRoutes(
   /**
    * Rewrite a markdown asset's contents.
    *
-   * The library is content-addressed — hash the bytes, dedupe, never store the
+   * The library is content-addressed: hash the bytes, dedupe, never store the
    * same file twice. That's exactly right for media: an image is uploaded once
    * and referenced, and two identical uploads are one asset.
    *
    * A post isn't media. It's a document with a stable identity that changes every
-   * time you save, and dedupe is meaningless for it — two posts with byte-identical
+   * time you save, and dedupe is meaningless for it: two posts with byte-identical
    * text would be a coincidence, not a saving. So markdown gets an endpoint where
    * the **id** is the identity and the hash is only where the bytes live: rewrite
    * the file, recompute the hash, keep the row. Slugs, usages and links survive an
@@ -428,7 +428,7 @@ export async function registerAssetRoutes(
    *
    * The field list is `ASSET_TEXT_FIELDS` from core rather than a literal here,
    * because the literal was half of a contract whose other half lived in the CMS
-   * client — and `slug`, which the CORS config, the store's `update()` and the
+   * client, and `slug`, which the CORS config, the store's `update()` and the
    * editor all assumed was patchable, was in neither half. It was dropped on the
    * floor and answered 200, so the CMS created posts under the slug the *upload*
    * had derived from the filename, and then asked for them under the one it

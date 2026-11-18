@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm sync:game-images [--retry-misses]` — look up Discord images for games now
+ * `pnpm sync:game-images [--retry-misses]`: look up Discord images for games now
  * instead of waiting for the next scheduled sweep, and show what each game has.
  *
  * `--retry-misses` first forgets recorded "no image" answers so those games are

@@ -8,8 +8,8 @@ const isoDaysAgo = (days: number): string => new Date(Date.now() - days * 24 * 6
  * Resolve game metadata (cover art, genre) for the games on the playtime shelf.
  *
  * The shelf is `playtime("game", window)`, so those are exactly the names worth a
- * lookup. Only names not already in the cache are queried — a resolved row, even an
- * empty "RAWG had nothing" one, is skipped — so the sweep converges to zero RAWG
+ * lookup. Only names not already in the cache are queried: a resolved row, even an
+ * empty "RAWG had nothing" one, is skipped, so the sweep converges to zero RAWG
  * calls once it's caught up and stays there (metadata doesn't change). A failed
  * lookup is left for the next run; a successful one is cached whether or not RAWG
  * knew the game. Returns how many names it newly resolved.

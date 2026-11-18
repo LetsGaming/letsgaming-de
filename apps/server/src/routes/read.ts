@@ -1,6 +1,6 @@
 /**
  * The read API (PROJECT.md §4). One endpoint: the whole resolved site as
- * normalized JSON. The site reads whatever the last sync wrote — nothing is
+ * normalized JSON. The site reads whatever the last sync wrote: nothing is
  * fetched from an external API here.
  */
 

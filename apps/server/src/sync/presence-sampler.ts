@@ -65,7 +65,7 @@ export function bestApplication(
  *
  * **Not a `Source`, deliberately.** The source contract fetches a complete current
  * state that the adapter can fetch again tomorrow, snapshots it, and treats the
- * newest snapshot as the truth — `Source.ttl`'s own comment rules presence out of
+ * newest snapshot as the truth: `Source.ttl`'s own comment rules presence out of
  * that in one line: "Discord presence is worthless after a minute". A source's
  * missed sync costs nothing. A missed *sample* is playtime that never existed,
  * because nobody can hand a moment back.
@@ -80,7 +80,7 @@ export function bestApplication(
  * since S". The session's identity is `(category, name, started_at)` and the poll
  * only moves `last_seen_at`, which makes this idempotent: polling twice, or
  * replaying a poll, can't inflate a total. A faster poll doesn't buy accuracy on a
- * session it can see — only a better chance of seeing a short one at all.
+ * session it can see: only a better chance of seeing a short one at all.
  */
 export class PresenceSampler {
   private task: ScheduledTask | null = null;
@@ -111,7 +111,7 @@ export class PresenceSampler {
     } catch (err) {
       recordOutcome(this.store, SAMPLER_JOB, err instanceof Error ? err.message : String(err));
       // A poll that fails is a poll that didn't happen. There's nothing to write
-      // and nothing to correct later — an outage is a gap in the record, and the
+      // and nothing to correct later: an outage is a gap in the record, and the
       // record says so by being a floor.
       return 0;
     }
@@ -119,14 +119,14 @@ export class PresenceSampler {
     const seenAt = now.toISOString();
     let recorded = 0;
 
-    // The record axis — independent of what the live widget displays. A category
+    // The record axis: independent of what the live widget displays. A category
     // the owner turned off here is never written, even if it's shown live.
     const sample = new Set(this.store.content.getPresence().sample);
 
     const reported = data.activities ?? [];
     for (const activity of dedupeActivities(reported)) {
       const base = CATEGORY_FOR_TYPE[activity.type];
-      // Custom status is a sentence, not an activity — there's no duration in
+      // Custom status is a sentence, not an activity: there's no duration in
       // "brb". Everything else is something with a start and an end.
       if (!base || !isPresenceCategory(base) || base === "custom") continue;
       // A podcast episode is a Spotify listen with no artist; it has its own
@@ -135,7 +135,7 @@ export class PresenceSampler {
       const category: PresenceCategory = spotifyKind === "episode" ? "podcast" : base;
       if (!sample.has(category)) continue; // not on the record list
 
-      // Discord's own start when it has one. Otherwise this poll — which makes the
+      // Discord's own start when it has one. Otherwise this poll, which makes the
       // record a floor that grows from first sight, and `startedExact` (for
       // sessions) says which the chart is holding.
       const exact = typeof activity.timestamps?.start === "number";
@@ -145,8 +145,8 @@ export class PresenceSampler {
       // subjects a single `name` column can't hold. Everything else is one
       // subject and stays a session. A track with no id can't be de-duplicated
       // idempotently, so it's dropped rather than risk double-scrobbling.
-      // Persistence is local (SQLite), but a throw here — a constraint violation,
-      // an unexpected Lanyard shape — must not escape `sample()`: it's invoked as
+      // Persistence is local (SQLite), but a throw here (a constraint violation,
+      // an unexpected Lanyard shape) must not escape `sample()`: it's invoked as
       // `() => void this.sample()` from a cron callback with nothing to await or
       // catch it, so an unhandled rejection here would crash the whole process
       // (Node's default `unhandledRejections` mode is `throw`). Same shape as
@@ -191,7 +191,7 @@ export class PresenceSampler {
    * Drop sessions past the retention window. A no-op when retention is "forever".
    *
    * Reads `retentionDays` per run rather than at construction, so changing it in
-   * the CMS takes effect on the next prune without a restart — the same reason the
+   * the CMS takes effect on the next prune without a restart: the same reason the
    * sample list is read per poll.
    */
   prune(now = new Date()): number {
@@ -215,15 +215,15 @@ export class PresenceSampler {
     this.task = cron.schedule(this.schedule, () => {
       // Backstop, not the primary guard (that's the try/catch in `sample()`
       // around persistence). Nothing awaits this cron callback, so an
-      // unhandled rejection anywhere in `sample()` — including the Lanyard
-      // fetch's own try/catch missing a future edge case — would otherwise
+      // unhandled rejection anywhere in `sample()` (including the Lanyard
+      // fetch's own try/catch missing a future edge case) would otherwise
       // crash the process under Node's default `unhandledRejections: throw`.
       this.sample().catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         this.log(`[presence] sample() FAILED: ${message}`);
       });
     });
-    // Retention runs daily — the window is in days, so finer would just re-check
+    // Retention runs daily: the window is in days, so finer would just re-check
     // the same rows. Independent of the sampler cron so neither blocks the other.
     if (cron.validate(PRUNE_SCHEDULE)) {
       this.pruneTask = cron.schedule(PRUNE_SCHEDULE, () => this.prune());
@@ -244,13 +244,13 @@ export class PresenceSampler {
 const PRUNE_SCHEDULE = "17 3 * * *";
 
 /**
- * What a session for this activity is *about* — the string the chart groups by.
+ * What a session for this activity is *about*: the string the chart groups by.
  *
  * For a game, the activity's name is the subject: "Factorio" is what you played.
- * For music it isn't — Discord names every Spotify listen "Spotify", and the
+ * For music it isn't: Discord names every Spotify listen "Spotify", and the
  * thing a human wants to see is the artist, which rides in `state` (the song is
  * in `details`). So a music session is keyed on the artist, and "top artists"
- * falls straight out of the same `SUM(duration) GROUP BY name` the games use —
+ * falls straight out of the same `SUM(duration) GROUP BY name` the games use:
  * no separate query, no separate table.
  *
  * Streaming and watching keep the raw name for now: streaming's is usually the
@@ -262,7 +262,7 @@ export function sessionSubject(
   category: PresenceCategory,
   activity: LanyardActivity,
 ): string | null {
-  // Music no longer routes through here — it has its own table (music_plays),
+  // Music no longer routes through here: it has its own table (music_plays),
   // because a track is song + artist + album, not one name. Games use their name.
   // Streaming/watching keep the raw name for now (nothing reads them, and neither
   // has a clean structured subject the way Spotify's fields do).

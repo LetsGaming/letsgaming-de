@@ -1,17 +1,17 @@
 /**
- * Presence relay. One concern: the live Discord presence. The server — not the
- * browser — talks to Lanyard, applies the owner's category allow-list, and
+ * Presence relay. One concern: the live Discord presence. The server, not the
+ * browser, talks to Lanyard, applies the owner's category allow-list, and
  * returns ONLY the permitted result. The client never receives raw Lanyard data,
  * never learns the Discord id, and never sees a category the owner disabled: the
  * backend is the filtering boundary, exactly like every other source.
  *
  * Playtime and music history used to live here too; they're their own routes now
  * (`registerPlaytimeRoutes`, `registerMusicRoutes`) because they're a different
- * concern — accumulated history, not the live moment.
+ * concern: accumulated history, not the live moment.
  *
  * The allow-list is CMS-owned (read from the store per request, so toggles take
- * effect immediately). A short shared cache — keyed on the current allow-list so
- * a CMS change is never masked — means Lanyard is polled at most once per window
+ * effect immediately). A short shared cache, keyed on the current allow-list so
+ * a CMS change is never masked, means Lanyard is polled at most once per window
  * regardless of how many visitors are watching.
  *
  * When Discord isn't configured (`DISCORD_USER_ID` unset) or the owner has hidden
@@ -40,7 +40,7 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
 
   app.get("/api/presence", async () => {
     // No cast: getPresence() runs sanitizePresenceShow, so `show` is already
-    // PresenceCategory[]. The old `as` asserted something that was true anyway —
+    // PresenceCategory[]. The old `as` asserted something that was true anyway,
     // which reads like a checkpoint and is nothing of the kind.
     const settings = store.content.getPresence();
     const show = settings.show;
@@ -65,7 +65,7 @@ export function registerPresenceRoutes(app: FastifyInstance, env: ServerEnv, sto
       cache = { at: Date.now(), key, view };
       return view;
     } catch {
-      // Network hiccup — serve the last good filtered snapshot, or offline.
+      // Network hiccup: serve the last good filtered snapshot, or offline.
       return cache?.view ?? OFFLINE;
     }
   });

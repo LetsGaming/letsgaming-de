@@ -5,8 +5,8 @@ import { sessionSubject } from "../src/sync/presence-sampler.js";
 import type { LanyardActivity } from "@lg/core";
 
 // A Spotify listen as Lanyard actually sends it: type 2, name is always
-// "Spotify", the song is in `details`, and the artist — the thing worth
-// charting — is in `state`.
+// "Spotify", the song is in `details`, and the artist, the thing worth
+// charting, is in `state`.
 const spotify = (
   song: string,
   artist: string,
@@ -126,7 +126,7 @@ test("enabling music sampling records the full track to music_plays", async () =
   assert.deepEqual(artists, ["Charli xcx", "Icona Pop"]);
   const albums = store.music.topAlbums(since, 10);
   assert.deepEqual(albums.map((a) => a.name), ["THIS IS... ICONA POP"]);
-  // NOT in the session table — music has its own home now
+  // NOT in the session table: music has its own home now
   assert.deepEqual(store.sessions.playtime("music", since), []);
 });
 

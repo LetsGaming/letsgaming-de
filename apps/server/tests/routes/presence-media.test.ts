@@ -203,7 +203,7 @@ test("a game with no handed-in image resolves its RAWG cover before initials", a
 
 	// The resolved cover should be fetched from the allow-listed rawg host. (The
 	// fake bytes aren't a decodable image, so the downscale step falls back to the
-	// original bytes — which is exactly the resilience we want to exercise.)
+	// original bytes, which is exactly the resilience we want to exercise.)
 	const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 	let requested = "";
 	globalThis.fetch = (async (input: unknown) => {
