@@ -1,21 +1,21 @@
 ---
 name: letsgaming.de
-description: A self-updating personal homepage where one violet accent means "happening right now."
+description: A self-updating personal homepage built as a violet room, lit by one bright violet signal that means "happening right now."
 colors:
-  shelf-violet: "#a487fa"
-  shelf-violet-solid: "#7a4fd9"
-  live-ink: "#baa9fd"
+  shelf-violet: "#c08eff"
+  shelf-violet-solid: "#833ac9"
+  live-ink: "#d2b3fe"
   alarm-coral: "#f9786a"
-  ink: "#e8e7ee"
-  ink-strong: "#fafafd"
-  muted: "#a8a5b6"
+  ink: "#ebe5f4"
+  ink-strong: "#fbf9ff"
+  muted: "#b8a9ce"
   delta-up: "#5ed8a9"
-  void-base: "#0e0e12"
-  surface-one: "#17161c"
-  surface-two: "#211f27"
-  surface-three: "#2a2931"
-  hairline: "#26252c"
-  control-line: "#75727f"
+  void-base: "#130820"
+  surface-one: "#1c102b"
+  surface-two: "#271a37"
+  surface-three: "#342646"
+  hairline: "#3b2e4e"
+  control-line: "#7d6a99"
 typography:
   display:
     fontFamily: "Archivo, system-ui, sans-serif"
@@ -105,36 +105,45 @@ Status: this describes the target of the 2026-11-18 redesign. `docs/plans/` trac
 
 ## Overview
 
-**Creative north star: "The Live Signal"**
+**Creative north star: "The Lit Room"**
 
-Violet means one thing on this site: something is happening right now. Everything else is neutral, or it is color that real data brings (language colors, game art, album art). The page gets more colorful in proportion to how much real data it holds.
+The site is a dark room lit by a violet LED shelf. The room is purple: an aubergine ground, violet-tinted lines, lavender text, so nothing on the page is gray. The LED is the brightest violet on the page and it means one thing: something is happening right now. Imported color (language colors, game art, album art) is the only other hue, and it lands harder against a violet ground than against gray.
 
-The feel is quiet, plain, and personal, with precise numbers underneath. It is one person's homepage that updates itself. It is not a marketing surface.
+Purple is the owner's favorite color and an explicit call for this site: the scheme is built around it, not sprinkled on a neutral base. It is built deliberately so it does not read as a template. The rules that make it deliberate are under "Named rules" below.
 
-Keywords: one accent with three jobs; neutral surfaces; imported color; freshness is a state; motion with a reason.
+The feel is warm, plain and personal, with precise numbers underneath. It is one person's homepage that updates itself. It is not a marketing surface.
+
+Keywords: one violet world in three tiers; the brightest violet means now; flat tonal steps; imported color; freshness is a state; motion with a reason.
 
 ## Colors
 
-The accent hue is fixed at OKLCH hue 293. Surfaces and text use the same hue at chroma 0.004 to 0.025, so they read as gray with a faint cast, not as purple. All ratios use the WCAG 2.x formula.
+One hue, OKLCH 303 (amethyst, a step toward magenta from the template-default indigo-violet at 293). Everything is tinted with it, in three tiers of intensity:
+
+- **The room:** surfaces and lines, chroma about 0.05 (dark) or 0.02 to 0.03 (light). Flat steps, no gradient.
+- **Data and structure:** the heat ramp and muted text, chroma 0.045 to 0.14. Mid violets.
+- **The signal:** `--live*`, chroma 0.19 to 0.21. The LED. Means now.
+
+Ratios use the WCAG 2.x formula and are checked by `pnpm --filter web audit:a11y` on the rendered site in both themes.
 
 | Token | Dark | Light | Job and contrast |
 |---|---|---|---|
-| `--surf-0` | `#0e0e12` | `#f7f6f9` | Page ground |
-| `--surf-1` | `#17161c` | `#fdfdff` | Raised: cards, panels |
-| `--surf-2` | `#211f27` | `#ffffff` | Hover, selected, inputs |
-| `--surf-3` | `#2a2931` | `#f0eff4` | The one anchor surface per page |
-| `--ink` | `#e8e7ee` | `#24222d` | Body text. 11.7:1 minimum (dark), 13.7:1 (light) |
-| `--ink-strong` | `#fafafd` | `#12101a` | Headings, wordmark |
-| `--muted` | `#a8a5b6` | `#5e5b6d` | Secondary text. 5.97:1 on dark surf-3; 5.75:1 on light surf-3 |
-| `--live` | `#a487fa` | `#6738c1` | Accent for dots, bars, and heat cells. Non-text. 5.09:1 minimum on dark |
-| `--live-ink` | `#baa9fd` | `#5f2db7` | Accent as text and focus ring. 6.97:1 minimum (dark), 7.21:1 (light) |
-| `--live-solid` | `#7a4fd9` | `#6738c1` | Primary button fill. White text on it: 5.32:1 (dark), 7.21:1 (light) |
-| `--danger` | `#f9786a` | `#af2b25` | Errors only. 5.43:1 minimum (dark), 5.75:1 (light) |
-| `--delta-up` | `#5ed8a9` | `#036f4f` | Positive change. 8.13:1 (dark), 5.41:1 (light) |
-| `--line-1` | `#26252c` | `#e1e0e6` | Decorative divider. Not a control boundary |
-| `--line-control` | `#75727f` | `#868491` | Input and control borders. 3.06:1 minimum (dark), 3.41:1 (light) |
-| `--heat-0..4` | `#211f27 #383740 #504e59 #696774 #807e8d` | `#e8e7ec #ceccd5 #b4b2be #9896a4 #807e8d` | Neutral heat scale (never the accent). Adjacent steps at least 1.29:1; top step on a card 4.53:1 (dark), 3.91:1 (light) |
-| `--heat-today` | `--live` | `--live` | The one violet cell: today, when it has activity |
+| `--surf-0` | `#130820` | `#f5effe` | Page ground |
+| `--surf-1` | `#1c102b` | `#fcfaff` | Raised: cards, panels |
+| `--surf-2` | `#271a37` | `#fefdff` | Hover, selected, inputs |
+| `--surf-3` | `#342646` | `#ede5fb` | The one anchor surface per page |
+| `--ink` | `#ebe5f4` | `#2c1e3e` | Body text. At least 4.5:1 on every surface |
+| `--ink-strong` | `#fbf9ff` | `#1b0f28` | Headings, wordmark |
+| `--muted` | `#b8a9ce` | `#63507e` | Secondary text. 6.35:1 minimum (dark), 5.77:1 (light) |
+| `--live` | `#c08eff` | `#7d33c2` | Signal for dots, bars and the today cell. Non-text |
+| `--live-ink` | `#d2b3fe` | `#6b21aa` | Signal as text and the focus ring. 7.69:1 minimum (dark), 7.1:1 (light) |
+| `--live-solid` | `#833ac9` | `#7d33c2` | Primary button fill. White text on it: 6.15:1 (dark), 6.72:1 (light) |
+| `--danger` | `#f9786a` | `#af2b25` | Errors only |
+| `--delta-up` | `#5ed8a9` | `#036f4f` | Positive change |
+| `--line-1` | `#3b2e4e` | `#ded6ec` | Decorative divider. Not a control boundary |
+| `--line-2` | `#514167` | `#c3b7d6` | Emphasized divider, card hover edge |
+| `--line-control` | `#7d6a99` | `#8975a5` | Input and control borders, at least 3:1 |
+| `--heat-0..4` | `#261c33 #402d58 #5b407c #7854a3 #946cc7` | `#e9e3f2 #d1c3e6 #b9a0dd #a27ed1 #8c62c0` | Violet data ramp. Adjacent steps at least 1.32:1; top step on a card 4.51:1 (dark), 4.38:1 (light) |
+| `--heat-today` | `--live` | `--live` | The brightest cell: today, when it has activity (1.64:1 against the top step in dark, 1.48:1 in light, plus the hue and chroma jump) |
 
 Theme-independent and imported (never retuned): Spotify, YouTube, Twitch and Discord brand colors; GitHub language colors; game and album art. CMS chart colors (`--stack-*`) stay inside the CMS.
 
@@ -142,12 +151,20 @@ There is no "faint" text token. Every candidate failed 4.5:1 on raised surfaces.
 
 ### Named rules
 
-**Purple means now.** The accent has three jobs: live or just-happened data, the one primary action per view, and the focus ring. It is not for the active tab, a selected setting, a hover, or a chart series. Selected states use ink against muted.
+**The room is violet.** Surfaces, lines, ink and the data ramp all carry the hue. No gray ground, no gray text. A new neutral is a violet at low chroma, never a true gray.
 
-**Imported color.** Violet is the only color this palette invents. Everything else comes from data. Invented per-topic tints (the old hobby tiles) are out.
+**The signal means now.** The brightest violet (`--live`, `--live-ink`, `--live-solid`) has three jobs: live or just-happened data (including the today cell), the one primary action per view, and the focus ring. The room being purple does not weaken this: it is why the signal has to be the brightest, most saturated step, so "now" still stands out. `lint:design` holds the signal tokens to a per-file allowance.
+
+**Deliberate, not default.** These are what keep a purple scheme from reading as a template:
+- The hue is 303, not the 293 that Tailwind's violet and most generated pages sit on.
+- Flat tonal steps only: no gradient, no glow except the live dot, no glass or blur.
+- Chroma is spent by tier (room about 0.05, data 0.045 to 0.14, signal 0.19), not applied evenly to everything.
+- Depth comes from surface steps and hard offsets (the keycap edge, a deeper violet), not from soft shadows or glows.
+- Purple on every card edge, icon tile or heading is not a design; the room carries it, and the signal appears sparingly.
+
+**Imported color.** Violet is the only color this palette invents. Everything else comes from data (language colors, game and album art). Invented per-topic tints (the old hobby tiles) are out.
 
 **Control boundaries get 3:1.** A control whose border is its only edge uses `--line-control`, never `--line-1`.
-
 ## Typography
 
 Three faces, self-hosted through `@fontsource`. Availability of the Atkinson packages is checked in plan Step 2 before any change; the plan stops there if a package or tabular figures are missing.
@@ -283,7 +300,7 @@ A layout family appears at most once per page. At most two `ModuleCard` per page
 
 ### Do
 
-- Use the accent for live data, the one primary action per view, and the focus ring.
+- Use the signal violet (`--live*`) for live data, the one primary action per view, and the focus ring. Build everything else from the room and data violets.
 - Express elevation as a surface step on dark, and keep shadows for floating things on light.
 - Render a synced module's real freshness state.
 - Source color from real data wherever the page has real data.
@@ -291,7 +308,7 @@ A layout family appears at most once per page. At most two `ModuleCard` per page
 
 ### Don't
 
-- Don't use the accent for a selected tab, an active toggle, or a chart series.
+- Don't use the signal violet for a selected tab, an active toggle, or a data series. The heat ramp is the data violet; the signal is only for now.
 - Don't fake depth with a glow or a gradient wash.
 - Don't add uppercase tracked labels, middle-dot meta strings, or `→` on link text.
 - Don't give two sections on one page the same layout family.

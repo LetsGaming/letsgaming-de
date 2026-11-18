@@ -2,12 +2,12 @@
  * The site-wide description.
  *
  * One string, two consumers: `nuxt.config`'s default `<meta name="description">`
- * (which covers pages that set no SEO of their own — errors, the CMS) and
+ * (which covers pages that set no SEO of their own, errors, the CMS) and
  * `areaMeta`, which hands it to every dashboard area.
  *
  * It lives here rather than inline in the config because the two used to
  * disagree: the config had this hand-written sentence while the areas published
- * `site.meta.role` — the two words "web developer" — as the description of all
+ * `site.meta.role`, the two words "web developer", as the description of all
  * four pages. Overriding a good default with a worse one is the kind of thing
  * only a diff shows.
  *
@@ -16,7 +16,7 @@
  * content model. Until then, one accurate sentence beats four useless ones.
  */
 /** The social preview card. `?v=` busts the caches platforms keep; raise it when `gen:og` changes the picture. */
-export const OG_IMAGE_PATH = "/og-image.png?v=2";
+export const OG_IMAGE_PATH = "/og-image.png?v=3";
 
 export const SITE_DESCRIPTION =
   "Personal homepage of Domenic (@LetsGaming), full-time web developer in Germany. " +

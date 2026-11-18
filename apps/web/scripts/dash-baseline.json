@@ -83,7 +83,6 @@
   "apps/web/src/lib/module-api.ts": 2,
   "apps/web/src/lib/openapi.ts": 3,
   "apps/web/src/lib/presence-api.ts": 1,
-  "apps/web/src/lib/site-meta.ts": 2,
   "apps/web/src/lib/text.ts": 2,
   "apps/web/src/lib/track.ts": 6,
   "apps/web/src/lib/url.ts": 3,

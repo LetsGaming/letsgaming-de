@@ -5,8 +5,8 @@
  *   pnpm --filter=@lg/web audit:a11y http://localhost:PORT
  *   node scripts/dev-down.mjs --id audit
  *
- * Loads /, /code, /life and /about in English and German at 1280px (mouse) and
- * 390px (touch), and reports what a person with a keyboard, a screen reader or a
+ * Loads /, /code, /life and /about in English and German, light and dark, at 1280px
+ * (mouse) and 390px (touch), and reports what a person with a keyboard, a screen reader or a
  * thumb would hit: touch targets, contrast, horizontal overflow, headings and the
  * first Tab stops. Exits 1 when anything fails. Not part of `pnpm build`: it needs
  * a running site and a browser.
@@ -28,6 +28,7 @@ if (!base) {
 
 const ROUTES = ["/", "/code", "/life", "/about"];
 const LANGS = ["en", "de"];
+const SCHEMES = ["light", "dark"] as const;
 const MODES = [
   { name: "desktop", width: 1280, height: 900, touch: false, min: 24 },
   { name: "touch", width: 390, height: 844, touch: true, min: 44 },
@@ -106,20 +107,24 @@ const exempt: string[] = [];
 
 try {
   for (const mode of MODES) {
+   for (const scheme of SCHEMES) {
     const context = await browser.newContext({
       viewport: { width: mode.width, height: mode.height },
       hasTouch: mode.touch,
       isMobile: mode.touch,
       deviceScaleFactor: 1,
+      colorScheme: scheme,
     });
     // tsx wraps functions in a `__name` helper that the page does not have.
     await context.addInitScript("window.__name = (fn) => fn;");
     for (const lang of LANGS) {
       for (const route of ROUTES) {
-        const where = `${mode.name} ${lang} ${route}`;
+        const where = `${mode.name} ${scheme} ${lang} ${route}`;
         const page = await context.newPage();
         await page.goto(`${base}${route}?lang=${lang}`, { waitUntil: "networkidle" });
         await page.evaluate(() => document.fonts.ready);
+        const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+        if (theme && theme !== scheme) findings.push({ where, kind: "theme", detail: `asked for ${scheme}, got ${theme}` });
         const m = await page.evaluate(measure, mode.min);
         for (const d of m.small) findings.push({ where, kind: `target under ${mode.min}px`, detail: d });
         for (const d of m.inline) exempt.push(`${where}  ${d}`);
@@ -146,6 +151,7 @@ try {
       }
     }
     await context.close();
+   }
   }
 } finally {
   await browser.close();

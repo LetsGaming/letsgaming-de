@@ -1,6 +1,6 @@
 /* Design tokens. See docs/concepts/design-system.md for the rules these encode.
 
-   Dark is the default (:root); light overrides live under [data-theme="light"].
+   Dark is the base (:root); light overrides live under [data-theme="light"].
    The CMS root carries .cms, which remaps radius and type size and
    nothing else — one vocabulary, two ranges (site comfortable, CMS compact).
 
@@ -14,18 +14,24 @@
 
 :root {
   /* ── Ink ─────────────────────────────────────────────────────────────── */
-  --ink: #e8e7ee;
-  --ink-strong: #fafafd;
-  --muted: #a8a5b6;
+  --ink: #ebe5f4;
+  --ink-strong: #fbf9ff;
+  --muted: #b8a9ce;
 
-  /* ── The accent. OKLCH hue 293. Surfaces and ink share the hue at chroma
-     0.004 to 0.025, so they read as gray with a cast. --live is for dots, bars
-     and heat cells (non-text); text and the focus ring use --live-ink. */
-  --live: #a487fa;
+  /* ── The scheme is one violet, OKLCH hue 303 (amethyst, a step toward magenta from
+     the template-default indigo-violet at 293). Surfaces, lines, ink and the data
+     ramp are all tinted with it, so the whole page is purple and the neutrals are
+     not gray. Three tiers, in order of intensity:
+       ground and panels  (--surf-*, --line-*)   the room, flat steps, no gradient
+       data and structure (--heat-*, --muted)    mid violets
+       signal             (--live*)              the LED: the brightest violet, means now
+     --live is for dots, bars and the today cell (non-text); text and the focus ring
+     use --live-ink. */
+  --live: #c08eff;
 
   /* The accent under white text: 5.32:1. One consumer: `.btn-primary`'s fill.
      Same rule as --glow-live: grep before adding a second. */
-  --live-solid: #7a4fd9;
+  --live-solid: #833ac9;
   /* The solid edge under a primary button, same keycap as the ghost button's. */
   --live-edge: color-mix(in srgb, var(--live-solid) 62%, #000);
 
@@ -40,11 +46,11 @@
      carries its own 4.5:1 pair instead of reusing the fill colours. */
   --delta-up: #5ed8a9;
   --delta-down: #f9786a;
-  --live-ink: #baa9fd;
+  --live-ink: #d2b3fe;
   --on-live: #fff;
 
   /* One consumer: the live dot. Grep before adding a second. */
-  --glow-live: 0 0 9px 1px rgba(164, 135, 250, 0.6);
+  --glow-live: 0 0 9px 1px rgba(192, 142, 255, 0.6);
 
   /* The solid offset under a ghost button, the chunky edge it "presses" into
      on :active. Public-only (`.btn-ghost` in app.css, used by the hero and
@@ -52,7 +58,7 @@
      `.cms` could reach it. Since a `var()` that resolves to nothing invalidates
      the whole declaration, both shadow layers were dropped and the buttons had
      no edge to press into at all. */
-  --ghost-shadow: #09090c;
+  --ghost-shadow: #080211;
 
   /* ── Third-party brand marks. Not part of the palette and not themeable, a
      visitor reads "Spotify green" as the source, so these are the vendors'
@@ -69,17 +75,17 @@
      has nothing darker to fall onto, which is why the old --sh-* faked lift
      with a purple bloom. Step the surface, strengthen the line, no shadow.
      Hover = +1 level, so these double as interaction states. */
-  --surf-0: #0e0e12;
-  --surf-1: #17161c;
-  --surf-2: #211f27;
-  --surf-3: #2a2931;
+  --surf-0: #130820;
+  --surf-1: #1c102b;
+  --surf-2: #271a37;
+  --surf-3: #342646;
 
   /* --line-1 is a decorative divider (1.27:1). A control whose border is its
      only edge uses --line-control (3:1 or better, WCAG 1.4.11). --line-2 is the
      emphasized divider, e.g. a card's hover edge. All three are neutral. */
-  --line-1: #26252c;
-  --line-2: #3a3842;
-  --line-control: #75727f;
+  --line-1: #3b2e4e;
+  --line-2: #514167;
+  --line-control: #7d6a99;
 
   /* Dark gets its depth from --surf-*; light gets it from these. Same tokens,
      so a component never branches on theme. */
@@ -89,11 +95,11 @@
   /* ── Contribution heat. Neutral: the heatmap is the accumulated tier and is
      meant to be quiet. Only today is purple, which also makes "did he commit
      today" readable at a glance — an all-violet grid can't do that. */
-  --heat-0: #211f27;
-  --heat-1: #383740;
-  --heat-2: #504e59;
-  --heat-3: #696774;
-  --heat-4: #807e8d;
+  --heat-0: #261c33;
+  --heat-1: #402d58;
+  --heat-2: #5b407c;
+  --heat-3: #7854a3;
+  --heat-4: #946cc7;
   --heat-today: var(--live);
 
   --track: var(--surf-2);
@@ -196,13 +202,13 @@
   --shot-light-display: block;
   --shot-dark-display: none;
 
-  --ink: #24222d;
-  --ink-strong: #12101a;
-  --muted: #5e5b6d;
+  --ink: #2c1e3e;
+  --ink-strong: #1b0f28;
+  --muted: #63507e;
 
-  --live: #6738c1; /* white on it: 7.21:1 */
+  --live: #7d33c2; /* white on it: 7.21:1 */
   --live-solid: var(--live);
-  --live-ink: #5f2db7; /* text and focus ring: 7.21:1 minimum on surfaces */
+  --live-ink: #6b21aa; /* text and focus ring: 7.21:1 minimum on surfaces */
 
   /* Error, re-derived rather than inherited. The dark values (#ff6b5e / #ff8f85)
      were written to glow on a near-black ground; against --surf-0 here they land
@@ -218,29 +224,29 @@
   --delta-up: #036f4f;
   --delta-down: #9c1f18;
 
-  --glow-live: 0 0 9px 1px rgba(103, 56, 193, 0.4);
+  --glow-live: 0 0 9px 1px rgba(125, 51, 194, 0.4);
 
   /* Light inverts the elevation model: a light page has room to cast a shadow,
      so lift is a shadow again and the surfaces stay close together. */
-  --surf-0: #f7f6f9;
-  --surf-1: #fdfdff;
-  --surf-2: #ffffff;
-  --surf-3: #f0eff4;
+  --surf-0: #f5effe;
+  --surf-1: #fcfaff;
+  --surf-2: #fefdff;
+  --surf-3: #ede5fb;
 
-  --line-1: #e1e0e6;
-  --line-2: #c9c8d1;
-  --line-control: #868491;
+  --line-1: #ded6ec;
+  --line-2: #c3b7d6;
+  --line-control: #8975a5;
 
-  --ghost-shadow: rgba(18, 16, 26, 0.22);
+  --ghost-shadow: #a497b9;
   /* Cards rest on --line-1 alone. Only things that float cast a shadow. */
   --sh-card: none;
-  --sh-anchor: 0 2px 6px rgba(18, 16, 26, 0.08), 0 12px 32px rgba(18, 16, 26, 0.1);
+  --sh-anchor: 0 2px 6px rgba(43, 20, 72, 0.1), 0 12px 32px rgba(43, 20, 72, 0.12);
 
-  --heat-0: #e8e7ec;
-  --heat-1: #ceccd5;
-  --heat-2: #b4b2be;
-  --heat-3: #9896a4;
-  --heat-4: #807e8d;
+  --heat-0: #e9e3f2;
+  --heat-1: #d1c3e6;
+  --heat-2: #b9a0dd;
+  --heat-3: #a27ed1;
+  --heat-4: #8c62c0;
 
   --track: var(--line-1);
 
