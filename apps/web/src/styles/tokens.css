@@ -145,9 +145,7 @@
   --fs-h1: clamp(2.25rem, 1.5rem + 3vw, 3.25rem);
   --fs-display: clamp(2.5rem, 1.6rem + 4vw, 4.25rem);
   --fs-figure: clamp(2rem, 1.4rem + 2.5vw, 3rem);
-  /* Aliases, removed once every consumer uses the names above. */
-  --fs-section: var(--fs-h2);
-  --fs-micro: var(--fs-meta);
+  /* The CMS keeps its own --fs-micro (11px) in the .cms block below. */
 
   /* ── Motion. Communicates state change, directs attention, or expresses
      character — or it doesn't ship. --dur-fast is hover (this is interactive),
@@ -186,10 +184,6 @@
   --sp-20: 20px;
   --sp-22: 22px;
   --sp-24: 24px;
-  /* Vertical rhythm between modules — a layout gap, coarser than the 2px content
-     scale above. Was a raw `margin-top: 52px` on `.sec`; owned by ModuleSection now
-     (which is why Listening/Time-played finally get the same gap as their siblings). */
-  --sp-section: 52px;
 
   /* GitHub's generated social card is a fixed white image, and the server serves a
      dark version of it. Which of the two is displayed follows the theme. */

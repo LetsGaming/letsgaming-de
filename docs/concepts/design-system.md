@@ -1,5 +1,12 @@
 # Design system
 
+Values (colours, type scale, spacing, radii, motion, breakpoints) live in
+`apps/web/DESIGN.md`, which is the source of truth. This document explains the
+rules behind them. Hex values quoted below are from an earlier version of the
+system and are historical; where they differ, `DESIGN.md` wins. The 2026-11-18
+redesign is recorded in `docs/research/2026-11-18-redesign-research.md` and
+`apps/web/DESIGN-AUDIT.md`.
+
 The look was previously "locked from the prototype" — ported faithfully, never
 re-decided. This is the re-decision. It exists because the old system had one
 elevation for sixteen surfaces, an accent doing nine jobs, and three typefaces

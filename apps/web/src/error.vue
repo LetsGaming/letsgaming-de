@@ -55,7 +55,7 @@ function goHome() {
   font-size: clamp(38px, 7.5vw, 66px);
   line-height: 1.03;
   margin: 0;
-  color: var(--live-ink);
+  color: var(--muted);
 }
 h1 {
   font-family: var(--f-d);

@@ -74,7 +74,7 @@ export interface Project {
 }
 
 /**
- * Visual tone for a hobby tile — each maps to a `--tile-<tone>` gradient.
+ * Visual tone for a hobby. Kept in the data; the current design does not use it.
  *
  * The list is the runtime value and the type derives from it, because three
  * other places need the *list*: the CMS dropdown, the write schema's enum, and

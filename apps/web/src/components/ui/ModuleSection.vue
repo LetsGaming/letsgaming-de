@@ -65,7 +65,7 @@ withDefaults(defineProps<Props>(), { variant: "plain", gap: "related" });
 .module-section__title {
   font-family: var(--f-d);
   font-weight: 600;
-  font-size: var(--fs-section);
+  font-size: var(--fs-h2);
   letter-spacing: -0.01em;
   color: var(--ink-strong);
 }

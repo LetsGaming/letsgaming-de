@@ -559,3 +559,5 @@ committed) using the WCAG 2.x formula on the final token values.
   - The gallery had no lightbox or link behaviour, so nothing was lost.
   - Wrapped shows three of four lists in the dev data (no genre data), so the grid has one empty cell. The layout handles it.
   - The range pickers on Time played and Listening look tight at 390px. Not changed.
+- Step 10 done. Removed `--fs-section`, `--fs-micro` (CMS keeps its own), `--sp-section`; public files use `--fs-meta` and `--fs-h2`. Kept: `--sp-*` (still used by components and the CMS), `--r-anchor/card/control/chip` aliases (CMS compat block), `.dash`/`.grid`/`.card` globals (not proven unused, so not deleted). `docs/concepts/design-system.md` now points to `apps/web/DESIGN.md` for values. Checklist results and open owner items are in `apps/web/DESIGN-AUDIT.md`.
+- Plan complete. Gates green on the final tree: `lint:nav`, `lint:tokens`, `typecheck`, `test`, `build`.

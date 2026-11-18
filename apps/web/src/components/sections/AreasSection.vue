@@ -42,7 +42,6 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
         <span v-if="a.description" class="area__desc">{{ a.description }}</span>
         <span class="area__meta">
           {{ countLabel(a.moduleCount) }}
-          <span class="area__arrow" aria-hidden="true">→</span>
         </span>
       </a>
     </nav>
@@ -82,7 +81,7 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
 .area__ic {
   width: 22px;
   height: 22px;
-  color: var(--live-ink);
+  color: var(--ink);
   margin-bottom: var(--sp-2);
 }
 .area__ic :deep(svg) {
@@ -92,7 +91,7 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
 .area__label {
   font-family: var(--f-d);
   font-weight: 600;
-  font-size: 20px;
+  font-size: var(--fs-h3);
   color: var(--ink-strong);
 }
 .area__desc {
@@ -112,17 +111,8 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
   margin-top: auto;
   padding-top: var(--sp-12);
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
-}
-.area__arrow {
-  margin-left: auto;
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.area:hover .area__arrow,
-.area:focus-visible .area__arrow {
-  transform: translateX(3px);
-  color: var(--live-ink);
 }
 
 /* Two up on a phone, and the first-child exception no longer matches the row

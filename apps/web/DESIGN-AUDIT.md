@@ -11,7 +11,7 @@ Status column: `open` until the step in `docs/plans/` resolves it. At the end of
 | D3 | open | `tokens.css`, `cms.css:2068`, `error.vue:60`, `BaseForm.vue`, `SegmentedControl.vue` | Contrast fails. Dark `--live` as text: 4.10 / 3.74 / 3.30 on surf-1/2/3. `--muted` on surf-3: 4.44. `--line-1` as an input border: 1.17 (needs 3:1). White on `--live-solid`: 4.71 (passes, thin margin). |
 | D4 | resolved (Step 2) | `nuxt.config.ts:104-116`, `tokens.css:140-142` | Inter (weak tell) and Space Mono used as a "technical" costume. |
 | D5 | resolved (Step 2) | `TeasersSection.vue:60`, `app.css:369`, `PresenceWidget.vue:369`, `SettingsModal.vue` | Uppercase tracked mono labels: template-chrome tell. |
-| D6 | partial (Step 2) | `tokens.css:144-155`, `StatTile.vue:92,99`, many | Body 15px (under the 16px floor). Meta 11 and 12px. `--fs-display` and `--fs-lede` unused. Raw sizes 9, 10, 11.5, 13, 14, 17, 18, 20, 24, 34px off the scale. |
+| D6 | resolved (Steps 2 to 7, 10) | `tokens.css:144-155`, `StatTile.vue:92,99`, many | Body 15px (under the 16px floor). Meta 11 and 12px. `--fs-display` and `--fs-lede` unused. Raw sizes 9, 10, 11.5, 13, 14, 17, 18, 20, 24, 34px off the scale. |
 | D7 | resolved (Step 3; round shapes, 2px bars and the settings switch track stay) | `app.css:176`, tabs, toggle, brand mark, `HeroSection.vue:241`, gallery, modal | Radius drift: raw 9/11/12/15/16/24px beside the 8/10/14/18 tokens. |
 | D8 | resolved (Step 5) | `HeroSection.vue`, `seed.ts:45-47` | Hero: one accented word with a tilted underline bar (named tell); em dash in the H1; 8 stacked elements (avatar, H1, lede, status, presence line, synced, two buttons, "Wave" pill). |
 | D9 | resolved (Step 3) | `HeroSection.vue:165,199`, `app.css:645` | `--glow-live` has three call sites; the rule says one. The status line pulses even when nothing is live. |
@@ -49,3 +49,40 @@ Dark theme, text on surfaces (surf-0 / 1 / 2 / 3):
 Other pairs: white on `--live-solid` `#8351f5` 4.71; white on `--live` 4.23; `--line-1` on surf-0 1.17; `--line-2` on surf-1 1.46. Light theme text pairs all pass (lowest: `--muted` 4.79 on surf-0).
 
 Bold values fail WCAG AA for normal text (4.5:1). The border values fail WCAG 1.4.11 where the border is the only boundary of a control (3:1).
+
+## Finished-redesign checklist (run 2026-11-18, final tree)
+
+Method: greps over public source (CMS excluded), a contrast script that reads the real values in `tokens.css`, `lint:tokens`, and browser checks on a dev session at 1280px and 390px, EN and DE. "Judgment" means a person has to decide; the numbers are given where they exist.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Accent only for live data, the one primary button, the focus ring | Pass after fixes. Consumers now: hero live dot, fresh-sync dot, presence game colour, primary button, focus rings (global and HeatGrid), `CardHeader` `is-live` (variant with no users). Fixed in Step 10: error code, docs API version badge, `AreasSection` icon. |
+| 2 | No surface chroma above 0.02 | Pass. Max 0.015 (dark `--surf-2`, `--surf-3`). |
+| 3 | Contrast | Pass. All text pairs at least 4.5:1 on all four surfaces in both themes, accent non-text at least 3:1, `--line-control` at least 3:1, white on `--live-solid` 5.32 (dark) and 7.21 (light). |
+| 4 | No uppercase or letter-spaced labels | Pass after fixing `api.vue` `.api-verb`. Uppercase remains only in JS for one-letter monograms. |
+| 5 | No trailing arrows, no em or en dashes in rendered pages | Partial. Done: catalog, seed, titles, headings, fallback fixture, `AreasSection`. Left: `datenschutz.vue` (German legal text: one " — " and one "→" in a menu path) because the wording is legal text for the owner to review. |
+| 6 | Tokens for radii and sizes, no radius above 10px | Pass. `lint:tokens` passes; the only larger radius is the settings switch track (documented). |
+| 7 | No border plus shadow at rest | Pass. Remaining shadows: keycap edge, live dot glow, modal and docs drawer (floating), one inset selection ring. |
+| 8 | One animated pulse, only when live | Deviation. Two pulse dots (hero live dot, fresh-sync dot) plus the six presence widget activity animations. All render only for live data and all stop under reduced motion. |
+| 9 | No scroll entrance animation | Pass. Only analytics uses `IntersectionObserver`. |
+| 10 | No `backdrop-filter` outside the docs top bar | Pass. |
+| 11 | Body 17px, prose at most 66ch | Pass (measured 17px; `.prose` is 66ch). |
+| 12 | No layout family repeats, at most two `ModuleCard` per page, no eyebrow labels | Pass by count: Home 0, Code 1, Life 1, About 0 cards. Family variety is judgment, reviewed on screenshots of Home, Code, Life and About. |
+| 13 | Hero at most four text elements; H1 two lines at 1280px | Pass. Hero has title, lede, status line, button row. H1 is two lines at 1280px in EN and DE (DE wraps to three at 390px). |
+| 14 | Squint test | Judgment. Primary, secondary and groups were nameable on the Home, Code and Life screenshots. |
+| 15 | Cover-the-name test | Judgment. The first viewport states the role, the apprenticeship and what the owner builds. |
+| 16 | Every state renders (fresh, stale, empty, failed, never) | Not verified. Seen in the browser: fresh, offline presence, empty gallery, Wrapped hidden and shown. Stale, failed and never were not forced. The state logic was not changed, but the markup around it was. |
+| 17 | German at 390px | Pass for page overflow on all four areas (scroll width at most the viewport). Individual buttons and tabs were not measured separately. |
+| 18 | AI word list in copy | Pass. Remaining matches are in code comments only. |
+| 19 | Krebs pattern count (3 or fewer) | Not run (the scanner is an external site). By hand against the tell table in the research doc: no purple gradient, no glow outside the live dot, no side-tab, no glassmorphism, no emoji icons, no fade-up, no feature-card grid, no eyebrow labels. The page is still dark-by-default with one violet accent, which is the closest remaining match. |
+| 20 | Reduced motion and keyboard focus | Pass by code: global `animation: none` under reduced motion, plus handlers in presence, hero and settings; global `:focus-visible` ring. Keyboard order was not tested by hand. |
+
+## Open items for the owner
+
+1. Paste `docs/research/2026-11-18-copy-sheet.md` into the production CMS. Seed edits do not reach the live database.
+2. Replace `apps/web/src/public/og-image.png` (raster, still the old look).
+3. Review the German legal text dashes in `datenschutz.vue`.
+4. The About page "Contact" link points at its own section. Decide whether it should open the form, or go.
+5. Run `/impeccable document` to refresh `apps/web/.impeccable/design.json`, which still describes the old system.
+6. Check the Featured screenshot slots and the Wrapped genre list on the live site (the dev data has neither).
+7. Forced states (stale, failed, never) still need a manual pass.

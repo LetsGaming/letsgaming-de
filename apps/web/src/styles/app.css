@@ -277,7 +277,7 @@ h1 {
 .src-note {
   margin-top: var(--sp-18);
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
   display: flex;
   align-items: center;
@@ -619,7 +619,7 @@ footer {
    quiet — old-and-labelled beats old-and-pretending. */
 .fresh {
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
   display: inline-flex;
   align-items: center;

@@ -196,9 +196,9 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
 .api-ver {
   font-family: var(--f-m);
   font-size: var(--fs-meta);
-  color: var(--live-ink);
-  background: color-mix(in srgb, var(--live-ink) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--live-ink) 30%, transparent);
+  color: var(--ink);
+  background: var(--surf-2);
+  border: 1px solid var(--line-1);
   border-radius: var(--r-chip);
   padding: 2px var(--sp-8);
 }
@@ -267,8 +267,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
 .api-verb {
   font-family: var(--f-m);
   font-weight: 700;
-  font-size: var(--fs-micro);
-  letter-spacing: 0.04em;
+  font-size: var(--fs-meta);
   color: #fff;
   border-radius: var(--r-chip);
   padding: 3px var(--sp-8);
@@ -287,7 +286,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
 .api-auth {
   margin-left: auto;
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
   border: 1px solid var(--line-2);
   border-radius: var(--r-chip);
@@ -329,7 +328,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
   border: 1px solid var(--line-1);
   border-radius: var(--r-chip);
   padding: 1px var(--sp-6);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   margin-right: var(--sp-6);
 }
 
@@ -341,7 +340,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
 .api-table th {
   text-align: left;
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
   font-weight: 600;
   padding: var(--sp-4) var(--sp-8);
@@ -357,7 +356,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
   border-bottom: none;
 }
 .api-table code {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--ink-strong);
 }
 .api-status {
@@ -372,6 +371,6 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
   color: var(--muted);
 }
 .api-toc :deep(a) {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
 }
 </style>

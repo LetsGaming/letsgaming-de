@@ -99,7 +99,7 @@ const model = defineModel<T>({ required: true });
   padding: var(--sp-2);
 }
 .seg--sm .seg__opt {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   border-radius: var(--r-chip);
   padding: 1px var(--sp-6);
 }
