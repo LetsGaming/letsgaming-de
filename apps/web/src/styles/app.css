@@ -44,16 +44,38 @@ a {
 }
 
 /* header / tabs */
+.skip {
+  position: absolute;
+  left: var(--space-3);
+  top: -64px;
+  z-index: 200;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surf-3);
+  color: var(--ink-strong);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-2);
+  font-size: var(--fs-small);
+  text-decoration: none;
+}
+.skip:focus-visible {
+  top: var(--space-3);
+}
+#content:focus,
+#doc-main:focus {
+  outline: none;
+}
 .top {
   display: flex;
   align-items: center;
-  gap: var(--sp-14);
-  margin-bottom: 34px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
   flex-wrap: wrap;
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   text-decoration: none;
-  color: inherit;
   font-family: var(--f-d);
   font-weight: 700;
   font-size: var(--fs-h3);
@@ -63,41 +85,51 @@ a {
 }
 .chrome {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-1);
   margin-left: auto;
   align-items: center;
-  flex-wrap: wrap;
 }
+/* The tabs carry their own 12px of padding so each one is at least 44px tall and
+   wide enough to hit; the negative margin keeps the first label on the left edge. */
 .tabs {
   display: flex;
-  gap: var(--space-5);
-  flex-wrap: wrap;
+  margin-left: calc(var(--space-3) * -1);
 }
 .tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
   text-decoration: none;
   font-family: var(--f-b);
   font-weight: 500;
   font-size: var(--fs-small);
   color: var(--muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-2) 0;
-  border-bottom: 2px solid transparent;
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease;
+  transition: color 0.2s ease;
+}
+.tab::after {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-2);
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
 }
 .tab:hover {
   color: var(--ink);
 }
 .tab.active {
   color: var(--ink-strong);
-  border-bottom-color: var(--ink-strong);
+}
+.tab.active::after {
+  background: var(--ink-strong);
 }
 .theme-toggle {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-2);
   border: 1px solid var(--line-1);
   background: var(--surf-1);
@@ -119,7 +151,32 @@ a {
   width: 18px;
   height: 18px;
 }
-
+/* Small screens: wordmark and settings on row one, the tabs on row two with the
+   same left edge as the wordmark. `.chrome` dissolves so its children join the grid. */
+@media (max-width: 560px) {
+  .top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand toggle"
+      "tabs tabs";
+    column-gap: var(--space-3);
+    row-gap: 0;
+    margin-bottom: var(--space-5);
+  }
+  .chrome {
+    display: contents;
+  }
+  .brand {
+    grid-area: brand;
+  }
+  .theme-toggle {
+    grid-area: toggle;
+  }
+  .tabs {
+    grid-area: tabs;
+  }
+}
 /* panels */
 .panel {
   animation: fade 0.4s ease;
@@ -204,6 +261,9 @@ h1 {
 /* The section shell + heading + note now live in the ModuleSection component.
    `.more` (below) is still a shared text-link, used by Glance and the Activity feed. */
 .more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--ink);
@@ -539,6 +599,20 @@ footer {
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-5);
 }
+.foot-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+/* A finger needs more than a pointer does. */
+@media (pointer: coarse) {
+  .more,
+  .foot-links a {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+}
 
 /* entrance */
 
@@ -748,3 +822,17 @@ footer a:hover {
 }
 
 /* Recent: five, then the rest on request. */
+
+/* Small screens: the hero buttons share rows instead of orphaning the last one. */
+@media (max-width: 560px) {
+  .links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .links .btn {
+    justify-content: center;
+  }
+  .links .btn-primary {
+    grid-column: 1 / -1;
+  }
+}

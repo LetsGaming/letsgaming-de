@@ -10,11 +10,11 @@ const { t } = useT();
  * which rendered this identical footer twice.
  */
 interface Props {
-  /** Rows hidden behind the toggle — the "show N more" count. 0 hides the toggle. */
+  /** Rows hidden behind the toggle, the "show N more" count. 0 hides the toggle. */
   moreCount: number;
   /** Whether the toggle is currently expanded. */
   expanded: boolean;
-  /** Rows past the server cap that no toggle can reveal — the "and N more" note. */
+  /** Rows past the server cap that no toggle can reveal, the "and N more" note. */
   overflow?: number;
 }
 defineProps<Props>();
@@ -49,7 +49,13 @@ const emit = defineEmits<{ toggle: [] }>();
   background: none;
   border: 0;
   cursor: pointer;
-  padding: 0;
+  padding: var(--sp-2) 0;
+  min-height: 24px;
+}
+@media (pointer: coarse) {
+  .list-footer__more {
+    min-height: 44px;
+  }
 }
 .list-footer__more:hover {
   text-decoration: underline;

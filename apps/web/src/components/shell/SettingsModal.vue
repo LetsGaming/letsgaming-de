@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { analyticsAllowed, dntActive, setOptedOut } from "../../lib/track";
 import SmartLink from "../ui/SmartLink.vue";
 import SegmentedControl from "../ui/SegmentedControl.vue";
@@ -64,8 +64,32 @@ const locale = computed({
   },
 });
 
+const panel = ref<HTMLElement | null>(null);
+let returnTo: HTMLElement | null = null;
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// Keep Tab inside the dialog, and hand focus back to whatever opened it.
 function onKey(e: KeyboardEvent) {
-  if (e.key === "Escape") emit("close");
+  if (e.key === "Escape") {
+    emit("close");
+    return;
+  }
+  if (e.key !== "Tab" || !panel.value) return;
+  const items = Array.from(panel.value.querySelectorAll<HTMLElement>(FOCUSABLE));
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!first || !last) return;
+  const active = document.activeElement;
+  if (!panel.value.contains(active)) {
+    first.focus();
+    e.preventDefault();
+  } else if (e.shiftKey && active === first) {
+    last.focus();
+    e.preventDefault();
+  } else if (!e.shiftKey && active === last) {
+    first.focus();
+    e.preventDefault();
+  }
 }
 
 watch(
@@ -73,10 +97,14 @@ watch(
   (open) => {
     if (typeof document === "undefined") return;
     if (open) {
+      returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       refresh();
       document.addEventListener("keydown", onKey);
+      void nextTick(() => panel.value?.querySelector<HTMLElement>(".x")?.focus());
     } else {
       document.removeEventListener("keydown", onKey);
+      returnTo?.focus();
+      returnTo = null;
     }
   },
 );
@@ -86,7 +114,7 @@ watch(
   <Teleport v-if="mounted" to="body">
     <Transition name="fade">
       <div v-if="open" class="overlay" @click.self="emit('close')">
-        <div class="panel" role="dialog" aria-modal="true" :aria-label='t("settings")'>
+        <div ref="panel" class="panel" role="dialog" aria-modal="true" :aria-label='t("settings")'>
           <header>
             <h2>{{ t("settings") }}</h2>
             <button class="x" :aria-label='t("close")' @click="emit('close')">✕</button>
@@ -171,7 +199,10 @@ header h2 {
   color: var(--muted);
   font-size: var(--fs-body);
   cursor: pointer;
-  padding: var(--sp-6);
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: var(--r-2);
 }
 .x:hover {

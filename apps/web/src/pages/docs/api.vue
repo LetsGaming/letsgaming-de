@@ -72,7 +72,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
       </div>
     </template>
 
-    <article class="doc-body prose api">
+    <article id="doc-main" tabindex="-1" class="doc-body prose api">
       <header class="api-head">
         <div class="api-title-row">
           <h1>{{ data.ref.info.title }}</h1>

@@ -7,15 +7,17 @@ import { areaHref } from "../../lib/area";
 import { trackClick } from "../../lib/track";
 import SmartLink from "../ui/SmartLink.vue";
 import SettingsModal from "./SettingsModal.vue";
+import { useT } from "~/composables/useT";
 
 const props = defineProps<{ nav: NavView[]; locale: "en" | "de"; current: string }>();
+const { t } = useT();
 
 // `theme` comes from its own call rather than the destructured bundle: a direct
 // ref binding is what the template unwraps cleanly.
 const theme = useTheme();
 const { initSite, setLocale, toggleTheme } = useSiteState();
 const settingsOpen = ref(false);
-// The server already knows which area this is — it's the URL. No atom, no SSR
+// The server already knows which area this is, it's the URL. No atom, no SSR
 // fallback, no hydration gap where the highlight is wrong.
 const current = computed(() => props.current);
 const href = (id: string) => areaHref(props.nav, id);
@@ -28,7 +30,7 @@ onMounted(() => initSite(props.nav, props.current));
   <!-- Four labels fit at 380px. The selected tab is marked by an underline and
        ink-strong text, never the accent hue. -->
   <div class="chrome">
-    <nav class="tabs" aria-label="Sections">
+    <nav class="tabs" :aria-label='t("navLabel")'>
       <SmartLink
         v-for="area in nav"
         :key="area.id"
@@ -43,7 +45,7 @@ onMounted(() => initSite(props.nav, props.current));
     </nav>
     <button
       class="theme-toggle"
-      aria-label="Settings"
+      :aria-label='t("settings")'
       @click="settingsOpen = true"
       v-html="icons.settings"
     />

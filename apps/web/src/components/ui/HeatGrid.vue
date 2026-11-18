@@ -39,7 +39,7 @@ export interface HeatCell {
  * a level is computed, and what a cell maps back to, stays with each caller. Colour
  * is entirely from `--heat-*` tokens, so light/dark follow the theme.
  */
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useT } from "~/composables/useT";
 
 const {
@@ -72,6 +72,12 @@ const {
 
 const { t } = useT();
 
+// A strip wider than its box starts scrolled to the newest day, on the right.
+const grid = ref<HTMLElement | null>(null);
+onMounted(() => {
+  if (selectable && grid.value) grid.value.scrollLeft = grid.value.scrollWidth;
+});
+
 const emit = defineEmits<{ select: [index: number] }>();
 
 // When a cell is picked, the rest dim so the selection reads clearly. Only in
@@ -86,6 +92,7 @@ const gridStyle = computed(() => ({
 
 <template>
   <div
+    ref="grid"
     class="hg"
     :class="{ dim: dimmed, 'fixed-h': cellHeight != null }"
     :style="gridStyle"

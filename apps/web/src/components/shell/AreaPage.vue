@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One area per document — the dashboard shell shared by `/` and `/[area]`.
+ * One area per document, the dashboard shell shared by `/` and `/[area]`.
  *
  * Previously every area was SSR'd into every page and the inactive ones hidden
  * with `[hidden]`, which meant the whole site shipped in the HTML of each page, no
@@ -8,7 +8,7 @@
  * reading source. Routes fix all three; that stays true here.
  *
  * The `client:idle` directives that used to wrap SiteChrome and SitePanels are
- * gone — this is one Vue app now, so the components simply hydrate with the page.
+ * gone, this is one Vue app now, so the components simply hydrate with the page.
  */
 import { computed, provide } from "vue";
 import { AREA, type Locale, type SiteView } from "@lg/core";
@@ -23,7 +23,7 @@ import SmartLink from "~/components/ui/SmartLink.vue";
 
 const props = defineProps<{
   site: SiteView;
-  /** The locale the server actually rendered in — drives <html lang>. */
+  /** The locale the server actually rendered in, drives <html lang>. */
   locale: Locale;
   /** Route segment; omitted on `/`, which is the first area. */
   area?: string;
@@ -48,8 +48,8 @@ const meta = computed(() =>
 // the prerendered docs ignore ?lang and so must not carry it.
 useHead(() => ({ htmlAttrs: { lang: props.locale, "data-locale-aware": "1" } }));
 
-// The full SEO surface — <title>/description, canonical, hreflang for both
-// locales, Open Graph, Twitter card, and Person + WebSite JSON-LD — built from
+// The full SEO surface, <title>/description, canonical, hreflang for both
+// locales, Open Graph, Twitter card, and Person + WebSite JSON-LD, built from
 // the clean area path so `?lang`/`?ref` permutations all canonicalize to one URL.
 useSeo({
   site: props.site,
@@ -62,7 +62,7 @@ useSeo({
   localized: true,
 });
 
-// The hero's own liveness caption ("synced 8m ago") — see syncedContext.ts for
+// The hero's own liveness caption ("synced 8m ago"), see syncedContext.ts for
 // why this is provide/inject rather than a prop threaded through Module.vue's
 // uniform sections[module.kind] dispatch.
 provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
@@ -70,6 +70,7 @@ provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
 
 <template>
   <main v-if="area">
+    <a class="skip" href="#content">{{ t("skipToContent") }}</a>
     <div class="wrap">
       <!-- Every area needs exactly one <h1>. The `hero` module (home only) already
            renders one — display type, per DESIGN.md's "hero H1 only" rule — so a
@@ -84,11 +85,13 @@ provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
         <SiteChrome :nav="site.nav" :locale="site.locale" :current="area.id" />
       </div>
 
-      <SitePanels :site="site" :area="area.id" />
+      <div id="content" tabindex="-1">
+        <SitePanels :site="site" :area="area.id" />
+      </div>
 
       <footer>
         <p v-if="site.syncedRelative" class="foot-sync">{{ t("freshFresh", { age: site.syncedRelative }) }}</p>
-        <nav class="foot-links" aria-label="Footer">
+        <nav class="foot-links" :aria-label='t("footerLabel")'>
           <span>@{{ site.meta.handle }}</span>
           <SmartLink href="/docs">{{ t("docs") }}</SmartLink>
           <SmartLink href="/datenschutz">{{ t("privacy") }}</SmartLink>

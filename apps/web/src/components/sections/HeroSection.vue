@@ -146,6 +146,8 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);
+  align-items: center;
+  min-height: 24px;
   padding: var(--space-1) 0;
   font: inherit;
   color: var(--ink);
@@ -154,6 +156,13 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
   text-decoration: underline;
   text-underline-offset: 0.2em;
   cursor: pointer;
+}
+@media (pointer: coarse) {
+  .wave {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
 }
 .wave:hover:not(:disabled) {
   color: var(--ink-strong);

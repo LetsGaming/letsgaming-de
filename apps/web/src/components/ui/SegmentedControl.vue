@@ -3,8 +3,8 @@
  * A small segmented control: two or three mutually exclusive options, the current
  * one filled in.
  *
- * There were three of these — theme and language in the settings modal, and the
- * owner/local timezone toggle on the playtime heatmap — written three times with
+ * There were three of these, theme and language in the settings modal, and the
+ * owner/local timezone toggle on the playtime heatmap, written three times with
  * three sets of near-identical styles and only one of them carrying any ARIA. The
  * accessible shape now comes with the component: a labelled `role="group"` and
  * `aria-pressed` per option, so a screen reader announces which segment is on
@@ -16,7 +16,7 @@
  * `size` covers the one real difference between the copies: the settings modal's
  * is a standing control, the heatmap's is a caption-sized note in a card header.
  *
- * Values may be numbers as well as strings — the activity-window picker's options
+ * Values may be numbers as well as strings, the activity-window picker's options
  * *are* day counts, and stringifying them only to parse them back would put a
  * conversion on both sides of a control whose whole job is to hand back one of the
  * values it was given.
@@ -99,9 +99,22 @@ const model = defineModel<T>({ required: true });
   padding: var(--sp-2);
 }
 .seg--sm .seg__opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   font-size: var(--fs-meta);
   border-radius: var(--r-chip);
-  padding: 1px var(--sp-6);
+  padding: 2px var(--sp-6);
+}
+/* A finger needs more than a pointer does. */
+@media (pointer: coarse) {
+  .seg--sm .seg__opt,
+  .seg--md .seg__opt {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 .seg--sm .seg__opt.on {
   color: var(--ink-strong);

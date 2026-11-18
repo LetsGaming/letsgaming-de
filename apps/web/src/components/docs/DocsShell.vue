@@ -3,7 +3,7 @@
  * The docs shell: mobile topbar, slide-in drawer, and the section sidebar.
  *
  * This markup was copy-pasted between the two docs routes (the doc page and the
- * API reference) — the exact duplication the migration is meant to stop. It lives
+ * API reference), the exact duplication the migration is meant to stop. It lives
  * here once; both routes render `<DocsShell>` and put their article in the slot.
  *
  * The drawer is Vue state rather than the previous `data-doc-open` /
@@ -35,6 +35,7 @@ onMounted(() => {
 
 <template>
   <div class="doc-wrap">
+    <a class="skip" href="#doc-main">Skip to article</a>
     <!-- Mobile-only bar: opens the docs nav as a drawer so the section list
          doesn't push the article down the page. Desktop shows the sidebar. -->
     <header class="doc-topbar">

@@ -3,7 +3,7 @@
  * One rendered doc inside the shared docs shell.
  *
  * The article is server-rendered HTML (`marked` output from `server/utils/docs`),
- * injected with `v-html` — it's our own repo's markdown, not user input, and it's
+ * injected with `v-html`, it's our own repo's markdown, not user input, and it's
  * rendered on the server where the link rewrite runs. Prerendered by the route
  * rule in nuxt.config, so in production these are static files; SSR remains the
  * fallback if a crawl misses one.
@@ -28,7 +28,7 @@ if (error.value) throw createError({ statusCode: 404, statusMessage: "No such do
 const origin = (useRuntimeConfig().public.siteUrl as string).replace(/\/$/, "");
 const canonicalPath = computed(() => `/docs/${slug.value}`);
 
-// The doc's own group ("ADR", "Concepts"…), for the trail — "Overview" is the
+// The doc's own group ("ADR", "Concepts"…), for the trail, "Overview" is the
 // root group's placeholder label, not a real section, so it's left out rather
 // than shown as a crumb that names nothing.
 const group = computed(() => data.value?.tree.find((g) => g.items.some((it) => it.slug === data.value?.slug)));
@@ -39,7 +39,7 @@ const crumbs = computed<Crumb[]>(() => [
   { label: data.value?.title ?? "Docs" },
 ]);
 
-// Docs are English-only repo markdown, prerendered — no `localized`, because
+// Docs are English-only repo markdown, prerendered, no `localized`, because
 // `?lang=de` serves the same words and claiming an alternate would be a false
 // hreflang. No site graphs either: these are documents, not the site itself.
 useSeo({
@@ -47,7 +47,7 @@ useSeo({
   path: canonicalPath.value,
   title: `${data.value?.title ?? "Docs"} | letsgaming.de docs`,
   description: plainExcerpt(data.value?.html ?? "") || `${data.value?.title ?? "Documentation"}: letsgaming.de documentation.`,
-  // Only crumbs with a real URL become `ListItem`s — the group label has no page
+  // Only crumbs with a real URL become `ListItem`s, the group label has no page
   // of its own, so it's a visual-only crumb and sits out of the graph.
   jsonLd: [
     breadcrumbLd([
@@ -67,7 +67,7 @@ useSeo({
          sidebar — instead of alongside it in column 2. -->
     <div class="doc-main">
       <Breadcrumbs :items="crumbs" />
-      <article class="doc-body prose" v-html="data.html" />
+      <article id="doc-main" tabindex="-1" class="doc-body prose" v-html="data.html" />
     </div>
   </DocsShell>
 </template>

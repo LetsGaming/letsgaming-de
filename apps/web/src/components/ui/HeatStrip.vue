@@ -16,7 +16,7 @@ import { useT } from "~/composables/useT";
 interface Props {
   cells: HeatCell[];
   selectedIndex: number | null;
-  /** Label under the left edge — the oldest day shown. */
+  /** Label under the left edge, the oldest day shown. */
   startLabel: string;
   /** Cells per column: 1 is a single strip, 7 wraps into weeks. */
   rows?: number;
@@ -27,7 +27,7 @@ withDefaults(defineProps<Props>(), { rows: 1, cellHeight: 30 });
 const emit = defineEmits<{ select: [index: number] }>();
 
 // The captions were `captionLeft`/`captionRight` props with English defaults that
-// neither caller ever overrode — speculative props hiding three untranslated
+// neither caller ever overrode, speculative props hiding three untranslated
 // strings on a component both ledger modules render.
 const { t } = useT();
 </script>
@@ -38,7 +38,7 @@ const { t } = useT();
     <HeatGrid
       :cells="cells"
       :rows="rows"
-      :min-cell="8"
+      :min-cell="24"
       :cell-height="cellHeight"
       legend
       selectable
