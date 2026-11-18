@@ -124,15 +124,15 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
-  margin-top: var(--space-5);
-  font-size: var(--fs-small);
-  color: var(--muted);
+  margin-top: var(--space-4);
+  font-size: var(--fs-body);
+  color: var(--ink);
 }
 .status .dot {
   flex: none;
   align-self: center;
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: var(--r-round);
   background: var(--muted);
 }
@@ -152,7 +152,8 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
   min-height: 24px;
   padding: var(--space-1) 0;
   font: inherit;
-  color: var(--ink);
+  font-size: var(--fs-small);
+  color: var(--muted);
   background: none;
   border: 0;
   text-decoration: underline;
@@ -167,7 +168,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
   }
 }
 .wave:hover:not(:disabled) {
-  color: var(--ink-strong);
+  color: var(--ink);
 }
 .wave:disabled {
   cursor: default;

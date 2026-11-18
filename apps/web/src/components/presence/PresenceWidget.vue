@@ -95,7 +95,7 @@ const idle = computed(
   <!-- Every class is pw-namespaced so the site's global .tile/.stat/.grid/.meta
        rules can't leak into the widget. Rendered whenever presence is enabled in
        the CMS; the server decides what (if anything) is actually shown. -->
-  <div v-if="enabled" class="pw">
+  <div v-if="enabled" class="pw" :class="{ 'pw-compact': idle && status === 'offline' }">
     <!-- Discord profile, already filtered by the server -->
     <div class="pw-unit">
       <div class="pw-who">
@@ -189,6 +189,42 @@ const idle = computed(
 
 .pw-unit {
   min-width: 0;
+}
+.pw-compact {
+  padding: var(--space-3) var(--space-4);
+}
+.pw-compact .pw-unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+}
+.pw-compact .pw-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: var(--fs-small);
+}
+.pw-compact .pw-pip {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+.pw-compact .pw-idcol {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+}
+.pw-compact .pw-stat {
+  margin-top: 0;
+}
+.pw-compact .pw-act {
+  flex: 1 1 14rem;
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+  font-size: var(--fs-small);
 }
 .pw-who {
   display: flex;

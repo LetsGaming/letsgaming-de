@@ -179,7 +179,7 @@ Three faces, self-hosted through `@fontsource`. Availability of the Atkinson pac
 
 | Token | Value | Use |
 |---|---|---|
-| `--fs-meta` | 0.8125rem (13px) | Timestamps, captions |
+| `--fs-meta` | 0.9375rem (15px) | Timestamps, captions, form labels. Same size as `--fs-small`; the floor for informational text |
 | `--fs-small` | 0.9375rem (15px) | Secondary lines in lists |
 | `--fs-body` | 1.0625rem (17px) | Body |
 | `--fs-h3` | 1.25rem (20px) | Card and row titles |

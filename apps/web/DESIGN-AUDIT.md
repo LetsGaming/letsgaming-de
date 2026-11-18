@@ -63,11 +63,11 @@ Method: greps over public source (CMS excluded), a contrast script that reads th
 | 5 | No trailing arrows, no em or en dashes in rendered pages | Partial. Done: catalog, seed, titles, headings, fallback fixture, `AreasSection`. Left: `datenschutz.vue` (German legal text: one " — " and one "→" in a menu path) because the wording is legal text for the owner to review. |
 | 6 | Tokens for radii and sizes, no radius above 10px | Pass. `lint:tokens` passes; the only larger radius is the settings switch track (documented). |
 | 7 | No border plus shadow at rest | Pass. Remaining shadows: keycap edge, live dot glow, modal and docs drawer (floating), one inset selection ring. |
-| 8 | One animated pulse, only when live | Deviation. Two pulse dots (hero live dot, fresh-sync dot) plus the six presence widget activity animations. All render only for live data and all stop under reduced motion. |
+| 8 | One animated pulse, only when live | Pass (2026-11-19). The per-heading and per-page "fresh" dots are gone (a marker shows only for stale, failed, never or empty). One pulsing dot remains on the hero status line, plus the presence widget activity animations. All render only for live data and stop under reduced motion. |
 | 9 | No scroll entrance animation | Pass. Only analytics uses `IntersectionObserver`. |
 | 10 | No `backdrop-filter` outside the docs top bar | Pass. |
 | 11 | Body 17px, prose at most 66ch | Pass (measured 17px; `.prose` is 66ch). |
-| 12 | No layout family repeats, at most two `ModuleCard` per page, no eyebrow labels | Pass by count: Home 0, Code 1, Life 1, About 0 cards. Family variety is judgment, reviewed on screenshots of Home, Code, Life and About. |
+| 12 | No layout family repeats, at most two `ModuleCard` per page, no eyebrow labels | Pass (2026-11-19). `ModuleCard` is used once on the whole site (Coding, on Code), counted by grep. Layout families: Home has five (hero type, Areas index, Glance margin column, Featured image lead with unruled grid, Guestbook quote column). Life has three distinct forms (cover wall, typographic list, Wrapped poster). Judged on screenshots of Home, Code and Life. |
 | 13 | Hero at most four text elements; H1 two lines at 1280px | Pass. Hero has title, lede, status line, button row. H1 is two lines at 1280px in EN and DE (DE wraps to three at 390px). |
 | 14 | Squint test | Judgment. Primary, secondary and groups were nameable on the Home, Code and Life screenshots. |
 | 15 | Cover-the-name test | Judgment. The first viewport states the role, the apprenticeship and what the owner builds. |
@@ -75,7 +75,7 @@ Method: greps over public source (CMS excluded), a contrast script that reads th
 | 17 | German at 390px | Pass for page overflow on all four areas (scroll width at most the viewport). Individual buttons and tabs were not measured separately. |
 | 18 | AI word list in copy | Pass. Remaining matches are in code comments only. |
 | 19 | Krebs pattern count (3 or fewer) | Not run (the scanner is an external site). By hand against the tell table in the research doc: no purple gradient, no glow outside the live dot, no side-tab, no glassmorphism, no emoji icons, no fade-up, no feature-card grid, no eyebrow labels. The page is still dark-by-default with one violet accent, which is the closest remaining match. |
-| 20 | Reduced motion and keyboard focus | Pass by code: global `animation: none` under reduced motion, plus handlers in presence, hero and settings; global `:focus-visible` ring. Keyboard order was not tested by hand. |
+| 20 | Reduced motion and keyboard focus | Pass. Global `animation: none` under reduced motion and a global `:focus-visible` ring. `audit-a11y` presses Tab on every page at 1280px: the first stop is the skip link and it shows a ring. The settings modal traps focus and returns it. The full keyboard order across every control was not walked by hand. |
 
 ## Open items for the owner
 
@@ -85,4 +85,7 @@ Method: greps over public source (CMS excluded), a contrast script that reads th
 4. The About page "Contact" link points at its own section. Decide whether it should open the form, or go.
 5. Run `/impeccable document` to refresh `apps/web/.impeccable/design.json`, which still describes the old system.
 6. Check the Featured screenshot slots and the Wrapped genre list on the live site (the dev data has neither).
-7. Forced states (stale, failed, never) still need a manual pass.
+7. ~~Forced states~~ Done (checklist item 16).
+8. Wrapped top genres rendered nowhere in dev (the seed has no genres): check them on the live site.
+9. The Glance figures are still a separate module from the Areas index (merging needs a resolver change and breaks the CMS module mapping). Decide whether that is worth a larger change.
+10. The hero lede is now h2 size and wraps to about five lines at 390px. Say if it should be smaller.

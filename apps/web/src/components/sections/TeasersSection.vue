@@ -32,13 +32,29 @@ defineProps<{
   list-style: none;
 }
 .row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1) var(--space-5);
   align-items: baseline;
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-6) var(--space-3) 0;
   color: inherit;
   text-decoration: none;
+}
+.row::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-3) + var(--fs-h1) * 0.5 - 0.3rem);
+  right: var(--space-1);
+  width: 0.6rem;
+  height: 0.6rem;
+  border-top: 2px solid var(--muted);
+  border-right: 2px solid var(--muted);
+  transform: rotate(45deg);
+}
+.row:hover::after,
+.row:focus-visible::after {
+  border-color: var(--ink-strong);
 }
 .row__name {
   font-family: var(--f-d);
@@ -62,6 +78,8 @@ defineProps<{
   min-width: 0;
 }
 .row__value {
+  font-size: var(--fs-body);
+  line-height: 1.3;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -74,7 +92,11 @@ defineProps<{
 @container (min-width: 560px) {
   .row {
     grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-    padding: var(--space-4) 0;
+    padding: var(--space-4) var(--space-6) var(--space-4) 0;
+  }
+  .row::after {
+    top: 50%;
+    margin-top: -0.3rem;
   }
 }
 </style>

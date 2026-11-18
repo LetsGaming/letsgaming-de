@@ -6,11 +6,11 @@
  * It takes the resolved `ProjectView` whole, so a field added to the contract lands
  * here without touching the caller.
  */
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import type { ClickAction, ProjectView } from "@lg/core";
 import { langColor } from "../../lib/icons";
 import { presenceMediaUrl } from "../../lib/api";
-import { isGeneratedRepoCard } from "../../lib/repoPreview";
+import { ownPreview } from "../../lib/repoPreview";
 import { trackClick, trackProject } from "../../lib/track";
 import { useT } from "~/composables/useT";
 import SmartLink from "./SmartLink.vue";
@@ -27,7 +27,8 @@ const props = defineProps<Props>();
 const broken = ref(false);
 
 /** Through the server's media proxy, so the visitor's browser never contacts GitHub's CDN. */
-const shot = (url: string, theme?: "dark") => presenceMediaUrl({ url, ...(theme ? { theme } : {}) });
+const shot = (url: string) => presenceMediaUrl({ url });
+const preview = computed(() => ownPreview(props.project.image));
 
 function onClick() {
   trackClick(props.event);
@@ -38,14 +39,8 @@ function onClick() {
 <template>
   <SmartLink class="prow" :class="{ pinned: project.featured }" :href="project.href" @click="onClick">
     <span class="p-name">
-      <span v-if="project.featured" class="p-shot" aria-hidden="true">
-        <template v-if="project.image && !broken">
-          <template v-if="isGeneratedRepoCard(project.image)">
-            <img class="theme-light" :src="shot(project.image)" alt="" loading="lazy" decoding="async" @error="broken = true" />
-            <img class="theme-dark" :src="shot(project.image, 'dark')" alt="" loading="lazy" decoding="async" @error="broken = true" />
-          </template>
-          <img v-else :src="shot(project.image)" alt="" loading="lazy" decoding="async" @error="broken = true" />
-        </template>
+      <span v-if="preview && !broken" class="p-shot" aria-hidden="true">
+        <img :src="shot(preview)" alt="" loading="lazy" decoding="async" @error="broken = true" />
       </span>
       <span class="p-title">
         <span class="p-link">{{ project.name }}</span>
@@ -95,12 +90,6 @@ function onClick() {
   height: 100%;
   object-fit: cover;
   display: block;
-}
-.p-shot img.theme-light {
-  display: var(--shot-light-display);
-}
-.p-shot img.theme-dark {
-  display: var(--shot-dark-display);
 }
 .p-title {
   display: flex;

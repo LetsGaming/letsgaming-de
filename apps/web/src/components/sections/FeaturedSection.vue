@@ -7,7 +7,7 @@ import ModuleSection from "../ui/ModuleSection.vue";
 import Freshness from "../ui/Freshness.vue";
 import { langColor } from "../../lib/icons";
 import { presenceMediaUrl } from "../../lib/api";
-import { isGeneratedRepoCard } from "../../lib/repoPreview";
+import { ownPreview } from "../../lib/repoPreview";
 import { trackClick, trackProject } from "../../lib/track";
 
 const { t } = useT();
@@ -20,7 +20,9 @@ const broken = reactive(new Set<string>());
 
 /** Through the server's media proxy, so the visitor's browser never contacts GitHub's
  *  CDN directly and the server's cache serves the image. */
-const shot = (url: string, theme?: "dark") => presenceMediaUrl({ url, ...(theme ? { theme } : {}) });
+const shot = (url: string) => presenceMediaUrl({ url });
+
+const hasShot = (p: { id: string; image?: string }) => Boolean(ownPreview(p.image)) && !broken.has(p.id);
 
 function open(name: string) {
   trackClick("featured");
@@ -36,19 +38,9 @@ function open(name: string) {
     </template>
     <template v-if="module.data.projects.length">
       <template v-for="(p, i) in module.data.projects" :key="p.id">
-        <SmartLink v-if="i === 0" class="lead" :href="p.href" @click="open(p.name)">
-          <div class="shot">
-            <template v-if="p.image && !broken.has(p.id)">
-              <!-- GitHub's generated card is white; the server has a dark version of it.
-                   Both are in the page and the theme decides which one is displayed, so
-                   there is no flash on first paint. A hidden lazy image is not fetched. -->
-              <template v-if="isGeneratedRepoCard(p.image)">
-                <img class="theme-light" :src="shot(p.image)" alt="" loading="lazy" decoding="async" @error="broken.add(p.id)" />
-                <img class="theme-dark" :src="shot(p.image, 'dark')" alt="" loading="lazy" decoding="async" @error="broken.add(p.id)" />
-              </template>
-              <img v-else :src="shot(p.image)" alt="" loading="lazy" decoding="async" @error="broken.add(p.id)" />
-            </template>
-            <span v-else class="ph" aria-hidden="true">{{ p.name.slice(0, 1) }}</span>
+        <SmartLink v-if="i === 0" class="lead" :class="{ 'lead-type': !hasShot(p) }" :href="p.href" @click="open(p.name)">
+          <div v-if="hasShot(p)" class="shot">
+            <img :src="shot(ownPreview(p.image)!)" alt="" loading="lazy" decoding="async" @error="broken.add(p.id)" />
           </div>
           <div class="body">
             <h3 class="name" :title="p.name">{{ p.name }}</h3>
@@ -98,29 +90,25 @@ function open(name: string) {
   border-radius: var(--r-2);
   background: var(--surf-2);
 }
-.shot img,
-.ph {
+.shot img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.shot img.theme-light {
-  display: var(--shot-light-display);
+.lead-type {
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-5);
+  background: var(--surf-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-3);
 }
-.shot img.theme-dark {
-  display: var(--shot-dark-display);
+.lead-type .name {
+  font-stretch: 75%;
+  font-weight: 700;
 }
-.ph {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-family: var(--f-d);
-  font-size: var(--fs-figure);
-  font-weight: 600;
-  color: var(--muted);
-  background: var(--surf-2);
+.lead-type:hover {
+  border-color: var(--line-2);
 }
 .body {
   min-width: 0;
