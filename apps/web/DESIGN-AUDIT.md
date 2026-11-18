@@ -32,6 +32,7 @@ Status column: `open` until the step in `docs/plans/` resolves it. At the end of
 | D24 | open | `PresenceWidget.vue:183,215,357` | Gradient washes on the widget and avatars. |
 | D25 | open | `FeaturedSection.vue` | Card kit: screenshot, round arrow, language chip, "Pinned" pill, 3-line clamp, identical cells. |
 | D26 | open | Media queries 720/680/560/520 | No breakpoint system; four nearby values. |
+| D27 | open | `SegmentedControl.vue` (selected option), range note in `PlaytimeSection.vue` and siblings | Accent used for a selected state and for a static range label. Breaks "purple means now". Found while checking Step 1 in the browser. Resolve in Steps 6 and 7 with the section rebuilds. |
 
 ## Contrast measurements (current values, WCAG 2.x)
 

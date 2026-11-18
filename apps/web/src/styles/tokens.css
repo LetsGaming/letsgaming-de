@@ -14,42 +14,35 @@
 
 :root {
   /* ── Ink ─────────────────────────────────────────────────────────────── */
-  --ink: #ece9f7;
-  --ink-strong: #fff;
-  --muted: #948cb6;
+  --ink: #e8e7ee;
+  --ink-strong: #fafafd;
+  --muted: #a8a5b6;
 
-  /* ── The accent. Sampled off the LED strip on the shelf, photographed on
-     /life with the hex in the caption — that's why it's this purple and not
-     the violet-500 the prototype shipped. */
-  --live: #8b5cf6;
+  /* ── The accent. OKLCH hue 293. Surfaces and ink share the hue at chroma
+     0.004 to 0.025, so they read as gray with a cast. --live is for dots, bars
+     and heat cells (non-text); text and the focus ring use --live-ink. */
+  --live: #a487fa;
 
-  /* The accent when it has to carry white text. --live itself is 4.23:1 against
-     white here — fine for a 9px dot or a 1px rule, 0.27 short of AA for a 15px
-     button label, and the primary CTA is exactly that. Same hue (258°) and same
-     saturation, two lightness steps down: 4.71:1. Light mode's --live already
-     passes at 7.18:1, so there it aliases straight back.
-
-     One consumer: `.btn-primary`'s fill. Same rule as --glow-live — grep before
-     adding a second, and if a second is genuinely needed, ask first whether that
-     element should be carrying white at all. */
-  --live-solid: #8351f5;
+  /* The accent under white text: 5.32:1. One consumer: `.btn-primary`'s fill.
+     Same rule as --glow-live: grep before adding a second. */
+  --live-solid: #7a4fd9;
 
   /* Error. Not decoration and not "now": a form that can't say what went wrong
      is broken, and red-for-error is a convention old enough to count as
      imported. The only non-purple hue the palette owns, and it earns it by
      being a state rather than a style. */
-  --danger: #ff6b5e;
-  --danger-ink: #ff8f85;
+  --danger: #f9786a;
+  --danger-ink: #f9786a;
 
   /* Period-over-period change in the analytics tiles: text, so each theme
      carries its own 4.5:1 pair instead of reusing the fill colours. */
-  --delta-up: #38d6a6;
-  --delta-down: #ff8f85;
-  --live-ink: #a78bfa;
+  --delta-up: #5ed8a9;
+  --delta-down: #f9786a;
+  --live-ink: #baa9fd;
   --on-live: #fff;
 
   /* One consumer: the live dot. Grep before adding a second. */
-  --glow-live: 0 0 9px 1px rgba(199, 125, 255, 0.75);
+  --glow-live: 0 0 9px 1px rgba(164, 135, 250, 0.6);
 
   /* The solid offset under a ghost button — the chunky edge it "presses" into
      on :active. Public-only (`.btn-ghost` in app.css, used by the hero and
@@ -57,7 +50,7 @@
      `.cms` could reach it. Since a `var()` that resolves to nothing invalidates
      the whole declaration, both shadow layers were dropped and the buttons had
      no edge to press into at all. */
-  --ghost-shadow: #100d20;
+  --ghost-shadow: #09090c;
 
   /* ── Third-party brand marks. Not part of the palette and not themeable — a
      visitor reads "Spotify green" as the source, so these are the vendors'
@@ -74,13 +67,17 @@
      has nothing darker to fall onto, which is why the old --sh-* faked lift
      with a purple bloom. Step the surface, strengthen the line, no shadow.
      Hover = +1 level, so these double as interaction states. */
-  --surf-0: #0e0c18;
-  --surf-1: #1a1730;
-  --surf-2: #231e3e;
-  --surf-3: #2d2650;
+  --surf-0: #0e0e12;
+  --surf-1: #17161c;
+  --surf-2: #211f27;
+  --surf-3: #2a2931;
 
-  --line-1: rgba(255, 255, 255, 0.07);
-  --line-2: rgba(167, 139, 250, 0.22);
+  /* --line-1 is a decorative divider (1.27:1). A control whose border is its
+     only edge uses --line-control (3:1 or better, WCAG 1.4.11). --line-2 is the
+     emphasized divider, e.g. a card's hover edge. All three are neutral. */
+  --line-1: #26252c;
+  --line-2: #3a3842;
+  --line-control: #75727f;
 
   /* Dark gets its depth from --surf-*; light gets it from these. Same tokens,
      so a component never branches on theme. */
@@ -90,14 +87,14 @@
   /* ── Contribution heat. Neutral: the heatmap is the accumulated tier and is
      meant to be quiet. Only today is purple, which also makes "did he commit
      today" readable at a glance — an all-violet grid can't do that. */
-  --heat-0: #231e3e;
-  --heat-1: #2f2456;
-  --heat-2: #46318a;
-  --heat-3: #6544c4;
-  --heat-4: #8b5cf6;
+  --heat-0: #211f27;
+  --heat-1: #3f355e;
+  --heat-2: #5e4d92;
+  --heat-3: #7f67c5;
+  --heat-4: #a487fa;
   --heat-today: var(--muted);
 
-  --track: #221d3c;
+  --track: var(--surf-2);
 
   /* Discord's own status colours. Imported, like everything else that isn't the
      accent: these are Discord's brand, and a visitor already knows what green
@@ -197,13 +194,13 @@
   --shot-light-display: block;
   --shot-dark-display: none;
 
-  --ink: #2c2748;
-  --ink-strong: #17122b;
-  --muted: #6b6494;
+  --ink: #24222d;
+  --ink-strong: #12101a;
+  --muted: #5e5b6d;
 
-  --live: #7a24c9; /* white passes AA on this */
-  --live-solid: var(--live); /* 7.18:1 against white — no separate fill needed */
-  --live-ink: #6a1eb0; /* AA as text on --surf-0 */
+  --live: #6738c1; /* white on it: 7.21:1 */
+  --live-solid: var(--live);
+  --live-ink: #5f2db7; /* text and focus ring: 7.21:1 minimum on surfaces */
 
   /* Error, re-derived rather than inherited. The dark values (#ff6b5e / #ff8f85)
      were written to glow on a near-black ground; against --surf-0 here they land
@@ -214,28 +211,27 @@
 
      Same convention as dark — --danger is the fill/border, --danger-ink is the
      text — and both are now checked against --surf-0 through --surf-3. */
-  --danger: #b3261e; /* 5.78:1 on --surf-0; white on it as a fill is 6.54:1 */
-  --danger-ink: #9c1f18; /* 7.09:1 on --surf-0 — error text, so it gets the margin */
-  --delta-up: #0a6b4f;
+  --danger: #af2b25; /* 6.10:1 on --surf-0 */
+  --danger-ink: #9c1f18; /* 7.09:1 on --surf-0: error text, so it gets the margin */
+  --delta-up: #036f4f;
   --delta-down: #9c1f18;
 
-  --glow-live: 0 0 9px 1px rgba(122, 36, 201, 0.45);
+  --glow-live: 0 0 9px 1px rgba(103, 56, 193, 0.4);
 
   /* Light inverts the elevation model: a light page has room to cast a shadow,
      so lift is a shadow again and the surfaces stay close together. */
-  --surf-0: #f2f0f7;
-  --surf-1: #faf9fd;
+  --surf-0: #f7f6f9;
+  --surf-1: #fdfdff;
   --surf-2: #ffffff;
-  --surf-3: #ffffff;
+  --surf-3: #f0eff4;
 
-  --line-1: rgba(24, 12, 60, 0.09);
-  --line-2: rgba(24, 12, 60, 0.15);
+  --line-1: #e1e0e6;
+  --line-2: #c9c8d1;
+  --line-control: #868491;
 
-  /* Derived from the light shadow palette rather than reused from dark: worth an
-     eyeball, since this pairing has never actually rendered. */
-  --ghost-shadow: rgba(30, 20, 60, 0.22);
-  --sh-card: 0 1px 2px rgba(30, 20, 60, 0.06), 0 6px 16px rgba(30, 20, 60, 0.07);
-  --sh-anchor: 0 2px 6px rgba(30, 20, 60, 0.08), 0 16px 40px rgba(30, 20, 60, 0.1);
+  --ghost-shadow: rgba(18, 16, 26, 0.22);
+  --sh-card: 0 1px 2px rgba(18, 16, 26, 0.06), 0 6px 16px rgba(18, 16, 26, 0.07);
+  --sh-anchor: 0 2px 6px rgba(18, 16, 26, 0.08), 0 16px 40px rgba(18, 16, 26, 0.1);
 
   /* Tile tones, light. Same four authored hues, inverted: the gradient carries
      the tone and the ink stays dark. */
@@ -243,13 +239,13 @@
   --tile-mint: linear-gradient(160deg, #dff3ec, #f2f8fb);
   --tile-coral: linear-gradient(160deg, #fbe6ec, #f8f2fb);
   --tile-sun: linear-gradient(160deg, #f7efd9, #f8f5fb);
-  --heat-0: #e6e2f2;
-  --heat-1: #c9bcf0;
-  --heat-2: #a78bfa;
-  --heat-3: #7c4ddb;
-  --heat-4: #5b21b6;
+  --heat-0: #e8e7ee;
+  --heat-1: #c5bde8;
+  --heat-2: #a191dd;
+  --heat-3: #8063cf;
+  --heat-4: #6231ba;
 
-  --track: #e9e4f7;
+  --track: var(--line-1);
 
   color-scheme: light;
 }

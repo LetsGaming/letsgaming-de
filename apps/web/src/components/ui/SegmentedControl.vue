@@ -55,7 +55,7 @@ const model = defineModel<T>({ required: true });
 <style scoped>
 .seg {
   display: inline-flex;
-  border: 1px solid var(--line-1);
+  border: 1px solid var(--line-control);
 }
 .seg__opt {
   font-family: var(--f-m);

@@ -2065,7 +2065,7 @@ body.is-dragging .cms .glist .gthumb {
 .cms .railcur {
   font-weight: 600;
   font-size: var(--fs-micro);
-  color: var(--live);
+  color: var(--live-ink);
   margin-left: var(--sp-6);
 }
 /* An empty area still needs to be a drop target, or the only way to fill it is to

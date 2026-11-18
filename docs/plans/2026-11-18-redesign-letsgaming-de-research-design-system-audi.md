@@ -478,3 +478,15 @@ committed) using the WCAG 2.x formula on the final token values.
   to paste the copy sheet into the CMS; otherwise Step 9 changes nothing visible on the live site.
 - **Effort is underestimated if read as "a restyle".** Steps 5 to 7 rebuild 15 section components.
   Expect each page step to be its own session.
+
+## Progress and deviations
+
+- Step 0 done (47d3b75). Deviation: plan file is the hook-written one in this folder, not `docs/plans/2026-11-18-redesign.md`.
+- Step 1 done. Deviations, with reasons:
+  - `--line-2` (emphasized divider) is not in the B1 table. Set to neutral `#3a3842` (dark) and `#c9c8d1` (light). Reason: the old value was a violet rgba, and hover edges must not use the accent.
+  - `--danger-ink` and `--delta-down` on dark equal `--danger` (`#f9786a`). Reason: B1 lists one value, and it passes 5.43:1 on every surface.
+  - `error.vue` `.code` moved to `--live-ink` as planned. It is not live data, so Step 8 should re-check it against "purple means now".
+  - `.seg` border in `SegmentedControl.vue` uses `--line-control` (it is the control's only edge).
+  - Not changed: `public/favicon.svg` (gradient stop `#a78bfa`) and CMS `--stack-3`. Reason: out of Step 1 scope. The favicon needs a decision in Step 4.
+  - Mobile (390px) visual check skipped for Step 1: a palette-only change. Desktop dark and light checked.
+  - Added audit finding D27.
