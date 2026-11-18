@@ -15,6 +15,9 @@
  * per-area from the CMS, and that needs a `description` field on the area
  * content model. Until then, one accurate sentence beats four useless ones.
  */
+/** The social preview card. `?v=` busts the caches platforms keep; raise it when `gen:og` changes the picture. */
+export const OG_IMAGE_PATH = "/og-image.png?v=2";
+
 export const SITE_DESCRIPTION =
   "Personal homepage of Domenic (@LetsGaming), full-time web developer in Germany. " +
   "Code, games and music, updated from GitHub, Wakapi and Discord.";

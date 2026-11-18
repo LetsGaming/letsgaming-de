@@ -1,5 +1,6 @@
 import { useHead, useRuntimeConfig } from "#imports";
 import { buildSeoTags, personLd, websiteLd, type Locale, type SiteView } from "@lg/core";
+import { OG_IMAGE_PATH } from "~/lib/site-meta";
 
 /**
  * Turn a page's identity into the head tags a search engine and a link-unfurler
@@ -49,7 +50,7 @@ export function useSeo(opts: {
     ogType: opts.ogType,
     // A dedicated share card served from the build's own assets — self-hosted and
     // versioned with the site, same rule as the fonts.
-    image: "/og-image.png",
+    image: OG_IMAGE_PATH,
     localized: opts.localized,
     twitterHandle: identity?.handle,
   });

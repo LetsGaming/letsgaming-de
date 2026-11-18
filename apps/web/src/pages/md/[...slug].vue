@@ -10,6 +10,7 @@
 import Breadcrumbs, { type Crumb } from "~/components/ui/Breadcrumbs.vue";
 import { articleLd, breadcrumbLd, type Locale, type SiteView } from "@lg/core";
 import { useSeo } from "~/composables/useSeo";
+import { OG_IMAGE_PATH } from "~/lib/site-meta";
 import { useRuntimeConfig } from "#imports";
 
 interface MdDoc {
@@ -73,7 +74,7 @@ useSeo({
           datePublished: data.value.at,
           description: description.value,
           keywords: data.value.tags,
-          image: `${origin}/og-image.png`,
+          image: `${origin}${OG_IMAGE_PATH}`,
           author: {
             name: siteData.value?.site.meta.name ?? "",
             url: origin,

@@ -69,7 +69,7 @@ unlinked and absent from the sitemap; naming it in a public file would undo that
   explicitly, which is the point.
 - `/og-image.png` is a committed asset, self-hosted and versioned with the site —
   same rule as the fonts, no third-party CDN. Its spec lives beside it in
-  `apps/web/src/public/README-og-image.md`.
+  `docs/reference/og-image.md`, and the generator is `pnpm --filter=@lg/web gen:og`.
 - Structured data publishes the owner's name, handle, role and public profile
   links. That is deliberately published information about the site owner; no
   visitor data is involved, so it changes nothing in the privacy posture
