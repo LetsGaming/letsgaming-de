@@ -12,7 +12,7 @@ defineProps<{
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="group">
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
     <p v-if="!module.data.hobbies.length" class="sub">{{ t("nothingHere") }}</p>
     <ul v-else class="hobbies">
       <li v-for="h in module.data.hobbies" :key="h.id" class="hobby">
@@ -44,7 +44,7 @@ defineProps<{
   display: flex;
   gap: var(--space-4);
   align-items: flex-start;
-  padding: var(--space-4) 0;
+  padding: var(--space-3) 0;
   border-top: 1px solid var(--line-1);
   min-width: 0;
 }

@@ -16,8 +16,10 @@ interface Props {
   highlight?: boolean;
   /** Monogram shown when the name has no letters/digits to take an initial from. */
   fallback?: string;
+  /** `type` leads with the name in larger type and sets art small at the end, hidden when absent. */
+  variant?: "art" | "type";
 }
-const props = withDefaults(defineProps<Props>(), { fallback: "•" });
+const props = withDefaults(defineProps<Props>(), { fallback: "•", variant: "art" });
 
 // First letter/digit of the name, for the monogram fallback. Pure, local. The
 // `g` flag strips every leading symbol ("[Game]" -> "G"), not just the first.
@@ -36,15 +38,25 @@ watch(
 </script>
 
 <template>
-  <div class="rr" :class="{ 'rr-1': highlight }">
+  <div class="rr" :class="{ 'rr-1': highlight, 'rr--type': variant === 'type' }">
     <span class="rr-rank">{{ rank }}</span>
-    <img v-if="art && !artFailed" class="rr-art" :src="art" alt="" loading="lazy" @error="artFailed = true" />
-    <span v-else class="rr-art rr-mono">{{ mono }}</span>
+    <template v-if="variant === 'art'">
+      <img v-if="art && !artFailed" class="rr-art" :src="art" alt="" loading="lazy" @error="artFailed = true" />
+      <span v-else class="rr-art rr-mono">{{ mono }}</span>
+    </template>
     <span class="rr-body">
       <span class="rr-name">{{ name }}</span>
       <span v-if="subtitle" class="rr-by">{{ subtitle }}</span>
     </span>
     <span class="rr-val"><slot /></span>
+    <img
+      v-if="variant === 'type' && art && !artFailed"
+      class="rr-art rr-art--sm"
+      :src="art"
+      alt=""
+      loading="lazy"
+      @error="artFailed = true"
+    />
   </div>
 </template>
 
@@ -113,5 +125,40 @@ watch(
 }
 .rr-val :slotted(small) {
   color: var(--muted);
+}
+
+.rr--type {
+  grid-template-columns: var(--space-5) minmax(0, 1fr) auto auto;
+  padding: var(--space-2) 0;
+}
+.rr--type .rr-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+}
+.rr--type .rr-name {
+  font-family: var(--f-d);
+  font-weight: 600;
+  font-size: var(--fs-h3);
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rr--type .rr-by {
+  font-size: var(--fs-small);
+  white-space: normal;
+}
+.rr--type.rr-1 .rr-name {
+  font-size: var(--fs-h2);
+  line-height: 1.1;
+}
+.rr-art--sm {
+  width: 36px;
+  height: 36px;
+  grid-column: 4;
+}
+.rr--type:not(:has(.rr-art--sm)) {
+  grid-template-columns: var(--space-5) minmax(0, 1fr) auto;
 }
 </style>

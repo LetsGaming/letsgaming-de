@@ -22,7 +22,7 @@ import { useLiveModule } from "../../composables/useLiveModule";
 import { useLedgerStrip } from "../../composables/useLedgerStrip";
 import { useLimitedList } from "../../composables/useLimitedList";
 import ModuleSection from "../ui/ModuleSection.vue";
-import ModuleCard from "../ui/ModuleCard.vue";
+import ArtTile from "../ui/ArtTile.vue";
 import CardHeader from "../ui/CardHeader.vue";
 import ListFooter from "../ui/ListFooter.vue";
 import RankedRow from "../ui/RankedRow.vue";
@@ -230,16 +230,17 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
     </p>
 
     <template v-else>
-      <div class="pt-bar">
-        <span v-if="selected" class="pt-scope">{{ day(selected) }}</span>
-        <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
-      </div>
-
-      <div class="pt-stats">
-        <StatTile :label='t("timePlayed")'>
-          <template #value><Duration :minutes="d.totalHours * 60" /></template>
-        </StatTile>
-        <StatTile :value="gameCount" :label='plural("game", gameCount)' />
+      <div class="pt-top">
+        <div class="pt-stats">
+          <StatTile :label='t("timePlayed")'>
+            <template #value><Duration :minutes="d.totalHours * 60" /></template>
+          </StatTile>
+          <StatTile :value="gameCount" :label='plural("game", gameCount)' />
+        </div>
+        <div class="pt-bar">
+          <span v-if="selected" class="pt-scope">{{ day(selected) }}</span>
+          <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
+        </div>
       </div>
 
       <HeatStrip
@@ -287,17 +288,19 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
           />
         </template>
 
-        <RankedRow
-          v-for="(g, i) in shownGames"
-          :key="g.name"
-          :rank="i + 1"
-          :name="g.name"
-          :subtitle="g.genre"
-          :art="cover(g.coverUrl, g.name)"
-          :highlight="i === 0"
-        >
-          <Duration :minutes="g.minutes" /><small v-if="!g.exact"> +</small>
-        </RankedRow>
+        <ol class="pt-wall">
+          <ArtTile
+            v-for="(g, i) in shownGames"
+            :key="g.name"
+            :rank="i + 1"
+            :name="g.name"
+            :subtitle="g.genre"
+            :art="cover(g.coverUrl, g.name)"
+            :highlight="i === 0"
+          >
+            <Duration :minutes="g.minutes" /><small v-if="!g.exact"> +</small>
+          </ArtTile>
+        </ol>
         <ListFooter
           :more-count="gamesMore"
           :expanded="gamesOpen"
@@ -306,21 +309,24 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         />
       </DrillPanel>
 
-      <ModuleCard v-if="d.heat.length" class="pt-heatcard">
-        <CardHeader as="span" :title='t("whenIPlay")'>
-          <template #note>
-            <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
-            <SegmentedControl v-else v-model="mode" :options="zoneOptions" :label='t("showTimesIn")' size="sm" />
-          </template>
-        </CardHeader>
-        <div class="pt-heat">
-          <div class="pt-heat-days"><span v-for="dl in DAYS" :key="dl">{{ dl }}</span></div>
-          <div class="pt-heat-plot">
-            <HeatGrid :cells="heatCells" :min-cell="8" :cell-height="13" :label='t("whenIPlay")' legend />
-            <div class="pt-heat-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
+      <details v-if="d.heat.length" class="pt-when">
+        <summary class="pt-when-sum">{{ t("showWhenIPlay") }}</summary>
+        <div class="pt-when-body">
+          <CardHeader as="span" :title='t("whenIPlay")'>
+            <template #note>
+              <span v-if="!showZoneToggle" class="pt-scope">{{ zoneLabel }}</span>
+              <SegmentedControl v-else v-model="mode" :options="zoneOptions" :label='t("showTimesIn")' size="sm" />
+            </template>
+          </CardHeader>
+          <div class="pt-heat">
+            <div class="pt-heat-days"><span v-for="dl in DAYS" :key="dl">{{ dl }}</span></div>
+            <div class="pt-heat-plot">
+              <HeatGrid :cells="heatCells" :min-cell="8" :cell-height="13" :label='t("whenIPlay")' legend />
+              <div class="pt-heat-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
+            </div>
           </div>
         </div>
-      </ModuleCard>
+      </details>
     </template>
   </ModuleSection>
 </template>
@@ -330,10 +336,80 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   color: var(--muted);
   font-size: var(--fs-body);
 }
+.pt-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
 .pt-bar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+}
+@container (min-width: 720px) {
+  .pt-top {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-5);
+  }
+  .pt-stats {
+    flex: 1;
+    max-width: 28rem;
+  }
+}
+.pt-wall {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+}
+@container (min-width: 560px) {
+  .pt-wall {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container (min-width: 720px) {
+  .pt-wall {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.pt-when {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--line-1);
+}
+.pt-when-sum {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--f-b);
+  font-size: var(--fs-small);
+  color: var(--ink);
+}
+.pt-when-sum::-webkit-details-marker {
+  display: none;
+}
+.pt-when-sum::before {
+  content: "";
+  width: var(--space-2);
+  height: var(--space-2);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.pt-when[open] > .pt-when-sum::before {
+  transform: rotate(45deg);
+}
+.pt-when-sum:hover {
+  text-decoration: underline;
+}
+.pt-when-body {
+  padding-top: var(--space-2);
 }
 .pt-scope {
   font-family: var(--f-b);
@@ -344,10 +420,6 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-4) var(--space-5);
-  margin-bottom: var(--space-6);
-}
-.pt-heatcard {
-  margin-top: var(--space-7);
 }
 
 /* Fixed 13px rows and a 3px gap mirror the grid's fixed-height cells

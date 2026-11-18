@@ -149,6 +149,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
     </p>
 
     <template v-else>
+      <div class="mu-top">
       <div class="mu-bar">
         <span v-if="selected" class="mu-scope">{{ day(selected) }}</span>
         <ActivityRangePicker v-else v-model="range" :window-days="d.windowDays" />
@@ -172,6 +173,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           :active="list === 'artists'"
           @select="showList('artists')"
         />
+      </div>
       </div>
 
       <HeatStrip
@@ -209,6 +211,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
             :subtitle="row.secondary"
             :art="artSrc(row.art)"
             :highlight="i === 0"
+            variant="type"
           >
             <Duration :minutes="row.minutes" /><small>, {{ row.plays }}×</small>
           </RankedRow>
@@ -228,6 +231,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           :subtitle="r.by"
           :art="artSrc(r.artUrl)"
           :highlight="i === 0"
+          variant="type"
         >
           <Duration :minutes="r.minutes" /><small>, {{ r.plays }}×</small>
         </RankedRow>
@@ -247,10 +251,29 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   color: var(--muted);
   font-size: var(--fs-body);
 }
+.mu-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
 .mu-bar {
+  order: 2;
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+}
+@container (min-width: 720px) {
+  .mu-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-5);
+  }
+  .mu-bar {
+    order: 0;
+    grid-column: 2;
+    grid-row: 1;
+  }
 }
 .mu-scope {
   font-family: var(--f-b);
@@ -261,6 +284,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-4) var(--space-5);
-  margin-bottom: var(--space-6);
+  grid-column: 1;
+  grid-row: 1;
 }
 </style>

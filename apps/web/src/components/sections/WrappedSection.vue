@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * The Wrapped retrospective, set as a poster: one oversized figure, one secondary
- * figure, then four ranked lists in columns.
+ * The Wrapped retrospective, set as a poster: oversized figures, art-led songs and
+ * games, then artists and genres in plain columns. No card chrome.
  *
  * Deliberately has no "should I show?" logic: the schedule is enforced in the
  * resolver, which omits the module entirely outside a window. If this component
@@ -12,8 +12,7 @@ import type { ResolvedModule } from "@lg/core";
 import { presenceMediaUrl } from "~/lib/api";
 import { useT } from "~/composables/useT";
 import ModuleSection from "../ui/ModuleSection.vue";
-import CardHeader from "../ui/CardHeader.vue";
-import RankedRow from "../ui/RankedRow.vue";
+import ArtTile from "../ui/ArtTile.vue";
 import StatTile from "../ui/StatTile.vue";
 import Duration from "../ui/Duration.vue";
 
@@ -44,72 +43,79 @@ const periodLabel = computed(() => {
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="d.heading" :note="d.note" variant="ruled" gap="group">
+  <ModuleSection :id="module.id" :heading="d.heading" :note="d.note" variant="ruled" class="wr">
+    <div class="wr-poster">
+    <div class="wr-side">
     <p class="wr-period">{{ periodLabel }}</p>
 
     <div class="wr-figs">
       <StatTile size="display" :label="t('timeListening')">
         <template #value><Duration :minutes="d.totalMinutesListened" /></template>
       </StatTile>
-      <StatTile :label="t('timePlayed')">
+      <StatTile size="display" :label="t('timePlayed')">
         <template #value><Duration :minutes="d.totalMinutesPlayed" /></template>
       </StatTile>
     </div>
 
-    <!--
-      Two columns, in DOM order: songs beside artists, then games beside genres.
-      The genre roll-up exists partly to fill that fourth cell: a lone full-width
-      games list under two half-width ones reads as a layout accident.
-    -->
-    <div class="wr-grid">
-      <div v-if="d.topSongs.length" class="wr-list">
-        <CardHeader :title="t('topSongs')" />
-        <RankedRow
-          v-for="(r, i) in d.topSongs"
-          :key="`s-${i}`"
-          :rank="i + 1"
-          :name="r.name"
-          :subtitle="r.detail"
-          :art="cover(r.artUrl)"
-          :highlight="i === 0"
-        ><Duration :minutes="r.minutes" /><small>, {{ r.plays }}×</small></RankedRow>
+    <div class="wr-cols">
+      <div v-if="d.topArtists.length" class="wr-block">
+        <h3 class="wr-h">{{ t("topArtists") }}</h3>
+        <ol class="wr-list">
+          <li v-for="(r, i) in d.topArtists" :key="`a-${i}`" :class="{ 'is-1': i === 0 }">
+            <span class="wr-n">{{ i + 1 }}</span>
+            <span class="wr-name">{{ r.name }}</span>
+            <span class="wr-val"><Duration :minutes="r.minutes" /></span>
+          </li>
+        </ol>
       </div>
 
-      <div v-if="d.topArtists.length" class="wr-list">
-        <CardHeader :title="t('topArtists')" />
-        <RankedRow
-          v-for="(r, i) in d.topArtists"
-          :key="`a-${i}`"
-          :rank="i + 1"
-          :name="r.name"
-          :art="cover(r.artUrl)"
-          :highlight="i === 0"
-        ><Duration :minutes="r.minutes" /></RankedRow>
+      <div v-if="d.topGenres.length" class="wr-block">
+        <h3 class="wr-h">{{ t("topGenres") }}</h3>
+        <ol class="wr-list">
+          <li v-for="(r, i) in d.topGenres" :key="`n-${i}`" :class="{ 'is-1': i === 0 }">
+            <span class="wr-n">{{ i + 1 }}</span>
+            <span class="wr-name">{{ r.name }}</span>
+            <span class="wr-val"><Duration :minutes="r.minutes" /></span>
+          </li>
+        </ol>
+      </div>
+    </div>
+    </div>
+
+    <div class="wr-art">
+      <div v-if="d.topSongs.length" class="wr-block">
+        <h3 class="wr-h">{{ t("topSongs") }}</h3>
+        <ol class="wr-tiles">
+          <ArtTile
+            v-for="(r, i) in d.topSongs"
+            :key="`s-${i}`"
+            ratio="square"
+            :rank="i + 1"
+            :name="r.name"
+            :subtitle="r.detail"
+            :art="cover(r.artUrl)"
+            :highlight="i === 0"
+          ><Duration :minutes="r.minutes" /><small>, {{ r.plays }}×</small></ArtTile>
+        </ol>
       </div>
 
-      <div v-if="d.topGames.length" class="wr-list">
-        <CardHeader :title="t('topGames')" />
-        <RankedRow
-          v-for="(r, i) in d.topGames"
-          :key="`g-${i}`"
-          :rank="i + 1"
-          :name="r.name"
-          :subtitle="r.detail"
-          :art="gameCover(r.artUrl, r.name)"
-          :highlight="i === 0"
-        ><Duration :minutes="r.minutes" /></RankedRow>
+      <div v-if="d.topGames.length" class="wr-block">
+        <h3 class="wr-h">{{ t("topGames") }}</h3>
+        <ol class="wr-tiles">
+          <ArtTile
+            v-for="(r, i) in d.topGames"
+            :key="`g-${i}`"
+            ratio="square"
+            :rank="i + 1"
+            :name="r.name"
+            :subtitle="r.detail"
+            :art="gameCover(r.artUrl, r.name)"
+            :highlight="i === 0"
+          ><Duration :minutes="r.minutes" /></ArtTile>
+        </ol>
       </div>
+    </div>
 
-      <div v-if="d.topGenres.length" class="wr-list">
-        <CardHeader :title="t('topGenres')" />
-        <RankedRow
-          v-for="(r, i) in d.topGenres"
-          :key="`n-${i}`"
-          :rank="i + 1"
-          :name="r.name"
-          :highlight="i === 0"
-        ><Duration :minutes="r.minutes" /></RankedRow>
-      </div>
     </div>
 
     <p v-if="!d.topSongs.length && !d.topGames.length" class="sub">{{ t("emptyWrapped") }}</p>
@@ -117,36 +123,102 @@ const periodLabel = computed(() => {
 </template>
 
 <style scoped>
+.wr {
+  padding-top: var(--space-5);
+}
 .wr-period {
   font-family: var(--f-d);
   font-size: var(--fs-h3);
   color: var(--ink);
-  margin-bottom: var(--space-5);
 }
-.wr-figs {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-  margin-bottom: var(--space-7);
-}
-/* ModuleSection is the query container, so these respond to the section's own
-   width rather than the viewport. */
-@container (min-width: 640px) {
-  .wr-figs {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    align-items: end;
-    gap: var(--space-6);
-  }
-}
-.wr-grid {
+.wr-poster {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
 }
-@container (min-width: 640px) {
-  .wr-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-7) var(--space-6);
+.wr-side,
+.wr-art {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.wr-figs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+.wr-figs :deep(.st) {
+  border-top: 0;
+  padding-top: 0;
+}
+.wr-figs :deep(.st-n) {
+  line-height: 1.05;
+}
+.wr-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+@container (min-width: 720px) {
+  .wr-poster {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--space-7);
+  }
+}
+.wr-h {
+  font-family: var(--f-d);
+  font-weight: 600;
+  font-size: var(--fs-h3);
+  color: var(--ink-strong);
+  margin-bottom: var(--space-3);
+}
+.wr-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+}
+.wr-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wr-list li {
+  display: grid;
+  grid-template-columns: var(--space-5) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-1) 0;
+}
+.wr-n {
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
+.wr-name {
+  font-family: var(--f-d);
+  font-weight: 600;
+  font-size: var(--fs-h3);
+  line-height: 1.2;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+.wr-val {
+  font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.is-1 .wr-n {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+@container (min-width: 720px) {
+  .wr-tiles {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 </style>

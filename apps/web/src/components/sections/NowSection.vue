@@ -33,7 +33,7 @@ defineProps<{
   grid-template-columns: minmax(5.5rem, 8rem) minmax(0, 1fr);
   gap: var(--space-4);
   align-items: baseline;
-  padding: var(--space-3) 0;
+  padding: var(--space-2) 0;
   border-top: 1px solid var(--line-1);
 }
 .nowrow .k {

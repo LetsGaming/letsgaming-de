@@ -54,7 +54,7 @@ const { t } = useT();
 
 <style scoped>
 .hs {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 .hs-lbl {
   display: flex;
