@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useT } from "~/composables/useT";
 /**
- * The playtime module — what I've been playing over a chosen window, from observed
+ * The playtime module, what I've been playing over a chosen window, from observed
  * `presence_sessions`. Built to mirror `MusicSection`: both are the accumulated
  * past, not the live "Right now" card. Header + total, a top-games list, and a
  * per-day drill-in over a contiguous-fortnight heat strip.
  *
  * The mirror is literal now: the strip + drill wiring is `useLedgerStrip`, the row
- * is `RankedRow`, the stat tile `StatTile`, the timeline `HeatStrip` — all shared
+ * is `RankedRow`, the stat tile `StatTile`, the timeline `HeatStrip`, all shared
  * with Listening. One list rather than two (a play has only the game where a
  * listen has a song and an artist), so the stats are inert tiles, not tabs. Cover
  * art and genre come from RAWG, matched by name, served through the shared media
@@ -36,14 +36,14 @@ import ActivityRangePicker from "../ui/ActivityRangePicker.vue";
 
 const { t, plural, duration, day, locale } = useT();
 
-/** The formatter's own weekday names, used only to index the grid — see nowMarker. */
+/** The formatter's own weekday names, used only to index the grid, see nowMarker. */
 const EN_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "playtime" }> }>();
 
 // Which zone the module is shown in. The backend buckets in a zone and ships it;
 // by default that's the owner's (what SSR sent). A visitor can flip to their own
-// local time, which re-requests the module bucketed in their zone — exact, not a
+// local time, which re-requests the module bucketed in their zone, exact, not a
 // client-side rotation. The owner's zone is captured from the SSR data up front.
 const ownerZone = props.module.data.timeZone;
 const viewerZone = ref<string | null>(null);
@@ -52,18 +52,18 @@ onMounted(() => {
 });
 const mode = ref<"owner" | "local">("owner");
 const requestedZone = computed(() => (mode.value === "local" && viewerZone.value ? viewerZone.value : ownerZone));
-// The toggle only earns its place when the viewer's zone differs from the owner's —
+// The toggle only earns its place when the viewer's zone differs from the owner's, 
 // otherwise both views are identical. Known only after mount, so it appears a beat
 // after load (and, for the owner, never).
 const showZoneToggle = computed(() => !!viewerZone.value && viewerZone.value !== ownerZone);
 
 // How far back the card looks. Starts at whatever the CMS configured, which is what
-// SSR already rendered — so the opening view and the first poll agree. Not
+// SSR already rendered, so the opening view and the first poll agree. Not
 // persisted: a range is a question you ask while reading a card, and storing it
 // would mean SSR rendering a fortnight and the client immediately replacing it.
 const range = ref<ActivityRange>(props.module.data.windowDays);
 
-// Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data —
+// Polls `/api/module/:id` so playtime refreshes in place, starting from SSR data, 
 // in `requestedZone` and over `range`, so a flip or a longer window is rebuilt on
 // the server rather than re-sliced here.
 const { data: liveData, refresh } = useLiveModule(
@@ -78,7 +78,7 @@ const d = computed(() => liveData.value);
 // waiting out the poll interval.
 watch([mode, range], () => void refresh());
 
-// The clickable fortnight timeline + day drill-in — shared with Listening. The
+// The clickable fortnight timeline + day drill-in, shared with Listening. The
 // strip's window and drill-in run in the data's zone (`d.timeZone`), so a flip
 // moves them with the heatmap. The day response is pre-capped to maxCount, with the
 // true distinct-game total and the day's real minutes alongside.
@@ -99,8 +99,8 @@ const {
   ledger: () => d.value.ledger,
   fetchDay: (iso) => fetchPlaytimeDay(iso, d.value.timeZone),
   emptyDay: EMPTY_DAY,
-  title: (iso, min) => `${day(iso)} · ${min ? duration(min) : t("nothingHere")}`,
-  // The window the *data* covers, not the one being requested — mid-fetch the
+  title: (iso, min) => `${day(iso)}: ${min ? duration(min) : t("nothingHere")}`,
+  // The window the *data* covers, not the one being requested, mid-fetch the
   // strip keeps matching the rows beside it rather than jumping ahead.
   days: () => d.value.windowDays,
   timeZone: () => d.value.timeZone,
@@ -124,7 +124,7 @@ const {
   total: gameCount,
 });
 
-// The day panel rows — already capped server-side, with the true distinct-game
+// The day panel rows, already capped server-side, with the true distinct-game
 // total shipped for "and N more". Reuses the strip's expanded ref (resets on day
 // change).
 const dayRowsAll = computed(() => dayData.value?.games ?? []);
@@ -149,10 +149,10 @@ const dayGameCount = computed(() => dayData.value?.total ?? 0);
 const cover = (url: string | undefined, game: string) => presenceMediaUrl({ url, game });
 
 // ── the weekday×hour heatmap ("when I play") ──────────────────────────────────
-// A second card, and Playtime's own — Listening has no equivalent. The day strip
+// A second card, and Playtime's own, Listening has no equivalent. The day strip
 // answers "how much, per day"; this answers "at what time of day".
 //
-// The grid arrives already bucketed in the display zone — the backend aggregated
+// The grid arrives already bucketed in the display zone, the backend aggregated
 // it there from the raw sessions (owner's zone by default, the viewer's when the
 // module is flipped to local). So it renders straight, no client re-projection:
 // what you see is an exact, DST-correct grid for whichever zone `d.timeZone` is.
@@ -213,7 +213,7 @@ const heatCells = computed<HeatCell[]>(() => {
       out.push({
         level: heatLevel(min),
         today: day === nowMarker.value.day && hour === nowMarker.value.hour,
-        title: `${DAYS.value[day]} ${String(hour).padStart(2, "0")}:00 · ${min ? duration(min) : t("nothingHere")}`,
+        title: `${DAYS.value[day]} ${String(hour).padStart(2, "0")}:00, ${min ? duration(min) : t("nothingHere")}`,
       });
     }
   }
@@ -264,7 +264,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || games.value.length >
         @back="clear"
       >
         <template #summary>
-          <Duration :minutes="dayMinutes" /> · {{ dayGameCount }} {{ plural("game", dayGameCount) }}
+          <Duration :minutes="dayMinutes" />, {{ dayGameCount }} {{ plural("game", dayGameCount) }}
         </template>
 
         <template #day>

@@ -85,7 +85,7 @@ export interface HeatView {
   levels: number[];
   /** Per-day calendar date (YYYY-MM-DD), parallel to `levels`. */
   dates: string[];
-  /** Per-day raw contribution count, parallel to `levels` — what a tooltip
+  /** Per-day raw contribution count, parallel to `levels`, what a tooltip
    *  over one cell shows, since the level alone is a bucketed shade. */
   counts: number[];
   /** Sum of raw contributions in the window, for the "N this year" caption. */
@@ -101,7 +101,7 @@ export interface PostView {
   at: string;
   relative: string;
   excerpt?: string;
-  /** Display only — rendered as chips, not links. */
+  /** Display only, rendered as chips, not links. */
   tags: string[];
 }
 
@@ -159,12 +159,12 @@ export interface CodingView {
 
 /**
  * What the *client* is allowed to know about presence. Deliberately minimal: no
- * Discord id, no category list — the browser never talks to Lanyard and never
+ * Discord id, no category list, the browser never talks to Lanyard and never
  * learns what was disabled.
  *
  * `enabled` is a pure display decision owned by the CMS: it's true when the owner
  * has left at least one live category visible (the presence allow-list). It says
- * "render the widget and poll `/api/presence`" — nothing about whether Discord is
+ * "render the widget and poll `/api/presence`", nothing about whether Discord is
  * configured or currently online. That is the server's concern: the widget polls
  * regardless and shows whatever comes back (a filtered snapshot, or an offline
  * fallback). Deliberately decoupled from any `DISCORD_USER_ID` so the SSR process
@@ -192,7 +192,6 @@ export type BioBlock =
   | { kind: "image"; image: ImageAssetView | GifAssetView };
 
 export interface HeroView {
-  eyebrow: string;
   headline: { before: string; highlight: string; after: string };
   lede: string;
   status: { verb: string; now: string };
@@ -233,7 +232,7 @@ export interface ActivityView extends SectionMeta {
  * Everything here already existed: `label` and `description` are CMS-owned on the
  * nav node, and `description` was previously read only by the `<meta>` tag. It's a
  * sentence written to tell a stranger what an area is, which is exactly what a
- * visitor deciding whether to click needs — it just had no on-page reader.
+ * visitor deciding whether to click needs, it just had no on-page reader.
  */
 export interface AreaCardView {
   /** The nav node id. */
@@ -243,12 +242,12 @@ export interface AreaCardView {
   description?: string;
   icon?: string;
   href: string;
-  /** How many modules the area holds — a rough "there's more in here" signal. */
+  /** How many modules the area holds, a rough "there's more in here" signal. */
   moduleCount: number;
 }
 
 export interface SectionMeta {
-  /** Present on modules fed by a Source. Absent on CMS-authored ones — local
+  /** Present on modules fed by a Source. Absent on CMS-authored ones, local
    *  content can't be stale. */
   freshness?: FreshnessView;
   heading: string;
@@ -285,7 +284,7 @@ export type ResolvedModule =
  * How the contact module invites a reply.
  *
  * Resolved server-side, because only the server knows whether the relay is
- * configured — and the module used to render the form unconditionally and find
+ * configured, and the module used to render the form unconditionally and find
  * out on submit, which meant an unconfigured deployment showed a working-looking
  * form that could only ever answer "not configured" *after* someone had typed a
  * message into it. The capability is knowable before the page renders; asking it
@@ -297,9 +296,9 @@ export type ResolvedModule =
  * nothing at all (`form: false` with no address) is representable but unnamed.
  */
 export type ContactChannelView =
-  /** The relay is configured — render the form. */
+  /** The relay is configured, render the form. */
   | { kind: "form" }
-  /** No relay, but a published address — render a mailto. */
+  /** No relay, but a published address, render a mailto. */
   | { kind: "mailto"; email: string }
   /** Neither. The module still renders its links; it just can't offer a reply
    *  path of its own, and says nothing rather than offering a broken one. */
@@ -308,15 +307,15 @@ export type ContactChannelView =
 /**
  * The historical playtime module (features 02 + 03).
  *
- * Deliberately separate from `PresenceModuleView`, which is present-tense — "Right
+ * Deliberately separate from `PresenceModuleView`, which is present-tense, "Right
  * now", the live dot. This is the *past*: a headline total, a contiguous-fortnight
  * day strip, a top-games list, and a weekday×hour heatmap, all built from
- * accumulated `presence_sessions` — the observed history the present-tense card
+ * accumulated `presence_sessions`, the observed history the present-tense card
  * never reads. Two subjects, two modules.
  *
  * The main card mirrors `MusicModuleView` (total + strip + top-list + drill); one
  * list, not two, since a play has only the game where a listen has a song and an
- * artist. The heatmap is a second card — "when do I play", which the day strip
+ * artist. The heatmap is a second card, "when do I play", which the day strip
  * (how much, per day) can't answer.
  *
  * `dayBreakdown` isn't here: it's fetched on demand when a column is clicked
@@ -326,16 +325,16 @@ export type ContactChannelView =
 export interface PlaytimeModuleView {
   /** All-time hours, rounded, for the headline figure. */
   totalHours: number;
-  /** Recently played, most-played first — every game Discord observed over the
+  /** Recently played, most-played first, every game Discord observed over the
    *  window. Cover art and genre (from RAWG, by name) ride along when known. This
    *  is history, which is why it belongs here and not in "Right now". */
   recent: PlaytimeView[];
-  /** Distinct games observed over the window — the true total, uncapped, for the
+  /** Distinct games observed over the window, the true total, uncapped, for the
    *  headline and the "and N more" the list cap hides (mirrors the music counts). */
   gameCount: number;
   /** The day strip: minutes observed per day, oldest first. */
   ledger: { day: string; minutes: number }[];
-  /** The heatmap: minutes per weekday×hour over all time. Sparse — only cells with
+  /** The heatmap: minutes per weekday×hour over all time. Sparse, only cells with
    *  play are present; the view fills the 7×24 grid. */
   heat: { weekday: number; hour: number; minutes: number }[];
   /** The IANA timezone the strip and heatmap are bucketed in (the server's `TZ`).
@@ -344,7 +343,7 @@ export interface PlaytimeModuleView {
   timeZone: string;
   /** How many days the ledger covers, for "since <date>" copy. */
   since?: string;
-  /** Rows shown before "show more" — CMS-configured (mirrors the music module). */
+  /** Rows shown before "show more", CMS-configured (mirrors the music module). */
   initialCount: number;
   /** Hard cap on rows the list ever shows, in the main list and the day drill-in. */
   maxCount: number;
@@ -352,7 +351,7 @@ export interface PlaytimeModuleView {
    * The window this data covers, in days.
    *
    * The card labels itself from this, the strip sizes its window to it, and the
-   * picker shows it as the current selection — so the number the server built the
+   * picker shows it as the current selection, so the number the server built the
    * response with is the number the page displays, rather than three places each
    * assuming a fortnight.
    */
@@ -371,12 +370,12 @@ export interface MusicRankView {
 }
 
 /**
- * The music module — a fortnight of Spotify listening, sliced three ways plus a
+ * The music module, a fortnight of Spotify listening, sliced three ways plus a
  * timeline. Sibling to `PlaytimeModuleView`: same "accumulated past" shape (top
  * lists + a per-day strip), driven by `music_plays` the way playtime is driven by
  * `presence_sessions`.
  *
- * Like playtime, the per-day breakdown isn't shipped here — it's fetched on demand
+ * Like playtime, the per-day breakdown isn't shipped here, it's fetched on demand
  * when a timeline column is clicked (`/api/music/day`), so the module carries one
  * strip and three short lists, not fourteen days of tracks.
  *
@@ -393,7 +392,7 @@ export interface MusicModuleView {
   topSongs: MusicRankView[];
   topArtists: MusicRankView[];
   topAlbums: MusicRankView[];
-  /** Minutes listened per day, oldest first — the clickable timeline. */
+  /** Minutes listened per day, oldest first, the clickable timeline. */
   ledger: { day: string; minutes: number }[];
   /** The IANA zone the ledger is bucketed in (see PlaytimeModuleView.timeZone). */
   timeZone: string;
@@ -401,7 +400,7 @@ export interface MusicModuleView {
   since?: string;
   /** Rows to show before "show more" (CMS-configured display count). */
   initialCount: number;
-  /** The most list rows shown — the lists are already capped to this server-side,
+  /** The most list rows shown, the lists are already capped to this server-side,
    *  so this is the expand target, not a client-side filter. */
   maxCount: number;
   /** The window this data covers, in days (see PlaytimeModuleView.windowDays). */
@@ -428,7 +427,7 @@ export interface SiteView {
   modules: Record<string, ResolvedModule>;
   /** ISO timestamp of the last source sync, if any data has been synced. */
   syncedAt?: string;
-  /** Pre-computed short relative age of `syncedAt` (e.g. "8m", "2d") — the
+  /** Pre-computed short relative age of `syncedAt` (e.g. "8m", "2d"), the
    *  frontend is a dumb renderer, so this is computed here, not in Vue, the
    *  same convention every other timestamp in this file follows. */
   syncedRelative?: string;
@@ -437,7 +436,7 @@ export interface SiteView {
 /**
  * The Wrapped retrospective, as resolved for display.
  *
- * Only ever present when the schedule says so — the resolver omits the module
+ * Only ever present when the schedule says so, the resolver omits the module
  * entirely outside a window, so there is no "hidden" state for a client to leak.
  * The period is shipped as ISO bounds, not a formatted label: the section renders
  * the range with `Intl` in the locale the page was resolved in, which a
@@ -455,13 +454,13 @@ export interface WrappedModuleView {
   /** ISO bounds of the summarized period, for anyone who wants exactness. */
   periodStart: string;
   periodEnd: string;
-  /** When this window stops showing — lets the UI say "here until X". */
+  /** When this window stops showing, lets the UI say "here until X". */
   windowEnd: string;
   totalMinutesListened: number;
   totalMinutesPlayed: number;
   topSongs: WrappedRankView[];
   topArtists: WrappedRankView[];
   topGames: WrappedRankView[];
-  /** Time by RAWG genre over the same period — the long tail, not just the top games. */
+  /** Time by RAWG genre over the same period, the long tail, not just the top games. */
   topGenres: WrappedRankView[];
 }

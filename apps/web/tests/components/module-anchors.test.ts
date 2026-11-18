@@ -10,14 +10,14 @@ import SitePanels from "../../src/components/shell/SitePanels.vue";
  *
  * - **Deep links.** `SitePanels` scrolls with `getElementById(moduleId)`, and the
  *   resolver now answers `#contact` with `/about#contact`. Only contact ever
- *   worked, because `ContactSection` had `id="contact"` typed by hand — a second
+ *   worked, because `ContactSection` had `id="contact"` typed by hand, a second
  *   spelling of the module id that happened to match.
  * - **The editor canvas.** It outlines each module by finding its element. The
  *   first version counted `.panel`'s children instead, which assumed one root per
  *   section. Thirteen obliged; `HeroSection` was a fragment of five, so from the
  *   hero down every handle sat on the wrong section.
  *
- * A section that renders a fragment, or forgets `:id="module.id"`, breaks both —
+ * A section that renders a fragment, or forgets `:id="module.id"`, breaks both, 
  * silently, in the browser, at the bottom of the page. So: here.
  */
 
@@ -30,7 +30,6 @@ const view = (): SiteView => ({
       id: "hero",
       kind: "hero",
       data: {
-        eyebrow: "dev",
         headline: { before: "a", highlight: "b", after: "c" },
         lede: "l",
         status: { verb: "building", now: "x" },

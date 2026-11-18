@@ -296,3 +296,7 @@ A layout family appears at most once per page. At most two `ModuleCard` per page
 - Don't give two sections on one page the same layout family.
 - Don't animate on scroll.
 - Don't invent a palette color. If a need cannot be met from data or the existing scale, it needs a reason first.
+
+## Enforcement
+
+`pnpm lint:design` (part of `pnpm build`, so CI runs it) checks what a grep can decide: no middle-dot separators, no arrow glyphs on link text, no uppercase or letter-spaced labels, mono (`--f-m`) and accent (`--live`, `--live-ink`, `--live-solid`) uses held to a per-file allowance in `apps/web/scripts/lint-design.ts`, and no new em or en dashes in comments (`dash-baseline.json` allows the existing ones and shrinks as files are touched). Raising an allowance is a reviewable edit to that file. Rules a grep cannot decide (layout variety, "does this read as generated") stay in the critique.

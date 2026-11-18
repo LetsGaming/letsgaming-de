@@ -26,13 +26,13 @@ function refresh() {
 }
 
 function toggleAnalytics() {
-  if (dnt.value) return; // forced off by the browser — not user-changeable here
+  if (dnt.value) return; // forced off by the browser, not user-changeable here
   const nowOn = !analyticsOn.value;
   setOptedOut(!nowOn);
   analyticsOn.value = nowOn;
 }
 
-// The two segmented controls are v-model'd, but the values live in the parent —
+// The two segmented controls are v-model'd, but the values live in the parent, 
 // so these are writable computeds that read the prop and emit on write, rather
 // than local state that would have to be kept in sync with it.
 const THEMES = computed(
@@ -42,7 +42,7 @@ const THEMES = computed(
       { value: "dark", label: t("themeDark") },
     ] as const,
 );
-// Language names stay in their own language — "Deutsch", never "German". A
+// Language names stay in their own language, "Deutsch", never "German". A
 // language switcher that translates its own options is unusable to exactly the
 // person who needs it: someone who can't read the current one.
 const LOCALES = [
@@ -151,7 +151,7 @@ watch(
   border: 1px solid var(--line-1);
   border-radius: var(--r-3);
   padding: var(--sp-20) var(--sp-22) var(--sp-24);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sh-anchor);
   color: var(--ink);
 }
 header {
@@ -169,7 +169,7 @@ header h2 {
   background: none;
   border: none;
   color: var(--muted);
-  font-size: 16px;
+  font-size: var(--fs-body);
   cursor: pointer;
   padding: var(--sp-6);
   border-radius: var(--r-2);

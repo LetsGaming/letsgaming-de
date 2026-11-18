@@ -17,7 +17,7 @@ const modules = computed(() =>
 
 /**
  * How many placed modules are cold (never synced / synced-but-empty). Below
- * COLD_START_THRESHOLD, each module's own Freshness caption already says so —
+ * COLD_START_THRESHOLD, each module's own Freshness caption already says so, 
  * that's honest and specific. At or above it, reading N separate "nothing
  * here"s in a row reads as broken rather than honest, so one line up front
  * reframes the page before the individual captions repeat the point.
@@ -59,7 +59,7 @@ onMounted(() => {
    rhythm as if the banner were just another module before it. */
 .cold-start {
   margin-top: var(--sp-8);
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
 }

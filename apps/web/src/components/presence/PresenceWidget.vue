@@ -8,7 +8,7 @@ import { useT } from "~/composables/useT";
 
 // The client only ever knows whether presence is enabled (a CMS display toggle)
 // and the owner identity for the profile header. It never receives the Discord
-// id, the category list, any disabled activity, or the playtime history — the
+// id, the category list, any disabled activity, or the playtime history, the
 // server filters before this, and history lives in the playtime module now.
 const props = defineProps<{
   enabled: boolean;
@@ -19,7 +19,7 @@ const props = defineProps<{
 
 // Fetching + the poll loop live in the composable (a component doesn't fetch);
 // this component only renders whatever the server returns. `unreachable` stays an
-// honest "couldn't reach the relay, never had a snapshot" — a successful *offline*
+// honest "couldn't reach the relay, never had a snapshot", a successful *offline*
 // response is a real fact and renders as its own state below.
 const { view, loaded, unreachable } = usePresence(() => props.enabled);
 
@@ -45,7 +45,7 @@ const activityCards = computed(() =>
 );
 
 // Per-category source label + themed motion + accent (currentColor for the motif).
-// Every colour is a token — the three vendor marks are `--brand-*` in tokens.css.
+// Every colour is a token, the three vendor marks are `--brand-*` in tokens.css.
 // They were raw hex here, alongside a `var(--live-ink)`, so the widget owned half
 // a palette that no stylesheet could see.
 const CAT: Record<string, { src: MessageKey; motif: string; color: string }> = {
@@ -83,7 +83,7 @@ const initials = computed(() => {
   return (props.name || h).slice(0, 2).toUpperCase();
 });
 
-// Reachable, loaded, and nothing playing — a real "quiet right now" state, shown
+// Reachable, loaded, and nothing playing, a real "quiet right now" state, shown
 // as a gentle line rather than a bare header. Distinct from `unreachable`.
 const idle = computed(
   () => loaded.value && !unreachable.value && !activities.value?.length,
@@ -96,7 +96,7 @@ const idle = computed(
        rules can't leak into the widget. Rendered whenever presence is enabled in
        the CMS; the server decides what (if anything) is actually shown. -->
   <div v-if="enabled" class="pw">
-    <!-- Discord profile — already filtered by the server -->
+    <!-- Discord profile, already filtered by the server -->
     <div class="pw-unit">
       <div class="pw-who">
         <div class="pw-avatar">
@@ -265,7 +265,7 @@ const idle = computed(
   content: "";
   width: 56%;
   height: 2.5px;
-  border-radius: 2px;
+  border-radius: var(--r-1);
   background: var(--surf-3);
 }
 .pw-pip.pw-s-offline {
@@ -382,7 +382,7 @@ const idle = computed(
   font-size: var(--fs-meta);
 }
 
-/* themed motion — inherits currentColor from .pw-src */
+/* themed motion, inherits currentColor from .pw-src */
 .pw-anim {
   flex: none;
   color: inherit;
@@ -395,7 +395,7 @@ const idle = computed(
 }
 .pw-music i {
   width: 2.5px;
-  border-radius: 2px;
+  border-radius: var(--r-1);
   background: currentColor;
   height: 35%;
   animation: pw-eq 0.95s ease-in-out infinite;
@@ -421,7 +421,7 @@ const idle = computed(
   position: absolute;
   width: 4px;
   height: 4px;
-  border-radius: 1.5px;
+  border-radius: var(--r-1);
   background: currentColor;
   opacity: 0.28;
   animation: pw-dpad 1.6s steps(1, end) infinite;
@@ -461,7 +461,7 @@ const idle = computed(
   margin-top: -0.75px;
   background: currentColor;
   opacity: 0.3;
-  border-radius: 2px;
+  border-radius: var(--r-1);
 }
 .pw-watch i {
   position: absolute;

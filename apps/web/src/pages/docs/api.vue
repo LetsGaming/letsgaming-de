@@ -2,7 +2,7 @@
 /**
  * The generated API reference, rendered from `openapi.yml`.
  *
- * The sidebar, mobile topbar and drawer are `DocsShell` — the same component the
+ * The sidebar, mobile topbar and drawer are `DocsShell`, the same component the
  * markdown docs use. Under Astro that markup was duplicated between the two docs
  * routes; the only genuinely page-specific part is the in-page jump list, which
  * goes in the shell's `nav-extra` slot.
@@ -17,7 +17,7 @@ import { useSeo } from "~/composables/useSeo";
 const { data } = await useFetch<{ ref: ApiReference; tree: DocGroup[] }>("/api/openapi");
 
 // Same reasoning as docs/[...slug].vue: English-only, prerendered, no site graphs
-// (this is a document, not the site itself) — mirrored here rather than shared
+// (this is a document, not the site itself), mirrored here rather than shared
 // because the source text differs (spec `description`, not rendered doc HTML).
 useSeo({
   locale: "en",
@@ -30,7 +30,7 @@ useSeo({
 
 /**
  * Minimal, safe inline markdown for the spec's authored descriptions (our own
- * file, not user input). Escapes first, then applies bold/code/link/`##` — enough
+ * file, not user input). Escapes first, then applies bold/code/link/`##`, enough
  * for the prose in openapi.yml without pulling in a markdown renderer.
  */
 function renderProse(md: string): string {
@@ -339,7 +339,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
 }
 .api-table th {
   text-align: left;
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
   font-weight: 600;

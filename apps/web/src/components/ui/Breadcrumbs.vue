@@ -2,13 +2,13 @@
 /**
  * The trail above a doc/post's content: Home › Docs › ADR › the current page.
  *
- * Public on `/docs/*` and `/md/*` — the two route families with a real,
+ * Public on `/docs/*` and `/md/*`, the two route families with a real,
  * navigable parent chain (a doc's group, a post's section). Areas don't get
  * one: they're siblings under one tab strip, not a hierarchy, and `SiteChrome`
  * already shows where you are.
  *
  * The `BreadcrumbList` JSON-LD a search result renders from is a separate
- * concern — built with `breadcrumbLd` from `@lg/core` and passed to `useSeo`'s
+ * concern, built with `breadcrumbLd` from `@lg/core` and passed to `useSeo`'s
  * `jsonLd` by the page, which is the one place that already knows the site's
  * origin. This component only owns what a visitor sees.
  */
@@ -17,7 +17,7 @@ import SmartLink from "./SmartLink.vue";
 export interface Crumb {
   label: string;
   /** Omitted for a crumb with nowhere to send you (e.g. no blog index exists
-   *  yet) — it renders as plain text instead of a dead link. */
+   *  yet), it renders as plain text instead of a dead link. */
   href?: string;
 }
 
@@ -41,7 +41,7 @@ defineProps<{
 </template>
 
 <style scoped>
-/* Label scale (mono, meta size, muted) — the same typographic register as a
+/* Label scale (mono, meta size, muted), the same typographic register as a
  * synced timestamp: wayfinding metadata, not prose, and not a heading. */
 .crumbs ol {
   display: flex;
@@ -51,7 +51,7 @@ defineProps<{
   list-style: none;
   margin: 0 0 var(--sp-16);
   padding: 0;
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
 }

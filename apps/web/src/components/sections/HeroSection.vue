@@ -30,7 +30,7 @@ const liveParts = computed(() =>
   ),
 );
 const liveText = computed(() => {
-  if (liveParts.value.length) return t("heroRightNow", { parts: liveParts.value.join(" · ") });
+  if (liveParts.value.length) return t("heroRightNow", { parts: liveParts.value.join(", ") });
   const last = props.module.data.lastActivity;
   if (!last) return "";
   return t(last.kind === "game" ? "heroLastPlayed" : "heroLastListened", {

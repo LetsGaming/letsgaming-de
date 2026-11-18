@@ -72,7 +72,7 @@ const periodLabel = computed(() => {
           :subtitle="r.detail"
           :art="cover(r.artUrl)"
           :highlight="i === 0"
-        ><Duration :minutes="r.minutes" /><small> · {{ r.plays }}×</small></RankedRow>
+        ><Duration :minutes="r.minutes" /><small>, {{ r.plays }}×</small></RankedRow>
       </div>
 
       <div v-if="d.topArtists.length" class="wr-list">

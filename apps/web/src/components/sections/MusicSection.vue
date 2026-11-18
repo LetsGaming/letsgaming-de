@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { useT } from "~/composables/useT";
 /**
- * The music module — Spotify listening over a chosen window, from `music_plays`.
+ * The music module, Spotify listening over a chosen window, from `music_plays`.
  *
  * Sibling to `PlaytimeSection`, and built to mirror it: both are the accumulated
  * past, not the live card. The strip + drill wiring is the shared `useLedgerStrip`,
  * the row is `RankedRow`, the stat tiles `StatTile`, the timeline `HeatStrip`. The
  * shell, card, header and list footer are the shared module primitives.
  *
- * What's Music's own: two lists, not one. The stats double as tabs — "tracks
+ * What's Music's own: two lists, not one. The stats double as tabs, "tracks
  * played" reveals the songs, "different artists" the artists, one content region
  * taking turns; "time listening" is inert (no list behind a duration). The day
  * drill respects that choice via `dayRowsFor`: click a day on "different artists"
  * and you get *that day's artists*, not its raw tracks. Genre and podcast-vs-music
- * are absent by construction — Discord's Spotify presence exposes neither.
+ * are absent by construction, Discord's Spotify presence exposes neither.
  */
 import { computed, ref, watch } from "vue";
 import {
@@ -41,12 +41,12 @@ import ActivityRangePicker from "../ui/ActivityRangePicker.vue";
 const { t, plural, day } = useT();
 
 const props = defineProps<{ module: Extract<ResolvedModule, { kind: "music" }> }>();
-// How far back the card looks — the twin of Played's picker, with its own stored
+// How far back the card looks, the twin of Played's picker, with its own stored
 // default so the two can open on different windows. Not persisted; see the picker.
 const range = ref<ActivityRange>(props.module.data.windowDays);
 
 // Polls `/api/module/:id` so the module refreshes in place, starting from SSR data,
-// over `range` — a longer window is rebuilt on the server, not re-sliced here.
+// over `range`, a longer window is rebuilt on the server, not re-sliced here.
 const { data: liveData, refresh } = useLiveModule(
   props.module.id,
   "music",
@@ -58,7 +58,7 @@ const d = computed(() => liveData.value);
 // Pick a new window: re-fetch now rather than waiting out the poll interval.
 watch(range, () => void refresh());
 
-// The clickable fortnight timeline + day drill-in — shared with Playtime. The day
+// The clickable fortnight timeline + day drill-in, shared with Playtime. The day
 // response arrives pre-aggregated and pre-capped: `songs`/`artists` already trimmed
 // to maxCount server-side, with the true counts alongside.
 const EMPTY_DAY: MusicDayResponse = { day: "", minutes: 0, trackCount: 0, artistCount: 0, songs: [], artists: [] };
@@ -78,8 +78,8 @@ const {
   ledger: () => d.value.ledger,
   fetchDay: (iso) => fetchMusicDay(iso, d.value.timeZone),
   emptyDay: EMPTY_DAY,
-  title: (iso, min) => `${day(iso)} · ${min} min`,
-  // The window the data covers, not the one being requested — see PlaytimeSection.
+  title: (iso, min) => `${day(iso)}: ${min} min`,
+  // The window the data covers, not the one being requested, see PlaytimeSection.
   days: () => d.value.windowDays,
   timeZone: () => d.value.timeZone,
 });
@@ -111,7 +111,7 @@ function showList(which: ListKind) {
   clear();
 }
 
-// The day panel rows, following the active tab — already capped server-side, with
+// The day panel rows, following the active tab, already capped server-side, with
 // the true per-view total shipped for "and N more". Reuses the strip's expanded ref,
 // which resets when the selected day changes.
 const dayRowsAll = computed<DayRow[]>(() =>
@@ -196,7 +196,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
         @back="clear"
       >
         <template #summary>
-          <Duration :minutes="dayMinutes" /> · {{ dayTrackCount }} {{ plural("track", dayTrackCount) }} ·
+          <Duration :minutes="dayMinutes" />, {{ dayTrackCount }} {{ plural("track", dayTrackCount) }},
           {{ dayArtistCount }} {{ plural("artist", dayArtistCount) }}
         </template>
 
@@ -210,7 +210,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
             :art="artSrc(row.art)"
             :highlight="i === 0"
           >
-            <Duration :minutes="row.minutes" /><small> · {{ row.plays }}×</small>
+            <Duration :minutes="row.minutes" /><small>, {{ row.plays }}×</small>
           </RankedRow>
           <ListFooter
             :more-count="dayMore"
@@ -229,7 +229,7 @@ const hasData = computed(() => d.value.ledger.length > 0 || d.value.topSongs.len
           :art="artSrc(r.artUrl)"
           :highlight="i === 0"
         >
-          <Duration :minutes="r.minutes" /><small> · {{ r.plays }}×</small>
+          <Duration :minutes="r.minutes" /><small>, {{ r.plays }}×</small>
         </RankedRow>
         <ListFooter
           :more-count="mainMore"

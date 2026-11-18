@@ -202,7 +202,7 @@ const contributionCells = computed<HeatCell[]>(() => {
   overflow-wrap: anywhere;
 }
 .em {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
 }

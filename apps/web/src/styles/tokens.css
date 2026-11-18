@@ -46,7 +46,7 @@
   /* One consumer: the live dot. Grep before adding a second. */
   --glow-live: 0 0 9px 1px rgba(164, 135, 250, 0.6);
 
-  /* The solid offset under a ghost button — the chunky edge it "presses" into
+  /* The solid offset under a ghost button, the chunky edge it "presses" into
      on :active. Public-only (`.btn-ghost` in app.css, used by the hero and
      contact CTAs), but it sat in the CMS alias block, where nothing outside
      `.cms` could reach it. Since a `var()` that resolves to nothing invalidates
@@ -54,7 +54,7 @@
      no edge to press into at all. */
   --ghost-shadow: #09090c;
 
-  /* ── Third-party brand marks. Not part of the palette and not themeable — a
+  /* ── Third-party brand marks. Not part of the palette and not themeable, a
      visitor reads "Spotify green" as the source, so these are the vendors'
      values and stay identical in both themes. They live here anyway because a
      raw hex inside a component is a hex nobody can find: the presence widget
@@ -65,7 +65,7 @@
   --brand-youtube: #ff0000;
   --brand-twitch: #9146ff;
 
-  /* ── Surfaces. On dark, elevation is lightness — a drop shadow at --surf-0
+  /* ── Surfaces. On dark, elevation is lightness, a drop shadow at --surf-0
      has nothing darker to fall onto, which is why the old --sh-* faked lift
      with a purple bloom. Step the surface, strengthen the line, no shadow.
      Hover = +1 level, so these double as interaction states. */
@@ -127,7 +127,6 @@
   --r-card: var(--r-3);
   --r-control: var(--r-2);
   --r-chip: var(--r-1);
-  --r-pill: 999px;
 
   /* ── Type. Archivo (variable, width and weight axes) carries the wordmark,
      headings and big figures. Atkinson Hyperlegible Next is body and UI.
@@ -248,7 +247,7 @@
   color-scheme: light;
 }
 
-/* The CMS root. Fourteen panels, an asset library and a chart on a desktop —
+/* The CMS root. Fourteen panels, an asset library and a chart on a desktop, 
    dense on purpose. Everything else (colour, elevation, motion, the accent rule)
    is shared, so the two surfaces can't drift apart. */
 .cms {
@@ -263,6 +262,7 @@
   --r-card: 6px;
   --r-control: 4px;
   --r-chip: 4px;
+  --r-pill: 999px;
 
   --fs-h2: 17px;
   --fs-h3: 14px;
@@ -285,7 +285,7 @@
   }
 }
 
-/* ── COMPAT — temporary. cms.css (891 lines) still speaks the prototype's token
+/* ── COMPAT, temporary. cms.css (891 lines) still speaks the prototype's token
    names. Scoping the aliases to the CMS root means the public site physically
    cannot reach them, so "purple means now" stays greppable in app.css while the
    admin surface waits its turn. Delete this block with the CMS pass; nothing

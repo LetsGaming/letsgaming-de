@@ -156,7 +156,8 @@ function onClick() {
   display: flex;
   flex-wrap: wrap;
   gap: 0 var(--space-3);
-  font-family: var(--f-m);
+  font-family: var(--f-b);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-meta);
   color: var(--muted);
   font-variant-numeric: tabular-nums;

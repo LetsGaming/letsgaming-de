@@ -1,9 +1,9 @@
 /**
- * UI strings — the site's own chrome, as opposed to content.
+ * UI strings, the site's own chrome, as opposed to content.
  *
  * There are two kinds of text on this site and they localize differently.
  * *Content* (headings, bio paragraphs, link labels) is authored in the CMS and
- * stored as `Localized`, so translating it is a content task — that's `i18n.ts`.
+ * stored as `Localized`, so translating it is a content task, that's `i18n.ts`.
  * *Chrome* is the text the components themselves emit: "show 3 more", "Nothing
  * played this day", the footer, the empty states. That has no CMS row to live in,
  * and it was hardcoded English, which is why switching to German left half the
@@ -56,7 +56,7 @@ const EN = {
   appearance: "Appearance",
   themeLight: "Light",
   themeDark: "Dark",
-  // The settings group reuses the footer's `privacy` — same word, same meaning,
+  // The settings group reuses the footer's `privacy`, same word, same meaning,
   // and a second key would be two strings to keep saying the same thing.
   analyticsTitle: "Anonymous usage analytics",
   analyticsDesc:
@@ -96,8 +96,8 @@ const EN = {
 
   // Activity
   contributions: "Contributions",
-  contributionsScope: "last 26 weeks · {n} in the window",
-  // The contribution heatmap's per-cell tooltip — {noun} is already pluralized
+  contributionsScope: "last 26 weeks, {n} in the window",
+  // The contribution heatmap's per-cell tooltip, {noun} is already pluralized
   // via `plural("commit", n)`, so this only places the count and the date.
   commitsOnDay: "{n} {noun} on {date}",
   languages: "Languages",
@@ -106,7 +106,7 @@ const EN = {
   newestFirst: "newest first",
   fullActivity: "All activity",
 
-  // Glance stats. These were literals in `resolve.ts` — the numbers are synced,
+  // Glance stats. These were literals in `resolve.ts`, the numbers are synced,
   // but the words around them are chrome, and chrome belongs here. It's why a
   // German page read "20 public repos · 725 commits this year".
   // Default heading for the `areas` overview, used when the CMS hasn't set one.
@@ -143,7 +143,7 @@ const EN = {
   // Music / playtime
   listening: "Listening",
   played: "Played",
-  // The window a module is showing. `lastDays*` is the card's note — it has to
+  // The window a module is showing. `lastDays*` is the card's note, it has to
   // stand alone, because the picker scrolls out of view; `range*` is the picker
   // segment itself, abbreviated to fit a card header. One pair per
   // ACTIVITY_RANGES entry; `ACTIVITY_RANGE_LABELS` maps between them, so a new
@@ -170,7 +170,7 @@ const EN = {
   whenIPlay: "When I play",
   localTime: "Local",
   /** The owner's clock, when the viewer is in a different zone. `{city}` is the
-   *  IANA zone's city ("Berlin") — a name, so it isn't translated, only framed. */
+   *  IANA zone's city ("Berlin"), a name, so it isn't translated, only framed. */
   ownerTime: "{city} time",
   /** Names the owner/local timezone toggle for assistive tech. */
   showTimesIn: "Show times in",
@@ -183,7 +183,7 @@ const EN = {
   hoursShort: "h",
   minutesShort: "min",
 
-  // Presence — the live Discord widget. Status names and the per-category source
+  // Presence, the live Discord widget. Status names and the per-category source
   // lines ("Listening to Spotify") are what Discord itself says, so German keeps
   // the product names and translates only the verb around them.
   presenceOnline: "Online",
@@ -207,7 +207,7 @@ const EN = {
   clickDayToDrill: "click a day to drill in",
   today: "today",
 
-  // Freshness — a synced module's own age. One key per FreshnessState, so the
+  // Freshness, a synced module's own age. One key per FreshnessState, so the
   // component maps the state to a key instead of branching five ways in its
   // template. `{age}` is the pre-computed short relative ("8m", "2d").
   // Hero live status, call to action and wave. `{parts}` is the live activities
@@ -228,22 +228,22 @@ const EN = {
   teasersHeading: "Areas",
   teaserHoursWeek: "{n} h played this week",
   teaserTopArtist: "Top artist: {name}",
-  teaserLatest: "{text} · {age} ago",
+  teaserLatest: "{text}, {age} ago",
 
   freshFresh: "synced {age} ago",
   freshStale: "{age} old",
-  freshFailed: "sync failed · showing {age} old",
+  freshFailed: "sync failed, showing {age} old",
   freshNever: "not synced yet",
   freshEmpty: "nothing synced",
   /** A bare relative age, for a timestamp that isn't a sync (a post's date). */
   ago: "{age} ago",
   /** Shown once, above the module list, when several synced modules are
-   *  simultaneously cold — see coldModuleCount in SitePanels.vue. Reframes a
+   *  simultaneously cold, see coldModuleCount in SitePanels.vue. Reframes a
    *  page that would otherwise read as five separate "nothing here"s. */
   coldStart: "Still warming up. A few things haven't synced yet.",
 
   // Contact. The module offers a form when the relay is configured and a mailto
-  // when it isn't, so both paths need copy — the mailto branch is the one an
+  // when it isn't, so both paths need copy, the mailto branch is the one an
   // unconfigured deployment actually shows.
   contactEmailMe: "Email me",
   contactFormName: "Name",
@@ -264,7 +264,7 @@ const EN = {
   guestbookTooMany: "That's a few too many just now. Please try again a little later.",
 
   // Coding
-  codingScope: "{range} · {hours}h tracked",
+  codingScope: "{range}, {hours}h tracked",
 } as const;
 
 /** The key set every locale must provide, derived from English. */
@@ -326,7 +326,7 @@ const DE: Messages = {
   andMore: "und {n} weitere",
 
   contributions: "Beiträge",
-  contributionsScope: "letzte 26 Wochen · {n} im Zeitraum",
+  contributionsScope: "letzte 26 Wochen, {n} im Zeitraum",
   commitsOnDay: "{n} {noun} am {date}",
   languages: "Sprachen",
   languagesScope: "über alle öffentlichen Repos",
@@ -429,11 +429,11 @@ const DE: Messages = {
   teasersHeading: "Bereiche",
   teaserHoursWeek: "{n} Std. diese Woche gespielt",
   teaserTopArtist: "Top-Künstler: {name}",
-  teaserLatest: "{text} · vor {age}",
+  teaserLatest: "{text}, vor {age}",
 
   freshFresh: "vor {age} synchronisiert",
   freshStale: "{age} alt",
-  freshFailed: "Sync fehlgeschlagen · zeige {age} alte Daten",
+  freshFailed: "Sync fehlgeschlagen, zeige {age} alte Daten",
   freshNever: "noch nicht synchronisiert",
   freshEmpty: "nichts synchronisiert",
   ago: "vor {age}",
@@ -456,7 +456,7 @@ const DE: Messages = {
   guestbookSent: "Danke fürs Eintragen! Dein Eintrag erscheint hier, sobald ich ihn freigegeben habe.",
   guestbookTooMany: "Gerade ein bisschen viele. Bitte versuch es etwas später noch einmal.",
 
-  codingScope: "{range} · {hours} Std. erfasst",
+  codingScope: "{range}, {hours} Std. erfasst",
 };
 
 /**
@@ -488,7 +488,7 @@ const CATALOG: Record<Locale, Messages> = { en: EN, de: DE };
 /**
  * Look up a UI string, substituting `{name}` placeholders.
  *
- * Falls back to English for an unknown locale rather than rendering a key — a
+ * Falls back to English for an unknown locale rather than rendering a key, a
  * visitor seeing English is a much smaller failure than one seeing `showMore`.
  */
 export function t(

@@ -4,9 +4,9 @@
  * (`<script setup>` can't carry top-level exports).
  */
 export interface HeatCell {
-  /** Intensity bucket 0–4; 0 is the empty base and gets no `data-l`. */
+  /** Intensity bucket 0 to 4; 0 is the empty base and gets no `data-l`. */
   level: number;
-  /** Mark this cell as "today/now" — a subtle ring, never the selection accent. */
+  /** Mark this cell as "today/now", a subtle ring, never the selection accent. */
   today?: boolean;
   /** Native tooltip for the cell. */
   title?: string;
@@ -15,24 +15,24 @@ export interface HeatCell {
 
 <script setup lang="ts">
 /**
- * A column-flow grid of intensity-bucketed cells — the shape GitHub's
+ * A column-flow grid of intensity-bucketed cells, the shape GitHub's
  * contribution graph, the weekday×hour playtime heatmap, and (as a single row)
  * the per-day listening/playtime strips all draw. One visual language: `--heat-0..4`
  * buckets, an optional legend, a "today" ring.
  *
  * Two modes:
- *  - **static** (default): `<i>` cells — a read-only heatmap.
+ *  - **static** (default): `<i>` cells, a read-only heatmap.
  *  - **selectable**: `<button>` cells that emit `select` with the cell index and
  *    highlight `selectedIndex`. This is how the day strips drill in.
  *
  * "Today" and "selected" are deliberately different marks. Today keeps its level
  * colour and gets a faint inset ring (like GitHub's border on the current day);
  * selection is a bold accent outline with the rest dimmed. Filling today with the
- * accent — as this used to — made it read as permanently selected, which is the
+ * accent, as this used to, made it read as permanently selected, which is the
  * bug this fixes.
  *
  * Sizing: cells are square and fill the width by default (good when there are many
- * columns). Pass `cellHeight` to fix a short height instead — the right call for a
+ * columns). Pass `cellHeight` to fix a short height instead, the right call for a
  * single row of a handful of days, where square-and-fill would blow the cells up.
  *
  * Deliberately dumb about meaning: it takes finished cells and renders them. *How*
@@ -56,7 +56,7 @@ const {
   /** Minimum cell edge in px (columns grow to fill past this). */
   minCell?: number;
   /** Fixed cell height in px. When set, cells fill width at this height instead of
-   *  being square — keeps a short strip from ballooning when there are few cells. */
+   *  being square, keeps a short strip from ballooning when there are few cells. */
   cellHeight?: number | null;
   /** Show the "less ▢▢▢▢▢ more" scale below the grid. */
   legend?: boolean;
@@ -121,7 +121,7 @@ const gridStyle = computed(() => ({
   aspect-ratio: 1;
   min-width: var(--hg-min);
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--r-1);
   background: var(--heat-0);
   display: block;
   padding: 0;
@@ -143,7 +143,7 @@ const gridStyle = computed(() => ({
 .hg-c[data-l="4"] {
   background: var(--heat-4);
 }
-/* Today: keep the level colour, add a faint inset ring — never the accent, so it
+/* Today: keep the level colour, add a faint inset ring, never the accent, so it
    can't be mistaken for the selection. */
 .hg-c[data-now] {
   outline: 1.5px solid var(--heat-today);
@@ -179,21 +179,21 @@ button.hg-c:focus-visible {
   outline-offset: 1px;
 }
 
-/* Legend — the scale that used to live in the Activity section, now shared. */
+/* Legend, the scale that used to live in the Activity section, now shared. */
 .hg-legend {
   display: flex;
   align-items: center;
   gap: var(--sp-6);
   justify-content: flex-end;
   margin-top: var(--sp-12);
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
 }
 .hg-legend i {
   width: 9px;
   height: 9px;
-  border-radius: 2px;
+  border-radius: var(--r-1);
   display: block;
   background: var(--heat-0);
 }

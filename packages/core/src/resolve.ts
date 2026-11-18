@@ -5,7 +5,7 @@
  * It localizes every string, folds normalized source data into the modules that
  * need it, pre-computes relative times and heatmap buckets, and emits the exact
  * JSON the frontend renders. Downstream code never sees `Localized` or a raw API
- * shape again — this is the single seam that buys both north stars.
+ * shape again, this is the single seam that buys both north stars.
  *
  * It is deliberately pure and store-agnostic: the read API calls it, and a
  * static build could call it too, with identical output.
@@ -75,7 +75,7 @@ export interface ResolveInput {
   /** ISO timestamp of the last sync, surfaced to the client. */
   syncedAt?: string;
   /** Last successful sync per source id, and each source's TTL. A missing
-   *  `syncedAt` resolves to `never` — no sync has landed yet, which is a real
+   *  `syncedAt` resolves to `never`, no sync has landed yet, which is a real
    *  state and not an error. `ttl` is `SOURCE_TTL`, which is total over SourceId
    *  by construction, so a synced source always has an age to judge. */
   freshness?: { syncedAt: Partial<Record<SourceId, string>>; ttl: Record<SourceId, number> };
@@ -137,7 +137,7 @@ export interface ResolveInput {
   /**
    * What the contact module can actually offer, from the host's configuration.
    *
-   * Not content, and not derivable from the store — whether SMTP is reachable is a
+   * Not content, and not derivable from the store, whether SMTP is reachable is a
    * property of the deployment. The resolver stays pure by being *told*; the view
    * builder reads the environment and passes it in, the way it already does for
    * the timezone.
@@ -160,11 +160,11 @@ export interface ResolveInput {
 
 /**
  * What an href is allowed to be: http(s), mailto, a site-relative path, or an
- * in-page target — and nothing else, so a `javascript:`/`data:` URL from stored
+ * in-page target, and nothing else, so a `javascript:`/`data:` URL from stored
  * content or a future source can't become a clickable script sink (SEC-04).
  *
  * `#` belongs here and was excluded by accident, not by design. A fragment has no
- * scheme, so it can't execute anything — it was never the threat this pattern
+ * scheme, so it can't execute anything, it was never the threat this pattern
  * exists for. Meanwhile the CMS's own seed ships `href: "#contact"` on the hero's
  * primary CTA, so `safeHref` rewrote it to `"#"`, and the button did nothing. Not
  * visibly: `HeroSection` intercepted the click and handed the *stripped* target to
@@ -174,14 +174,14 @@ export interface ResolveInput {
  * One pattern, two gates. The CMS write schema uses this string to refuse a bad
  * href at the boundary; `safeHref` below applies it again at read time, because
  * content predates schemas and a source isn't the CMS. They were two hand-written
- * copies of one rule and had already drifted apart on case-sensitivity — which is
+ * copies of one rule and had already drifted apart on case-sensitivity, which is
  * what two copies of a rule do, and why the *security* one is a bad place for it.
  */
 export const HREF_PATTERN = "^(https?://|mailto:|/|#)[^\\s]*$";
 
 /** The read-time gate. Case-insensitive on purpose: `HTTPS://` is a real URL and
  *  a scheme is case-insensitive per RFC 3986, so refusing one would be pedantry
- *  rather than defence. The write schema stays exact — Ajv compiles patterns
+ *  rather than defence. The write schema stays exact, Ajv compiles patterns
  *  without flags, and the CMS has a keyboard. */
 const SAFE_HREF_RE = new RegExp(HREF_PATTERN, "i");
 
@@ -193,7 +193,7 @@ export function safeHref(href: string | undefined): string {
 /**
  * How much of each list reaches the page.
  *
- * Editorial, not technical — the adapters already cap what they *fetch*; these
+ * Editorial, not technical, the adapters already cap what they *fetch*; these
  * cap what a section *shows*. Named because `slice(-182)` in a switch case is a
  * number whose meaning lives in a comment.
  */
@@ -202,7 +202,7 @@ const FEED = {
    * 26 weeks of contribution days. A full GitHub year crams ~53 columns into the
    * card. Must stay a multiple of DAYS_PER_WEEK: `.heat` in app.css is
    * `grid-auto-flow: column` over `repeat(7, 1fr)` rows, so a remainder leaves
-   * the last column half-height — which renders wrong without erroring anywhere.
+   * the last column half-height, which renders wrong without erroring anywhere.
    */
   heatDays: 26 * 7,
   /** Repo cards on Projects. */
@@ -212,7 +212,7 @@ const FEED = {
   /**
    * CTAs in the hero. Unlike Contact (the "how to reach you" section, which
    * renders every link in `content.links` on purpose), the hero is a first-paint
-   * decision point — the design system's own cognitive-load rule caps a decision
+   * decision point, the design system's own cognitive-load rule caps a decision
    * at ≤4 visible options, same as the nav tree's `MAX_CHILDREN`. `content.links`
    * has no structural limit (it's the CMS's one shared link list, reused by both
    * sections), so the cap has to live at whichever call site actually needs it.
@@ -223,7 +223,7 @@ const FEED = {
 /**
  * Trim an all-time day ledger to the last `days` days.
  *
- * Inclusive of today, so `days = 14` is a fortnight ending now — the same window
+ * Inclusive of today, so `days = 14` is a fortnight ending now, the same window
  * the strip draws and the same one the server queried the top lists with. Days are
  * `YYYY-MM-DD` and compare correctly as strings, which is the whole reason the
  * store emits them that way; no Date parsing per row.
@@ -251,7 +251,7 @@ function windowLedger(
  * ways to do one thing under one heading, and the mailto is the worse of them
  * whenever the form works.
  *
- * A blank or whitespace-only address is treated as absent — Docker Compose passes
+ * A blank or whitespace-only address is treated as absent, Docker Compose passes
  * an unset `${VAR:-}` through as `""`, so trusting truthiness alone would publish
  * a `mailto:` with nothing after the colon.
  *
@@ -272,7 +272,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   const L = (v: Parameters<typeof localize>[0]) => localize(v, locale);
   /**
    * Chrome text, in the resolved locale. `L` localizes *content* (CMS-authored,
-   * stored as `Localized`); `T` localizes the words this resolver itself emits —
+   * stored as `Localized`); `T` localizes the words this resolver itself emits, 
    * stat labels, repo meta, activity verbs. Those were English literals here,
    * which is why a German page still said "public repos" and "updated 3w ago".
    */
@@ -300,7 +300,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
   /**
    * The nav a visitor can actually reach, used for two things: the view's own
    * `nav`, and turning `#target` links into URLs. Computed once, up here, because
-   * `resolveLink` needs it — links used to resolve without it, which is why an
+   * `resolveLink` needs it, links used to resolve without it, which is why an
    * in-page target had nowhere to go and got flattened to `"#"`.
    *
    * `visibleNav` first: a link into a draft area shouldn't resolve to a URL that
@@ -314,7 +314,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       id: link.id,
       label: L(link.label),
       // `#contact` is a module id, not a URL. The resolver knows where that module
-      // lives, so it answers with `/about#contact` — a real link, which the browser
+      // lives, so it answers with `/about#contact`, a real link, which the browser
       // can follow with no JavaScript at all, and which middle-click, ctrl-click and
       // "copy link address" all work on. The site used to answer this with a click
       // handler, which is an <a href> with the useful parts taken out.
@@ -336,7 +336,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
    * is one to report.
    *
    * `★ 0` used to render on every card. A star count is social proof, and printing
-   * it at zero repeats "nobody has starred this" once per card — twelve times on
+   * it at zero repeats "nobody has starred this" once per card, twelve times on
    * /code. Omitted below one, the line still carries the useful half.
    */
   const repoMeta = (stars: number, pushedAt: string | undefined): string[] => [
@@ -418,7 +418,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
    *
    * The adapter stores what happened (`type`) and to what (`repo`); the sentence
    * is built here. `text` is the pre-localization fallback for events still in the
-   * store from before the change — see `GitHubEvent.text`.
+   * store from before the change, see `GitHubEvent.text`.
    */
   const EVENT_MESSAGE: Record<GitHubEvent["type"], MessageKey> = {
     commit: "eventCommit",
@@ -597,12 +597,12 @@ export function resolveSiteView(input: ResolveInput): SiteView {
        *
        * Home previewed one area. `glance` and `featured` are both GitHub, so a
        * visitor who landed on it learned "developer with repos" and was never told
-       * /life existed — the half of the site with the plant sensors and the LED
+       * /life existed, the half of the site with the plant sensors and the LED
        * shelf, and the half that sounds like a person. The nav bar was the only
        * thing saying otherwise, and a nav bar is wayfinding, not an invitation.
        *
        * Built entirely from the nav tree, so it can't drift: add an area in the CMS
-       * and it appears here. Branch nodes are included as themselves — you can't
+       * and it appears here. Branch nodes are included as themselves, you can't
        * preview a tab group, but you can point at it.
        *
        * The module's own area is skipped. A card on Home linking to Home is furniture.
@@ -631,9 +631,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         };
       }
       case "hero": {
-        const eyebrow = `${content.meta.name} · ${L(content.meta.role)} · ${L(
-          content.meta.location,
-        )}`.toUpperCase();
         const avatar = resolveAsset(content.meta.avatar, assets);
         const show = content.presence?.show ?? defaultPresenceSettings().show;
         const hidden = content.presence?.hidden ?? [];
@@ -669,7 +666,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           id: descriptor.id,
           kind: "hero",
           data: {
-            eyebrow,
             headline: {
               before: L(content.headline.before),
               highlight: L(content.headline.highlight),
@@ -713,7 +709,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           id: descriptor.id,
           kind: "featured",
           // A real URL the resolver already knows, so the "see all" affordance is
-          // an <a href> — middle-clickable, crawlable — not a JS-only button that
+          // an <a href>, middle-clickable, crawlable, not a JS-only button that
           // calls window.location. Same `targetHref` the hero's links use.
           data: { heading, note, projects: featured, moreHref: targetHref(navView, AREA.code) },
         };
@@ -743,7 +739,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         };
       }
       case "activity": {
-        // The last 26 weeks, so the calendar stays readable (see FEED.heatDays —
+        // The last 26 weeks, so the calendar stays readable (see FEED.heatDays, 
         // .heat in app.css sizes its grid to the same number).
         const windowed = gh ? gh.contributions.slice(-FEED.heatDays) : [];
         const heat = gh ? bucketHeat(windowed) : { levels: [], dates: [], counts: [], total: 0 };
@@ -852,7 +848,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       }
       case "presence": {
         // Enablement is purely the owner's CMS allow-list: is any category still
-        // shown? No env, no Discord id here — the widget polls the server-filtered
+        // shown? No env, no Discord id here, the widget polls the server-filtered
         // /api/presence and the *server* owns whether Discord is configured and
         // online. Keeping this env-free is the point: the SSR process resolves this
         // flag without any presence secret.
@@ -872,19 +868,19 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         return {
           id: descriptor.id,
           kind: "presence",
-          // `enabled` is a display toggle (a category is shown) — it says nothing
+          // `enabled` is a display toggle (a category is shown), it says nothing
           // about whether Discord answered; the widget reports its own live state.
           data: { heading, note, ...data },
         };
       }
       case "playtime": {
         // Shaped from the server's pre-computed observed history; the resolver
-        // stays pure. Absent history is an empty module, not an error — a fresh
+        // stays pure. Absent history is an empty module, not an error, a fresh
         // install has recorded no sessions yet.
         const hist = input.playHistory ?? { ledger: [], heat: [], timeZone: DEFAULT_TIMEZONE };
         const settings = content.playtime ?? defaultPlaytimeSettings();
         const windowDays = input.playtimeWindowDays ?? settings.defaultRange;
-        // The ledger arrives all-time — the strip windows it client-side, and the
+        // The ledger arrives all-time, the strip windows it client-side, and the
         // weekday×hour heatmap beside it is all-time by design. The headline total
         // is not: it sits under a note that names a window, so summing the whole
         // ledger into it made "44h · last 14 days" report every hour ever observed.
@@ -893,7 +889,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const ledger = windowLedger(hist.ledger, windowDays, now);
         const totalMinutes = ledger.reduce((sum, d) => sum + d.minutes, 0);
 
-        // "Recently played" — every game Discord observed over the window,
+        // "Recently played", every game Discord observed over the window,
         // most-played first. Gated on the same `game` allow-list and hidden-games
         // filter as the presence card, so nothing the owner hid surfaces here.
         // Display counts are CMS-owned; the list is capped to maxCount here (the
@@ -928,7 +924,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       }
       case "wrapped": {
         // The schedule *is* the visibility rule, enforced by omission: outside a
-        // window this returns null and the module never reaches the client — no
+        // window this returns null and the module never reaches the client, no
         // hidden state to leak, the same guarantee a draft area gets. `now` is the
         // resolver's injected clock, so this stays pure and testable.
         const wrappedSettings = content.wrapped ?? defaultWrappedSettings();
@@ -957,13 +953,13 @@ export function resolveSiteView(input: ResolveInput): SiteView {
       }
       case "music": {
         // Same shape as playtime: pre-computed by the server, shaped here. Absent
-        // history is an empty module — a fresh install has recorded no plays yet.
+        // history is an empty module, a fresh install has recorded no plays yet.
         const m = input.musicHistory;
         const ledger = m?.ledger ?? [];
         const totalMinutes = ledger.reduce((sum, d) => sum + d.minutes, 0);
         // Display counts are CMS-owned; the lists themselves are already capped to
         // maxCount server-side (the query LIMIT), so this only carries the numbers
-        // the frontend needs to collapse/expand — never uncapped data.
+        // the frontend needs to collapse/expand, never uncapped data.
         const musicSettings = content.music ?? defaultMusicSettings();
         const rank = (e: MusicRankEntry): MusicRankView => ({
           name: e.name,

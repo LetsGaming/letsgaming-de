@@ -54,7 +54,6 @@
         "id": "hero",
         "kind": "hero",
         "data": {
-          "eyebrow": "DOMENIC · WEB DEVELOPER · GERMANY",
           "headline": {
             "before": "I build websites. After hours I ",
             "highlight": "tinker",
@@ -405,7 +404,6 @@
         "id": "hero",
         "kind": "hero",
         "data": {
-          "eyebrow": "DOMENIC · WEBENTWICKLER · DEUTSCHLAND",
           "headline": {
             "before": "Ich baue Websites. Nach Feierabend ",
             "highlight": "bastle",

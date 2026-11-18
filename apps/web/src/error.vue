@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Nuxt's app-wide error boundary — renders for a 404 (unmatched route) and for
+// Nuxt's app-wide error boundary, renders for a 404 (unmatched route) and for
 // any uncaught server/render error alike, so the copy has to make sense for both.
 // Deliberately its own `useHead` call, not `useSeo`: an error document is never a
 // canonical, indexable page, so it gets a `noindex` instead of the tags that would
@@ -48,18 +48,18 @@ function goHome() {
   background: var(--surf-0);
   color: var(--ink);
 }
-/* Type sizes pinned to DESIGN.md's documented ramp (Display / Headline) — no
+/* Type sizes pinned to DESIGN.md's documented ramp (Display / Headline), no
    invented step, and no glow: the system reserves glow for the live dot alone. */
 .code {
   font-family: var(--f-m);
-  font-size: clamp(38px, 7.5vw, 66px);
-  line-height: 1.03;
+  font-size: var(--fs-display);
+  line-height: 1;
   margin: 0;
   color: var(--muted);
 }
 h1 {
   font-family: var(--f-d);
-  font-size: clamp(22px, 4vw, 30px);
+  font-size: var(--fs-h2);
   font-weight: 600;
   margin: 0;
   color: var(--ink-strong);

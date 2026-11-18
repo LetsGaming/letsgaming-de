@@ -7,8 +7,8 @@
  * rest of the site is there.
  *
  * Deliberately links rather than embeds. A preview that renders the real Life
- * modules would duplicate them — one source of truth per module is the whole point
- * of the nav model — and a visitor who has already seen the content has no reason
+ * modules would duplicate them, one source of truth per module is the whole point
+ * of the nav model, and a visitor who has already seen the content has no reason
  * to click. A label, the area's own sentence, and a count is enough to make the
  * click worth making.
  *
@@ -26,7 +26,7 @@ const props = defineProps<{
   module: Extract<ResolvedModule, { kind: "areas" }>;
 }>();
 
-/** Singular gets its own key — "1 sections" is the tell that nobody read the copy. */
+/** Singular gets its own key, "1 sections" is the tell that nobody read the copy. */
 const countLabel = (n: number) => (n === 1 ? t("areaModulesOne") : t("areaModules", { n }));
 
 /** Three or fewer sit in one row; more wrap at two, so a row is never one wide. */
@@ -49,7 +49,7 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
 </template>
 
 <style scoped>
-/* Ruled columns rather than boxes — the same call as the lead StatTiles. Three
+/* Ruled columns rather than boxes, the same call as the lead StatTiles. Three
    cards in a row is where "everything is a card" starts, and these are peers, so
    alignment plus a hairline says it without adding three more containers. */
 .areas {
@@ -97,7 +97,7 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
 .area__desc {
   font-size: var(--fs-body);
   color: var(--muted);
-  /* The area's meta sentence, which has no length contract — it was written for a
+  /* The area's meta sentence, which has no length contract, it was written for a
      search result. Two lines, then it's the click's job. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -110,7 +110,7 @@ const columns = () => Math.min(props.module.data.areas.length, 3);
   gap: var(--sp-8);
   margin-top: auto;
   padding-top: var(--sp-12);
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
 }

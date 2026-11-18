@@ -1,4 +1,4 @@
-/* Component styles — faithfully ported from the prototype, with hardcoded theme
+/* Component styles, faithfully ported from the prototype, with hardcoded theme
    colors swapped for tokens so light mode works. Structure and motion unchanged. */
 
 * {
@@ -25,7 +25,7 @@ body {
 a {
   color: inherit;
 }
-/* In the accessibility tree, off the screen — not `display: none`, which would
+/* In the accessibility tree, off the screen, not `display: none`, which would
    remove it from that tree too. Used for headings that need to exist for
    document structure / SEO (one <h1> per page) without a visible slot in the
    design (display type is reserved for the hero H1 only, per DESIGN.md). */
@@ -250,7 +250,8 @@ h1 {
   display: inline-block;
 }
 .meta {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-meta);
   color: var(--muted);
   display: flex;
@@ -273,19 +274,6 @@ h1 {
   font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
-}
-.src-note {
-  margin-top: var(--sp-18);
-  font-family: var(--f-m);
-  font-size: var(--fs-meta);
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-8);
-}
-.src-note b {
-  color: var(--ink);
-  font-weight: 400;
 }
 
 /* hobbies */
@@ -314,7 +302,7 @@ h1 {
   overscroll-behavior: contain;
   font-size: var(--fs-small);
 }
-/* Docs nav drawer affordances — the bar + close + scrim only appear on mobile
+/* Docs nav drawer affordances, the bar + close + scrim only appear on mobile
    (media block near the end); on desktop the nav is just the sticky sidebar. */
 .doc-topbar {
   display: none;
@@ -335,7 +323,7 @@ h1 {
 }
 .doc-home {
   display: inline-block;
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--muted);
   margin-bottom: var(--sp-16);
@@ -494,7 +482,7 @@ h1 {
     border-bottom: 1px solid var(--line-1);
   }
   .doc-tt {
-  /* Fredoka dropped: .doc-body hr (a rule has no glyphs — this was a no-op) */
+  /* Fredoka dropped: .doc-body hr (a rule has no glyphs, this was a no-op) */
     font-weight: 600;
     color: var(--ink-strong);
   }
@@ -543,7 +531,8 @@ footer {
   color: var(--muted);
 }
 .foot-sync {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
+  font-variant-numeric: tabular-nums;
 }
 .foot-links {
   display: flex;
@@ -571,7 +560,7 @@ footer {
   }
 }
 
-/* The non-negotiable baseline — but "reduced" is not "none".
+/* The non-negotiable baseline, but "reduced" is not "none".
  *
  * This was `* { animation: none; transition: none }`, which is the safe reflex and
  * slightly too broad: it also removed the colour and opacity fades that carry
@@ -579,7 +568,7 @@ footer {
  * harder to follow, not easier, and nothing about a 120ms colour change triggers
  * vestibular symptoms. What does is movement.
  *
- * So: kill every animation (the pulse, the panel fade-in — those are the ones that
+ * So: kill every animation (the pulse, the panel fade-in, those are the ones that
  * loop or travel), kill transforms, and keep colour/opacity/border transitions at a
  * short fixed duration. Anything that still wants to be fully static under reduced
  * motion opts in with `.rm-static`. */
@@ -618,7 +607,8 @@ footer {
    the whole point of the other states is that they aren't. Stale is legible but
    quiet — old-and-labelled beats old-and-pretending. */
 .fresh {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-meta);
   color: var(--muted);
   display: inline-flex;
@@ -653,7 +643,7 @@ footer {
 /* Draft banner. --danger, not --live: a preview reader needs to know this isn't
    real yet, and that's a warning. Purple means now, and a draft is the opposite. */
 .md-draft {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   font-size: var(--fs-meta);
   color: var(--danger-ink);
   border: 1px solid var(--danger-ink);
@@ -748,12 +738,12 @@ footer {
 }
 
 
-/* Hobby tones. Authored per hobby in the CMS, not assigned by a palette — which
+/* Hobby tones. Authored per hobby in the CMS, not assigned by a palette, which
    is the distinction the "imported, never invented" rule was always about. These
    are the tiles' resting state; a photo replaces the gradient when there is one. */
 
 
-/* Areas are <a> now. Anchors underline by default and buttons don't — the nav
+/* Areas are <a> now. Anchors underline by default and buttons don't, the nav
    didn't change its look on purpose, it changed element. */
 .tabs a,
 .brand,

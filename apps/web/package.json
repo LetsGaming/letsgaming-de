@@ -12,6 +12,7 @@
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "lint:tokens": "tsx scripts/lint-tokens.ts",
+    "lint:design": "tsx scripts/lint-design.ts && tsx scripts/lint-dashes.ts",
     "gen:fallback": "tsx scripts/gen-fallback.ts",
     "gen:og": "tsx scripts/gen-og.ts"
   },

@@ -260,3 +260,19 @@ These refine the phases above. Where a finding contradicts the plan text, the fi
 
 **Tests at risk (update with the change that breaks them)**
 `packages/core/tests/landing.test.ts` (teaser strings), `packages/core/tests/resolve.test.ts` (event text, "public repos", headings, `syncedRelative`, freshness states), `apps/web/tests/components/SiteShell.test.ts` (rendered section text), `module-anchors.test.ts` (section ids, `.panel` structure: keep the hero's parent `.panel` when adding the strip), `RankedRow.test.ts` (`.rr-mono`, `img.rr-art`), `fallback.test.ts`.
+
+## Progress and deviations
+
+- Phase 0 done (`5aa1514`).
+- Phase 1 done. Deviations, with reasons:
+  - Mixed number-and-word lines (`.meta`, `.p-meta`, `.fresh`, `.foot-sync`) moved to the body face with tabular numerals, instead of splitting each number into its own `.num` span. Reason: one CSS line per rule, no template churn, and the figures still align. Mono now marks only standalone synced values.
+  - The hero `eyebrow` (an uppercase `NAME · ROLE · LOCATION` string) was dead data: no component renders it. Removed from `HeroView`, `resolve.ts`, two test fixtures, and the regenerated fallback. This is the one data-layer touch in Phase 1.
+  - Middle dots in message keys became commas (`contributionsScope`, `teaserLatest`, `freshFailed`, `codingScope`, EN and DE); day-summary and title strings use a comma or a colon.
+  - `--r-pill` moved from `:root` to the `.cms` block (only the CMS uses it). `--sp-*` stays (about 200 uses).
+  - The 2px and 1.5px radii in `PresenceWidget` (equaliser bars) and `HeatGrid` (cells) now use `--r-1`. On the 2 to 3px bars this makes them fully round.
+  - `SettingsModal`: close button 16px became `--fs-body`; the panel shadow is now `--sh-anchor`. `error.vue` uses `--fs-display` and `--fs-h2`.
+  - `lint:design` is `scripts/lint-design.ts` plus `scripts/lint-dashes.ts`, with pure checks in `scripts/design-rules.ts` and tests in `tests/lint-design.test.ts`. It is in the root `build` chain, so CI runs it. Mono and accent are per-file ratchets (`MONO_MAX`, `ACCENT_MAX` in `lint-design.ts`).
+  - Comment dashes: baseline written at 983 lines in 189 files; the touch rule cleaned the 23 files this phase edited, leaving 840 lines in 170 files. `--fix` uses a mechanical rule (spaced dash to comma, digit range to "to"), so some comments are comma splices. Phase 9 reviews them.
+  - Tool caveat found: `\uXXXX` escapes typed into a file write are converted to literal characters before the write, which tripped the no-dash hook. The dash patterns are built from char codes instead.
+  - Gate caveat: after a type change in `packages/core`, rebuild it (`pnpm --filter @lg/core build`) before the web typecheck.
+  - Verified in a dev session: label font changed, no middle dots in rendered Home, Code and Life text, no overflow at 390px (DE).

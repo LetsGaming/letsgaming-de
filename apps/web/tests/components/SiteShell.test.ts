@@ -25,7 +25,6 @@ const site = {
 			id: "hero",
 			kind: "hero",
 			data: {
-				eyebrow: "web dev",
 				headline: {
 					before: "Hi, I build ",
 					highlight: "things",
@@ -127,7 +126,7 @@ const site = {
 	},
 } as unknown as SiteView;
 
-// Areas are routes, so the harness takes the area the server resolved — exactly
+// Areas are routes, so the harness takes the area the server resolved, exactly
 // as AreaPage.vue passes it. There's no shared tab atom to reset any more: the
 // URL is the state, and both islands are told what it is.
 const Shell = {
@@ -147,7 +146,7 @@ describe("public site islands (SiteChrome + SitePanels)", () => {
 		const wrapper = mount(Shell, { props: { site, area: "home" } });
 		expect(wrapper.text()).toContain("Home");
 		expect(wrapper.text()).toContain("About");
-		// The initial (home) section's content is actually rendered — the exact
+		// The initial (home) section's content is actually rendered, the exact
 		// "content invisible after hydration" class of bug we want to catch.
 		expect(wrapper.text()).toContain("Hi, I build");
 		expect(wrapper.text()).toContain("things");
@@ -157,7 +156,7 @@ describe("public site islands (SiteChrome + SitePanels)", () => {
 		const wrapper = mount(Shell, { props: { site, area: "home" } });
 		const links = wrapper.findAll("nav a");
 		expect(links.length).toBe(site.nav.length);
-		// The first area is the root, not /home — one canonical URL for the landing
+		// The first area is the root, not /home, one canonical URL for the landing
 		// page instead of two that render the same thing.
 		expect(links[0]?.attributes("href")).toBe("/");
 		const about = links.find((a) => a.text().includes("About"));
