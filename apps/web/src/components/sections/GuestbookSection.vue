@@ -49,13 +49,13 @@ const { shown, expanded, moreCount } = useLimitedList({
 .gb-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
+  gap: var(--space-7);
   align-items: start;
 }
 @container (min-width: 720px) {
   .gb-layout--split {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-    gap: var(--space-6);
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    gap: var(--space-8);
   }
   .gb-layout--split .gb-form {
     position: sticky;
@@ -63,24 +63,27 @@ const { shown, expanded, moreCount } = useLimitedList({
   }
 }
 .gb-form {
-  padding: var(--space-4);
-  border: 1px solid var(--line-1);
-  border-radius: var(--r-3);
+  font-size: var(--fs-small);
+}
+.gb-form :deep(.gform-wrap) {
+  margin-top: 0;
 }
 .gb-list {
   display: grid;
-  gap: var(--space-5);
-  max-width: 66ch;
-  margin-bottom: var(--space-3);
+  gap: var(--space-6);
+  max-width: 46ch;
+  margin-bottom: var(--space-4);
 }
 .gb-entry {
   margin: 0;
 }
 .gb-entry blockquote {
   margin: 0 0 var(--space-2);
-  color: var(--ink);
-  font-size: var(--fs-body);
-  line-height: 1.55;
+  color: var(--ink-strong);
+  font-family: var(--f-d);
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -90,8 +93,7 @@ const { shown, expanded, moreCount } = useLimitedList({
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
   font-size: var(--fs-small);
-  font-weight: 600;
-  color: var(--ink-strong);
+  color: var(--muted);
 }
 .gb-entry figcaption .tm {
   font-family: var(--f-m);

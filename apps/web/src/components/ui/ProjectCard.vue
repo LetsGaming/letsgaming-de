@@ -160,7 +160,6 @@ function onClick() {
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-meta);
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 
 @container (min-width: 720px) {

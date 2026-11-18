@@ -83,18 +83,19 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
 
 <style scoped>
 .hero {
-  max-width: 66ch;
+  padding-top: var(--space-6);
 }
 .title {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-4);
-  margin: var(--space-6) 0 var(--space-4);
+  gap: var(--space-4) var(--space-5);
+  margin: 0 0 var(--space-5);
 }
 .title h1 {
   margin: 0;
   min-width: 0;
+  max-width: 16ch;
   flex: 1 1 14ch;
 }
 .avatar {
@@ -102,26 +103,28 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
 }
 .avatar :deep(img) {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   border-radius: var(--r-round);
   object-fit: cover;
 }
 .lede {
-  font-size: var(--fs-h3);
-  line-height: 1.5;
-  color: var(--muted);
+  max-width: 40ch;
+  margin: 0;
+  font-size: var(--fs-h2);
+  line-height: 1.4;
+  color: var(--ink);
 }
 .lede :deep(b) {
-  color: var(--ink);
-  font-weight: 600;
+  font-weight: inherit;
+  color: inherit;
 }
 .status {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
   font-size: var(--fs-small);
   color: var(--muted);
 }
@@ -144,7 +147,6 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
 }
 .wave {
   display: inline-flex;
-  align-items: baseline;
   gap: var(--space-2);
   align-items: center;
   min-height: 24px;
@@ -177,7 +179,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
   color: var(--ink);
 }
 .links {
-  margin-top: var(--space-5);
+  margin-top: var(--space-4);
 }
 @media (prefers-reduced-motion: reduce) {
   .status .dot.on {

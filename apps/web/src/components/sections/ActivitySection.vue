@@ -53,42 +53,42 @@ const contributionCells = computed<HeatCell[]>(() => {
         <span class="fig-l">{{ s.label }}</span>
       </li>
     </ul>
+    <div class="heat">
+      <CardHeader
+        :title='t("contributions")'
+        :note='t("contributionsScope", { n: module.data.contributions.total })'
+      />
+      <HeatGrid :cells="contributionCells" :min-cell="8" :label='t("contributions")' legend />
+    </div>
     <div class="dash2">
-      <div class="dash2__main">
-        <CardHeader
-          :title='t("contributions")'
-          :note='t("contributionsScope", { n: module.data.contributions.total })'
-        />
-        <HeatGrid :cells="contributionCells" :min-cell="8" :label='t("contributions")' legend />
+      <div class="activity-events">
+        <CardHeader :title='t("recentEvents")' :note='t("newestFirst")' />
+        <p v-if="!module.data.events.length" class="sub">{{ t("emptyActivity") }}</p>
+        <ul v-else class="feed">
+          <li v-for="(e, i) in events" :key="i">
+            <SmartLink
+              :href="e.href"
+              as="div"
+              class="ev"
+              :class="{ 'ev-link': e.href }"
+            >
+              <span class="tm">{{ e.relative }}</span>
+              <span class="ev-body">
+                <span class="ei" v-html="icons[e.type]" />
+                <span class="ev-text">
+                  <span class="et">{{ e.text }}</span>
+                  <span v-if="e.meta" class="em">{{ e.meta }}</span>
+                </span>
+              </span>
+            </SmartLink>
+          </li>
+        </ul>
+        <ListFooter:more-count="hidden" :expanded="expanded" @toggle="expanded = !expanded" />
       </div>
       <div class="dash2__side">
         <CardHeader :title='t("languages")' :note='t("languagesScope")' />
         <LanguageBars :languages="module.data.languages" />
       </div>
-    </div>
-    <div class="activity-events">
-      <CardHeader :title='t("recentEvents")' :note='t("newestFirst")' />
-      <p v-if="!module.data.events.length" class="sub">{{ t("emptyActivity") }}</p>
-      <ul v-else class="feed">
-        <li v-for="(e, i) in events" :key="i">
-          <SmartLink
-            :href="e.href"
-            as="div"
-            class="ev"
-            :class="{ 'ev-link': e.href }"
-          >
-            <span class="tm">{{ e.relative }}</span>
-            <span class="ev-body">
-              <span class="ei" v-html="icons[e.type]" />
-              <span class="ev-text">
-                <span class="et">{{ e.text }}</span>
-                <span v-if="e.meta" class="em">{{ e.meta }}</span>
-              </span>
-            </span>
-          </SmartLink>
-        </li>
-      </ul>
-      <ListFooter class="ev-more" :more-count="hidden" :expanded="expanded" @toggle="expanded = !expanded" />
     </div>
   </ModuleSection>
 </template>
@@ -97,7 +97,7 @@ const contributionCells = computed<HeatCell[]>(() => {
 .figs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4) var(--space-5);
+  gap: var(--space-5) var(--space-5);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -111,9 +111,10 @@ const contributionCells = computed<HeatCell[]>(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line-1);
   min-width: 0;
+}
+.heat {
+  margin-top: var(--space-7);
 }
 .fig-n {
   font-family: var(--f-d);
@@ -138,33 +139,30 @@ const contributionCells = computed<HeatCell[]>(() => {
 .dash2 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-6);
-  margin-top: var(--space-6);
+  gap: var(--space-7);
+  margin-top: var(--space-7);
 }
 @container (min-width: 720px) {
   .dash2 {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: var(--space-7);
+    gap: var(--space-8);
   }
 }
 
 .activity-events {
-  margin-top: var(--space-7);
+  min-width: 0;
 }
 .feed {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.feed li {
-  border-top: 1px solid var(--line-1);
-}
 .ev {
   display: grid;
   grid-template-columns: 4rem minmax(0, 1fr);
   gap: var(--space-4);
   align-items: baseline;
-  padding: var(--space-3) 0;
+  padding: var(--space-2) 0;
   color: inherit;
   text-decoration: none;
 }
@@ -211,8 +209,5 @@ a.ev-link:focus-visible .et {
   color: var(--ink-strong);
   text-decoration: underline;
   text-underline-offset: 0.2em;
-}
-.ev-more {
-  border-top: 1px solid var(--line-1);
 }
 </style>
