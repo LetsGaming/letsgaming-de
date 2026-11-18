@@ -145,7 +145,6 @@
   "packages/db/src/row-mapper.ts": 4,
   "packages/db/src/seed.ts": 8,
   "packages/db/src/sessions-repo.ts": 7,
-  "packages/db/src/site-view.ts": 16,
   "packages/db/src/source-repo.ts": 6,
   "packages/db/src/tz.ts": 4,
   "packages/db/src/wrapped-repo.ts": 5,

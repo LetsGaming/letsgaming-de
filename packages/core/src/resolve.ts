@@ -31,7 +31,7 @@ import {
   type SourceData,
   type SourceId,
 } from "./source.js";
-import type { FreshnessView, PostView, TeaserView, WrappedRankView } from "./view.js";
+import type { FreshnessView, PostView, PulseView, TeaserView, WrappedRankView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
@@ -134,6 +134,9 @@ export interface ResolveInput {
    */
   playtimeWindowDays?: ActivityRange;
   musicWindowDays?: ActivityRange;
+  /** Listening minutes per day over the live strip's span. Separate from
+   *  `musicHistory`, whose window follows the module setting and may be shorter. */
+  pulse?: { music: { day: string; minutes: number }[]; timeZone: string };
   /**
    * What the contact module can actually offer, from the host's configuration.
    *
@@ -241,6 +244,59 @@ function windowLedger(
 ): { day: string; minutes: number }[] {
   const from = new Date(now.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   return ledger.filter((d) => d.day >= from);
+}
+
+/** Days the live strip shows. */
+export const PULSE_DAYS = 28;
+
+/** `YYYY-MM-DD` of `date` in `timeZone`. */
+function zonedDay(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+/** The `n` calendar days ending at `today`, oldest first. Plain UTC date arithmetic,
+ *  so a DST day (23 or 25 hours) cannot skip or repeat one. */
+function lastDays(today: string, n: number): string[] {
+  const base = Date.parse(`${today}T00:00:00Z`);
+  return Array.from({ length: n }, (_, i) => new Date(base - (n - 1 - i) * 86_400_000).toISOString().slice(0, 10));
+}
+
+/**
+ * The live strip. Each source is scaled to its own busiest day and the three are
+ * added, so a 40 commit day and a 6 hour gaming day both read as "busy" instead of
+ * one hiding the other. Returns nothing when no source has any activity in the
+ * span: a strip of empty cells would claim a quiet month the site cannot know about.
+ */
+export function buildPulse(input: ResolveInput, now: Date): PulseView | undefined {
+  const timeZone = input.pulse?.timeZone ?? input.playHistory?.timeZone ?? DEFAULT_TIMEZONE;
+  const days = lastDays(zonedDay(now, timeZone), PULSE_DAYS);
+  const minutesBy = (rows: readonly { day: string; minutes: number }[] | undefined) =>
+    new Map((rows ?? []).map((r) => [r.day, r.minutes]));
+  const commitsBy = new Map((input.source.github?.contributions ?? []).map((c) => [c.date, c.count]));
+  const game = minutesBy(input.playHistory?.ledger);
+  const music = minutesBy(input.pulse?.music);
+  const counts = days.map((d) => ({
+    commits: commitsBy.get(d) ?? 0,
+    gameMinutes: game.get(d) ?? 0,
+    listenMinutes: music.get(d) ?? 0,
+  }));
+  const peak = {
+    commits: Math.max(...counts.map((c) => c.commits)),
+    gameMinutes: Math.max(...counts.map((c) => c.gameMinutes)),
+    listenMinutes: Math.max(...counts.map((c) => c.listenMinutes)),
+  };
+  if (peak.commits + peak.gameMinutes + peak.listenMinutes === 0) return undefined;
+  const share = (v: number, max: number) => (max > 0 ? v / max : 0);
+  const heat = bucketHeat(
+    days.map((date, i) => {
+      const c = counts[i];
+      const score = c
+        ? share(c.commits, peak.commits) + share(c.gameMinutes, peak.gameMinutes) + share(c.listenMinutes, peak.listenMinutes)
+        : 0;
+      return { date, count: score > 0 ? Math.max(1, Math.round(score * 100)) : 0 };
+    }),
+  );
+  return { days, levels: heat.levels, counts, live: (heat.levels.at(-1) ?? 0) > 0, timeZone };
 }
 
 /**
@@ -1045,6 +1101,8 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     if (resolved) modules[id] = resolved;
   }
 
+  const pulse = buildPulse(input, now);
+
   return {
     locale,
     meta: {
@@ -1059,5 +1117,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     modules,
     syncedAt: input.syncedAt,
     syncedRelative: input.syncedAt ? relativeTime(input.syncedAt, now) : undefined,
+    ...(pulse ? { pulse } : {}),
   };
 }

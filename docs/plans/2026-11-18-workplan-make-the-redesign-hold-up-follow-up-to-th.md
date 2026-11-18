@@ -304,3 +304,10 @@ These refine the phases above. Where a finding contradicts the plan text, the fi
   - Docs pages with the global `.prose` (Step 8 side effect) were checked: no visible conflict.
   - The lint allowances are unchanged: they hold the signal tokens (`--live*`), not the room and data violets.
   - Checkpoint: the owner reviews the colours on the running dev site (`node scripts/dev-up.mjs --id harden` prints the URL). Changing hue, chroma or lightness is a token edit in `tokens.css`.
+- Phase 4 done (owner checkpoint pending, see below). Deviations, with reasons:
+  - The strip is not interactive. The plan said "hover and keyboard work"; 28 keyboard stops is worse than one summary. Cells have a native tooltip, the strip has one accessible sentence, and the caption carries the sync age. If the owner wants a drill-in, it belongs to the existing day strips on Life.
+  - `SiteView.pulse` is built by the pure `buildPulse` in `resolve.ts` (exported, with 9 tests: three sources, one source, none, relative scaling, today-live flag, window edge, zone day boundary, DST). The db passes a separate 28-day music ledger. This is the only data-layer change in the plan (plus the `eyebrow` removal in Phase 1).
+  - The footer "synced" line now shows only when there is no strip; the strip's caption carries it.
+  - Measured: 28 cells at 1280px (31 by 14) and 390px (9 by 14, no scroll); the dev data produced a real ramp with today lit; `audit-a11y` passes in both themes with the strip present.
+  - The brief is `docs/research/2026-11-19-live-strip-brief.md`.
+- OWNER CHECKPOINT after Phase 4 (blocks Phases 5 and 6 only): look at the colours and the strip on the running dev site. Phases 7 to 10 do not depend on the answer and proceed meanwhile.

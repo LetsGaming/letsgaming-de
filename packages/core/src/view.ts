@@ -418,6 +418,24 @@ export interface NavView {
   modules?: string[];
 }
 
+/**
+ * The live strip: the last 28 days of activity, one cell per day, drawn on every
+ * page. A day's weight merges the three things the site observes (commits, game
+ * minutes, listening minutes), each scaled to its own busiest day so one source
+ * cannot drown the others. Absent when nothing has ever been observed.
+ */
+export interface PulseView {
+  /** `YYYY-MM-DD` in `timeZone`, oldest first, ending today. */
+  days: string[];
+  /** Heat level 0 to 4 per day, parallel to `days` (see `bucketHeat`). */
+  levels: number[];
+  /** What each day held, parallel to `days`, for the tooltip. */
+  counts: { commits: number; gameMinutes: number; listenMinutes: number }[];
+  /** True when today has any activity: the strip's one signal cell. */
+  live: boolean;
+  timeZone: string;
+}
+
 export interface SiteView {
   locale: Locale;
   meta: { name: string; handle: string; location: string; role: string };
@@ -431,6 +449,8 @@ export interface SiteView {
    *  frontend is a dumb renderer, so this is computed here, not in Vue, the
    *  same convention every other timestamp in this file follows. */
   syncedRelative?: string;
+  /** The live strip, when anything has been observed. */
+  pulse?: PulseView;
 }
 
 /**
