@@ -4,7 +4,7 @@
  * This is the single source of truth shared by the browser tracker (which
  * *produces* these values) and the server (which *validates* them before
  * recording). Everything here is deliberately coarse: dwell and session length
- * are bucketed, scroll depth is quantised, and there are no free-text keys — so
+ * are bucketed, scroll depth is quantised, and there are no free-text keys, so
  * nothing precise or identifying can be stored, and a hostile client can only
  * ever nudge an aggregate counter, never smuggle in personal data.
  *
@@ -116,7 +116,7 @@ export function visitTrigger(s: VisitState): VisitTrigger | null {
  * are allowed to emit, so a key that isn't here is dropped on arrival rather
  * than stored under a name nothing reads. `project-more` and `glance-more` were
  * missing while both sections emitted them, which cost those two links their
- * numbers entirely — the template call sites only fail under `vue-tsc`, and the
+ * numbers entirely, the template call sites only fail under `vue-tsc`, and the
  * Nuxt build doesn't run it.
  *
  * A "see all" link gets its own key rather than sharing a generic `more`: the
@@ -140,7 +140,7 @@ export const CLICK_ACTIONS = [
 ] as const;
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 
-/** Coarse viewport class (never a precise size — that would be fingerprinting). */
+/** Coarse viewport class (never a precise size, that would be fingerprinting). */
 export const VIEWPORT_BUCKETS = ["mobile", "tablet", "desktop"] as const;
 export type ViewportBucket = (typeof VIEWPORT_BUCKETS)[number];
 
@@ -150,7 +150,7 @@ export function viewportBucket(width: number): ViewportBucket {
   return "desktop";
 }
 
-/** Themes a visit can be viewed in — the site's list, not a second copy of it. */
+/** Themes a visit can be viewed in, the site's list, not a second copy of it. */
 const THEME_KEYS: readonly string[] = THEMES;
 
 /** A project (repo) name is public, non-personal data. Bound the shape anyway. */
@@ -159,7 +159,7 @@ const PROJECT_KEY = /^[A-Za-z0-9._-]{1,64}$/;
 // ── retention ranges ────────────────────────────────────────────────────────
 // The owner-facing "clear analytics" ranges. Both halves of each row used to be
 // written twice: the CMS listed the ids and labels, the route switched on the
-// ids and re-derived the hours (`back(72)` for "3d"). Two lists, one meaning —
+// ids and re-derived the hours (`back(72)` for "3d"). Two lists, one meaning,
 // so a fifth range meant editing a component and a switch, and a wrong number on
 // either side silently clears the wrong window. There is no undo.
 
@@ -191,7 +191,7 @@ export const VIEW_RANGES = [
 /**
  * Max span (inclusive) for a custom `from`/`to` analytics range, in days.
  *
- * Matches the server's existing 400-day clamp on the rolling `hours` window —
+ * Matches the server's existing 400-day clamp on the rolling `hours` window,
  * one bound, so a custom range can't ask for more history than the preset
  * ranges could ever reach.
  */
@@ -242,7 +242,7 @@ export const LOG_DIMENSIONS = [
   // a scanner asks for (`/wp-login.php`, `/.env`). Separate from `bot` because
   // the two are different things: one is a crawler being honest, the other is an
   // exploit sweep wearing a Chrome user-agent. Kept out of path/browser/os/
-  // device/referrer for the same reason `bot` is — those describe people.
+  // device/referrer for the same reason `bot` is, those describe people.
   "probe", // an attack probe                       → key: <ProbeFamily>
   "exclusion", // why a hit was not a person        → key: <rule id>
   "traffic", // class of every counted request      → key: probe|bot|pageview
@@ -254,7 +254,7 @@ export type LogDimension = (typeof LOG_DIMENSIONS)[number];
  * Everything the store counts.
  *
  * Derived, because `@lg/db` used to declare its own union with all sixteen
- * members typed out — including every one of ENGAGEMENT_DIMENSIONS, in a second
+ * members typed out, including every one of ENGAGEMENT_DIMENSIONS, in a second
  * order, in another package. Two lists, one vocabulary: a dimension added here and
  * missed there is a counter the store refuses to hold, and the beacon fails
  * validation silently, which reads as nobody visiting.
@@ -286,14 +286,14 @@ export interface TrackEvent {
 
 // ── composite key format ────────────────────────────────────────────────────
 // Three dimensions pack two values into one key. The browser writes them and
-// `validateTrackEvent` below takes them apart — two files, two separators, and
+// `validateTrackEvent` below takes them apart, two files, two separators, and
 // nothing linking them: change the join and every event of that dimension fails
 // validation and is dropped, which looks exactly like nobody visiting. So the
 // format is written once and both ends call it.
 
-/** `<section>|<bucket>` — dwell and scroll. */
+/** `<section>|<bucket>`, dwell and scroll. */
 const PAIR = "|";
-/** `<from>><to>` — a section switch. Distinct from PAIR so a `>` in neither. */
+/** `<from>><to>`, a section switch. Distinct from PAIR so a `>` in neither. */
 const ARROW = ">";
 
 export const dwellKey = (section: string, bucket: DwellBucket): string =>
@@ -303,7 +303,7 @@ export const scrollKey = (section: string, depth: ScrollDepth): string =>
 export const transitionKey = (from: string, to: string): string => `${from}${ARROW}${to}`;
 
 /** Split a `<a>|<b>` key. Returns undefined halves for a malformed key, which
- *  the validator rejects — the parse can't throw on hostile input. */
+ *  the validator rejects, the parse can't throw on hostile input. */
 const splitPair = (key: string): [string | undefined, string | undefined] => {
   const [a, b] = key.split(PAIR);
   return [a, b];

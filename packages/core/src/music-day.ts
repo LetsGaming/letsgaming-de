@@ -2,7 +2,7 @@ import { splitArtists } from "./presence.js";
 
 export type ListKind = "songs" | "artists";
 
-/** A raw per-track row for a drilled-in day — what the store's `dayBreakdown`
+/** A raw per-track row for a drilled-in day, what the store's `dayBreakdown`
  *  yields, and what `dayRowsFor` aggregates into the rendered rows. */
 export interface MusicDayTrack {
   song: string;
@@ -12,7 +12,7 @@ export interface MusicDayTrack {
   artUrl?: string;
 }
 
-/** One rendered row of a day's listening — a song or an aggregated artist. */
+/** One rendered row of a day's listening, a song or an aggregated artist. */
 export interface DayRow {
   key: string;
   primary: string;
@@ -28,17 +28,17 @@ export interface DayRow {
  * `songs` and `artists` are both already trimmed to the module's `maxCount`
  * server-side (aggregated with `dayRowsFor` before the cap, so the artist list is
  * the true top-N artists, not artists of the top-N tracks). `trackCount` /
- * `artistCount` are the real distinct totals — for the summary line and the "and N
- * more" the cap hides — and `minutes` is the day's real total. The client receives
+ * `artistCount` are the real distinct totals, for the summary line and the "and N
+ * more" the cap hides, and `minutes` is the day's real total. The client receives
  * no rows past the cap.
  */
 export interface MusicDayResponse {
   day: string;
   /** Total minutes for the day, across all tracks (summary line). */
   minutes: number;
-  /** Distinct tracks played this day — the true total behind the capped songs. */
+  /** Distinct tracks played this day, the true total behind the capped songs. */
   trackCount: number;
-  /** Distinct artists this day — the true total behind the capped artists. */
+  /** Distinct artists this day, the true total behind the capped artists. */
   artistCount: number;
   /** Top songs for the day, capped to `maxCount`. */
   songs: DayRow[];
@@ -55,8 +55,8 @@ export interface MusicDayResponse {
  *
  * This is the single source of truth for the "click a day while on 'different
  * artists' shows that day's *artists*, not its tracks" behaviour. It lives in core
- * so the **server** runs it and caps the result before sending — the client only
- * ever receives the capped rows — while staying a plain, unit-tested pure function.
+ * so the **server** runs it and caps the result before sending, the client only
+ * ever receives the capped rows, while staying a plain, unit-tested pure function.
  */
 export function dayRowsFor(tracks: readonly MusicDayTrack[], mode: ListKind): DayRow[] {
   if (mode === "artists") {

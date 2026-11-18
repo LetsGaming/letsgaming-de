@@ -1,8 +1,8 @@
 /**
  * Field length limits, defined once and shared by both sides of every form:
  * the browser inputs (`maxlength`) and the server's request-body validation
- * (`maxLength`). Previously these integers were written twice — in the Vue
- * templates and in the route schemas — and could silently drift.
+ * (`maxLength`). Previously these integers were written twice, in the Vue
+ * templates and in the route schemas, and could silently drift.
  */
 export const FIELD_LIMITS = {
   contactName: 120,

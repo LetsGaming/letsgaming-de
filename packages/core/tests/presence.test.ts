@@ -15,7 +15,7 @@ const data: LanyardData = {
   spotify: { song: "Nightcall", artist: "Kavinsky", album: "OutRun", album_art_url: "http://art" },
   activities: [
     { type: 0, name: "Counter-Strike 2", details: "Competitive", state: "Mirage", application_id: "730" },
-    { type: 2, name: "Spotify" }, // duplicate of the spotify object — must be de-duped
+    { type: 2, name: "Spotify" }, // duplicate of the spotify object, must be de-duped
     { type: 4, name: "Custom Status", state: "building things", emoji: { name: "🛠️" } },
     { type: 1, name: "Streaming dev work" },
   ],

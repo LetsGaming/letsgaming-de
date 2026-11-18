@@ -2,7 +2,7 @@
  * The canonical information architecture.
  *
  * Five areas, one level: Home / Code / Life / About / Blog. This is the
- * reference structure the DB seeds from and the nav lint checks against —
+ * reference structure the DB seeds from and the nav lint checks against,
  * keeping it in `core` means the lint has a single source of truth for "which
  * module ids are known".
  *
@@ -10,7 +10,7 @@
  * future area splits an existing node; none adds a sibling. That's what depth is
  * for, and `lint:nav` will say so.
  *
- * `Work` was renamed to `Code` because there is no work on it — plantcare-tracker,
+ * `Work` was renamed to `Code` because there is no work on it, plantcare-tracker,
  * minecraft-*, game-server-lib and LED-Controller-Websocket are all hobby repos.
  * Coding is one of the hobbies; this is its area.
  */
@@ -20,7 +20,7 @@ import type { ModuleDescriptor } from "./modules.js";
 import type { NavNode } from "./nav.js";
 
 /**
- * Browser storage keys — every one of them, site and CMS.
+ * Browser storage keys, every one of them, site and CMS.
  *
  * The site and the admin share an origin, so they share a storage namespace;
  * listing the keys together is the only way to see that. `analyticsOptout` used
@@ -29,20 +29,20 @@ import type { NavNode } from "./nav.js";
  *
  * Here in core rather than in the web app because the anti-FOUC script in
  * The inline script in nuxt.config reads two of these; it runs before
- * hydration — it can't import anything, so it must inline the literal. Two files,
+ * hydration, it can't import anything, so it must inline the literal. Two files,
  * one key, and nothing linking them: exactly the drift that renamed an area out
  * from under `go("work")`.
  */
 export const STORAGE_KEY = {
-  /** localStorage — theme choice, read by the inline no-flash script. */
+  /** localStorage, theme choice, read by the inline no-flash script. */
   theme: "theme",
-  /** localStorage — locale choice, read by the inline no-flash script. */
+  /** localStorage, locale choice, read by the inline no-flash script. */
   lang: "lang",
-  /** localStorage — the visitor's analytics opt-out (a functional preference). */
+  /** localStorage, the visitor's analytics opt-out (a functional preference). */
   analyticsOptout: "lg-analytics-optout",
   /** localStorage: the visitor already waved; only disables the button. */
   waved: "lg-waved",
-  /** sessionStorage — CMS bearer token, tab-scoped on purpose (SEC-05). */
+  /** sessionStorage, CMS bearer token, tab-scoped on purpose (SEC-05). */
   cmsToken: "cms_token",
 } as const;
 
@@ -50,7 +50,7 @@ export const STORAGE_KEY = {
  * The keys the inline no-flash script must spell identically to the store.
  *
  * The script can't consume the constant. It can be *checked* against it, which is
- * what tests/storage-keys.test.ts does — and the check needs to know which keys
+ * what tests/storage-keys.test.ts does, and the check needs to know which keys
  * it should expect to find, or adding an unrelated key (the opt-out) fails a test
  * about theme flashing.
  */
@@ -66,7 +66,7 @@ export const INLINE_SCRIPT_KEYS = [STORAGE_KEY.theme, STORAGE_KEY.lang] as const
  * compile error. LAUNCH_NAV below is constrained to these ids, so the tree and
  * this object are checked against each other by the compiler.
  *
- * This is a launch-time constant, not the live tree — the CMS owns the real nav.
+ * This is a launch-time constant, not the live tree, the CMS owns the real nav.
  * Use it for code that must name a specific area (a link to Code, the fallback
  * home). Anything iterating the nav should read the resolved tree instead.
  */
@@ -109,7 +109,7 @@ export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
  * Default module registry. `heading` is a default the resolver may override.
  *
  * Deliberately no `note` fields. They rendered as a small mono kicker beside
- * every H2 — eleven of them, on every section — which is a template slot being
+ * every H2, eleven of them, on every section, which is a template slot being
  * filled, not orientation. Freshness now shows as a live marker on the modules
  * that sync (`● synced 8 min ago`), which is the one thing those notes were
  * gesturing at and never actually said.
@@ -120,7 +120,7 @@ export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "glance", kind: "glance", heading: l("At a glance", "Auf einen Blick") },
   { id: "featured", kind: "featured", heading: l("Featured", "Ausgewählt") },
   // One stream. A release is an event, and "Recently shipped" was a second
-  // lookalike box sorted by the same key — so `highlights` folded in here.
+  // lookalike box sorted by the same key, so `highlights` folded in here.
   { id: "activity", kind: "activity", heading: l("Recent", "Zuletzt") },
   { id: "coding", kind: "coding", heading: l("This week", "Diese Woche") },
   { id: "projects", kind: "projects", heading: l("Projects", "Projekte") },
@@ -143,7 +143,7 @@ export const LAUNCH_MODULE_IDS: readonly string[] = LAUNCH_MODULES.map((m) => m.
  * The gallery module that ships with the site.
  *
  * The CMS can create more (each is its own `gallery`-kind module) and delete
- * them, but not this one — deleting the last gallery would leave the Layout
+ * them, but not this one, deleting the last gallery would leave the Layout
  * screen with a gallery editor and nothing to edit. Named because "gallery" was
  * spelled three ways across the delete guard, the launch registry and the CMS's
  * default selection, and only one of them is a module *kind*.

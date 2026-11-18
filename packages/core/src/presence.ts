@@ -1,9 +1,9 @@
 /**
- * Discord presence (Lanyard) — the live half of the activity widget.
+ * Discord presence (Lanyard), the live half of the activity widget.
  *
  * Lanyard streams *everything* Discord sees. This module is the curation layer:
  * a pure `normalizePresence(raw, show)` maps Lanyard's raw activities into a small,
- * friendly shape and keeps only the categories the owner enabled — so "disable
+ * friendly shape and keeps only the categories the owner enabled, so "disable
  * music" or "only games" is a config choice, not a code change. The live socket
  * lives in the web island; the accumulated "what I actually play" history is a
  * separate, sampled table (see the sessions repo), folded in alongside.
@@ -15,8 +15,8 @@
  *
  * The type derives from this array rather than the other way round, so a new
  * category can't be added to one and forgotten in the other. Everything that
- * needs the *list* — the CMS toggles, the write schema's enum, the resolver's
- * "is anything live?" check — derives from here too, for the same reason.
+ * needs the *list*, the CMS toggles, the write schema's enum, the resolver's
+ * "is anything live?" check, derives from here too, for the same reason.
  */
 export const PRESENCE_CATEGORIES = [
   "game",
@@ -36,7 +36,7 @@ export function isPresenceCategory(value: unknown): value is PresenceCategory {
 /** CMS-owned presence config: which categories the widget may reveal. */
 export interface PresenceSettings {
   /** DISPLAY axis: which categories the live widget reveals. Gates
-   *  `/api/presence` — the browser never sees a category not in here. */
+   *  `/api/presence`, the browser never sees a category not in here. */
   show: PresenceCategory[];
   /**
    * RECORD axis: which categories the sampler writes to the database.
@@ -45,7 +45,7 @@ export interface PresenceSettings {
    * (accumulate history quietly) or shown-but-not-sampled (live only, no trail).
    * Before this existed the sampler recorded everything regardless of the
    * allow-list, so disabling music hid it from the widget while the table kept
-   * filling — the two axes are now separate settings because they were always
+   * filling, the two axes are now separate settings because they were always
    * separate questions.
    */
   sample: PresenceCategory[];
@@ -53,7 +53,7 @@ export interface PresenceSettings {
    *  This table is the only long memory of what was played, so the default is to
    *  keep it. */
   retentionDays: number | null;
-  /** Activity names that are recorded/observed but never shown publicly — dropped
+  /** Activity names that are recorded/observed but never shown publicly, dropped
    *  from the live widget (any category) and the playtime chart alike. Matched
    *  case-insensitively against the display name (a game, a stream/app, a show, a
    *  custom status). "Accumulate it" and "publish it" are separate decisions; this
@@ -88,7 +88,7 @@ export function sanitizePresenceShow(input: unknown): PresenceCategory[] {
 
 /** The retention values the CMS offers. A free-form number could prune the whole
  *  table on a fat-fingered `1`; constraining to a known set makes that impossible.
- *  Descending, "Forever" first (the default) — a spread from a couple of years down
+ *  Descending, "Forever" first (the default), a spread from a couple of years down
  *  to a month, so a short trail is a real choice, not just "keep it all or a year". */
 export const RETENTION_OPTIONS = [
   { label: "Forever", days: null },
@@ -123,7 +123,7 @@ export function sanitizeHidden(input: unknown): string[] {
   return out;
 }
 
-/** Sanitize a whole settings object from untrusted input — every field falls back
+/** Sanitize a whole settings object from untrusted input, every field falls back
  *  to its default rather than trusting the shape. */
 export function sanitizePresenceSettings(input: unknown): PresenceSettings {
   const obj = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
@@ -148,7 +148,7 @@ export function isHidden(name: string, hidden: string[]): boolean {
 /**
  * Discord's four presence states. A const object, not a bare union: the widget
  * renders a class and a brand colour per state (`--discord-online` &c.), the
- * normalizer picks a default, and a blanket rename once flattened all of them —
+ * normalizer picks a default, and a blanket rename once flattened all of them,
  * so the values need one named home rather than a literal at each site.
  */
 export const DISCORD_STATUS = {
@@ -161,7 +161,7 @@ export type DiscordStatus = (typeof DISCORD_STATUS)[keyof typeof DISCORD_STATUS]
 
 /**
  * Lanyard's `activity.type` numbers, as Discord defines them. Named because a
- * bare `4` in a map key is unreadable and un-greppable — the old comment beside
+ * bare `4` in a map key is unreadable and un-greppable, the old comment beside
  * the field was the only thing carrying the meaning, and a comment isn't a
  * lookup. Only the types we surface are listed; 5 (Competing) is ignored.
  */
@@ -181,7 +181,7 @@ export interface LanyardActivity {
   state?: string;
   details?: string;
   application_id?: string;
-  /** Spotify track id on a listening activity — stable across plays of one track,
+  /** Spotify track id on a listening activity, stable across plays of one track,
    *  so it's the identity for "top songs". */
   sync_id?: string;
   emoji?: { name?: string };
@@ -268,7 +268,7 @@ export function applicationIconUrl(applicationId: string, icon: string): string 
  * The album-art URL for a Spotify activity, if it carries one.
  *
  * Discord ships the cover in `assets.large_image` as `spotify:<id>`, which maps
- * to Spotify's CDN — the same `i.scdn.co` host the media proxy already allow-lists.
+ * to Spotify's CDN, the same `i.scdn.co` host the media proxy already allow-lists.
  * A rare listen has a full `https://` image instead (handled), or none (undefined,
  * so the row falls back to a monogram). Pure and dependency-free, so the sampler
  * can call it when persisting a play and the resolver stays out of it.
@@ -328,7 +328,7 @@ export function normalizePresence(
       continue;
     }
 
-    // Hidden by name — the same list that hides a game from the playtime chart also
+    // Hidden by name, the same list that hides a game from the playtime chart also
     // keeps it (a stream, a show, an app) out of the live widget.
     if (isDropped(a.name)) continue;
 
@@ -351,7 +351,7 @@ export function normalizePresence(
  * A session shorter than this isn't a fact, it's a row.
  *
  * A game glimpsed by exactly one poll, with no `timestamps.start` from Discord,
- * has `last_seen == started` — zero seconds. Charting it would put a name on the
+ * has `last_seen == started`, zero seconds. Charting it would put a name on the
  * axis for something we can't say anything about. Sixty seconds is the smallest
  * span a poll can actually evidence.
  */
@@ -390,14 +390,14 @@ export const MUSIC_TOP_LIMIT = 12;
  * How often to ask Discord what's running.
  *
  * Five minutes, and the number is smaller than it looks: Discord dates the session
- * (`timestamps.start`), so the poll doesn't measure the duration — it only decides
+ * (`timestamps.start`), so the poll doesn't measure the duration, it only decides
  * whether a session is *seen at all*. A game played for less than one interval,
  * between two polls, is missed entirely; anything longer is dated exactly and the
  * only error is the tail between the last poll and quitting.
  *
  * So this trades one HTTP call per five minutes against the length of the shortest
  * session worth recording. Lanyard's socket would close that gap, at the price of a
- * persistent connection to reconnect, back off and supervise — for a personal site
+ * persistent connection to reconnect, back off and supervise, for a personal site
  * whose question is "what did I play this fortnight", a poll is the honest cost.
  */
 export const PRESENCE_SAMPLE_SCHEDULE = "*/5 * * * *";
@@ -408,8 +408,8 @@ export const PRESENCE_SAMPLE_SCHEDULE = "*/5 * * * *";
  * Most activities carry `timestamps.start`, and those are keyed by it: two polls
  * of one session are one row, and idempotence is the primary key's job.
  *
- * The ones Discord doesn't date have no such key, and the naive fallback —
- * `started_at = now` — makes every poll a new zero-length session, so an undated
+ * The ones Discord doesn't date have no such key, and the naive fallback,
+ * `started_at = now`, makes every poll a new zero-length session, so an undated
  * game accumulates *nothing, forever*. Instead the poll extends whatever undated
  * session is still open for that name; this is how long "still open" lasts.
  *
@@ -447,7 +447,7 @@ export interface PlaytimeEntry {
   exact: boolean;
 }
 
-/** One row of the playtime chart — an observed game and its minutes. Cover art
+/** One row of the playtime chart, an observed game and its minutes. Cover art
  *  and genre, when known, are attached by the resolver from the metadata cache
  *  (RAWG), matched by name; Discord itself gives only a name and a duration. */
 export interface PlaytimeView {
@@ -473,7 +473,7 @@ export interface GameMeta {
   genre?: string;
 }
 
-/** The cache key for a game name — trimmed + lowercased. The store keys metadata
+/** The cache key for a game name, trimmed + lowercased. The store keys metadata
  *  by this and the resolver looks up by this, so a row and its lookup always agree
  *  regardless of the casing/spacing Discord happened to report. */
 export function gameMetaKey(name: string): string {
@@ -485,11 +485,11 @@ export function gameMetaKey(name: string): string {
  * cached metadata (cover art, genre) by name where it's known.
  *
  * Playtime is entirely Lanyard-observed now: the sampler records every game
- * Discord reports — Steam and non-Steam alike — and this turns those per-game
+ * Discord reports, Steam and non-Steam alike, and this turns those per-game
  * totals into rows. Steam used to contribute a parallel, strictly-more-accurate
  * fortnight here (it counted hours Discord wasn't watching), merged in by name;
- * it was dropped because it only ever knew Steam titles, so the observed number —
- * one consistent measurement across every game — is what's left, and it's the
+ * it was dropped because it only ever knew Steam titles, so the observed number,
+ * one consistent measurement across every game, is what's left, and it's the
  * only thing that ever saw the non-Steam ones anyway. Cover art and genre, which
  * Steam used to bring, come from RAWG (cross-platform) via the metadata cache.
  */
@@ -517,7 +517,7 @@ export function playtimeRows(
 /**
  * Split Discord's artist string into individual artists.
  *
- * Discord joins collaborators with "; " — `"Icona Pop; Charli xcx"`. "Top
+ * Discord joins collaborators with "; ", `"Icona Pop; Charli xcx"`. "Top
  * artists" has to count each separately (Charli XCX's solo plays should merge
  * with her features), so this splits on the separator, trims, and drops empties.
  * Over-splitting a name that genuinely contains a semicolon is the acceptable
@@ -546,12 +546,12 @@ export interface MusicPlay {
 
 /** One row of a "top" list (songs, artists, or albums). */
 export interface MusicRankEntry {
-  /** Display name — song title, artist, or album. */
+  /** Display name, song title, artist, or album. */
   name: string;
   minutes: number;
   /** How many distinct plays this is summed from. */
   plays: number;
-  /** Artist(s), for a song/album row — lets the UI show "Song — Artist". */
+  /** Artist(s), for a song/album row, lets the UI show "Song, Artist". */
   by?: string;
   /** Album cover URL, when known. Songs/albums carry their own; an artist row
    *  borrows its most-played track's cover. Absent → the UI shows a monogram. */
@@ -559,14 +559,14 @@ export interface MusicRankEntry {
 }
 
 /** The music module's data: top songs / artists / albums plus a listening
- *  timeline, over a window. Genre and podcasts are absent — Discord's Spotify
+ *  timeline, over a window. Genre and podcasts are absent, Discord's Spotify
  *  presence doesn't expose them; they'd need the Spotify Web API. */
 export interface MusicModuleData {
   totalHours: number;
   topSongs: MusicRankEntry[];
   topArtists: MusicRankEntry[];
   topAlbums: MusicRankEntry[];
-  /** Minutes listened per day, oldest first — same shape as the playtime ledger. */
+  /** Minutes listened per day, oldest first, same shape as the playtime ledger. */
   ledger: { day: string; minutes: number }[];
   since?: string;
 }

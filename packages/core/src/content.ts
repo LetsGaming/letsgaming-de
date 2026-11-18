@@ -5,11 +5,11 @@
  * status, links, projects, hobbies, "Right now", featured selection, nav labels.
  * Every human-authored string is `Localized` so German is a later content task,
  * not a migration. Prose fields (`lede`, `bio` paragraphs, project descriptions)
- * support a tiny, safe subset of markdown — `**bold**` only — which the frontend
+ * support a tiny, safe subset of markdown, `**bold**` only, which the frontend
  * renders without ever injecting raw HTML.
  *
  * Source-owned data (repos, languages, contribution graph, event feed, stats)
- * does NOT live here — see `source.ts`. The seam between the two is deliberate.
+ * does NOT live here, see `source.ts`. The seam between the two is deliberate.
  */
 
 import type { Localized } from "./i18n.js";
@@ -25,7 +25,7 @@ export interface SiteMeta {
   location: Localized;
   /** Eyebrow role line, e.g. "web developer". */
   role: Localized;
-  /** Optional portrait/avatar — a reference to a library image asset. */
+  /** Optional portrait/avatar, a reference to a library image asset. */
   avatar?: string;
 }
 
@@ -64,7 +64,7 @@ export interface Project {
   /** Small meta chips, e.g. ["★ 3", "updated 2d ago"]. */
   meta: Localized[];
   href: string;
-  /** Exactly one project should be featured — it gets the gradient hero card. */
+  /** Exactly one project should be featured, it gets the gradient hero card. */
   featured?: boolean;
   /**
    * Optional link to a synced repo by name. Not used at launch, but this is the
@@ -79,7 +79,7 @@ export interface Project {
  * The list is the runtime value and the type derives from it, because three
  * other places need the *list*: the CMS dropdown, the write schema's enum, and
  * tokens.css. A bare union gave them nothing to import, so all three hand-wrote
- * it — and a dropdown that offers a tone the tokens don't define renders
+ * it, and a dropdown that offers a tone the tokens don't define renders
  * nothing, silently, which is precisely what happened to these once already.
  */
 export const TONES = ["purple", "coral", "mint", "sun"] as const;
@@ -126,7 +126,7 @@ export interface SiteContent {
   playtime?: PlaytimeSettings;
   /** CMS-owned Wrapped schedule (optional; resolver falls back to default = off). */
   wrapped?: WrappedSettings;
-  /** CMS-owned image gallery — uploaded media placed on the site. */
+  /** CMS-owned image gallery, uploaded media placed on the site. */
   gallery?: GalleryItem[];
 }
 

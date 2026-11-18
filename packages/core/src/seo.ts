@@ -1,8 +1,8 @@
 /**
  * SEO metadata, built as data.
  *
- * The head tags a page needs — canonical, `hreflang` alternates, Open Graph,
- * Twitter card, JSON-LD — are almost entirely a function of a few facts: the
+ * The head tags a page needs, canonical, `hreflang` alternates, Open Graph,
+ * Twitter card, JSON-LD, are almost entirely a function of a few facts: the
  * origin, the path, the locale, and the page's title/description. That's a pure
  * transform, so it lives here in `@lg/core` (no Vue, no Nuxt), where it can be
  * unit-tested against exact expected output. `useSeo()` on the web side is a thin
@@ -59,11 +59,11 @@ export interface SeoInput {
   /**
    * Whether this page genuinely exists in every locale at the same URL.
    *
-   * Only the dashboard areas do — they re-render from the store in whatever
+   * Only the dashboard areas do, they re-render from the store in whatever
    * language `?lang` asks for. The blog, the docs and the privacy page are
    * single-language documents: `?lang=de` on a post serves the same English words
    * it always did. Claiming `hreflang` alternates for those is a Search Console
-   * error ("alternate page returns duplicate content"), not a harmless extra — so
+   * error ("alternate page returns duplicate content"), not a harmless extra, so
    * this defaults to off, and the areas opt in.
    */
   localized?: boolean;
@@ -78,7 +78,7 @@ export interface SeoTags {
   meta: MetaTag[];
 }
 
-/** Join an origin and a path into one clean URL — exactly one slash between,
+/** Join an origin and a path into one clean URL, exactly one slash between,
  *  and the root path contributes no trailing slash (`https://x` not `https://x/`). */
 function url(origin: string, path: string): string {
   const base = origin.replace(/\/$/, "");
@@ -119,7 +119,7 @@ export function buildSeoTags(input: SeoInput): SeoTags {
     for (const locale of LOCALES) {
       alternates.push({ hreflang: locale, href: localeUrl(input.origin, input.path, locale) });
     }
-    // x-default points at the locale-negotiated URL (the bare path) — the page
+    // x-default points at the locale-negotiated URL (the bare path), the page
     // that picks a language from Accept-Language rather than forcing one.
     alternates.push({ hreflang: "x-default", href: canonical });
   }
@@ -138,7 +138,7 @@ export function buildSeoTags(input: SeoInput): SeoTags {
   ];
 
   // Facebook learns about the other language from og:locale:alternate, not from
-  // hreflang — so a localized page has to say it twice, in two vocabularies.
+  // hreflang, so a localized page has to say it twice, in two vocabularies.
   if (input.localized) {
     for (const locale of LOCALES) {
       if (locale !== input.locale) meta.push({ property: "og:locale:alternate", content: locale });
@@ -170,7 +170,7 @@ export interface SiteIdentity {
 }
 
 /**
- * `schema.org/Person` as a JSON-LD object — the graph that lets a search engine
+ * `schema.org/Person` as a JSON-LD object, the graph that lets a search engine
  * render a person card. Returned as an object, not a string; the caller
  * `JSON.stringify`s it into a `<script type="application/ld+json">`.
  *
@@ -191,7 +191,7 @@ export function personLd(id: SiteIdentity): Record<string, unknown> {
   };
 }
 
-/** `schema.org/WebSite` — names the site and its author, and is the standard
+/** `schema.org/WebSite`, names the site and its author, and is the standard
  *  home for a future `SearchAction`. */
 export function websiteLd(id: SiteIdentity): Record<string, unknown> {
   return {
@@ -205,7 +205,7 @@ export function websiteLd(id: SiteIdentity): Record<string, unknown> {
 }
 
 /**
- * `schema.org/BlogPosting` for one post — the graph that makes a result eligible
+ * `schema.org/BlogPosting` for one post, the graph that makes a result eligible
  * to render with a date and a byline instead of a bare blue link.
  *
  * `BlogPosting` rather than the broader `Article`: it's the more specific type,
@@ -214,14 +214,14 @@ export function websiteLd(id: SiteIdentity): Record<string, unknown> {
  *
  * One caveat worth knowing rather than silently working around: Google ignores a
  * `headline` longer than about 110 characters for rich results. This doesn't
- * truncate — quietly rewriting a title to a different title is worse than an
- * ineligible result — so keep post titles short if rich results matter.
+ * truncate, quietly rewriting a title to a different title is worse than an
+ * ineligible result, so keep post titles short if rich results matter.
  */
 export interface ArticleLdInput {
   headline: string;
   /** Canonical URL of the post. */
   url: string;
-  /** ISO 8601 publication timestamp. Omitted when the post has none — a made-up
+  /** ISO 8601 publication timestamp. Omitted when the post has none, a made-up
    *  date is worse structured data than a missing field. */
   datePublished?: string;
   description?: string;
@@ -253,7 +253,7 @@ export function articleLd(input: ArticleLdInput): Record<string, unknown> {
   };
 }
 
-/** One crumb in a breadcrumb trail. `url` is absolute — `BreadcrumbList` items
+/** One crumb in a breadcrumb trail. `url` is absolute, `BreadcrumbList` items
  *  are `ListItem`s with a full URL, not a site-relative path. */
 export interface BreadcrumbItem {
   name: string;
@@ -281,8 +281,8 @@ export function breadcrumbLd(items: BreadcrumbItem[]): Record<string, unknown> {
   };
 }
 
-/** Roughly where a meta description stops being shown. Not a hard limit — search
- *  engines rewrite snippets freely — but past this it's certainly truncated. */
+/** Roughly where a meta description stops being shown. Not a hard limit, search
+ *  engines rewrite snippets freely, but past this it's certainly truncated. */
 const EXCERPT_MAX = 155;
 
 /**

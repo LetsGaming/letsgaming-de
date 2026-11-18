@@ -1,16 +1,16 @@
 /**
  * Navigation as a recursive tree (PROJECT.md §5, §6).
  *
- * The launch tree is deliberately flat — one level, four areas — but the schema
+ * The launch tree is deliberately flat, one level, four areas, but the schema
  * is a tree from day one so adding a sub-area later is *adding a node*, not
  * rewriting the model, the renderer, and the CMS. This is the one decision the
  * spec flags as expensive to retrofit, so it lives here as the ground truth.
  *
  * A node is either:
- *   - a LEAF   — holds `modules` (module ids rendered in order), or
- *   - a BRANCH — holds `children` (>= 2 child nodes, its own secondary nav).
+ *   - a LEAF:   holds `modules` (module ids rendered in order), or
+ *   - a BRANCH: holds `children` (>= 2 child nodes, its own secondary nav).
  * The two are mutually exclusive. `nav-lint.ts` enforces that (and depth, and
- * breadth) at build time — see §5 "Enforcement".
+ * breadth) at build time, see §5 "Enforcement".
  */
 
 import type { Localized } from "./i18n.js";
@@ -29,8 +29,8 @@ export interface NavNode {
    * engines treat as four duplicate pages and usually discard in favour of a
    * snippet they synthesize themselves.
    *
-   * Left unset, `areaMeta` falls back to the site description — a shared but
-   * accurate sentence — so an area is never worse off for not having one.
+   * Left unset, `areaMeta` falls back to the site description, a shared but
+   * accurate sentence, so an area is never worse off for not having one.
    */
   description?: Localized;
   /** Optional icon key resolved by the frontend's icon set. */
@@ -41,9 +41,9 @@ export interface NavNode {
   modules?: string[];
   /**
    * Draft: the node exists in the tree but isn't published. CMS-owned.
-   * A hidden node still counts for depth and breadth — a node that would break
+   * A hidden node still counts for depth and breadth, a node that would break
    * the tree the moment you publish it is rot you want at build time, not at
-   * toggle time — but it's exempt from the thin-leaf rule, because a draft is
+   * toggle time, but it's exempt from the thin-leaf rule, because a draft is
    * empty until it isn't. `canPublish()` in nav-lint re-checks that exemption
    * before the CMS is allowed to flip it. Hidden means *not rendered and not
    * routable*, not "rendered but unlinked".
@@ -101,7 +101,7 @@ export function navDepth(nodes: NavNode[]): number {
 }
 
 /** The tree as the public site may see it: drafts removed, at every depth.
- *  `hidden` is only a guarantee if something enforces it — a flag nothing reads
+ *  `hidden` is only a guarantee if something enforces it, a flag nothing reads
  *  is a comment. Resolving against this means a hidden node is neither rendered
  *  nor routable, rather than rendered-but-unlinked. */
 export function visibleNav(nodes: NavNode[]): NavNode[] {
@@ -114,7 +114,7 @@ export function visibleNav(nodes: NavNode[]): NavNode[] {
 /**
  * Areas are routes, not hash tabs.
  *
- * The first area is the site root — `/` rather than `/home` — so there's one
+ * The first area is the site root, `/` rather than `/home`, so there's one
  * canonical URL for the landing page instead of two rendering the same thing.
  *
  * Here rather than in the web app because it's a *resolution rule*, and the
@@ -136,8 +136,8 @@ interface NavLike {
 }
 
 /**
- * Resolve an in-page target — a module id like `contact`, or a (possibly
- * nested) area id — to the URL that shows it.
+ * Resolve an in-page target, a module id like `contact`, or a (possibly
+ * nested) area id, to the URL that shows it.
  *
  * A module lives in exactly one area, so `#contact` is `/about#contact`: a real
  * URL, which a browser can follow, a person can middle-click, and a crawler can

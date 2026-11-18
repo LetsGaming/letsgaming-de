@@ -106,7 +106,7 @@ test("a composite key naming an unknown section is dropped", () => {
 });
 
 /** The CMS renders a button per range and the route switches on the same ids.
- *  `all` is the un-windowed one — the route branches on `hours === null`, so a
+ *  `all` is the un-windowed one, the route branches on `hours === null`, so a
  *  second null (or none) silently changes what "clear" clears. */
 test("exactly one clear range is un-windowed", () => {
   const unwindowed = CLEAR_RANGES.filter((r) => r.hours === null);
@@ -119,7 +119,7 @@ test("exactly one clear range is un-windowed", () => {
  *
  * `project-more` and `glance-more` were emitted by two sections and listed by
  * neither the type nor the validator, so those clicks were rejected on arrival
- * and the links read as never used. The type error was real the whole time — it
+ * and the links read as never used. The type error was real the whole time, it
  * lived in a template expression, which only `vue-tsc` checks and the Nuxt build
  * doesn't run, so nothing red showed up until the separate typecheck step.
  */

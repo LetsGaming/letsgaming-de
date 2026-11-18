@@ -4,8 +4,8 @@ import { sanitizeActivityRange, type ActivityRange } from "./activity-range.js";
  * CMS-owned display config shared by the activity modules.
  *
  * Three knobs, identical in shape for Listening and Playtime (and anything else with
- * a top-N list over a window): `initialCount` rows before "show more", `maxCount` —
- * the hard cap the list never exceeds — and `defaultRange`, the window the module
+ * a top-N list over a window): `initialCount` rows before "show more", `maxCount`,
+ * the hard cap the list never exceeds, and `defaultRange`, the window the module
  * opens in. Kept in one place so the coherence rule (initial ≤ max) and the bounds
  * live once; each module supplies its own defaults and stores its own value, so their
  * limits and their opening window can differ.
@@ -19,7 +19,7 @@ export interface ListDisplaySettings {
    * The window the module opens in, before the viewer picks another.
    *
    * Here rather than in a settings type of its own because it is the same kind of
-   * knob as the two above — "what this module shows when you arrive" — and lives
+   * knob as the two above, "what this module shows when you arrive", and lives
    * in the same stored row. Each module keeps its own value, so Listening can open
    * on a fortnight while Played opens on a year.
    */
@@ -56,7 +56,7 @@ export function sanitizeListDisplaySettings(input: unknown, defaults: ListDispla
 /**
  * Cap a list to `max` rows while reporting the true length, so the server can send
  * only what it allows and the client can still say "and N more" without ever seeing
- * the hidden rows. The single place this pairing lives — every list fetched from the
+ * the hidden rows. The single place this pairing lives, every list fetched from the
  * backend (top lists and day drill-ins alike) goes through here or a query LIMIT, so
  * the rule "the client never receives data past the cap" holds everywhere.
  */

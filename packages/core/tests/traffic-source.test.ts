@@ -37,7 +37,7 @@ test("a longer custom match beats a shorter one", () => {
 });
 
 test("an unknown host keeps its identity, minus noise subdomains", () => {
-  // The long tail stays visible — an unrecognised source sending real traffic is
+  // The long tail stays visible, an unrecognised source sending real traffic is
   // exactly what's worth noticing, not something to bury in "other".
   assert.equal(classifyReferrer("www.someblog.dev"), "someblog.dev");
   assert.equal(classifyReferrer("news.example.org"), "news.example.org");

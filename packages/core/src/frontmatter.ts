@@ -1,5 +1,5 @@
 /**
- * Post frontmatter — the metadata that makes a markdown file a post.
+ * Post frontmatter, the metadata that makes a markdown file a post.
  *
  * It lives in the file rather than beside it in the library, so a post is
  * self-contained and portable: moving the blog to a repo subdir later is moving
@@ -23,7 +23,7 @@ export interface PostFrontmatter {
   draft: boolean;
   /** OG description and index blurb. Falls back to the opening paragraph. */
   excerpt?: string;
-  /** Display only — no filtering, no tag pages. The nav is at its breadth cap,
+  /** Display only, no filtering, no tag pages. The nav is at its breadth cap,
    *  so tag pages would have cost an area. The data's here if that changes. */
   tags: string[];
 }
@@ -46,7 +46,7 @@ function unquote(raw: string): string {
   return quoted ? (quoted[2] ?? "") : v;
 }
 
-/** `[a, b]` or `a, b` — one flat list of scalars, which is all tags ever are. */
+/** `[a, b]` or `a, b`, one flat list of scalars, which is all tags ever are. */
 function parseList(raw: string): string[] {
   const inner = raw.trim().replace(/^\[|\]$/g, "");
   return inner
@@ -77,7 +77,7 @@ export function firstParagraph(body: string, max = 200): string {
  *
  * Never throws: a malformed post is a content problem, not a crash. Missing
  * fields degrade to sensible defaults, and a file with no frontmatter at all is
- * still readable — it just has no date and won't sort meaningfully. `title`
+ * still readable, it just has no date and won't sort meaningfully. `title`
  * falls back to the first H1, then to the slug, so a post always has a name.
  */
 export function parsePost(markdown: string, slug: string): ParsedPost {

@@ -6,11 +6,11 @@ import {
 } from "./list-settings.js";
 
 /**
- * CMS-owned display config for the Listening module — the shared list-display shape
+ * CMS-owned display config for the Listening module, the shared list-display shape
  * (`initialCount` / `maxCount`).
  *
  * `maxCount` is enforced *server-side*, as a LIMIT on the top-N query, so the
- * frontend never receives more rows than this — it can't count or leak past the cap
+ * frontend never receives more rows than this, it can't count or leak past the cap
  * (the project rule: the client knows nothing it wasn't given). The distinct "tracks
  * played" / "different artists" totals are separate COUNT queries and are deliberately
  * *not* capped: the headline stays the true total even when the list is trimmed to

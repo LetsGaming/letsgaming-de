@@ -1,11 +1,11 @@
 import type { Result } from "./result.js";
 
 /**
- * The Source contract (PROJECT.md §4 "The Source contract — the key abstraction").
+ * The Source contract (PROJECT.md §4 "The Source contract, the key abstraction").
  *
  * Every integration is an adapter implementing one interface. Adding a source =
  * writing one adapter and registering it. The store, the read API, and the whole
- * frontend stay untouched because they only ever speak the *normalized* shape —
+ * frontend stay untouched because they only ever speak the *normalized* shape,
  * never a raw API response.
  *
  * At launch there is exactly one source: GitHub. The contract exists so the next
@@ -17,9 +17,9 @@ import type { Result } from "./result.js";
  * @typeParam Normalized - the common shape persisted to the store and served.
  */
 export interface Source<Raw = unknown, Normalized = unknown> {
-  /** Stable id — the store key, the `SourceData` field, the freshness label. */
+  /** Stable id, the store key, the `SourceData` field, the freshness label. */
   id: SourceId;
-  /** How often the sync runner polls it — a cron-ish interval string. */
+  /** How often the sync runner polls it, a cron-ish interval string. */
   schedule: string;
   /**
    * How long this source's data stays *true*, in milliseconds. Distinct from
@@ -27,7 +27,7 @@ export interface Source<Raw = unknown, Normalized = unknown> {
    * Discord presence is worthless after a minute; a fortnight of coding stats is
    * fine an hour old.
    *
-   * Past it the module renders `stale` — the data plus its age — rather than
+   * Past it the module renders `stale`, the data plus its age, rather than
    * pretending to be current. The site's entire claim is that it updates itself,
    * so rendering old data as fresh is the worst bug available to it.
    *
@@ -35,14 +35,14 @@ export interface Source<Raw = unknown, Normalized = unknown> {
    * a config error, not a strictness setting.
    *
    * **Set this from {@link SOURCE_TTL}, never inline.** The read API can't ask an
-   * adapter — an unconfigured source still has stored data, and its age still has
-   * to be judged — so it reads the table, and the table is what makes a module
+   * adapter, an unconfigured source still has stored data, and its age still has
+   * to be judged, so it reads the table, and the table is what makes a module
    * stale. An adapter that declares its own number is declaring a value nothing
    * consumes, next to a table that quietly says something else.
    */
   ttl: number;
   /**
-   * Hit the external API. Returns a typed Result rather than throwing — an
+   * Hit the external API. Returns a typed Result rather than throwing, an
    * unavailable/slow upstream is expected, and the sync worker degrades (keeps
    * the last-good snapshot) on a failure instead of crashing the run.
    */
@@ -52,14 +52,14 @@ export interface Source<Raw = unknown, Normalized = unknown> {
   /**
    * Optional async pass over the normalized shape, before it's persisted.
    *
-   * `normalize` is pure and synchronous, and that's worth keeping — it's what
+   * `normalize` is pure and synchronous, and that's worth keeping, it's what
    * makes the whole pipeline testable without a network. But some enrichment
    * genuinely needs I/O (sampling a colour out of an image the normalized shape
    * points at), and doing it in `fetch` doesn't work because the thing to fetch
    * is only known once normalize has built it.
    *
    * So: name the async step instead of making the pure one lie. Failures inside
-   * must degrade to the un-enriched shape, never throw — enrichment is a bonus,
+   * must degrade to the un-enriched shape, never throw, enrichment is a bonus,
    * not a dependency.
    */
   enrich?(normalized: Normalized): Promise<Normalized>;
@@ -68,7 +68,7 @@ export interface Source<Raw = unknown, Normalized = unknown> {
 /**
  * A persisted snapshot: the store appends one of these every sync (the archive)
  * and upserts a "current" copy (what the site reads). Accumulating snapshots is
- * how the store ends up holding data GitHub's API won't hand you directly —
+ * how the store ends up holding data GitHub's API won't hand you directly,
  * all-time totals, long-range trends (§4 "Accumulation beyond the public API").
  */
 export interface SourceSnapshot<Normalized = unknown> {
@@ -126,7 +126,7 @@ export interface GitHubRelease {
   publishedAt: string;
 }
 
-/** A merged pull request — "shipped this" for non-devs. */
+/** A merged pull request, "shipped this" for non-devs. */
 export interface GitHubPullRequest {
   repo: string;
   title: string;
@@ -135,7 +135,7 @@ export interface GitHubPullRequest {
   mergedAt: string;
 }
 
-/** A public gist — a shared snippet. */
+/** A public gist, a shared snippet. */
 export interface GitHubGist {
   /** Human description; may be empty (GitHub allows it). */
   description: string;
@@ -175,7 +175,7 @@ export interface GitHubEvent {
    */
   repo?: string;
   /**
-   * Pre-rendered English sentence — legacy.
+   * Pre-rendered English sentence, legacy.
    *
    * The adapter used to bake "Pushed to letsgaming-de" into the store, which put
    * a string no translation could reach inside the data. It now writes `repo` and
@@ -224,14 +224,14 @@ export function isSourceId(value: unknown): value is SourceId {
  * *Static*, because a TTL is a fact about the upstream, not about this
  * deployment's config: an unconfigured source still has yesterday's rows in the
  * store, and their age still has to be judged. Deriving the table from the
- * *registered* sources would leave those rows with no TTL — and a missing TTL
+ * *registered* sources would leave those rows with no TTL, and a missing TTL
  * resolves to `fresh`, so the failure mode is a module that silently claims to be
  * current forever. That's the exact bug the freshness model exists to prevent, so
  * the table can't be allowed to have holes.
  *
  * *`Record<SourceId, …>`*, because that's what makes the hole impossible: add a
  * field to `SourceData` and this stops compiling until it has a TTL. Before, it
- * was `Record<string, number>` — a new source typechecked, shipped, and rendered
+ * was `Record<string, number>`, a new source typechecked, shipped, and rendered
  * `fresh` in perpetuity.
  *
  * GitHub is 8h and not the 2h originally wanted: it polls every 6h, so any TTL

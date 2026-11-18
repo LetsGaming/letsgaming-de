@@ -3,27 +3,27 @@ import type { ReferrerRule } from "./traffic-source.js";
 /**
  * What the API returns.
  *
- * These shapes were always real — every endpoint has one. They just weren't
+ * These shapes were always real, every endpoint has one. They just weren't
  * written down anywhere, so each was described three times and agreed with itself
  * by luck:
  *
- * 1. **JSON Schema** in `schemas.ts` — the request half only, checked at runtime.
- * 2. **A TypeScript interface** — the entity, not the envelope around it.
- * 3. **A cast at the call site** — `(await cms.listAssets(…)) as AssetListResponse`.
+ * 1. **JSON Schema** in `schemas.ts`, the request half only, checked at runtime.
+ * 2. **A TypeScript interface**, the entity, not the envelope around it.
+ * 3. **A cast at the call site**, `(await cms.listAssets(…)) as AssetListResponse`.
  *
  * `handle()` returned `res.json()`, which is `any`, so (3) was the only thing
- * standing between the client and the wire — and a cast is a check that can't
+ * standing between the client and the wire, and a cast is a check that can't
  * fail. `(await cms.uploadAsset(file)) as PostAsset` compiled, built, shipped, and
  * was wrong: the server returns an `Asset`, and `PostAsset`'s extra fields were
  * simply absent at runtime. The compiler had been told not to look.
  *
  * Living in core means both ends import the same declaration. The server's routes
  * are typed to return these, so a route that stops matching is a **compile error
- * on the server** — the side that can actually be wrong. The client then needs no
+ * on the server**, the side that can actually be wrong. The client then needs no
  * casts at all, and the one remaining assertion is inside `handle()`, named, with
  * the reason next to it.
  *
- * This is not runtime validation of responses. The server is trusted here — it's
+ * This is not runtime validation of responses. The server is trusted here, it's
  * ours, it compiles against these types, and a validator on every response would
  * be paying Zod's weight to check that our own code does what it just compiled to
  * do. The requests stay validated (they come from strangers); the responses are
@@ -77,7 +77,7 @@ export interface AnalyticsPoint {
 /**
  * The metrics the dashboard charts.
  *
- * `pageviews` and `sections` are not two facts — they're a bracket. The log can
+ * `pageviews` and `sections` are not two facts, they're a bracket. The log can
  * only say a request *claimed* to be a browser; the beacon only fires if one
  * actually ran. Ceiling and floor, with JS-less humans, opt-outs and lying bots in
  * between. `bots` is the ones that didn't lie.
@@ -107,7 +107,7 @@ export interface AnalyticsEngagement {
 }
 
 export interface AnalyticsResponse {
-  /** The window that was actually summarised — echoed back because the request
+  /** The window that was actually summarised, echoed back because the request
    *  asks in hours and the store answers in buckets, and the chart needs the
    *  bucket edges to draw an axis with no data in it. */
   range: {
@@ -118,7 +118,7 @@ export interface AnalyticsResponse {
     /**
      * The IANA zone the buckets are expressed in.
      *
-     * Day buckets *are* local days — a day boundary is a wall-clock fact, so the
+     * Day buckets *are* local days, a day boundary is a wall-clock fact, so the
      * grouping has to happen in the reader's zone or the columns are simply the
      * wrong sets of hours. Hour buckets stay UTC (an hour is an hour) and the
      * client shifts only their labels.
@@ -160,7 +160,7 @@ export interface AnalyticsResponse {
   /**
    * The same metric totals over the window immediately before this one, for a
    * "vs previous period" reading. Absent when that window predates any data, so
-   * the UI can distinguish "no change" from "nothing to compare against" —
+   * the UI can distinguish "no change" from "nothing to compare against",
    * showing −100% for the week before the site existed would be worse than
    * showing nothing.
    */
@@ -213,7 +213,7 @@ export interface AnalyticsResponse {
   sources: AnalyticsSources;
   /**
    * Health of the access-log ingest pipeline. Present only when `ACCESS_LOG`
-   * is configured server-side — absent (not an empty object) is the existing
+   * is configured server-side, absent (not an empty object) is the existing
    * "not configured at all" case the traffic banner already explains, which
    * is a different situation from "configured but currently failing."
    */
@@ -366,7 +366,7 @@ export interface ClearAnalyticsResponse extends OkResponse {
   removed: number;
 }
 
-/** The ledger drill-in: what was played on one day. Games only — the chart is
+/** The ledger drill-in: what was played on one day. Games only, the chart is
  *  games, and the route never exposes other categories. Cover art and genre ride
  *  along (from RAWG, by name) so the day view matches the top-games list.
  *
@@ -376,7 +376,7 @@ export interface ClearAnalyticsResponse extends OkResponse {
 export interface PlaytimeDayResponse {
   day: string;
   games: { name: string; minutes: number; sessions: number; exact: boolean; coverUrl?: string; genre?: string }[];
-  /** Distinct games observed this day — the true total behind the capped list. */
+  /** Distinct games observed this day, the true total behind the capped list. */
   total: number;
   /** Total minutes for the day, across all games (summary line). */
   minutes: number;
@@ -387,7 +387,7 @@ export interface PlaytimeDayResponse {
 export interface GuestbookListResponse {
   entries: GuestbookEntry[];
   /** Counted server-side rather than derived from `entries`, because the list is
-   *  everything awaiting moderation *and* recently handled — the badge means
+   *  everything awaiting moderation *and* recently handled, the badge means
    *  "needs you", which is a different question than "how many rows came back". */
   pending: number;
 }
@@ -422,7 +422,7 @@ export interface MarkdownSourceResponse extends MarkdownAssetResponse {
  *
  * One definition because there used to be two: the route whitelisted five field
  * names inline, the client declared the body a `Record<string, unknown>`. Two
- * lists that can't disagree out loud — anything the client sent and the route
+ * lists that can't disagree out loud, anything the client sent and the route
  * hadn't listed was dropped, and the drop was a 200 with the unchanged asset in
  * the body. That's how `slug` came to be unpatchable while the CMS spent months
  * believing it was naming posts.
@@ -431,7 +431,7 @@ export const ASSET_TEXT_FIELDS = ["filename", "alt", "title", "caption", "descri
 export type AssetTextField = (typeof ASSET_TEXT_FIELDS)[number];
 
 export interface AssetPatch extends Partial<Record<AssetTextField, string>> {
-  /** Markdown only — the public path under `/md`. Other kinds have no slug. */
+  /** Markdown only, the public path under `/md`. Other kinds have no slug. */
   slug?: string;
   folderId?: string | null;
   tags?: string[];
@@ -455,7 +455,7 @@ export interface AssetQuery {
 export interface RevisionSummary {
   id: number;
   savedAt: string;
-  /** Which field or list changed — or `restore:<id>`. */
+  /** Which field or list changed, or `restore:<id>`. */
   reason: string;
 }
 
@@ -471,7 +471,7 @@ export interface RevisionResponse {
  * `listsDiffer` is the honest half of a restore.
  *
  * Scalars are put back; the list tables aren't, because replaying them means
- * reconciling deletes — a different job with a different failure mode. Rather than
+ * reconciling deletes, a different job with a different failure mode. Rather than
  * doing half of that silently, the restore says when the half it skipped would
  * actually have changed something.
  */
@@ -479,5 +479,5 @@ export interface RestoreResponse extends OkResponse {
   listsDiffer: boolean;
 }
 
-/** Dimensions exist on the wire too — re-exported so a client can name one. */
+/** Dimensions exist on the wire too, re-exported so a client can name one. */
 export type { AnalyticsDimension };

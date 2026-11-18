@@ -1,10 +1,10 @@
 /**
- * The Wrapped module — a periodic retrospective of listening and playing, in the
+ * The Wrapped module, a periodic retrospective of listening and playing, in the
  * spirit of Spotify Wrapped, built from the activity already recorded (music_plays
  * and observed game sessions).
  *
  * What's novel here is *when* it shows: not always, but on a recurring schedule the
- * owner sets — "every N months, for M weeks, starting from date X". This file owns
+ * owner sets, "every N months, for M weeks, starting from date X". This file owns
  * that schedule as a pure function (`wrappedWindow`), so both the view builder (to
  * decide whether to aggregate) and the resolver (to decide whether to emit) agree,
  * and it's unit-testable without a clock or a database.
@@ -15,7 +15,7 @@
 
 /** CMS-owned config for the recurring Wrapped module. */
 export interface WrappedSettings {
-  /** Whether the module ever appears. Off by default — opt-in. */
+  /** Whether the module ever appears. Off by default, opt-in. */
   enabled: boolean;
   /** Cycle length in months: a new window opens this often. */
   everyMonths: number;
@@ -45,7 +45,7 @@ const clampInt = (value: unknown, lo: number, hi: number, fallback: number): num
   return Math.min(hi, Math.max(lo, n));
 };
 
-/** Coerce untrusted input to a valid settings object — every field falls back to
+/** Coerce untrusted input to a valid settings object, every field falls back to
  *  its default rather than trusting the shape, and an invalid date is dropped. */
 export function sanitizeWrappedSettings(input: unknown): WrappedSettings {
   const obj = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
@@ -85,7 +85,7 @@ const isoDate = (d: Date): string => d.toISOString();
 
 /** The active Wrapped window covering `now`, and the period it summarizes. */
 export interface WrappedWindow {
-  /** Start of the current display window — a cycle boundary. */
+  /** Start of the current display window, a cycle boundary. */
   windowStart: string;
   /** End of the display window (`windowStart` + `forWeeks`). */
   windowEnd: string;
@@ -128,7 +128,7 @@ export function nextWrappedWindow(settings: WrappedSettings, now: Date): NextWra
  *
  * Cycle boundaries fall on `fromDate`, then every `everyMonths` months. Each opens a
  * display window of `forWeeks`. If `now` sits inside one, the module shows and
- * summarizes the cycle that just closed — `[boundary − everyMonths, boundary]` — so
+ * summarizes the cycle that just closed, `[boundary − everyMonths, boundary]`, so
  * the numbers are a fixed retrospective, stable for the whole window rather than a
  * rolling count. Disabled, an unparseable date, or a `now` before `fromDate` all
  * return `null`.

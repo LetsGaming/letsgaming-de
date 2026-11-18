@@ -200,7 +200,7 @@ test("hour labels shift into the requested zone; day labels are already local", 
   // 22:00 UTC is 00:00 the next day in Berlin summer time.
   assert.equal(bucketLabel("2026-07-14T22", "hour", "UTC"), "07-14 22h");
   assert.equal(bucketLabel("2026-07-14T22", "hour", "Europe/Berlin"), "07-15 00h");
-  // Day buckets arrive already grouped in the reader's zone — shifting them
+  // Day buckets arrive already grouped in the reader's zone, shifting them
   // again would move a column that was placed correctly.
   assert.equal(bucketLabel("2026-07-15", "day", "Europe/Berlin"), "07-15");
 });
@@ -211,7 +211,7 @@ test("hour labels respect a winter offset too, not a fixed one", () => {
 
 test("the final x tick never crowds the last stepped one", () => {
   // 72 hourly buckets is the CMS's 3d view. targetX 6 gives stepX 14, so the
-  // stepped ticks land on 0,14,…,70 and the forced final tick on 71 — one bucket
+  // stepped ticks land on 0,14,…,70 and the forced final tick on 71, one bucket
   // apart, which rendered as two overlapping labels at the right edge.
   const c = buildStackedChart({
     rows: rows(["2026-07-24T23:00:00Z", "a", 1]),
@@ -226,7 +226,7 @@ test("the final x tick never crowds the last stepped one", () => {
   const step = (c.x1 - c.x0) / (c.buckets.length - 1);
   for (const g of gaps) assert.ok(g >= (step * 14) / 2, `tick gap ${g} too narrow`);
 
-  // The range edges still get labelled — that's why the final tick is forced.
+  // The range edges still get labelled, that's why the final tick is forced.
   assert.equal(c.xTicks[0]!.x, c.x0);
   assert.equal(c.xTicks.at(-1)!.x, c.x1);
   assert.equal(c.xTicks[0]!.anchor, "start");

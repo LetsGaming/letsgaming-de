@@ -21,7 +21,7 @@ const NESTED: NavNode[] = [
 ];
 
 test("targetHref resolves a module on a flat (top-level) leaf", () => {
-  // "home" is nav[0], the site root — areaHref maps it to "/", not "/home".
+  // "home" is nav[0], the site root, areaHref maps it to "/", not "/home".
   assert.equal(targetHref(FLAT, "contact"), "/#contact");
 });
 
@@ -38,7 +38,7 @@ test("targetHref resolves a module nested inside a branch's child leaf", () => {
 });
 
 test("targetHref resolves a nested branch's own id to its top-level ancestor's href", () => {
-  // "hobbies" isn't a route itself (only the top-level "life" is) — the
+  // "hobbies" isn't a route itself (only the top-level "life" is), the
   // resolved href must be the top-level area, not `/hobbies`.
   assert.equal(targetHref(NESTED, "hobbies"), "/life");
 });

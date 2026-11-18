@@ -2,16 +2,16 @@
  * The two themes.
  *
  * In core, not the web app, because four separate files had their own copy of
- * `"dark" | "light"` — the store's atom, the tracker's parameter, the analytics
- * vocabulary's `THEME_KEYS`, and the inline no-flash script — and the one that
+ * `"dark" | "light"`, the store's atom, the tracker's parameter, the analytics
+ * vocabulary's `THEME_KEYS`, and the inline no-flash script, and the one that
  * carries a runtime list (analytics, which validates the value a browser sends)
  * was not the one the rest imported. That's the shape of §13's `Tone` bug: an
  * array annotated with a union checks that each value is valid, never that the
  * list is whole.
  *
- * The inline theme script (nuxt.config `app.head`) can't import this — it runs
- * before hydration
- * — so it spells the values out. That's what `tests/storage-keys.test.ts` covers
+ * The inline theme script (nuxt.config `app.head`) can't import this, it runs
+ * before hydration,
+ * so it spells the values out. That's what `tests/storage-keys.test.ts` covers
  * for the key; the values are two words and the script fails safe to dark.
  */
 export const THEMES = ["dark", "light"] as const;

@@ -1,11 +1,11 @@
 /**
- * Guestbook — cookieless, pre-moderated (PROJECT.md roadmap). Visitors leave a
+ * Guestbook, cookieless, pre-moderated (PROJECT.md roadmap). Visitors leave a
  * name + short message; nothing is public until the owner approves it in the CMS
- * queue. Stored data is deliberately minimal (name, message, timestamp) — no IP,
- * no identifier — matching the site's privacy-by-omission stance.
+ * queue. Stored data is deliberately minimal (name, message, timestamp), no IP,
+ * no identifier, matching the site's privacy-by-omission stance.
  *
  * This module holds the shared shapes and the pure auto-flag heuristic used to
- * *sort* the moderation queue (it never auto-rejects — a human always decides).
+ * *sort* the moderation queue (it never auto-rejects, a human always decides).
  */
 
 /**
@@ -67,7 +67,7 @@ export interface GuestbookEntry {
   status: GuestbookStatus;
   /** Auto-flag reasons, for sorting/triaging the queue. */
   flags: string[];
-  /** Auto-flag score — higher means more suspicious. Never auto-acts. */
+  /** Auto-flag score, higher means more suspicious. Never auto-acts. */
   score: number;
 }
 
@@ -85,7 +85,7 @@ export interface ModerationResult {
 }
 
 /**
- * A short starter list of profane stems — matched as substrings, case-insensitive.
+ * A short starter list of profane stems, matched as substrings, case-insensitive.
  * Deliberately small and non-slur; it only nudges queue ordering, so precision
  * matters less than keeping the list inoffensive and easy to extend.
  */

@@ -34,7 +34,7 @@ The opening paragraph.
 });
 
 test("parsePost: a malformed or bare post is content, not a crash", () => {
-  // No frontmatter at all — still readable, title lifted from the H1.
+  // No frontmatter at all, still readable, title lifted from the H1.
   const bare = parsePost("# Just a heading\n\nBody.", "bare");
   assert.equal(bare.frontmatter.title, "Just a heading");
   assert.equal(bare.frontmatter.draft, false);

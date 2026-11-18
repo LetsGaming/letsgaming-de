@@ -2,7 +2,7 @@ import { DEFAULT_ACTIVITY_RANGE } from "./activity-range.js";
 import { sanitizeListDisplaySettings, type ListDisplaySettings } from "./list-settings.js";
 
 /**
- * CMS-owned display config for the Playtime module — the same list-display shape as
+ * CMS-owned display config for the Playtime module, the same list-display shape as
  * Listening, stored separately so the two can carry different limits (the top-games
  * list and its per-day drill-in are capped by `maxCount`, collapsed to `initialCount`).
  *

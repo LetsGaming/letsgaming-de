@@ -1,6 +1,6 @@
 /**
  * A typed success/failure value for operations that can fail as part of normal
- * operation — e.g. hitting an external API. Preferred over throwing for expected
+ * operation, e.g. hitting an external API. Preferred over throwing for expected
  * failures: the caller must handle both branches, and a slow/unavailable upstream
  * is normal, not exceptional (see the external-integrations standard).
  */

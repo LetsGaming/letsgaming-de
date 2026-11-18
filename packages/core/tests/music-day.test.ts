@@ -5,7 +5,7 @@ import { dayRowsFor, type MusicDayTrack } from "../src/music-day.js";
 // Two tracks: a collaboration "X; Y" and a solo "X". X therefore appears on both,
 // Y on only the first. This is the exact shape the "different artists" drill has to
 // collapse correctly. Lives in core now because the server runs this and caps the
-// result before sending — the aggregation can't be the client's private business.
+// result before sending, the aggregation can't be the client's private business.
 const tracks: MusicDayTrack[] = [
   { song: "Alpha", artist: "X; Y", minutes: 10, plays: 2, artUrl: "u" },
   { song: "Beta", artist: "X", minutes: 5, plays: 1 },

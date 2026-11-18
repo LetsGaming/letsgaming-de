@@ -53,7 +53,7 @@ test("playtimeRows attaches cached cover art and genre by name", () => {
   const balatro = rows.find((r) => r.name === "Balatro");
   assert.equal(balatro?.coverUrl, "https://media.rawg.io/b.jpg");
   assert.equal(balatro?.genre, "Card");
-  // a game with no cached metadata just has no cover/genre — not an error
+  // a game with no cached metadata just has no cover/genre, not an error
   const indie = rows.find((r) => r.name === "Some Indie");
   assert.equal(indie?.coverUrl, undefined);
   assert.equal(indie?.genre, undefined);
@@ -78,7 +78,7 @@ test("retention coerces to the allowed set, never arbitrary", () => {
   assert.equal(sanitizeRetentionDays(365), 365);
   assert.equal(sanitizeRetentionDays(730), 730);
   assert.equal(sanitizeRetentionDays(null), null);
-  // a fat-fingered "1" would prune almost everything — rejected to forever
+  // a fat-fingered "1" would prune almost everything, rejected to forever
   assert.equal(sanitizeRetentionDays(1), null);
   assert.equal(sanitizeRetentionDays("730"), null); // wrong type
 });

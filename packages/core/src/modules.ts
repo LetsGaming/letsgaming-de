@@ -2,7 +2,7 @@
  * Modules (PROJECT.md §5 "Areas and modules").
  *
  * A module is a placeable content block. Features and data sources arrive as
- * modules dropped into a nav leaf — never as new tabs. Placement is the nav
+ * modules dropped into a nav leaf, never as new tabs. Placement is the nav
  * tree's job (a leaf's `modules: string[]`), so a descriptor carries no area of
  * its own: the same module could be placed anywhere the IA decides.
  *
@@ -17,7 +17,7 @@ import type { Localized } from "./i18n.js";
  *
  * Same reason as `AREA` (ia.ts): a kind spelled as a bare string typechecks
  * perfectly and fails at runtime. `MODULE_KIND.gallery` makes a rename a compile
- * error, and `MODULE_KINDS` gives the runtime the whole list — so a narrowing
+ * error, and `MODULE_KINDS` gives the runtime the whole list, so a narrowing
  * predicate or a CMS dropdown can't hold a *stale* copy of it. The type derives
  * from the object rather than the other way round, because an array annotated
  * `ModuleKind[]` only checks that each value is valid, never that the list is
@@ -48,7 +48,7 @@ export const MODULE_KIND = {
 
 export type ModuleKind = (typeof MODULE_KIND)[keyof typeof MODULE_KIND];
 
-/** Every kind, for iteration and runtime narrowing. Derived — can't go stale. */
+/** Every kind, for iteration and runtime narrowing. Derived, can't go stale. */
 export const MODULE_KINDS: readonly ModuleKind[] = Object.values(MODULE_KIND);
 
 /** Narrow an untrusted string (a DB row, an API payload) to a ModuleKind. */

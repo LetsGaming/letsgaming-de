@@ -1,7 +1,7 @@
 /**
  * Stacked-area chart geometry.
  *
- * All of this used to live inside `useAnalytics` — about 120 lines of axis
+ * All of this used to live inside `useAnalytics`, about 120 lines of axis
  * arithmetic, bucket enumeration, stacking and tick subsetting, mixed in with
  * Vue refs and a polling interval, and therefore untestable. It's pure: rows in,
  * coordinates out. Moved here so it can be asserted against exact expected
@@ -10,7 +10,7 @@
  * It also produces the per-bucket data a tooltip needs (`columns`), not just the
  * layer outlines. The panel previously had one native `<title>` per layer showing
  * that layer's *whole-range* total, which reads like a per-point readout and
- * isn't — hovering July 3rd reported the July total. A chart that renders values
+ * isn't, hovering July 3rd reported the July total. A chart that renders values
  * over time has to be able to answer "what was it here", so answering it is part
  * of building the chart, not something the view improvises.
  */
@@ -76,7 +76,7 @@ export function axisBuckets(from: string, to: string, unit: "hour" | "day"): str
  * The key overflow series are grouped under.
  *
  * A `\u0000` prefix because the old code grouped them under the literal string
- * `"other"` — which silently merged with a real series actually named `other`.
+ * `"other"`, which silently merged with a real series actually named `other`.
  * No key from the tracker can contain a NUL, so this one can't collide.
  */
 export const OTHER_KEY = "\u0000other";
@@ -90,7 +90,7 @@ export interface SeriesRow {
 export interface ChartLayer {
   /** Series key, or `OTHER_KEY` for the grouped remainder. */
   key: string;
-  /** What to show a human — the key, or "other (N)". */
+  /** What to show a human, the key, or "other (N)". */
   label: string;
   isOther: boolean;
   /** Index into the caller's palette. */
@@ -152,7 +152,7 @@ const labelFmtCache = new Map<string, Intl.DateTimeFormat>();
  *
  * Day buckets arrive already expressed in the reader's zone (the server groups
  * them there, because a day boundary is a wall-clock fact), so they only need
- * trimming. Hour buckets stay UTC — an hour is an hour regardless of zone — and
+ * trimming. Hour buckets stay UTC, an hour is an hour regardless of zone, and
  * are shifted here, which is the whole of the local-time toggle for them.
  */
 export function bucketLabel(b: string, unit: "hour" | "day", timeZone?: string): string {
@@ -272,7 +272,7 @@ export function buildStackedChart(opts: StackedChartOptions): StackedChart {
   //
   // The last stepped tick and the forced final one used to be pushed
   // unconditionally, which put them one bucket apart whenever `(n-1) % stepX`
-  // came out small — 72 hourly buckets step by 14, so the axis ended with ticks
+  // came out small, 72 hourly buckets step by 14, so the axis ended with ticks
   // at 70 and 71 and rendered "07-27 07h" on top of "07-27 22h21". The final
   // bucket has to be labelled (it's the edge of the range the reader is
   // interrogating), so it's the stepped one that gives way: if the two are closer
@@ -318,7 +318,7 @@ export function buildStackedChart(opts: StackedChartOptions): StackedChart {
  *
  * The chart is sampled at `n` points across the plot, so hit-testing is nearest
  * neighbour on that lattice rather than anything geometric. Doing it here means
- * the pointer maths and the plotting maths can't drift apart — the reason the
+ * the pointer maths and the plotting maths can't drift apart, the reason the
  * old per-layer `<title>` reported a range total was precisely that the view had
  * no way to get back from a position to a bucket.
  */

@@ -1,7 +1,7 @@
 /**
  * The window the accumulated-activity modules (Listening, Played) cover.
  *
- * This used to be one constant — `PLAYTIME_WINDOW_DAYS = 14` — read straight out
+ * This used to be one constant, `PLAYTIME_WINDOW_DAYS = 14`, read straight out
  * of the view builder, which meant the fortnight was a property of the *server*
  * rather than a question the viewer could ask. The range is now a request
  * parameter: the modules ship their window alongside their data, and a viewer can
@@ -9,7 +9,7 @@
  *
  * A closed set rather than a free integer, for two reasons. The label is a
  * translated message key, not a formatted number, so "3 months" reads as months in
- * both locales instead of "90 days"; and a bounded set is a bounded query — an
+ * both locales instead of "90 days"; and a bounded set is a bounded query, an
  * open `?days=` is an invitation to ask for 100000 and make the server aggregate
  * every session it has ever recorded.
  */
@@ -33,7 +33,7 @@ export const DEFAULT_ACTIVITY_RANGE: ActivityRange = 14;
 /**
  * The widest window a viewer can ask for.
  *
- * For the background work that has to be ready *before* anyone asks — the RAWG
+ * For the background work that has to be ready *before* anyone asks, the RAWG
  * metadata sync, which fetches cover art by game name. It warmed the cache for the
  * fortnight, because the fortnight was the only window there was; against a
  * year-long range that leaves every game older than two weeks without a cover.
@@ -52,8 +52,8 @@ export function isActivityRange(value: unknown): value is ActivityRange {
  * Narrow an untrusted range (a query string, a stored setting) to a real one.
  *
  * Accepts a numeric string as well as a number, because the one place this is most
- * needed is `?days=90`, where the value arrives as text. Anything else — an
- * unlisted number, a word, a missing value — takes the fallback rather than
+ * needed is `?days=90`, where the value arrives as text. Anything else, an
+ * unlisted number, a word, a missing value, takes the fallback rather than
  * throwing: a bad range is a reason to show the default window, not a 400.
  */
 export function sanitizeActivityRange(
@@ -67,7 +67,7 @@ export function sanitizeActivityRange(
 /**
  * The two labels each range carries.
  *
- * `short` is the picker segment ("3m") — mono, sits in a card header beside the
+ * `short` is the picker segment ("3m"), mono, sits in a card header beside the
  * timezone toggle. `long` is the card's own note ("last 3 months"), which is the
  * string that has to say *what window you are reading* when the picker is offscreen.
  *
@@ -88,7 +88,7 @@ export const ACTIVITY_RANGE_LABELS: Record<ActivityRange, { short: MessageKey; l
  *
  * A strip is one row of day cells, which stops working long before a year: at the
  * 8px floor, 365 cells is ~2900px and the grid just scrolls sideways. Past 90 days
- * it wraps to seven rows — still one cell per day, so every cell stays clickable
+ * it wraps to seven rows, still one cell per day, so every cell stays clickable
  * and the day drill-in survives at every range, but the columns are weeks and it
  * fits the card.
  *

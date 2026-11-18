@@ -1,7 +1,7 @@
 /**
  * Asset library (media manager). A central, reusable set of files on local disk,
  * referenced from anywhere on the site by a stable id. Identity is the content
- * hash — uploading the same bytes twice yields the same asset (dedupe). Images
+ * hash, uploading the same bytes twice yields the same asset (dedupe). Images
  * get optimized, responsive variants derived lazily on first request; other
  * kinds (pdf, markdown, arbitrary files, inline SVG) are served/rendered per
  * their kind. This module holds the pure types and the reference format shared
@@ -9,14 +9,14 @@
  */
 
 /**
- * What a stored asset is — drives processing and how a reference renders.
+ * What a stored asset is, drives processing and how a reference renders.
  *
  * A list, not a union, because a union has no runtime existence and every
  * boundary that needed to *check* one therefore asserted instead:
  * `asText(r.kind) as AssetKind` took the store's word, and
  * `q.kind as AssetKind` took a query string's. The vocabularies in this repo that
  * have a predicate (ModuleKind, SourceId, Locale, Theme) are the ones that never
- * get cast anywhere — that isn't a coincidence, it's the same fact twice.
+ * get cast anywhere, that isn't a coincidence, it's the same fact twice.
  *
  * `file` is last and load-bearing: it's the vocabulary's own word for "bytes we
  * have no better name for", which makes it the honest landing place for anything
@@ -25,7 +25,7 @@
 export const ASSET_KINDS = ["image", "svg", "gif", "pdf", "markdown", "file"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
 
-/** The kind to fall back to when nothing else fits — the generic download. */
+/** The kind to fall back to when nothing else fits, the generic download. */
 export const FALLBACK_ASSET_KIND: AssetKind = "file";
 
 export function isAssetKind(value: unknown): value is AssetKind {
@@ -42,7 +42,7 @@ export interface AssetVariant {
 /** A reusable library asset. `hash` is the dedupe key; `id` is the reference. */
 export interface Asset {
   id: string;
-  /** sha256 of the original bytes — one asset per distinct file. */
+  /** sha256 of the original bytes, one asset per distinct file. */
   hash: string;
   kind: AssetKind;
   /** Original extension without the dot, e.g. "png", "pdf", "md", "svg". */
@@ -74,7 +74,7 @@ export interface AssetFolder {
   parentId: string | null;
 }
 
-/** A place an asset is referenced — powers "used in" and the delete warning. */
+/** A place an asset is referenced, powers "used in" and the delete warning. */
 export interface AssetUsage {
   /** Stable context key, e.g. "gallery:travel", "hero", "link:github", "md:about". */
   context: string;
@@ -85,7 +85,7 @@ export interface AssetUsage {
 // ── usage-context keys ──────────────────────────────────────────────────────
 // A context is a string the CMS route writes and later clears by exact match. It
 // was built inline as `gallery:${id}` in two handlers, one of which clears what
-// the other wrote — so a change to the format in one place doesn't fail, it just
+// the other wrote, so a change to the format in one place doesn't fail, it just
 // stops matching, and the library quietly keeps claiming an image is in use by a
 // gallery that no longer exists. One builder, both call sites.
 
@@ -97,7 +97,7 @@ export const galleryUsageLabel = (moduleId: string): string => `Gallery: ${modul
 
 /** The mime the CMS stamps on a markdown file it creates. Named because the
  *  editor was writing `"text/markdown"` as a literal into a `new File()` while
- *  `classifyAsset` below decides what that string means — and a post the
+ *  `classifyAsset` below decides what that string means, and a post the
  *  classifier calls a `file` is a post that never renders. */
 export const MARKDOWN_MIME = "text/markdown";
 
@@ -129,10 +129,10 @@ export function isRaster(kind: AssetKind): boolean {
  * The reference format: `asset:<id>`, and nothing else.
  *
  * Exported as a *string* because the CMS write schemas need it as a JSON Schema
- * `pattern` — they were hand-writing `"^asset:[A-Za-z0-9_-]+$"` twice, next to
+ * `pattern`, they were hand-writing `"^asset:[A-Za-z0-9_-]+$"` twice, next to
  * `.replace(/^asset:/, "")` in three components and a `` `asset:${id}` `` in four
- * more. Eight spellings of one four-character prefix, and the helpers below —
- * which exist precisely for this — had one caller between them.
+ * more. Eight spellings of one four-character prefix, and the helpers below,
+ * which exist precisely for this, had one caller between them.
  */
 export const ASSET_REF_PATTERN = "^asset:([A-Za-z0-9_-]+)$";
 /** Same, but an empty string also passes (an optional reference, e.g. no avatar). */
@@ -152,18 +152,18 @@ export function parseAssetRef(ref: string | null | undefined): string | null {
   return m ? m[1]! : null;
 }
 
-/** A slug safe for /md/<slug> — lowercase, hyphenated, ascii. */
+/** A slug safe for /md/<slug>, lowercase, hyphenated, ascii. */
 /**
  * Slug for a markdown asset's public URL.
  *
  * Path-aware: `/` separates segments and survives, so a slug can namespace a
- * markdown asset under a subpath — `blog/my-post` renders at `/md/blog/my-post`.
+ * markdown asset under a subpath, `blog/my-post` renders at `/md/blog/my-post`.
  * Each segment is slugified independently; empty segments collapse, so `//` and
  * a trailing `/` can't produce an empty path component.
  *
  * The slug *is* the path rather than being assembled from the asset's folder at
  * read time: one field, one uniqueness constraint, and `getBySlug` stays an exact
- * match. The CMS can still default the prefix from the folder — that's a UI
+ * match. The CMS can still default the prefix from the folder, that's a UI
  * convenience, not a storage decision.
  */
 export function slugify(input: string): string {
@@ -183,7 +183,7 @@ export function slugify(input: string): string {
 
 // ── resolution (ref → client-ready view) ─────────────────────────────────────
 // The server resolves each `asset:<id>` reference into a small, fully-formed
-// view the client renders directly — an image becomes a <picture> spec, an SVG
+// view the client renders directly, an image becomes a <picture> spec, an SVG
 // becomes inline markup, a PDF/file becomes a download link, a markdown asset
 // becomes a page link. Pure: it takes a lookup of the assets involved, never the
 // filesystem.
@@ -209,7 +209,7 @@ export interface ResolvableAsset {
 
 export interface ImageAssetView {
   kind: "image";
-  src: string; // canonical original — the <img> fallback
+  src: string; // canonical original, the <img> fallback
   srcsetWebp?: string;
   srcsetAvif?: string;
   width?: number;

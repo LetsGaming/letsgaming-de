@@ -4,7 +4,7 @@
  * The log gives a bare hostname, which is both too specific and too vague to read:
  * `out.reddit.com`, `www.reddit.com` and `old.reddit.com` are three lines in the
  * dashboard and one answer to the question. And a raw host doesn't say what it
- * *is* — `t.co` is not obviously X, and `lm.facebook.com` is not obviously
+ * *is*, `t.co` is not obviously X, and `lm.facebook.com` is not obviously
  * Facebook.
  *
  * So hosts are stored raw and grouped at read time. That ordering is the
@@ -34,7 +34,7 @@ export const DIRECT_REFERRER = "direct";
  * (Discord's desktop client, the Steam client, most messengers) hand a URL to
  * the browser as a fresh navigation with no previous page, and plenty of sites
  * set `Referrer-Policy: no-referrer`. Those visits are indistinguishable from
- * someone typing the address — unless the link itself carries the answer.
+ * someone typing the address, unless the link itself carries the answer.
  *
  * Stored with a prefix so the two kinds stay distinguishable in the raw rows;
  * `classifyReferrer` resolves both to the same display label, so tagging a
@@ -52,7 +52,7 @@ export const UTM_PREFIX = "utm:";
  * specific rule can sit alongside a broader one.
  */
 const BUILT_IN: ReferrerRule[] = [
-  // AI assistants — increasingly the way a personal site gets found, and the
+  // AI assistants, increasingly the way a personal site gets found, and the
   // reason this table exists at all.
   { match: "chatgpt.com", label: "ChatGPT" },
   { match: "chat.openai.com", label: "ChatGPT" },
@@ -121,7 +121,7 @@ const matches = (host: string, match: string): boolean => {
  * A referrer host as a readable source name.
  *
  * Unmatched hosts fall through to themselves with the noise subdomain stripped,
- * which keeps the long tail visible rather than dumping it into "other" — an
+ * which keeps the long tail visible rather than dumping it into "other", an
  * unrecognised referrer sending real traffic is exactly the thing worth
  * noticing, and it's the prompt to add a rule for it.
  */
@@ -158,7 +158,7 @@ export function classifyReferrer(key: string, custom: readonly ReferrerRule[] = 
 /**
  * A `utm_source` value, reduced to something safe to store as an aggregate key.
  *
- * The value is attacker-controlled — anyone can request `/?utm_source=<10kB>` —
+ * The value is attacker-controlled, anyone can request `/?utm_source=<10kB>`,
  * and it becomes a row in the store, so it's capped in both length and alphabet
  * rather than trusted. Anything left empty after cleaning is dropped, and the
  * caller falls back to the `Referer` header.

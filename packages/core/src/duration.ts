@@ -1,7 +1,7 @@
 /**
  * Durations, as people read them.
  *
- * Everything upstream counts in whole minutes — sessions, plays, heatmap buckets —
+ * Everything upstream counts in whole minutes, sessions, plays, heatmap buckets,
  * because that's the resolution the presence sampler can honestly claim. But
  * "265min" is a number you have to do arithmetic on to understand, so the display
  * layer splits it into hours and minutes.
@@ -13,9 +13,9 @@
 
 export interface DurationParts {
   hours: number;
-  /** Remaining minutes after the whole hours, 0–59. */
+  /** Remaining minutes after the whole hours, 0 to 59. */
   minutes: number;
-  /** Whether to render the hours at all — false under an hour. */
+  /** Whether to render the hours at all, false under an hour. */
   showHours: boolean;
   /** False only when whole hours would be followed by a redundant `0min`. */
   showMinutes: boolean;
@@ -28,8 +28,8 @@ export interface DurationParts {
  * The two `show*` flags are part of the split rather than the caller's business
  * because they *are* the display rule ("2h", not "2h 0min"; "45min", not "0h
  * 45min"), and it has to hold identically wherever a duration appears. It used to
- * live in `Duration.vue` alone, so anything that needed a duration as plain text —
- * a tooltip, a hover title — reimplemented it and drifted: the playtime heatmap
+ * live in `Duration.vue` alone, so anything that needed a duration as plain text,
+ * a tooltip, a hover title, reimplemented it and drifted: the playtime heatmap
  * said `1.3h` in a cell title while the row underneath said `1h 18min`.
  *
  * Negative and fractional inputs are coerced rather than rejected: these numbers
@@ -44,7 +44,7 @@ export function splitDuration(totalMinutes: number): DurationParts {
 }
 
 /**
- * The same duration as a plain string, for the places markup can't go — a `title`
+ * The same duration as a plain string, for the places markup can't go, a `title`
  * attribute, an `aria-label`, a chart tooltip.
  *
  * Unit labels stay the caller's job (this file is deliberately locale-free); pass

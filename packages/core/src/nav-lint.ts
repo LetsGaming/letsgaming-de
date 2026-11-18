@@ -1,5 +1,5 @@
 /**
- * Build-time nav lint (PROJECT.md §5 "Enforcement — build-time lint, not
+ * Build-time nav lint (PROJECT.md §5 "Enforcement, build-time lint, not
  * discipline"). These are the rules that *fail the build* so the information
  * architecture can't silently rot as the site grows:
  *
@@ -13,7 +13,7 @@
  *   - no orphan / dangling modules       (every module resolves to a node, and
  *                                          every leaf reference resolves to a module)
  *
- * `lintNav` is a pure function — it just reports. The CLI wrapper
+ * `lintNav` is a pure function, it just reports. The CLI wrapper
  * (`scripts/lint-nav.ts`) is what turns a non-empty report into a non-zero exit.
  */
 
@@ -62,7 +62,7 @@ export function lintNav(nodes: NavNode[], options: NavLintOptions = {}): NavLint
   const seenIds = new Set<string>();
   const referencedModules = new Set<string>();
 
-  // The root row is a forest, not any node's `children` — so the walk below,
+  // The root row is a forest, not any node's `children`, so the walk below,
   // which checks breadth via `node.children.length`, never saw it. Depth 1 is
   // the level the "five at most" rule was written for and the only level that
   // has ever had children, so it went unenforced. Hidden nodes count: a draft
@@ -125,7 +125,7 @@ export function lintNav(nodes: NavNode[], options: NavLintOptions = {}): NavLint
         });
       }
     } else if (isLeaf(node)) {
-      // No thin/empty tabs — except drafts, which are empty until they aren't.
+      // No thin/empty tabs, except drafts, which are empty until they aren't.
       if (!hasModules && !node.hidden) {
         violations.push({
           code: "EMPTY_LEAF",
@@ -168,7 +168,7 @@ export function lintNav(nodes: NavNode[], options: NavLintOptions = {}): NavLint
  *
  * `lintNav` runs at build time; the CMS's visibility toggle runs at runtime. Once
  * visibility is CMS state, publishing an empty node would break the IA without CI
- * ever seeing it — the lint would stop being a guarantee and become a suggestion.
+ * ever seeing it, the lint would stop being a guarantee and become a suggestion.
  * The CMS calls this before flipping `hidden` and refuses with the reason, so the
  * same rules cover both surfaces from one implementation rather than two that drift.
  */
