@@ -164,6 +164,7 @@ function open(name: string) {
 .desc {
   margin: var(--space-3) 0 0;
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 .meta {
   font-size: var(--fs-meta);

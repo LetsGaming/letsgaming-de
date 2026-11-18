@@ -78,7 +78,13 @@ export interface ResolveInput {
    *  `syncedAt` resolves to `never`, no sync has landed yet, which is a real
    *  state and not an error. `ttl` is `SOURCE_TTL`, which is total over SourceId
    *  by construction, so a synced source always has an age to judge. */
-  freshness?: { syncedAt: Partial<Record<SourceId, string>>; ttl: Record<SourceId, number> };
+  freshness?: {
+    syncedAt: Partial<Record<SourceId, string>>;
+    ttl: Record<SourceId, number>;
+    /** When a source's latest sync attempt failed. The store clears it on the next
+     *  success, so a value here means the most recent attempt did not work. */
+    failedAt?: Partial<Record<SourceId, string>>;
+  };
   /** Approved guestbook entries, newest first (the store filters + orders). */
   guestbook?: PublicGuestbookEntry[];
   /** Observed playtime, accumulated from presence polls (see PresenceSampler).
@@ -527,6 +533,12 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     const age = now.getTime() - new Date(at).getTime();
     const relative = relativeTime(at, now);
     if (!hasData) return { state: "empty", syncedAt: at, relative, source: sourceId };
+    // The last attempt failed, so what is shown is the last good copy. It says so
+    // instead of aging quietly into "stale", which would blame the clock.
+    const failedAt = input.freshness?.failedAt?.[sourceId];
+    if (failedAt && new Date(failedAt).getTime() > new Date(at).getTime()) {
+      return { state: "failed", syncedAt: at, relative, source: sourceId };
+    }
     const state = ttl !== undefined && age > ttl ? "stale" : "fresh";
     return { state, syncedAt: at, relative, source: sourceId };
   };

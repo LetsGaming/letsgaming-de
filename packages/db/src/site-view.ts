@@ -18,6 +18,7 @@ import {
   type PlaytimeHeatCell,
   type ResolvableAsset,
   type SiteView,
+  type SourceId,
   type WrappedSettings,
 } from "@lg/core";
 import { readFile } from "node:fs/promises";
@@ -95,6 +96,7 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     freshness: {
       syncedAt: store.source.syncedAtBySource(),
       ttl: SOURCE_TTL,
+      failedAt: failedSyncs(store),
     },
     guestbook: store.guestbook.listApproved(),
     // The recently-played list over the fortnight, the same window the strip
@@ -125,6 +127,15 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     reactions: { wave: store.reactions.count("wave") },
     assets: await buildAssetLookup(store, opts.mediaDir),
   });
+}
+
+/** Sources whose latest sync attempt failed, keyed by source id. */
+function failedSyncs(store: Store): Partial<Record<SourceId, string>> {
+  const out: Partial<Record<SourceId, string>> = {};
+  for (const row of store.syncStatus.all()) {
+    if (row.lastErrorAt && row.source in SOURCE_TTL) out[row.source as SourceId] = row.lastErrorAt;
+  }
+  return out;
 }
 
 /**

@@ -10,6 +10,10 @@ pinned in `package.json` under `packageManager`). Run these from the repo root.
 | `pnpm dev` | Build the workspace packages, then run the server and the web app (SSR) in parallel. API on `:8787`, site on `:4321`. The build step is what makes a fresh clone work: `@lg/core` and `@lg/db` resolve through `dist/`, which isn't committed. |
 | `pnpm dev:server` / `pnpm dev:web` | Run just one of them. |
 | `pnpm dev:up` / `pnpm dev:down` | Start/stop an isolated backend+web dev session — own free ports, own disposable SQLite database, seeded with mock data. For agents and anyone who wants to poke at the site without touching the shared default database. `--id <name>` namespaces it; see [`CLAUDE.md`](../../CLAUDE.md) and `scripts/dev-up.mjs`. |
+| `node scripts/dev-force-state.mjs --id <name> --source github --state stale\|failed\|never\|empty\|fresh` | Force a freshness state on a dev session's database so every state a synced module can show can be looked at. Edits only `data/agent-<name>/`. Wait about 15 seconds before reloading. See the script header. |
+| `pnpm --filter web audit:a11y http://localhost:PORT` | Audit a running site in a real browser: touch targets (24px pointer, 44px touch), contrast, overflow, headings, skip link and focus, in English and German, light and dark, at 1280px and 390px. Needs Edge or Chrome. |
+| `pnpm --filter web gen:fallback` | Regenerate the SSR fallback fixture from the seed. |
+| `pnpm --filter web gen:og` | Regenerate the social preview card. See [`og-image.md`](./og-image.md). |
 | `pnpm sync` | Run every source once (fetch, normalize, persist) and exit. Uses the mock GitHub source without a token. |
 | `pnpm --filter @lg/server sync:game-images [--retry-misses]` | Look up Discord images for games now instead of at the next 5-minute sweep, and print what each game has (pending, found, or no image). `--retry-misses` first forgets recorded "no image" answers. In Docker: `docker compose exec server node dist/sync/game-images-cli.js`. |
 | `pnpm analytics:rebuild [log]` | Delete every log-derived dimension and re-derive from the access log. Deletes first — check what your rotation keeps. In Docker: `docker compose run --rm server node dist/analytics/rebuild-cli.js` with the server stopped. |
@@ -18,9 +22,11 @@ pinned in `package.json` under `packageManager`). Run these from the repo root.
 | `pnpm analytics:reclassify` | Re-file stored rows through the current classifiers (e.g. scanner requests still counted as page views). Safe to repeat. |
 | `pnpm analytics <access.log> [host]` | Ingest new lines from an access log into the anonymous aggregates. Optional `host` keeps your own domain out of the referrer list. |
 | `pnpm lint:nav` | Fail if the nav breaks an information-architecture gate. |
+| `pnpm lint:tokens` | Fail if a `var(--x)` resolves to nothing, or a raw value duplicates a spacing or type token. |
+| `pnpm lint:design` | Fail on the design rules a grep can decide (no middle dots, arrows on links, uppercase labels; mono and accent held to per-file allowances; no new em or en dashes in comments). See `apps/web/DESIGN.md`, "Enforcement". |
 | `pnpm typecheck` | Typecheck every package, including `vue-tsc` for the web app. |
 | `pnpm test` | Unit and integration tests. |
-| `pnpm build` | Nav lint, then build the packages, then the server, then the web app. |
+| `pnpm build` | Nav, token and design lint, then build the packages, then the server, then the web app. |
 
 `@lg/core` is imported by everything else, so `pnpm build` and CI build it first.
 For a fresh clone, build core once before typechecking or testing the rest:

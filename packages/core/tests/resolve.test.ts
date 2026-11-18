@@ -348,6 +348,26 @@ test("freshness: data past its source's TTL renders stale, not fresh", () => {
   assert.equal(g2.data.freshness?.state, "stale");
   assert.ok(g2.data.freshness?.relative);
 
+  // The last attempt failed after a good sync: say so, and keep showing the last copy.
+  const failedState = (failedAt: string, syncedAt = "2026-01-10T11:30:00Z") => {
+    const v = resolveSiteView({
+      content,
+      source: { github },
+      nav,
+      modules,
+      now,
+      freshness: { syncedAt: { github: syncedAt }, ttl: { github: 60 * 60 * 1000 }, failedAt: { github: failedAt } },
+    }).modules["glance"];
+    if (!v || v.kind !== "glance") throw new Error("expected glance");
+    return v.data.freshness;
+  };
+  assert.equal(failedState("2026-01-10T11:45:00Z")?.state, "failed");
+  assert.ok(failedState("2026-01-10T11:45:00Z")?.relative);
+  // A failure older than the last success is history, not a state.
+  assert.equal(failedState("2026-01-10T11:00:00Z")?.state, "fresh");
+  // Failed outranks stale: the reason the data is old is the failure.
+  assert.equal(failedState("2026-01-10T11:00:00Z", "2026-01-10T09:00:00Z")?.state, "failed");
+
   // No sync has ever landed: a real state, not an error.
   const never = resolveSiteView({ content, source: {}, nav, modules, now });
   const g3 = never.modules["glance"];
