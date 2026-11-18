@@ -9,10 +9,10 @@ import { withApiNav } from "~/lib/openapi";
  * rendered server-side.
  *
  * Replaces Astro's `astro:content` glob collection plus its remark/rehype
- * pipeline. The interesting parts were never Astro's — `docTitle`, `buildDocTree`
+ * pipeline. The interesting parts were never Astro's, `docTitle`, `buildDocTree`
  * and `rewriteDocLink` are pure helpers in `lib/docs.ts` and are reused verbatim.
  * What's rebuilt here is only the file reading and the markdown call, which now
- * goes through `marked` — the same renderer the blog route already used, so the
+ * goes through `marked`, the same renderer the blog route already used, so the
  * site has one markdown path instead of two.
  *
  * Slugs are lowercased to match the URLs Astro generated (it slugified collection
@@ -44,7 +44,7 @@ export interface DocFile {
   body: string;
 }
 
-/** Every doc, with its title resolved. Cached — the files can't change at runtime. */
+/** Every doc, with its title resolved. Cached, the files can't change at runtime. */
 let filesCache: DocFile[] | null = null;
 
 export async function readDocs(): Promise<DocFile[]> {
@@ -71,7 +71,7 @@ export async function docTree() {
  * Render one doc to HTML, rewriting intra-repo `*.md` links as it goes.
  *
  * A per-call `Marked` instance rather than the global one, because the rewrite
- * depends on which doc the link lives in — `marked.use()` is process-wide and two
+ * depends on which doc the link lives in, `marked.use()` is process-wide and two
  * concurrent renders would clobber each other's base slug.
  */
 export async function renderDoc(slug: string): Promise<{ title: string; html: string } | null> {

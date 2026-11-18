@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 /**
  * A ranked list row: rank · art (or a lettered monogram) · name + optional
- * subtitle · a value. The shared row of the Listening and Playtime modules — their
+ * subtitle · a value. The shared row of the Listening and Playtime modules, their
  * top lists and their day drill-ins all render this. Purely presentational; the
  * value is a slot so each caller formats its own ("40 min · 2×", "3h").
  */

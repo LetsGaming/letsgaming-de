@@ -2,13 +2,13 @@ import { buildSiteView, contactFromEnv, openStoreReadonly, type Store } from "@l
 import { contactChannel, DEFAULT_LOCALE, DEFAULT_TIMEZONE, type Locale, type SiteView } from "@lg/core";
 import fallback from "~/data/fallback-site.json";
 
-// `TZ` is the owner's timezone — the default zone SSR resolves the activity charts
+// `TZ` is the owner's timezone, the default zone SSR resolves the activity charts
 // in (the aggregation takes an explicit zone; visitors override with `?tz`). Docker
 // sets it; this is the dev fallback.
 process.env.TZ ??= DEFAULT_TIMEZONE;
 
 /**
- * Load the resolved SiteView for SSR — server-side only, never the browser.
+ * Load the resolved SiteView for SSR, server-side only, never the browser.
  *
  * Lives under `server/` so Nitro is the only thing that can import it: the
  * read-only SQLite handle and the DB path must never reach a client bundle. This
@@ -20,7 +20,7 @@ process.env.TZ ??= DEFAULT_TIMEZONE;
  * not an HTTP call to a second process reading the same SQLite file.
  *
  * Read-only is the safety boundary: the API is the writer (migrations, seed, sync,
- * CMS edits), and a read-only handle can't race it — there's nothing for two
+ * CMS edits), and a read-only handle can't race it, there's nothing for two
  * processes to fight over when one physically cannot write. WAL means this
  * connection still sees the writer's committed changes without blocking it.
  *
@@ -52,14 +52,14 @@ function getStore(): Store | null {
 
 // Short server-side cache so per-request SSR doesn't re-resolve on every hit. The
 // store only changes on a sync or a CMS edit, so a few seconds of staleness is
-// fine — and the resolve itself is cheap now that it's a local read.
+// fine, and the resolve itself is cheap now that it's a local read.
 const TTL_MS = 15_000;
 const cache = new Map<string, { at: number; view: SiteView }>();
 
 /**
  * Overlay the live contact channel onto a fixture.
  *
- * Everything else in the fixture is necessarily frozen — it's committed seed data,
+ * Everything else in the fixture is necessarily frozen, it's committed seed data,
  * and that's the honest thing to serve when nothing is reachable. The contact
  * affordance isn't: whether the relay is configured is a property of *this*
  * process's environment, readable right now, and the fixture's copy records
@@ -84,7 +84,7 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
   const cached = cache.get(locale);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.view;
 
-  // 1. Direct store read — the common path, no network.
+  // 1. Direct store read, the common path, no network.
   const s = getStore();
   if (s) {
     try {
@@ -99,7 +99,7 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
     }
   }
 
-  // 2. HTTP API — for a deployment where web can't open the store file, and for
+  // 2. HTTP API, for a deployment where web can't open the store file, and for
   //    `nuxt dev`, which runs with no DB_PATH: without a default here the dev site
   //    would fall straight to the fixture and show none of the store-backed modules
   //    (presence, playtime, music). The default matches the server's dev port;
@@ -120,19 +120,19 @@ export async function loadSite(locale: Locale = "en"): Promise<SiteView> {
     }
   }
 
-  // 3. Committed fixture — a page still renders even with no store and no API.
+  // 3. Committed fixture, a page still renders even with no store and no API.
   //
   // Loud, because reaching here in a served request means the site is showing
   // committed sample data: no synced repos, no observed activity, and content
   // frozen at whatever the seed says. It looks like a working site, which is
-  // exactly what makes it dangerous — nothing 500s, the numbers are just quietly
+  // exactly what makes it dangerous, nothing 500s, the numbers are just quietly
   // absent. Neither DB_PATH nor API_URL is reaching this process.
   //
   // Keyed by locale, because the fixture is a *resolved* view: its strings are
   // already localized, so one fixture can only ever be one language. Serving the
   // English one to a German visitor was the last place the locale silently didn't
   // apply. Generated from the seed by `pnpm --filter=@lg/web gen:fallback` rather
-  // than hand-maintained — the hand-written one had drifted to naming an area
+  // than hand-maintained, the hand-written one had drifted to naming an area
   // that was renamed several releases earlier, and nothing catches that, because
   // the only way to see this file is to break the database.
   console.error(

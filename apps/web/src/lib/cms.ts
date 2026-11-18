@@ -1,14 +1,14 @@
 /**
  * Browser-side CMS API client. The OAuth session cookie (http-only, credentials:
  * include) is the primary auth. The bearer token is a fallback for scripts/first
- * setup; when used interactively it's held in `sessionStorage` — scoped to the tab
- * and cleared on close — rather than `localStorage`, to shrink the window in which
+ * setup; when used interactively it's held in `sessionStorage`, scoped to the tab
+ * and cleared on close, rather than `localStorage`, to shrink the window in which
  * a full-access credential sits readable in the browser (SEC-05). Prefer OAuth.
  * Runs only in the CMS, never on the public site.
  */
 
 import { STORAGE_KEY, type ModerationAction } from "@lg/core";
-// The response contracts. Both ends import these — the server's routes are typed
+// The response contracts. Both ends import these, the server's routes are typed
 // to return them, so a route that drifts is a compile error over there.
 import type {
   Asset,
@@ -110,10 +110,10 @@ function headers(json = true): Record<string, string> {
  * twenty-four call sites for a reason: the wire is untyped, so *something* has to
  * claim a shape. Making that a parameter means each method below declares what it
  * expects, once, against a type from `@lg/core` that the **server compiles
- * against too** — so a route that drifts fails the server's typecheck, which is
+ * against too**, so a route that drifts fails the server's typecheck, which is
  * the side that can actually be wrong.
  *
- * It used to return `res.json()` — `any` — and the claim was made at the call
+ * It used to return `res.json()`, `any`, and the claim was made at the call
  * site instead: `(await cms.uploadAsset(file)) as PostAsset`. That compiled, built
  * and shipped, and was wrong; the server returns an `Asset`. A cast at the call
  * site is a check that can't fail, made by the side with no way of knowing.
@@ -186,7 +186,7 @@ export const cms = {
     } = {},
   ) => {
     const q = new URLSearchParams();
-    // A custom from/to span replaces the rolling `hours` window — the two are
+    // A custom from/to span replaces the rolling `hours` window, the two are
     // mutually exclusive on the server, so only one is ever sent.
     if (opts.from && opts.to) {
       q.set("from", opts.from);
@@ -194,13 +194,13 @@ export const cms = {
     } else if (opts.hours) {
       q.set("hours", String(opts.hours));
     }
-    // Narrow the lists (not the chart) to one bucket — what a click on the
+    // Narrow the lists (not the chart) to one bucket, what a click on the
     // chart sends.
     if (opts.at) q.set("at", opts.at);
-    // Day columns are grouped server-side in this zone — a day boundary is a
+    // Day columns are grouped server-side in this zone, a day boundary is a
     // wall-clock fact, so it can't be a display-time transform.
     if (opts.tz) q.set("tz", opts.tz);
-    // A dimension filter — a click on a row (e.g. a referrer). Both-or-neither.
+    // A dimension filter, a click on a row (e.g. a referrer). Both-or-neither.
     if (opts.dim && opts.key) {
       q.set("dim", opts.dim);
       q.set("key", opts.key);
@@ -256,7 +256,7 @@ export const cms = {
       credentials: "include",
     }).then(handle<SectionsResponse>),
 
-  /** Content history — newest first. */
+  /** Content history, newest first. */
   revisions: () => fetch(`${apiBase}/api/cms/revisions`, { headers: headers(), credentials: "include" }).then(handle<RevisionListResponse>),
   /** Put a past revision back. Writes forward: the restore is itself archived. */
   restoreRevision: (id: number) =>
@@ -275,7 +275,7 @@ export const cms = {
       body: JSON.stringify({ order, locale }),
     }).then(handle<SiteView>),
 
-  /** A whole gallery's order in one request — see PUT /api/cms/gallery-order. */
+  /** A whole gallery's order in one request, see PUT /api/cms/gallery-order. */
   reorderGallery: (module: string, ids: string[]) =>
     cms.put("gallery-order", { module, ids }),
 
@@ -363,7 +363,7 @@ export const cms = {
    *
    * By id, over the CMS API. The old version fetched the public
    * `/api/assets/md/<slug>` and justified it with "drafts are already gated there
-   * by the preview token" — the editor holds no such token, and every post the
+   * by the preview token", the editor holds no such token, and every post the
    * panel creates is a draft, so it 404'd on all of them. It also meant the one
    * place that edits a post identified it by slug while every other call used the
    * id, so an in-flight rename could open the wrong file or nothing at all.
@@ -373,7 +373,7 @@ export const cms = {
       headers: headers(false),
       credentials: "include",
     }).then(handle<MarkdownSourceResponse>),
-  /** Rewrite a markdown asset's contents. Stable id, new bytes — see the route. */
+  /** Rewrite a markdown asset's contents. Stable id, new bytes, see the route. */
   putMarkdown: (id: string, markdown: string) =>
     fetch(`${apiBase}/api/cms/assets/${id}/content`, {
       method: "PUT",

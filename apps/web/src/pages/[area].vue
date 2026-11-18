@@ -5,7 +5,7 @@
  *
  * A hidden area 404s here without a guard of its own: the resolver strips drafts
  * from `site.nav`, so `areaById` can't find one and this throws. That's what makes
- * `hidden` a fact rather than a flag — the router enforces it.
+ * `hidden` a fact rather than a flag: the router enforces it.
  */
 import type { Locale, SiteView } from "@lg/core";
 import { areaById } from "~/lib/area";
@@ -21,7 +21,7 @@ const { data } = await useFetch<{ locale: Locale; site: SiteView }>("/api/site",
 
 const site = data.value?.site;
 if (site) {
-  // The first area is canonical at `/` — permanent, so the redirect is cached.
+  // The first area is canonical at `/`, permanent, so the redirect is cached.
   if (areaId === site.nav[0]?.id) {
     await navigateTo("/", { redirectCode: 308 });
   } else if (!areaById(site.nav, areaId)) {

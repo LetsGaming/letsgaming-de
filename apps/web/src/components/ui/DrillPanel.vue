@@ -2,7 +2,7 @@
 /**
  * The content region of a ledger module: a top list, or one day drilled into.
  *
- * `useLedgerStrip` already made the *behaviour* shared — Listening and Time played
+ * `useLedgerStrip` already made the *behaviour* shared, Listening and Time played
  * drive the strip, the fetch and the reset from one composable. This is the other
  * half: the panel around it, which the two modules still rendered twice. Same
  * header, same back control, same loading/error/empty branches, same four scoped
@@ -10,7 +10,7 @@
  *
  * What varies is content, so it comes in through slots: `summary` (the day's
  * one-line total) and the default slot (the rows and their footer). The states
- * that aren't content — loading, failed, an empty day — are handled here, since
+ * that aren't content, loading, failed, an empty day, are handled here, since
  * both modules stated them identically and one of them getting a new one and the
  * other not is exactly the drift this removes.
  */
@@ -20,7 +20,7 @@ import { useT } from "~/composables/useT";
 interface Props {
   /** Heading when no day is selected, e.g. "Top games". */
   title: string;
-  /** Heading when a day is selected — the formatted day. */
+  /** Heading when a day is selected, the formatted day. */
   dayTitle: string;
   /** Label for the control that leaves the day view. */
   backLabel: string;

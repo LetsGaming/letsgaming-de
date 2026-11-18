@@ -2,7 +2,7 @@
 /**
  * The editor canvas.
  *
- * Renders the site's real sections — the same `SitePanels` a visitor gets — with
+ * Renders the site's real sections, the same `SitePanels` a visitor gets, with
  * drag affordances laid *over* them rather than into them. The sections stay
  * untouched: no edit props, no preview branch. The moment a section knows it might
  * be in an editor, every section is a place for editor code to leak into the
@@ -19,13 +19,13 @@
  *   `<div class="cms">`; `cms.css` has seven selectors outside its namespace, none
  *   of which `app.css` defines, and no bare element rules. Same isolation, no
  *   protocol.
- * - *Device-width previews.* The only irreducible one — an iframe has its own
+ * - *Device-width previews.* The only irreducible one, an iframe has its own
  *   viewport, so media queries fire at its width. Dropped on purpose: devtools does
  *   it better, and full-screen is an honest desktop width rather than a 660px
  *   column labelled "Desktop".
  *
- * That deleted ~160 lines — `canvas-protocol.ts`, a separate Astro entry, the
- * `canvas:ready` handshake, origin and shape checks — and two bug classes that only
+ * That deleted ~160 lines, `canvas-protocol.ts`, a separate Astro entry, the
+ * `canvas:ready` handshake, origin and shape checks, and two bug classes that only
  * exist across a document boundary: `DataCloneError` (postMessage can't clone a Vue
  * proxy) and 16KB of CSS that a `client:only` entry can't be traced for at build.
  */
@@ -77,7 +77,7 @@ const emit = defineEmits<{
 const boxes = ref<{ id: string; top: number; height: number }[]>([]);
 const root = ref<HTMLElement | null>(null);
 /**
- * The overlay the boxes are drawn in — and therefore the origin they must be
+ * The overlay the boxes are drawn in, and therefore the origin they must be
  * measured from. See `measure()`.
  */
 const overlay = ref<HTMLElement | null>(null);
@@ -127,7 +127,7 @@ async function measure() {
  * Re-measure when the page changes size under us.
  *
  * A single measure on `nextTick` describes the layout at one instant, and the
- * canvas renders the site's *real* sections — which are not done laying out at
+ * canvas renders the site's *real* sections, which are not done laying out at
  * that instant. The presence widget is a hydrating island that fills in and grows
  * after mount; cover art and avatars load later still; web fonts reflow the lot.
  * Each late growth pushes every section below it down while the overlay stays put,
@@ -135,7 +135,7 @@ async function measure() {
  * the third is a hundred pixels out.
  *
  * A ResizeObserver on the host and each measured section closes that, and window
- * resize stops being a special case — it's just another thing that changes a size.
+ * resize stops being a special case, it's just another thing that changes a size.
  */
 let ro: ResizeObserver | null = null;
 let observed: Element[] = [];
@@ -151,7 +151,7 @@ function scheduleMeasure() {
 }
 
 /**
- * Point the observer at the current set of elements — but only when the set has
+ * Point the observer at the current set of elements, but only when the set has
  * actually changed. Re-observing unconditionally would loop: `observe()` delivers
  * an initial observation, which measures, which re-observes, at frame rate.
  */
@@ -245,8 +245,8 @@ function onDragOver(i: number, e: DragEvent) {
     return;
   }
   if (dragFrom === null) return;
-  // Both, every time. preventDefault() is what marks an element a valid drop target
-  // — without it `drop` never fires — and a dropEffect that doesn't match
+  // Both, every time. preventDefault() is what marks an element a valid drop target:
+  // without it `drop` never fires, and a dropEffect that doesn't match
   // effectAllowed makes the browser reject the drop *after* drawing the indicator.
   // Together, that's "it shows you where it will land and then does nothing".
   e.preventDefault();
@@ -275,7 +275,7 @@ const onDragEnd = () => {
 /**
  * The canvas is a preview, not a browser.
  *
- * Its links are real — that's the point, they're the site's own — so a click would
+ * Its links are real, that's the point, they're the site's own, so a click would
  * navigate away and take the whole CMS with it. Caught on the way down, before
  * anything else can act. An in-page anchor still scrolls; scrolling a preview is
  * legitimate.
@@ -305,7 +305,7 @@ onMounted(() => {
   void measure();
   // Fonts land after first paint and reflow every section under the overlay.
   // `.catch()` because a browser without the Font Loading API shouldn't take the
-  // editor down with it — the observer still catches the resulting resize.
+  // editor down with it, the observer still catches the resulting resize.
   document.fonts?.ready.then(scheduleMeasure).catch(() => {});
 });
 onUnmounted(() => {
@@ -331,7 +331,7 @@ const kindLabel = (id: string): string => {
     34 custom properties `.cms` defines and the `.cms .modlist`/`.cms .grip` rules
     the rail is built from.
 
-    A `<Teleport to="body">` did escape `.cms .card` — and took the token layer and
+    A `<Teleport to="body">` did escape `.cms .card`, and took the token layer and
     the rail's styling with it, so every `var()` here resolved to nothing and the
     editor rendered with no background at all. `.cms` carries three things and only
     one of them was in the way; the fix is `:not(.lgedit-page *)` on that one, in

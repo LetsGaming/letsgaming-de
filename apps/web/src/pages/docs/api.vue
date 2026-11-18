@@ -170,7 +170,7 @@ const opId = (method: string, path: string) => `op-${method.toLowerCase()}-${slu
 /* Scoped API-reference styling. Colours come from tokens; the per-verb badge
    hues are the one set of named locals (there are no method tokens site-wide).
    Chosen medium-dark so white badge text stays legible on both themes.
-   Astro's `:global()` becomes Vue's `:deep()` — needed for the v-html prose,
+   Astro's `:global()` becomes Vue's `:deep()`, needed for the v-html prose,
    which carries no scope attribute. */
 .api {
   --m-get: #2e9e6b;

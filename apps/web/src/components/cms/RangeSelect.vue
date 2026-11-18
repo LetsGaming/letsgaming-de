@@ -3,7 +3,7 @@
  * The CMS's "which window does this module open in" control.
  *
  * Shared by the Played and Listening panels, which need the identical select over
- * the identical option set — the only thing that differs is which ref it binds to.
+ * the identical option set, the only thing that differs is which ref it binds to.
  * Written once here rather than twice there, so adding a range to
  * `ACTIVITY_RANGES` doesn't need either panel touched.
  *

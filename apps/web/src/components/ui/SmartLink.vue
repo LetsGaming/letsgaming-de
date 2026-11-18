@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
  * The site's one link component (Nuxt). An on-site destination renders as
- * <NuxtLink> — client-side navigation with prefetch; an off-site destination
+ * <NuxtLink>, client-side navigation with prefetch; an off-site destination
  * renders as <a target="_blank" rel="noreferrer noopener">. `class`, `@click`,
  * `aria-*` and the rest fall through to the rendered element, and the label is a
  * slot, so icon-plus-text buttons and whole card bodies compose unchanged.
  *
  * Two escape hatches for the cases the rule alone gets wrong:
- *   • `target` forces the tab behaviour — an OAuth sign-in must stay in-tab even
+ *   • `target` forces the tab behaviour, an OAuth sign-in must stay in-tab even
  *     though it's off-site (`target="_self"`); a preview should pop out even though
  *     it's on-site (`target="_blank"`). A forced target always uses a plain <a>.
  *   • `as` is the element rendered when there's no `href`, for the "a link when we

@@ -8,7 +8,7 @@ const isDev = import.meta.dev;
 import AssetLibrary from "./AssetLibrary.vue";
 import SaveBar from "./SaveBar.vue";
 // Global (un-scoped) admin styles, namespaced under `.cms`. Global rather than
-// scoped so the per-panel child components below are styled by the same rules —
+// scoped so the per-panel child components below are styled by the same rules,
 // see styles/cms.css.
 import "../../styles/cms.css";
 import { computed, provide } from "vue";
@@ -79,7 +79,7 @@ const navBadges = computed<Record<string, number>>(() => ({
       <SmartLink class="btn primary" :href="cms.loginUrl()" target="_self">Sign in with GitHub</SmartLink>
       <!-- Local development only. `import.meta.dev` is a compile-time constant, so
            this block is removed from the production bundle rather than hidden in
-           it — and the route behind it isn't registered in production either. -->
+           it. The route behind it isn't registered in production either. -->
       <SmartLink v-if="isDev" class="btn dev-login" :href="cms.devLoginUrl()" target="_self">
         Dev sign-in (localhost)
       </SmartLink>

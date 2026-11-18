@@ -18,7 +18,7 @@ function humanize(stem: string): string {
 
 /**
  * A doc's display title: its first `# ` heading, unless that heading is just the
- * filename (e.g. `# ARCHITECTURE.md`) — then fall back to a humanized stem.
+ * filename (e.g. `# ARCHITECTURE.md`), then fall back to a humanized stem.
  */
 export function docTitle(body: string, slug: string): string {
   const stem = slug.split("/").pop() ?? slug;

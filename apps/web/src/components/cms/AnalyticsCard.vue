@@ -7,7 +7,7 @@
  * twenty single-hit paths stacked into a column tall enough to push everything
  * below it off the screen, with the long ones running out the side of the card.
  *
- * The cap is `useLimitedList` and the toggle is `ListFooter` — the same pair the
+ * The cap is `useLimitedList` and the toggle is `ListFooter`, the same pair the
  * top-songs and top-games lists use, so "collapse to five, expand to the cap,
  * then say how many the cap hid" stays one implementation. The alternative was an
  * eighth copy of it inside the CMS.
@@ -21,7 +21,7 @@ const props = withDefaults(
   defineProps<{
     title: string;
     /** Muted note after the title, e.g. "(not counted as visits)". Keep it a
-     *  short parenthetical — it renders inline in the heading, not wrapped. */
+     *  short parenthetical, it renders inline in the heading, not wrapped. */
     note?: string;
     /** Longer explanation for `note`, shown as a hover tooltip rather than
      *  flowing into the heading. */
@@ -34,7 +34,7 @@ const props = withDefaults(
     empty?: string;
     /** How many before "show more". */
     initial?: number;
-    /** Present makes each row clickable — "filter to this key". Absent (the
+    /** Present makes each row clickable, "filter to this key". Absent (the
      *  default) keeps rows as plain, non-interactive list items. */
     dimension?: AnalyticsDimension;
     /** The key currently filtered to, if `dimension` matches the active filter. */
@@ -137,7 +137,7 @@ const {
 
 /* A selectable row's `<li>` holds one `<button>` instead of the bare span+b
    pair, so the flex/space-between the `<li>` itself provides (cms.css) has to
-   move onto the button — it's the thing filling the row now. */
+   move onto the button, since it is the thing filling the row now. */
 .rowline {
   display: flex;
   align-items: center;

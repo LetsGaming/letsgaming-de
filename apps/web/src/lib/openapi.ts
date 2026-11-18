@@ -2,13 +2,13 @@
  * Build-time reader for the backend's OpenAPI spec, shaping it into a small,
  * render-ready model for the on-site `/docs/api` reference.
  *
- * The canonical spec is `openapi.yml` at the repo root — one hand-authored,
+ * The canonical spec is `openapi.yml` at the repo root, one hand-authored,
  * self-documenting file that external tooling (codegen, Swagger UI, Postman) can
  * also consume. This module is the *display* side: it parses that file at build
  * time and flattens it into groups + operations + schema tables the Astro page
  * renders in the site's own design (no Swagger CDN, no client-side spec fetch).
  *
- * Read with `node:fs` relative to `process.cwd()` — the same `../../` resolution
+ * Read with `node:fs` relative to `process.cwd()`, the same `../../` resolution
  * the content collection already uses for `docs/`, so it works identically in dev
  * and in the Docker build (both run Astro from `apps/web`). Nothing here reaches
  * the client bundle; the reference page prerenders.
@@ -97,7 +97,7 @@ export interface ApiReference {
 
 const METHODS = ["get", "post", "put", "delete", "patch"] as const;
 
-// Loose shapes — we validate defensively as we read rather than typing all of OpenAPI.
+// Loose shapes, we validate defensively as we read rather than typing all of OpenAPI.
 type Json = Record<string, unknown>;
 const obj = (v: unknown): Json => (v && typeof v === "object" ? (v as Json) : {});
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineNuxtConfig } from "nuxt/config";
 
-// Load the shared monorepo-root `.env` — the same file the API server reads via
+// Load the shared monorepo-root `.env`, the same file the API server reads via
 // `--env-file-if-exists=../../.env`. Nuxt only auto-loads a `.env` next to
 // nuxt.config, and `nuxt dev` runs with the app dir as cwd, so without this the
 // web app silently sees none of the shared config: PUBLIC_API_URL stays empty and
@@ -13,13 +13,13 @@ const rootEnv = fileURLToPath(new URL("../../.env", import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 /**
- * SSR Nuxt on the standalone Node preset — the same deploy shape as the Astro app
+ * SSR Nuxt on the standalone Node preset, the same deploy shape as the Astro app
  * it replaces (@astrojs/node standalone). Pages render server-side; the SiteView is
  * resolved from the local read-only store in `server/utils/site.ts` (a direct read,
  * not an HTTP hop), exactly as `lib/site.ts` did under Astro.
  *
  * Env: start Nuxt from the monorepo root so it reads the shared root `.env`
- * (DB_PATH, API_URL, PUBLIC_API_URL) — the same keys Astro used. Server-only keys
+ * (DB_PATH, API_URL, PUBLIC_API_URL), the same keys Astro used. Server-only keys
  * (DB_PATH, API_URL) are read from `process.env` inside `server/` and never reach
  * the client; browser-visible values go through `runtimeConfig.public` below.
  */
@@ -43,8 +43,8 @@ export default defineNuxtConfig({
   // the dev port means nothing downstream has to change.
   devServer: { port: 4321 },
 
-  // Silences the "Failed to resolve import #app-manifest" pre-transform errors —
-  // an upstream Nuxt bug (nuxt/nuxt#30461, #30700, #33606) where Vite statically
+  // Silences the "Failed to resolve import #app-manifest" pre-transform errors.
+  // This is an upstream Nuxt bug (nuxt/nuxt#30461, #30700, #33606) where Vite statically
   // analyses an import inside a dead `if (false)` branch and reports it unresolved.
   // Harmless but noisy. Turning the feature off removes the code path entirely.
   // The cost is client-side route-rule awareness and build-id refresh detection,
@@ -58,7 +58,7 @@ export default defineNuxtConfig({
     //
     // `ignore` is load-bearing, not tidiness. The docs shell links back to "/" and
     // the privacy page links to the homepage, so an unrestricted crawl walks into
-    // the dashboard and prerenders `/`, `/work`, `/life`, `/about` — at build time,
+    // the dashboard and prerenders `/`, `/work`, `/life`, `/about` at build time,
     // where there is no database. Those pages would bake in the fallback fixture and
     // then shadow SSR at runtime, so the site would show stale committed data
     // forever and never reflect a sync or a CMS edit. The dashboard MUST stay
@@ -75,7 +75,7 @@ export default defineNuxtConfig({
   // `lib/api.ts` reads `import.meta.env.PUBLIC_API_URL` and captures it at module
   // scope (`cms.base` is fixed when the module first evaluates). Astro inlined that
   // value at build; Vite only exposes VITE_-prefixed vars, so inline it explicitly
-  // here to keep the same semantics — and to avoid rewriting ~30 call sites into a
+  // here to keep the same semantics, and to avoid rewriting ~30 call sites into a
   // runtime lookup that this value never needed. `runtimeConfig.public.apiUrl`
   // above remains for anything that genuinely wants to change per deployment.
   vite: {
@@ -136,7 +136,7 @@ export default defineNuxtConfig({
           // previously chose one that differs from what the server rendered,
           // redirect once so the whole page is server-rendered in their language.
           // Cookieless (localStorage), guarded against loops (only when ?lang is
-          // absent), and scoped to the locale-aware pages — `data-locale-aware` is
+          // absent), and scoped to the locale-aware pages: `data-locale-aware` is
           // set by AreaPage, so the prerendered docs, which ignore ?lang, opt out.
           tagPosition: "head",
           innerHTML:

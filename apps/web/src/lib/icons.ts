@@ -1,4 +1,4 @@
-/** Icon set — raw inline SVG, keyed by name. Ported from the prototype's `I` map.
+/** Icon set, raw inline SVG, keyed by name. Ported from the prototype's `I` map.
  *  Rendered via v-html in a controlled context (our own strings, never user data). */
 export const icons: Record<string, string> = {
   gh: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.15-1.11-1.46-1.11-1.46-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>',
@@ -35,7 +35,7 @@ export const icons: Record<string, string> = {
 };
 
 /** GitHub linguist's real colours. These used to be repainted into the house
- *  palette — TypeScript as violet-400, Python as mint, CSS as coral — which threw
+ *  palette, TypeScript as violet-400, Python as mint, CSS as coral, which threw
  *  away free, true, recognisable colour. Vue, Go and Rust were already real; now
  *  they all are. Linguist is the source of truth, not this file's taste.
  *  Presentation still lives in the frontend, not the API. */
@@ -87,7 +87,7 @@ const LINGUIST: Record<string, string> = {
 
 /**
  * Names the tools use that linguist doesn't. Wakapi reports what your editor
- * calls the buffer, GitHub reports linguist's name, and they disagree — which is
+ * calls the buffer, GitHub reports linguist's name, and they disagree, which is
  * why half the bars were grey: the colour was right and the key never matched.
  */
 const ALIASES: Record<string, string> = {
@@ -117,7 +117,7 @@ const ALIASES: Record<string, string> = {
 /** Linguist has no dark-background contract: JSON is #292929 and PowerShell is
  *  #012456, both invisible on --surf-0. Lift lightness, hold hue, so a colour
  *  stays recognisably itself. Desaturated input (JSON) lifts to grey, which is
- *  correct — JSON has no colour identity and inventing one would be a lie. */
+ *  correct, JSON has no colour identity and inventing one would be a lie. */
 const MIN_LIGHTNESS = 0.42;
 
 function toHsl(hex: string): [number, number, number] {
@@ -157,8 +157,8 @@ export function lift(hex: string, minLightness = MIN_LIGHTNESS): string {
 /**
  * Resolve a source's spelling to the key both tables below are keyed on.
  *
- * The sources disagree about names — Wakapi says "Bash" where linguist says
- * "Shell" — so every lookup goes through here rather than matching exactly.
+ * The sources disagree about names, Wakapi says "Bash" where linguist says
+ * "Shell", so every lookup goes through here rather than matching exactly.
  */
 function langKey(name: string): string {
   const key = name.trim().toLowerCase();
@@ -169,15 +169,15 @@ function langKey(name: string): string {
  * The canonical spelling of a language, for display.
  *
  * Same problem `langColor` already solves, one field over. Wakapi hands back
- * `Json`, `Typescript`, `Php` — its own sentence-casing of whatever the editor
- * plugin reported — and GitHub hands back linguist's `JSON`, `TypeScript`, `PHP`.
+ * `Json`, `Typescript`, `Php`, its own sentence-casing of whatever the editor
+ * plugin reported, and GitHub hands back linguist's `JSON`, `TypeScript`, `PHP`.
  * Both were rendered verbatim, so /code showed "Sprachen: TypeScript" directly
  * above "Diese Woche: Typescript" and the page disagreed with itself about how
  * to spell the thing it's about.
  *
  * Names are imported for the same reason colours are: `JSON` is an acronym and
  * `TypeScript` is a trademark, and neither is ours to re-case. An unrecognised
- * name passes through untouched — better a source's odd spelling than a guess.
+ * name passes through untouched, better a source's odd spelling than a guess.
  */
 const DISPLAY: Record<string, string> = {
   typescript: "TypeScript",
@@ -231,8 +231,8 @@ export function langName(name: string): string {
 /**
  * A language's colour, lifted to read on the page.
  *
- * Lookup is case- and alias-insensitive because the sources disagree about names
- * — Wakapi says "Bash", linguist says "Shell", and an exact-match map on
+ * Lookup is case- and alias-insensitive because the sources disagree about names:
+ * Wakapi says "Bash", linguist says "Shell", and an exact-match map on
  * linguist's spelling silently greyed out half the chart.
  *
  * Unknown languages still get a neutral rather than an invented hue: colour is

@@ -1,8 +1,8 @@
 /**
  * Cookieless engagement tracker (privacy addendum to §9).
  *
- * Measures on-page behaviour the reverse-proxy log can't see — section views,
- * dwell, section-to-section movement, scroll depth, named clicks — and sends
+ * Measures on-page behaviour the reverse-proxy log can't see, section views,
+ * dwell, section-to-section movement, scroll depth, named clicks, and sends
  * *already-aggregated, bucketed* events via `navigator.sendBeacon`.
  *
  * It never stores anything on the device (no cookie, no localStorage), never
@@ -82,7 +82,7 @@ export function isOptedOut(): boolean {
 
 /**
  * Preview context: the CMS embeds the site in an iframe with `?preview=1`. We
- * must not record the owner's preview traffic — detect it two ways (the query
+ * must not record the owner's preview traffic, detect it two ways (the query
  * marker, and simply being framed) and stay silent.
  */
 export function isPreview(): boolean {
@@ -90,7 +90,7 @@ export function isPreview(): boolean {
   try {
     if (window.self !== window.top) return true; // running inside a frame
   } catch {
-    return true; // cross-origin framing throws — treat as framed
+    return true; // cross-origin framing throws, treat as framed
   }
   return new URLSearchParams(window.location.search).has(PREVIEW_PARAM);
 }
@@ -118,7 +118,7 @@ export function setOptedOut(optout: boolean) {
     if (optout) localStorage.setItem(STORAGE_KEY.analyticsOptout, OPTED_OUT);
     else localStorage.removeItem(STORAGE_KEY.analyticsOptout);
   } catch {
-    /* private mode — ignore */
+    /* private mode, ignore */
   }
   if (optout) {
     enabled = false;
@@ -295,7 +295,7 @@ function onScroll() {
  * *completed*-visit counts: a tab that's backgrounded and killed by the OS, or a
  * browser that never fires `pagehide`, contributes pageviews but no session row.
  * Visits therefore read slightly below pageviews by construction. The CMS labels
- * that metric "Visits — completed visits" for exactly this reason; don't
+ * that metric "Visits, completed visits" for exactly this reason; don't
  * reconcile the two numbers by moving this call earlier, which would count
  * visits that hadn't happened yet.
  */

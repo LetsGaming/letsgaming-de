@@ -63,8 +63,8 @@ useSeo({
   <DocsShell v-if="data" :tree="data.tree" :active="data.slug">
     <!-- One element in the default slot, not two: `.doc-wrap` is a two-column
          grid with the sidebar as column 1's only item, so a second top-level
-         child here would auto-place into column 1's *next row* — under the
-         sidebar — instead of alongside it in column 2. -->
+         child here would auto-place into column 1's *next row*, under the
+         sidebar, instead of alongside it in column 2. -->
     <div class="doc-main">
       <Breadcrumbs :items="crumbs" />
       <article id="doc-main" tabindex="-1" class="doc-body prose" v-html="data.html" />

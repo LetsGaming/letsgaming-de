@@ -49,7 +49,7 @@ function mountCms() {
  * Point the URL at a panel *before* anything is listening.
  *
  * Assigning `location.hash` queues a `hashchange`. Set it and mount immediately
- * and that event lands after `onMounted` has attached the listener — so the panel
+ * and that event lands after `onMounted` has attached the listener, so the panel
  * opens via `onHashChange`, the mount-time restore is never exercised, and a test
  * for "reload lands where you were" passes with the restore deleted. It did. This
  * drains the event against a page with no listeners, so what the test measures is
@@ -145,7 +145,7 @@ describe("which panel is open", () => {
 //
 // These used to be `{}`. That typechecked because `cms.*` returned `any`, which
 // meant every test here proved the composable works against a server returning
-// literally anything — including nothing. Now the client declares the shapes from
+// literally anything, including nothing. Now the client declares the shapes from
 // @lg/core, so a mock has to be a response the server could actually send. That's
 // the point of the exercise: the fixtures were the third place the API shape was
 // being asserted without being checked.
@@ -227,7 +227,7 @@ const emptySiteView = (): SiteView => ({
 
 const emptyContent = (): SiteContent => ({
   // Authored meta: location/role are Localized. The *view's* meta is the resolved
-  // one, with plain strings — two shapes an `any` mock happily conflated.
+  // one, with plain strings, two shapes an `any` mock happily conflated.
   meta: { name: "Domenic", handle: "@LetsGaming", location: L("DE"), role: L("dev") },
   headline: { before: L("a"), highlight: L("b"), after: L("c") },
   lede: L("lede"),
@@ -392,7 +392,7 @@ describe("analytics dimension filtering", () => {
     // The second (later) request has already landed.
     expect(api().analytics.value?.range.hours).toBe(999);
 
-    // The first, slower request resolves last — it must be ignored.
+    // The first, slower request resolves last, it must be ignored.
     resolveFirst(emptyAnalytics());
     await flushPromises();
     expect(api().analytics.value?.range.hours).toBe(999);
@@ -445,7 +445,7 @@ describe("analytics filters in the URL", () => {
     expect(api().filterDim.value).toBe("referrer");
     expect(api().filterKey.value).toBe("Bing");
     expect(api().rangeHours.value).toBe(168);
-    // The very first request (not a later refetch) already carries it —
+    // The very first request (not a later refetch) already carries it,
     // proves the restore happened before the mount-time load, not after.
     const first = load.mock.calls[0]?.[0];
     expect(first).toMatchObject({ dim: "referrer", key: "Bing", hours: 168 });
@@ -484,7 +484,7 @@ describe("analytics filters in the URL", () => {
     expect(api().filterDim.value).toBe("os");
 
     // What the browser does on Back for a `pushState` entry: the URL reverts,
-    // `popstate` fires — no `hashchange`, since nothing assigned `location.hash`.
+    // `popstate` fires, no `hashchange`, since nothing assigned `location.hash`.
     window.history.back();
     window.dispatchEvent(new PopStateEvent("popstate"));
     await flushPromises();
@@ -543,7 +543,7 @@ describe("layout: one move, three ways to ask for it", () => {
   it("drags a module across areas, landing where it was dropped", async () => {
     const { api } = mountCms();
     await flushPromises();
-    // "activity" from code[0] into home at index 1 — between hero and projects.
+    // "activity" from code[0] into home at index 1, between hero and projects.
     api().dropModule({ from: "code", to: "home", oldIndex: 0, newIndex: 1 });
     expect(areaIds(api(), "home")).toEqual(["hero", "activity", "projects"]);
     expect(areaIds(api(), "code")).toEqual([]);
@@ -654,7 +654,7 @@ describe("editor canvas", () => {
     api().dropModule({ from: "code", to: "home", oldIndex: 0, newIndex: 0 });
     await api().refreshCanvas();
 
-    // The order it sends is the pending one — what you dragged, not what's saved.
+    // The order it sends is the pending one, what you dragged, not what's saved.
     expect(preview).toHaveBeenCalledWith(
       [
         { area: "home", modules: ["activity", "hero", "projects"] },
@@ -676,8 +676,8 @@ describe("editor canvas", () => {
   });
 
   it("clicking a module selects it and names the panel that edits it", async () => {
-    // It used to `pick(panel)` — switch the CMS's tab behind the full-screen
-    // editor — so the only thing clicking a module did was leave the editor. Now it
+    // It used to `pick(panel)`, switch the CMS's tab behind the full-screen
+    // editor, so the only thing clicking a module did was leave the editor. Now it
     // records the selection and the rail renders that panel beside the page.
     const { api } = mountCms();
     await flushPromises();
@@ -717,7 +717,7 @@ describe("the canvas is a component now", () => {
   /**
    * What used to be here: a `structuredClone` regression for `DataCloneError`, and
    * a `canvas:ready` handshake test. Both were tests *of the boundary*, not of the
-   * editor — postMessage can't clone a Vue proxy, and a parent can't know when a
+   * editor, postMessage can't clone a Vue proxy, and a parent can't know when a
    * `client:only` island inside an iframe has mounted. Neither failure exists once
    * the canvas is a component holding a prop, so the tests go with the boundary
    * rather than outliving it as decoration.
@@ -728,7 +728,7 @@ describe("the canvas is a component now", () => {
     await flushPromises();
 
     await api().refreshCanvas();
-    // A prop. Not a message, not a clone — the same object the fetch returned.
+    // A prop. Not a message, not a clone, the same object the fetch returned.
     expect(api().canvasSite.value).not.toBeNull();
     expect(api().canvasSite.value?.locale).toBe("en");
   });

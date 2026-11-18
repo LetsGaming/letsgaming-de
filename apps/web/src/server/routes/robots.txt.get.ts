@@ -1,7 +1,7 @@
 /**
  * `robots.txt`, as a route rather than a static file.
  *
- * The old committed `robots.txt` carried `Disallow: /admin` — which is
+ * The old committed `robots.txt` carried `Disallow: /admin`, which is
  * self-defeating: robots.txt is world-readable, so a `Disallow` line is a public
  * index of the paths you'd rather nobody knew about. The admin surface is kept
  * private by being unlinked and absent from the sitemap, and adding it here would
@@ -12,7 +12,7 @@
  * land on. Nothing secret about them, so naming them costs nothing.
  *
  * `/md/` is deliberately NOT disallowed. It looks like an internal path but it's
- * the rendered blog — the highest-value pages on the site for search. The raw
+ * the rendered blog, the highest-value pages on the site for search. The raw
  * markdown lives at `/api/md/`, which the `/api/` rule already covers. An earlier
  * version of this file blocked `/md/` on the assumption that the name meant raw
  * content; that would have deindexed every post.

@@ -173,7 +173,7 @@ const idle = computed(
 
   <!-- Enabled but nothing has loaded yet is handled above (the profile shows
        "loading…"); this branch is only the deliberate "owner hid every live
-       category" case. No mention of any server config — that's not the visitor's
+       category" case. No mention of any server config: that's not the visitor's
        concern, and never leaking it is the whole point of the split. -->
   <p v-else class="pw-muted pw-np">{{ t("presenceNothing") }}</p>
 </template>

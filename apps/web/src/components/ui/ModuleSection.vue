@@ -75,7 +75,7 @@ withDefaults(defineProps<Props>(), { variant: "plain", gap: "related" });
   color: var(--muted);
 }
 /* A trailing action passed in the note slot, the "see all →" / "all repos →"
-   links Featured and Projects put beside the heading — sits at the far right. */
+   links Featured and Projects put beside the heading, sits at the far right. */
 .module-section__head :slotted(.more) {
   margin-left: auto;
 }

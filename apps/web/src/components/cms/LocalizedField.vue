@@ -8,14 +8,14 @@
  *   <input :value="lv(x, locale)"
  *          @input="setLv(x, locale, ($event.target as HTMLInputElement).value)" />
  *
- * — 28 times across six panels, each repeating the read, the write, and an inline
+ * That appeared 28 times across six panels, each repeating the read, the write, and an inline
  * DOM cast. The cast is the part worth removing: it's `as HTMLInputElement` in the
  * input case and `as HTMLTextAreaElement` in the textarea case, asserted at every
  * call site, so a wrong one is a silent type lie rather than a compile error. Here
  * it's written once, correctly, and the panels just say which field they're
  * editing.
  *
- * `field` is mutated in place, which is what `setLv` already did — the CMS edits a
+ * `field` is mutated in place, which is what `setLv` already did, the CMS edits a
  * live draft object and saves it explicitly, so this is the existing model, not a
  * new one.
  */

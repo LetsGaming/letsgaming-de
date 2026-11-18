@@ -1,13 +1,13 @@
 /* CMS admin UI styles.
  *
  * Every rule is namespaced under the `.cms` root the admin mounts into, so these
- * never touch the public site — and, unlike a component-scoped block, they reach
+ * never touch the public site, and, unlike a component-scoped block, they reach
  * into the per-panel child components too (a scoped block only styles its own
  * template). That's what lets CmsApp split into panel components without each one
  * re-declaring `.card` / `.btn` / form-control styling.
  *
  * `.cms .card` carries the same specificity (0,2,0) the old scoped `.card[data-v]`
- * did, so it still wins over the public site's global `.card` exactly as before —
+ * did, so it still wins over the public site's global `.card` exactly as before,
  * the cascade is preserved, this is a relocation, not a restyle.
  *
  * Spacing (padding/margin/gap) uses --sp-*, radii use --r-*, and fills-on-accent
@@ -60,7 +60,7 @@ html:has(.cms) {
   color: var(--muted);
 }
 /* The local-development sign-in shortcut. Deliberately understated and dashed so
-   it never reads as the real way in — and it only exists in a dev build. */
+   it never reads as the real way in. It only exists in a dev build. */
 .cms .gate .dev-login:not(.lgedit-page *) {
   background: none;
   border: 1px dashed var(--line-2);
@@ -289,7 +289,7 @@ html:has(.cms) {
 /* `.worksplit`, `.editor`, `.dock*` are gone with the side-by-side preview iframe.
    The editor is a preview, and a better one: it renders the pending layout at the
    full viewport instead of the saved one in a 660px column. Its `.cms .editor` also
-   collided with the launcher's — one class name, two components, one stylesheet. */
+   collided with the launcher's: one class name, two components, one stylesheet. */
 @media (max-width: 1080px) {
   .cms.wide {
     max-width: 1120px;
@@ -345,11 +345,11 @@ html:has(.cms) {
 .cms .help {
   margin: 0;
 }
-/* `:not(.lgedit-page *)` — the canvas, and only the canvas.
+/* `:not(.lgedit-page *)`, the canvas, and only the canvas.
    The editor renders the site's real sections, and `.cms .card` (0,2,0) would
    out-specify the site's `.card` (0,1,0) and dress every one of them as an admin
    card. Excluding the canvas leaves app.css to style it exactly as it styles the
-   site — which is what a document boundary was buying, and what a Teleport to
+   site, which is what a document boundary was buying, and what a Teleport to
    <body> also bought, except the Teleport took the CMS's 34-token layer and the
    rail's own `.cms .*` rules out with it. The editor IS the CMS chrome; only the
    page inside it isn't. */
@@ -704,7 +704,7 @@ html:has(.cms) {
   width: 100%;
   height: auto;
   display: block;
-  /* The whole plot is the hover target — bands are far too thin to aim at, and a
+  /* The whole plot is the hover target, bands are far too thin to aim at, and a
      series with no data in a bucket has no band there at all. */
   cursor: crosshair;
 }
@@ -805,7 +805,7 @@ html:has(.cms) {
   border-color: color-mix(in oklab, var(--coral) 40%, var(--line));
   color: var(--coral);
 }
-/* The explanatory line above the chart when a dimension filter is active —
+/* The explanatory line above the chart when a dimension filter is active,
    why the six metric tiles below it went quiet. */
 .cms .filternote {
   margin-bottom: var(--sp-8);
@@ -1138,8 +1138,8 @@ html:has(.cms) {
   padding: var(--sp-8) 0;
 }
 /* Every painted decoration is inert to the pointer. The axis lines are drawn
-   after the bands, and the bottom axis sits exactly on `yAt(0)` — the baseline of
-   the first stacked layer, which is the largest series — so it used to intercept
+   after the bands, and the bottom axis sits exactly on `yAt(0)`, the baseline of
+   the first stacked layer (which is the largest series), so it used to intercept
    hovers precisely where the most important band is thickest. The chart's own
    pointermove handler owns hit-testing; nothing else should compete. */
 .cms .c-grid,
@@ -1228,7 +1228,7 @@ html:has(.cms) {
 .cms .legend .lg:hover {
   color: var(--purple-br);
 }
-/* A muted series stays in place and keeps its colour — toggling it back on
+/* A muted series stays in place and keeps its colour, toggling it back on
    shouldn't reshuffle the stack under the reader. */
 .cms .legend .lg.off {
   opacity: 0.45;
@@ -1498,7 +1498,7 @@ html:has(.cms) {
 }
 
 
-/* Blog editor. Two columns: the posts, and the post. The source is the source —
+/* Blog editor. Two columns: the posts, and the post. The source is the source,
    no WYSIWYG, because the frontmatter is part of the document and hiding it
    behind form fields is how the file and the form start disagreeing. */
 .posts-ed {
@@ -1584,12 +1584,12 @@ html:has(.cms) {
 /* ── drag & drop ──────────────────────────────────────────────────────────────
    Layout modules and gallery images are draggable (see composables/sortable.ts).
    Three states, and SortableJS names all three:
-     .sort-ghost  — the gap showing where it will land
-     .sort-chosen — the row you have hold of
-     .sort-drag   — the copy that follows the pointer
+     .sort-ghost:  the gap showing where it will land
+     .sort-chosen: the row you have hold of
+     .sort-drag:   the copy that follows the pointer
 
    Every colour here is --line/--card/--ink. Not purple: Rule 1 reserves it for
-   live or just-happened data, and "where this will land" is neither — it's a
+   live or just-happened data, and "where this will land" is neither: it's a
    control responding to your own hand. A drop indicator glowing like a live
    Discord status would make the one signal on the site that means something mean
    nothing. --danger is likewise a state, not an accent, so it stays out too. */
@@ -1622,7 +1622,7 @@ html:has(.cms) {
   opacity: 0.4;
 }
 /* Where it lands. A dashed outline over an empty box reads as "a space", which
-   is what it is — a filled highlight reads as a selected row, which it isn't. */
+   is what it is, while a filled highlight reads as a selected row, which it isn't. */
 .cms .sort-ghost {
   opacity: 1;
   background: var(--bg-base);
@@ -1687,10 +1687,10 @@ body.is-dragging .cms .glist .gthumb {
 
    That's the whole point of the teleport: the canvas renders the site's real
    sections, and inside `<div class="cms">` the admin's `.cms .card` (0,2,0) would
-   out-specify the site's `.card` (0,1,0) — every card would wear admin styling and
+   out-specify the site's `.card` (0,1,0), so every card would wear admin styling and
    the preview would lie. Outside it, `app.css` styles the page exactly as it
-   styles the site, and only these `lgedit-*` rules — which `app.css` never
-   defines — sit on top. That isolation is what an iframe was buying, at the price
+   styles the site, and only these `lgedit-*` rules (which `app.css` never
+   defines) sit on top. That isolation is what an iframe was buying, at the price
    of a message protocol.
 
    Everything here is prefixed, for the same reason: this file may not squat on a
@@ -1773,7 +1773,7 @@ body.is-dragging .cms .glist .gthumb {
   min-height: 0;
   display: grid;
   /* minmax(0, 1fr): `1fr` is `minmax(auto, 1fr)`, and `auto` floors a track at its
-     content — which is how a canvas once widened its own column past the pane and
+     content, which is how a canvas once widened its own column past the pane and
      made "Desktop" narrower than "Tablet". */
   grid-template-columns: minmax(0, 1fr) 340px;
   overflow: hidden;
@@ -2021,7 +2021,7 @@ body.is-dragging .cms .glist .gthumb {
   max-width: 62ch;
 }
 
-/* The rail's groups. `.modlist` and `.grip` already carry the CMS's list styling —
+/* The rail's groups. `.modlist` and `.grip` already carry the CMS's list styling,
    these are the box around each area, which the old side-by-side editor had as
    `.cms .rail .railbox` and which moved here with the rail. */
 .cms .railbox {
@@ -2042,7 +2042,7 @@ body.is-dragging .cms .glist .gthumb {
   font-weight: 400;
   opacity: 0.6;
 }
-/* The per-module move/hide dropdown — the tap-friendly path for relocating or
+/* The per-module move/hide dropdown, the tap-friendly path for relocating or
    hiding a module, alongside the drag handle. */
 .cms .railmove {
   flex: none;
@@ -2057,7 +2057,7 @@ body.is-dragging .cms .glist .gthumb {
 .cms .railmove:hover {
   color: var(--ink);
 }
-/* The page currently open on the canvas — marked so showing every page doesn't
+/* The page currently open on the canvas, marked so showing every page doesn't
    lose track of which one is being edited. */
 .cms .railbox-cur {
   border-color: var(--line-2);
@@ -2094,7 +2094,7 @@ body.is-dragging .cms .glist .gthumb {
   border-bottom: 1px solid var(--line);
   margin-bottom: var(--sp-4);
 }
-/* The panel is the CMS's own component, unchanged — it just isn't in a page-sized
+/* The panel is the CMS's own component, unchanged, it just isn't in a page-sized
    column any more, so its own padding would double up with the rail's. */
 .cms .railpanel {
   padding: 0;

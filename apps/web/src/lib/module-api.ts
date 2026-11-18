@@ -1,7 +1,7 @@
 /**
  * Module service: fetch one freshly-resolved module by id from `/api/module/:id`.
  *
- * The live-refresh counterpart to the day-drill fetchers — it returns the same
+ * The live-refresh counterpart to the day-drill fetchers, it returns the same
  * `{ id, kind, data }` the SSR page rendered, so a widget can replace its slice
  * with current data. Returns `null` on any failure so the caller keeps its last
  * good render rather than blanking.
@@ -18,8 +18,8 @@ export async function fetchModule(
   try {
     const params = new URLSearchParams({ locale });
     if (tz) params.set("tz", tz);
-    // Omitted means "the module's configured default", which is what SSR rendered
-    // — so a poll that hasn't been given a range can't silently reset the card.
+    // Omitted means "the module's configured default", which is what SSR rendered,
+    // so a poll that hasn't been given a range can't silently reset the card.
     if (days) params.set("days", String(days));
     const res = await fetch(apiUrl(`/api/module/${encodeURIComponent(id)}?${params.toString()}`), {
       headers: { Accept: "application/json" },

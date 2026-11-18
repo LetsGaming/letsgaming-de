@@ -5,14 +5,14 @@ import { fetchPresence } from "../lib/presence-api";
 /**
  * Polls the server-filtered Discord presence while the widget is enabled.
  *
- * Pulls the fetch + poll loop out of the component (a component doesn't fetch —
+ * Pulls the fetch + poll loop out of the component (a component doesn't fetch,
  * see the frontend standards). The widget just renders `view`. Whether Discord is
  * configured or online is the server's concern: this polls regardless and the
  * server answers with a filtered snapshot or an offline view. `enabled` is the
  * CMS display toggle; polling starts/stops with it.
  *
  * `unreachable` is the honest "we couldn't reach the relay and have never had a
- * snapshot" state — distinct from a successful *offline* response, which is a real
+ * snapshot" state, distinct from a successful *offline* response, which is a real
  * fact about the account and renders as such. A hiccup keeps the last snapshot.
  */
 const POLL_MS = 25_000;
@@ -29,7 +29,7 @@ export function usePresence(enabled: MaybeRefOrGetter<boolean>) {
       view.value = next;
       unreachable.value = false;
     } else {
-      // Keep the last snapshot on a hiccup — old-and-labelled beats blank. Only
+      // Keep the last snapshot on a hiccup, old-and-labelled beats blank. Only
       // claim "unreachable" when there's never been a snapshot to fall back to.
       unreachable.value = view.value === null;
     }

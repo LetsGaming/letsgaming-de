@@ -11,7 +11,7 @@ function escapeRegExp(s: string): string {
  * A server route rather than a browser fetch, for the same reason the Astro page
  * did this in its frontmatter: `API_URL` is the internal address of the API
  * container, which the browser can't resolve and shouldn't know. `preview` is
- * forwarded untouched — the API decides whether a draft is visible; duplicating
+ * forwarded untouched: the API decides whether a draft is visible; duplicating
  * that check here would create a second, laxer gate on the same secret.
  */
 export default defineEventHandler(async (event) => {
@@ -33,13 +33,13 @@ export default defineEventHandler(async (event) => {
   }
 
   // `parsePost` both strips the frontmatter fence (so `marked` can't render it as
-  // a table) and hands back the fields the page needs for its metadata — the real
+  // a table) and hands back the fields the page needs for its metadata, the real
   // publication date above all. That date used to stay locked in the markdown, so
   // the page had nothing truthful to put in `datePublished`.
   const { frontmatter, body } = parsePost(doc.markdown, slug);
   // The page renders `doc.title` as the article's one <h1> (see md/[...slug].vue),
   // so a leading `# Title` in the body that just repeats it would render a second
-  // one. Strip only that exact duplicate — an author's own first heading (a
+  // one. Strip only that exact duplicate: an author's own first heading (a
   // different H1, or an H1 partway through) is content and stays.
   const titleHeading = new RegExp(`^\\s*#\\s+${escapeRegExp(doc.title.trim())}\\s*\\n?`);
   const articleBody = body.replace(titleHeading, "");
@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     draft: doc.draft === true,
     html: await marked.parse(articleBody, { async: true }),
     // ISO publication date. `parsePost` falls back to the epoch when a post has no
-    // `date:` — passed through as undefined rather than as 1970, since a wrong
+    // `date:`. It is passed through as undefined rather than as 1970, since a wrong
     // date in structured data is worse than an absent one.
     at: frontmatter.date === new Date(0).toISOString() ? undefined : frontmatter.date,
     excerpt: frontmatter.excerpt ?? firstParagraph(body),

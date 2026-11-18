@@ -13,7 +13,7 @@ import { OG_IMAGE_PATH } from "~/lib/site-meta";
  * page adds SEO in one call and nothing hand-writes a `<meta>`.
  *
  * The origin comes from `runtimeConfig.public.siteUrl`, the same canonical origin
- * `SmartLink` uses — so canonical URLs, `hreflang` hrefs and `og:url` all agree
+ * `SmartLink` uses, so canonical URLs, `hreflang` hrefs and `og:url` all agree
  * with how the site decides internal-vs-external, and there's one place to change
  * the domain.
  */
@@ -23,7 +23,7 @@ export function useSeo(opts: {
    *
    * Dashboard areas do; the blog, the docs and the privacy page are standalone
    * documents that never load it. Present, it supplies the Person/WebSite graphs
-   * and the Twitter handle — absent, the page still gets canonical, Open Graph
+   * and the Twitter handle, absent, the page still gets canonical, Open Graph
    * and its own JSON-LD, just without the site-identity graphs.
    */
   site?: SiteView;
@@ -32,7 +32,7 @@ export function useSeo(opts: {
   title: string;
   description: string;
   ogType?: "website" | "article" | "profile";
-  /** See `localized` in core's `SeoInput` — areas only. */
+  /** See `localized` in core's `SeoInput`, areas only. */
   localized?: boolean;
   /** Page-specific graphs, e.g. a `BlogPosting` for a post. */
   jsonLd?: Record<string, unknown>[];
@@ -48,7 +48,7 @@ export function useSeo(opts: {
     title: opts.title,
     description: opts.description,
     ogType: opts.ogType,
-    // A dedicated share card served from the build's own assets — self-hosted and
+    // A dedicated share card served from the build's own assets, self-hosted and
     // versioned with the site, same rule as the fonts.
     image: OG_IMAGE_PATH,
     localized: opts.localized,
@@ -56,7 +56,7 @@ export function useSeo(opts: {
   });
 
   // Person + WebSite describe the site as a whole, so they belong on the pages
-  // that *are* the site. A blog post carries its own BlogPosting graph instead —
+  // that *are* the site. A blog post carries its own BlogPosting graph instead,
   // repeating the site graphs on every document would just be noise.
   const graphs: Record<string, unknown>[] = [];
   if (opts.site && identity) {
@@ -83,7 +83,7 @@ export function useSeo(opts: {
   );
 
   useHead(() => ({
-    // The page's own title and description, which is the whole point — Open Graph
+    // The page's own title and description, which is the whole point, Open Graph
     // is what a chat client unfurls, but `<title>` and `<meta name="description">`
     // are what a search result is built from. `nuxt.config` sets a site-wide
     // default for both; without overriding them here, every page inherits the

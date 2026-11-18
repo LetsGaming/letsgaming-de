@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The first area is the site root. `/home` doesn't also exist — one canonical URL.
+// The first area is the site root. `/home` doesn't also exist, one canonical URL.
 import type { Locale, SiteView } from "@lg/core";
 import AreaPage from "~/components/shell/AreaPage.vue";
 import { useRequestLang } from "~/composables/useSiteRequest";

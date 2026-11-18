@@ -8,7 +8,7 @@ import type { View } from "./useCmsNav";
  * editing.
  *
  * Lifted out of `useCms` alongside the nav. It owns which area the preview points
- * at, the cache-busting key, and whether the side-by-side dock is open — a small,
+ * at, the cache-busting key, and whether the side-by-side dock is open, a small,
  * self-contained concern that was interleaved with auth and content state.
  *
  * Content panels map to the site area that renders them, so the preview shows
@@ -33,7 +33,7 @@ const AREA_FOR_VIEW: Partial<Record<View, AreaId>> = {
  *
  * Areas are routes (ADR 0003), so this is `/life`, not `/#life`. Both of these
  * once built a hash after the tab store and its `location.hash` reader were
- * deleted — a URL nothing reads, so every preview and every "view site" opened
+ * deleted, a URL nothing reads, so every preview and every "view site" opened
  * Home regardless of the panel. Nothing failed: a hash to nowhere is a valid URL.
  *
  * `areaPath` rather than `areaHref(site.nav, id)`: the CMS doesn't hold the

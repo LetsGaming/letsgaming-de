@@ -4,7 +4,7 @@ import { isLocale, type Locale } from "@lg/core";
  * Client-safe text helpers.
  *
  * These were in `site.ts`, but that file now imports the database layer to build
- * the SiteView directly (no HTTP hop) — and three client components import
+ * the SiteView directly (no HTTP hop), and three client components import
  * `mdBold`. Anything a `.vue` imports gets bundled into the browser, so pulling
  * `mdBold` in from `site.ts` would drag `@lg/db` and node:sqlite into the client
  * bundle. Keeping the pure helpers here keeps that boundary clean: this file has
@@ -14,7 +14,7 @@ import { isLocale, type Locale } from "@lg/core";
 /**
  * Decide which locale to render, SSR-side. Precedence: an explicit `?lang`
  * choice, then the browser's `Accept-Language` (first tag whose base is a known
- * locale — browsers send these in descending preference), then English. Pure so
+ * locale, browsers send these in descending preference), then English. Pure so
  * it's unit-testable; the page passes the request's param + header.
  */
 export function pickLocale(param?: string | null, acceptLanguage?: string | null): Locale {

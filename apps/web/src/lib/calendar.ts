@@ -3,13 +3,13 @@
  *
  * The store returns one row per day that *has* activity, so a strip built straight
  * from it collapses empty days and looks lopsided (three cells with big gaps in
- * meaning). GitHub doesn't do that — it shows every day in the window, empty ones
+ * meaning). GitHub doesn't do that, it shows every day in the window, empty ones
  * included. This fills the gap: given the days that have data, it returns every day
  * from `fromIso` to `toIso` inclusive, oldest first, zero-filling the rest.
  *
  * Days are `YYYY-MM-DD` in UTC (the same slice the store and the API use). The
  * 1000-day guard is a floor under a pathological range (a very old first day, a
- * bad input) — the strips never want more than a few months anyway.
+ * bad input), the strips never want more than a few months anyway.
  */
 export interface DayMinutes {
   day: string;
@@ -47,7 +47,7 @@ export function daysBefore(toIso: string, n: number): string {
  * Format an ISO day as a short human label, e.g. `Mon 3 Mar` / `Mo., 3. März`.
  * The heat strips, their axes, and the day-drill headings all render days this way.
  *
- * The locale is a parameter because it was `"en-GB"`, hardcoded — so the German
+ * The locale is a parameter because it was `"en-GB"`, hardcoded, so the German
  * site rendered German everywhere except its dates, which is the one place a
  * mismatch is unmistakable. Callers pass the locale the page was rendered in
  * (`useT().locale`), for the same reason it travels with the SiteView rather than

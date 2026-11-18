@@ -3,13 +3,13 @@ import type { Locale, NavView, Theme } from "@lg/core";
 import { initTracking, trackClick, trackSwitch } from "~/lib/track";
 
 /**
- * Client-side site preferences — currently just the theme.
+ * Client-side site preferences, currently just the theme.
  *
  * Built on Nuxt's `useState` rather than a store library. The reason the nanostore
  * had to go was SSR isolation: a module-level singleton is shared by every request
  * the Node process serves, so one visitor's theme could bleed into another's
- * render. `useState` gives exactly that isolation natively — the value is
- * per-request on the server and shared across the app on the client — for one ref
+ * render. `useState` gives exactly that isolation natively, the value is
+ * per-request on the server and shared across the app on the client, for one ref
  * of state, which is all this site has.
  *
  * It also sidesteps a real bug: `@pinia/nuxt` installs a payload plugin that runs
@@ -38,7 +38,7 @@ export function useSiteState() {
   const trackingStarted = useTrackingStarted();
 
   /**
-   * Seed shared state from the SSR'd nav. Idempotent — whichever component's
+   * Seed shared state from the SSR'd nav. Idempotent, whichever component's
    * onMounted runs first wins. Reads the theme back from the <html data-theme> the
    * no-flash script already applied rather than re-deciding, so the two can't
    * disagree mid-hydration. Starts tracking exactly once.
@@ -65,7 +65,7 @@ export function useSiteState() {
     try {
       localStorage.setItem(STORAGE_KEY.theme, next);
     } catch {
-      /* private mode — ignore */
+      /* private mode, ignore */
     }
   }
 
@@ -78,7 +78,7 @@ export function useSiteState() {
     try {
       localStorage.setItem(STORAGE_KEY.lang, next);
     } catch {
-      /* private mode — the URL param still applies the choice for this visit */
+      /* private mode, the URL param still applies the choice for this visit */
     }
     if (!import.meta.client) return;
     const url = new URL(window.location.href);

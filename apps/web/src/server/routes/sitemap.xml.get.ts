@@ -5,7 +5,7 @@ import { areaHref, LOCALES, DEFAULT_LOCALE, type Locale } from "@lg/core";
  * `sitemap.xml`, built from the same resolved store the pages render from.
  *
  * The area routes are named by the CMS and unknowable to a static generator, so
- * the sitemap can't be a committed file — it's derived from `site.nav`, exactly
+ * the sitemap can't be a committed file, it's derived from `site.nav`, exactly
  * the list the dashboard renders. That gives two guarantees for free:
  *
  * - **Drafts never appear.** The resolver strips unpublished areas from `nav`
@@ -14,16 +14,16 @@ import { areaHref, LOCALES, DEFAULT_LOCALE, type Locale } from "@lg/core";
  * - **`/admin` never appears.** It isn't a content area and isn't in `nav`; the
  *   admin surface is deliberately undiscoverable, so it's absent here by
  *   construction rather than by an exclusion rule someone has to remember. The
- *   `md`/`docs`/`datenschutz` routes are likewise omitted — only content areas
+ *   `md`/`docs`/`datenschutz` routes are likewise omitted, only content areas
  *   are listed.
  *
- * Areas carry `xhtml:link` alternates for both locales — the sitemap half of the
+ * Areas carry `xhtml:link` alternates for both locales, the sitemap half of the
  * `hreflang` story, matching what those pages emit in `<head>`. Blog posts don't:
  * a post is written in one language and `?lang` doesn't translate it, so the two
  * signals stay consistent about which pages are really bilingual.
  *
- * Posts are listed too, and they're the only entries with a meaningful `lastmod`
- * — a real publication date, rather than the sync timestamp the areas share.
+ * Posts are listed too, and they're the only entries with a meaningful `lastmod`:
+ * a real publication date, rather than the sync timestamp the areas share.
  */
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   const site = await loadSite(DEFAULT_LOCALE);
   const paths = site.nav.map((area) => areaHref(site.nav, area.id));
 
-  // Posts come from whichever module resolved them — the same list the blog index
+  // Posts come from whichever module resolved them, the same list the blog index
   // renders, so drafts are already absent (the resolver drops them) and a post
   // can't reach the sitemap before it's published.
   const posts = Object.values(site.modules).flatMap((module) =>

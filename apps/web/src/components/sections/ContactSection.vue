@@ -3,7 +3,7 @@
  * The contact module: the owner's links, plus one way to reach him.
  *
  * "One way" is the change. This used to render the form unconditionally and
- * discover on submit whether the relay existed — so a deployment without SMTP
+ * discover on submit whether the relay existed, so a deployment without SMTP
  * showed a form that looked like it worked, accepted a typed message, and only
  * then answered "not configured". The capability is knowable before the page
  * renders, so the server resolves it into `channel` and this switches on it: a
@@ -28,7 +28,7 @@ const props = defineProps<{
 
 const { t } = useT();
 
-// The social links, minus in-page anchors — a "#contact" link inside the contact
+// The social links, minus in-page anchors, a "#contact" link inside the contact
 // section points at itself.
 const links = computed(() => props.module.data.links.filter((l) => !l.href.startsWith("#")));
 
@@ -77,7 +77,7 @@ const mailtoHref = computed(() =>
 </template>
 
 <style scoped>
-/* The reply affordance — form or button — sits below the links either way, so the
+/* The reply affordance, form or button, sits below the links either way, so the
    spacing belongs here rather than inline on the form as it was. */
 .reply {
   margin-top: var(--sp-20);

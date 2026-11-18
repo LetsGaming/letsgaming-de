@@ -90,7 +90,7 @@ const model = defineModel<T>({ required: true });
    token names: it reached for `--bg-base`, `--r-s`, `--r-xs` and `--card-2`, which
    are CMS-only aliases scoped to `.cms` in tokens.css. Outside the CMS they
    resolve to nothing, so the control rendered with no surface, border-radius or
-   fill — and the token linter passed the whole time, because the names do exist,
+   fill, and the token linter passed the whole time, because the names do exist,
    just not in that scope. */
 .seg--sm {
   gap: var(--sp-2);

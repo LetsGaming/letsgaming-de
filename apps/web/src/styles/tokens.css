@@ -2,7 +2,7 @@
 
    Dark is the base (:root); light overrides live under [data-theme="light"].
    The CMS root carries .cms, which remaps radius and type size and
-   nothing else — one vocabulary, two ranges (site comfortable, CMS compact).
+   nothing else: one vocabulary, two ranges (site comfortable, CMS compact).
 
    Three rules are enforceable from this file:
      - purple means now. --live has one semantic job. If you reach for it to mark
@@ -93,8 +93,8 @@
   --sh-anchor: none;
 
   /* ── Contribution heat. Neutral: the heatmap is the accumulated tier and is
-     meant to be quiet. Only today is purple, which also makes "did he commit
-     today" readable at a glance — an all-violet grid can't do that. */
+     meant to be quiet. Only today is purple, which also makes "did a commit
+     land today" readable at a glance, which an all-violet grid can't do. */
   --heat-0: #261c33;
   --heat-1: #402d58;
   --heat-2: #5b407c;
@@ -113,7 +113,7 @@
   --discord-dnd: #f23f43;
 
   /* ── Categorical palette for the CMS analytics chart. Admin surface, real
-     categorical data, no better source to import from — the one place a
+     categorical data, no better source to import from: the one place a
      palette is still allowed to invent. Theme-independent. */
   --stack-1: #8a2be2;
   --stack-2: #6d48e5;
@@ -153,7 +153,7 @@
   /* The CMS keeps its own --fs-micro (11px) in the .cms block below. */
 
   /* ── Motion. Communicates state change, directs attention, or expresses
-     character — or it doesn't ship. --dur-fast is hover (this is interactive),
+     character, or it doesn't ship. --dur-fast is hover (this is interactive),
      --dur-press is the touch, --dur-pulse is the only thing that loops.
      prefers-reduced-motion turns all of it off; that's a floor, not an option. */
   --dur-fast: 120ms;
@@ -217,8 +217,8 @@
      skipped these two, which is the usual shape of a retrofitted light theme:
      the states nobody screenshots get left behind.
 
-     Same convention as dark — --danger is the fill/border, --danger-ink is the
-     text — and both are now checked against --surf-0 through --surf-3. */
+     Same convention as dark: --danger is the fill/border, --danger-ink is the
+     text, and both are now checked against --surf-0 through --surf-3. */
   --danger: #af2b25; /* 6.10:1 on --surf-0 */
   --danger-ink: #9c1f18; /* 7.09:1 on --surf-0: error text, so it gets the margin */
   --delta-up: #036f4f;
@@ -253,7 +253,7 @@
   color-scheme: light;
 }
 
-/* The CMS root. Fourteen panels, an asset library and a chart on a desktop, 
+/* The CMS root. Fourteen panels, an asset library and a chart on a desktop,
    dense on purpose. Everything else (colour, elevation, motion, the accent rule)
    is shared, so the two surfaces can't drift apart. */
 .cms {

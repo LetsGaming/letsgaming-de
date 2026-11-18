@@ -6,7 +6,7 @@ import { allowedFor, hasFiles, runUploads, type UploadItem } from "../../lib/upl
 import UploadProgress from "./UploadProgress.vue";
 
 /**
- * `Asset` and `AssetFolder` are core's — they were re-declared here field for
+ * `Asset` and `AssetFolder` are core's, they were re-declared here field for
  * field, which is a copy that doesn't fail when the original changes, it just
  * quietly stops describing it.
  */
@@ -19,7 +19,7 @@ interface Detail extends Asset {
 // `only` locks the type filter (e.g. "svg" for an icon picker, "image" for a photo).
 // `only` locks the picker to one kind; "" (or absent) is the whole library. Typed
 // as AssetKind rather than string so the ACCEPT map below can't be indexed by a
-// kind that doesn't exist — the accept hint failing is invisible until you're on
+// kind that doesn't exist, the accept hint failing is invisible until you're on
 // a phone wondering why it only offers the camera.
 const props = defineProps<{ pick?: boolean; only?: AssetKind | "" }>();
 const emit = defineEmits<{ (e: "select", asset: Asset): void }>();

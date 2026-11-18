@@ -4,12 +4,12 @@
  * SortableJS does the pointer work (grab, autoscroll, touch, the drop indicator);
  * this is the seam between it and Vue. A directive rather than a wrapper
  * component, because the lists that need it already exist and are already
- * rendered by `v-for` — a component would mean restructuring the markup around
+ * rendered by `v-for`, a component would mean restructuring the markup around
  * the library, and the markup is the part that's right.
  *
  * `sortablejs` (MIT, no dependencies of its own) rather than a hand-rolled
  * pointer implementation: the overlay's light-dependency rule is about not buying
- * a framework to solve a problem you don't have, and this is the other case —
+ * a framework to solve a problem you don't have, and this is the other case,
  * drag is a genuinely hard problem (touch, autoscroll, nested scroll containers,
  * a11y-safe hit testing) with a small, stable, well-worn answer. It also loads
  * only on /admin, so the public site pays nothing for it.
@@ -34,7 +34,7 @@ export interface SortableBinding {
   id: string;
   /** Called with the move. Update state here; the DOM is already back as it was. */
   onMove: (move: SortableMove) => void;
-  /** Selector for the drag handle. Omit and the whole row is draggable — wrong
+  /** Selector for the drag handle. Omit and the whole row is draggable, wrong
    *  wherever a row contains an input, since selecting text would start a drag. */
   handle?: string;
   /** Selector for the draggable children, so non-items (an empty-state line) can't
@@ -61,7 +61,7 @@ const instances = new WeakMap<HTMLElement, Attached>();
  * siblings if none is given).
  *
  * We compute this ourselves because SortableJS's own `oldIndex`/`newIndex` call
- * its internal `index()` *without* the `draggable` selector — so they count every
+ * its internal `index()` *without* the `draggable` selector, so they count every
  * element sibling, including a list header (`.railhead`) or an empty-state row.
  * Wherever a sortable list isn't purely draggable rows, that's an off-by-one:
  * dragging the first module reports index 1, and the caller splices out the
@@ -111,7 +111,7 @@ export const vSortable: Directive<HTMLElement, SortableBinding> = {
         document.body.classList.remove("is-dragging");
         const { from, to, item } = evt;
 
-        // Compute the drop index while the item is still where Sortable put it —
+        // Compute the drop index while the item is still where Sortable put it,
         // among draggable rows, so a list header can't offset it.
         const draggable = instances.get(el)?.binding.draggable;
         const newIndex = indexAmong(item, draggable);

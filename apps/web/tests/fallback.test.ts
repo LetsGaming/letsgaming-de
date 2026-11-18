@@ -9,8 +9,8 @@ import fallback from "../src/data/fallback-site.json";
  * `loadSite()` returns it through a double cast, because importing JSON widens
  * every `kind: "hero"` to `kind: string` and a discriminated union won't take
  * that. The workaround is fine; the consequence isn't. Nothing checked this file
- * against the shape it claims, so it rotted quietly — by the time anyone looked it
- * still named an area that had been renamed several releases earlier — and you'd
+ * against the shape it claims, so it rotted quietly, by the time anyone looked it
+ * still named an area that had been renamed several releases earlier, and you'd
  * find out during an outage, which is the one moment it exists for.
  *
  * It's generated from the seed now (`pnpm --filter=@lg/web gen:fallback`) rather

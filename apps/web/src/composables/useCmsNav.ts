@@ -5,7 +5,7 @@ import { onMounted, onUnmounted, ref } from "vue";
  *
  * Lifted out of `useCms`, which had grown to own auth, content, saves, preview,
  * analytics *and* routing in one 682-line function. Routing is the most separable
- * of those: it needs no API client, no content model and no session — just the
+ * of those: it needs no API client, no content model and no session, just the
  * list of panels and the address bar. Split out, it's also the only part of the
  * CMS that can be tested without mounting anything.
  *
@@ -20,7 +20,7 @@ import { onMounted, onUnmounted, ref } from "vue";
  *
  * The hash, not localStorage. It survives a reload the same, and it also makes
  * `/admin#analytics` a link you can bookmark, back/forward step through the panels
- * you visited, and two open tabs stop fighting over one stored key — a storage key
+ * you visited, and two open tabs stop fighting over one stored key, a storage key
  * would mean the tab you *last clicked in* decides where the other one reopens.
  *
  * This isn't a walk-back of ADR 0003. That's routes-over-hash for the *site*,
@@ -34,7 +34,7 @@ import { onMounted, onUnmounted, ref } from "vue";
  *
  * A list rather than a bare union, because the URL now names one: a hash is a
  * string a stranger can type, so turning it back into a `View` needs a runtime
- * check, and `Object.keys(VIEW_TITLES) as View[]` would be a cast — a check that
+ * check, and `Object.keys(VIEW_TITLES) as View[]` would be a cast, a check that
  * cannot fail. The type derives from this, so the two can't disagree.
  */
 const VIEWS = [
@@ -135,7 +135,7 @@ const isView = (value: unknown): value is View =>
  * The hash, split into the panel it names and whatever comes after a `?`.
  *
  * The panel-only vocabulary above (`isView`) still governs the first part;
- * the query string is opaque here — only the analytics panel currently reads
+ * the query string is opaque here, only the analytics panel currently reads
  * one, but routing doesn't need to know that to carry it. Unknown hashes (a
  * stale bookmark, a renamed panel) fall back to the default view rather than
  * rendering nothing.
@@ -153,7 +153,7 @@ export function useCmsNav(opts: {
   /**
    * Run when a panel opens, including the restore on mount.
    *
-   * Opening a panel has consequences elsewhere — the guestbook and analytics
+   * Opening a panel has consequences elsewhere, the guestbook and analytics
    * panels lazy-load on first view, and the preview follows the area you're
    * editing. Those are the caller's business, not routing's: this module would
    * otherwise have to import the API client and the preview state to decide which
@@ -165,8 +165,8 @@ export function useCmsNav(opts: {
   /**
    * The current hash's query string, e.g. the analytics panel's active
    * filters. Read synchronously here (not deferred to `onMounted`) so a
-   * composable built later in the same `setup()` — `useAnalytics`, which
-   * decodes its initial filter state from this — sees the real URL rather
+   * composable built later in the same `setup()`, `useAnalytics`, which
+   * decodes its initial filter state from this, sees the real URL rather
    * than an empty default: `onMounted` callbacks only run after every
    * composable in the tree has finished its own setup-time code, but the
    * first analytics load fires from *this* composable's `onMounted` (via
@@ -179,7 +179,7 @@ export function useCmsNav(opts: {
    * Open a panel.
    *
    * `push` distinguishes a click (a new history entry, so Back returns you) from
-   * restoring what the URL already says (no entry — pushing there would trap Back
+   * restoring what the URL already says (no entry, pushing there would trap Back
    * on the admin page). An explicit switch also drops any query string: filters
    * belong to the panel that owns them, not to whatever's clicked next.
    */
@@ -212,7 +212,7 @@ export function useCmsNav(opts: {
 
   /** Back/forward, and someone editing the address bar. Covers both routes a
    *  history entry can have been created through: a real hash assignment
-   *  (`hashchange`) and `pushState` (`popstate`) — a reader doesn't know or
+   *  (`hashchange`) and `pushState` (`popstate`), a reader doesn't know or
    *  care which produced the entry they're stepping back into. */
   function onNavigate() {
     const { view, params: p } = parseHash();

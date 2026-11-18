@@ -9,7 +9,7 @@ const { t } = useT();
 
 const name = ref("");
 const message = ref("");
-const website = ref(""); // honeypot — real users leave this empty
+const website = ref(""); // honeypot, real users leave this empty
 
 const { state, error, submit } = useSubmit({
   path: "/api/guestbook",

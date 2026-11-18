@@ -2,7 +2,7 @@
 /**
  * A stack of language bars: name · a proportional bar coloured by the language ·
  * percentage. Shared by the coding module (Wakapi time by language) and the
- * activity module (GitHub linguist) — both rendered exactly this, off the same
+ * activity module (GitHub linguist), both rendered exactly this, off the same
  * `langColor`. Purely presentational; the caller passes the ranked languages.
  *
  * Name and colour both go through the lookup rather than the source's own string,
@@ -44,7 +44,7 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
 .bar {
   flex: 1;
   height: 8px;
-  /* --r-pill clamps to half the 8px height (4px) either way — same rendered
+  /* --r-pill clamps to half the 8px height (4px) either way, same rendered
    * shape as the hardcoded 5px this replaced, since border-radius can't exceed
    * half a box's own dimension. Using the token instead of a magic number that
    * was already being silently clamped by the browser. */

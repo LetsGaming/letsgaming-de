@@ -18,13 +18,13 @@ import { KIND_LABELS } from "./editorHelpers";
 import { type Autosave, bindAutosave } from "./useAutosave";
 
 /**
- * Layout + gallery + canvas — one composable, because they're one tangle.
+ * Layout + gallery + canvas, one composable, because they're one tangle.
  *
  * These three read and write the same placement state: which modules exist
  * (`modules`), how they're ordered per area (`layoutAreas`), which are unplaced
  * (`hiddenModules`), and the gallery image rows (`gallery`). The visual editor
- * (canvas) rearranges the same lists the ↑/↓ buttons and the area dropdown do —
- * all through one `moveModuleTo` primitive — and the gallery editor is a second
+ * (canvas) rearranges the same lists the ↑/↓ buttons and the area dropdown do,
+ * all through one `moveModuleTo` primitive, and the gallery editor is a second
  * view onto the same `gallery` rows. Splitting them into three composables would
  * mean three owners of one set of refs; keeping the state here, with every
  * operation that touches it, is what makes the ownership clean.
@@ -64,7 +64,7 @@ function strip<T>(obj: T): T {
 export interface LayoutEditorDeps {
   locale: Ref<string>;
   authed: { value: boolean };
-  /** The open panel — the canvas re-resolves when it becomes "editor". */
+  /** The open panel, the canvas re-resolves when it becomes "editor". */
   tab: Ref<string>;
   /** Which area the preview points at; a change re-resolves the canvas. */
   previewArea: Ref<string>;
@@ -90,7 +90,7 @@ export interface LayoutEditorDeps {
  *  real answer for synced modules nothing in the CMS edits. */
 export const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
   hero: "home",
-  /* Built from the nav tree, so its content is edited by editing the nav — there's
+  /* Built from the nav tree, so its content is edited by editing the nav, there's
      no panel of its own to open. Renaming an area or writing its description is
      what changes this module. */
   areas: null,
@@ -246,7 +246,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   /**
    * The one layout operation: take the module at `fromIdx` in `fromList` and put
    * it at `toIdx` in `toList`. Works within a bucket or across two, incl. Hidden.
-   * Everything that rearranges the layout goes through here — a drag is "position
+   * Everything that rearranges the layout goes through here, a drag is "position
    * X to position Y", and a single primitive is the only thing that can express it
    * the same way for the buttons, the dropdown, and dragging.
    */
@@ -265,7 +265,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
     if (tab.value === "editor") void refreshCanvas();
   }
 
-  /** ↑/↓ — the keyboard path, so the admin clears the a11y floor. */
+  /** ↑/↓, the keyboard path, so the admin clears the a11y floor. */
   function moveModule(areaIdx: number, i: number, dir: -1 | 1) {
     const area = layoutAreas.value[areaIdx];
     if (!area) return;
@@ -449,7 +449,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
       // Written into the locale being edited as well as English, which the type
       // requires. A gallery created while editing German used to be German-named
       // in an `en`-only field, so the German site rendered it via the English
-      // fallback and the German column stayed empty — a translation gap created by
+      // fallback and the German column stayed empty, a translation gap created by
       // the act of typing German. Both locales start from the typed name; the
       // editor rail's heading field is where they diverge.
       const label = { en: name, ...(locale.value === "de" ? { de: name } : {}) };
@@ -475,7 +475,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
 
   /**
    * What the canvas renders: the site resolved with the *pending* order.
-   * `shallowRef`, not `ref` — a reactive Proxy can't be structured-cloned, so a
+   * `shallowRef`, not `ref`, a reactive Proxy can't be structured-cloned, so a
    * `ref` here threw `DataCloneError` when posted to the iframe. This is an opaque
    * blob resolved by the server and handed straight on; nothing reads into it.
    */
@@ -483,7 +483,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   const canvasSelected = ref<string | undefined>();
   const canvasLoading = ref(false);
 
-  /** Re-resolve the pending layout for the canvas — server-side, because it
+  /** Re-resolve the pending layout for the canvas, server-side, because it
    *  renders real sections that need a real SiteView. `/api/cms/preview` writes
    *  nothing. */
   let refreshing: Promise<void> | null = null;
@@ -529,7 +529,7 @@ export function useLayoutEditor(deps: LayoutEditorDeps) {
   }
 
   /** A module clicked on the canvas: record the selection so the editor renders
-   *  that module's panel in its rail, beside the page — no navigation. */
+   *  that module's panel in its rail, beside the page, no navigation. */
   function canvasSelect(moduleId: string) {
     canvasSelected.value = canvasSelected.value === moduleId ? undefined : moduleId;
   }

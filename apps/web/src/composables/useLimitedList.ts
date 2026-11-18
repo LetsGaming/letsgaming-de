@@ -4,15 +4,15 @@ import { computed, ref, toValue, type MaybeRefOrGetter, type Ref } from "vue";
  * A list shown up to a hard cap, with one "show more"/"show less" toggle between an
  * initial count and the cap, and an "and N more" note for whatever the cap hides.
  *
- * One implementation for every capped list on the activity modules — the top
- * songs/artists list, the top-games list, and both per-day drill-ins — so the rule
+ * One implementation for every capped list on the activity modules, the top
+ * songs/artists list, the top-games list, and both per-day drill-ins, so the rule
  * "collapse to `initial`, expand no further than `max`, then say how many the limit
  * hid" lives in exactly one place. Previously each section reimplemented it, and the
  * day panels forgot the cap entirely (they expanded to the whole day), which is the
  * bug this fixes.
  *
  * `rows` is what's on hand to render. `total` is the true count when it can exceed
- * that — the server already trims the main lists to the cap, so their real length
+ * that, the server already trims the main lists to the cap, so their real length
  * comes from a separate count (distinct tracks/artists); the day drill-ins ship the
  * whole day, so `total` defaults to `rows.length`. Either way the cap is applied
  * here, so nothing downstream can leak past it.
@@ -41,7 +41,7 @@ export function useLimitedList<T>(opts: {
 
   // What "show more" reveals: from `initial` up to the cap (or fewer if that's all).
   const moreCount = computed(() => Math.max(0, capped.value.length - initial.value));
-  // What the cap hides for good — shown as "and N more", never expandable.
+  // What the cap hides for good, shown as "and N more", never expandable.
   const overflow = computed(() => Math.max(0, total.value - max.value));
   // At the cap when fully expanded, or when there was never anything to expand.
   const atCap = computed(() => expanded.value || moreCount.value === 0);

@@ -2,7 +2,7 @@
 /**
  * Runtime-rendered Markdown asset (the blog). The slug is the full path under
  * /md, so a post namespaced as `blog/my-post` resolves here without a second
- * route. The markdown comes from the API — these are CMS-managed, not repo files.
+ * route. The markdown comes from the API: these are CMS-managed, not repo files.
  *
  * `preview` is forwarded, not validated here: the API owns that decision, so this
  * page can't become a second, laxer gate on the same secret.
@@ -41,13 +41,13 @@ const { data: siteData } = await useFetch<{ locale: Locale; site: SiteView }>("/
 const origin = (useRuntimeConfig().public.siteUrl as string).replace(/\/$/, "");
 const canonicalPath = computed(() => `/md/${slug.value}`);
 
-// The excerpt is the post's own — its `excerpt:` frontmatter, or its first
-// paragraph — resolved server-side by the same `parsePost`/`firstParagraph` the
+// The excerpt is the post's own: its `excerpt:` frontmatter, or its first
+// paragraph, resolved server-side by the same `parsePost`/`firstParagraph` the
 // posts list uses, so a post's description matches its blurb on the index.
 const description = computed(() => data.value?.excerpt || siteData.value?.site.meta.role || "");
 
 // "Blog" has no `href`: there's no index page listing every post (see
-// PostsSection — an area's `posts` module shows its own recent list, not an
+// PostsSection: an area's `posts` module shows its own recent list, not an
 // archive), so a link there would be dead. It still names the section a
 // visitor is in; wire it to a real route if/when a blog index exists.
 const crumbs = computed<Crumb[]>(() => [
@@ -80,7 +80,7 @@ useSeo({
             url: origin,
           },
         }),
-        // "Blog" is left out here too — `BreadcrumbList` items need a real URL,
+        // "Blog" is left out here too: `BreadcrumbList` items need a real URL,
         // and inventing one would tell Google a page exists that doesn't.
         breadcrumbLd([
           { name: "letsgaming.de", url: origin },

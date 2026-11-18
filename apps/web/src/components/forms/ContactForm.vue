@@ -10,7 +10,7 @@ const { t } = useT();
 const name = ref("");
 const email = ref("");
 const message = ref("");
-const website = ref(""); // honeypot — real users leave this empty
+const website = ref(""); // honeypot, real users leave this empty
 
 const { state, error, submit } = useSubmit({
   path: "/api/contact",
@@ -19,7 +19,7 @@ const { state, error, submit } = useSubmit({
   onSuccess: () => {
     name.value = email.value = message.value = "";
   },
-  // The 503 is close to unreachable now — the section only renders this form when
+  // The 503 is close to unreachable now, the section only renders this form when
   // the server said the relay is configured. Kept because "close to" isn't
   // "never": SSR resolved the capability at render time, and a deployment can lose
   // its relay between that render and a submit minutes later.

@@ -32,7 +32,7 @@ describe("indexAmong", () => {
   it("without a selector, counts every sibling (the SortableJS default)", () => {
     const ol = list();
     const rows = [...ol.querySelectorAll<HTMLElement>(".modrow")];
-    // The header counts here — which is exactly the off-by-one we avoid by passing
+    // The header counts here, which is exactly the off-by-one we avoid by passing
     // the selector.
     expect(indexAmong(rows[0]!)).toBe(1);
     expect(indexAmong(rows[2]!)).toBe(3);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSeo } from "~/composables/useSeo";
-// Static legal text — no data, no interactivity. Prerendered by the route rule in
+// Static legal text, no data, no interactivity. Prerendered by the route rule in
 // nuxt.config, as it was under Astro. The markup is unchanged from the Astro page
 // (the wording is legal text; only the shell around it moved).
 import SmartLink from "~/components/ui/SmartLink.vue";

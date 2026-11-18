@@ -2,11 +2,11 @@
  * The day-drill client: one day's breakdown, fetched when a timeline column is
  * clicked.
  *
- * Music and playtime had a module each — `music-api.ts` and `playtime-api.ts` —
+ * Music and playtime had a module each, `music-api.ts` and `playtime-api.ts`,
  * that were identical apart from the response type and one path segment, right
  * down to the comments. The justification given at the time was that the concerns
  * don't share an endpoint, so they shouldn't share a client; but what's shared
- * here isn't the endpoint, it's the *request shape* — same query params, same
+ * here isn't the endpoint, it's the *request shape*, same query params, same
  * timezone handling, same error contract, same consumer (`useLedgerStrip`). A
  * change to any of those had to be made twice, which is exactly the failure mode
  * duplication causes.

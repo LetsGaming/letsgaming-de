@@ -7,16 +7,16 @@ import { AuthError, cms, loadToken, setToken } from "../lib/cms";
  *
  * The last of the three concerns lifted out of `useCms` (after `useCmsNav` and
  * `useCmsPreview`). It was the hardest to move because `guarded` sits at the
- * junction of all three — it toasts, it invalidates the preview, and an expired
- * token drops the session — which is exactly why it belongs behind a seam rather
+ * junction of all three, it toasts, it invalidates the preview, and an expired
+ * token drops the session, which is exactly why it belongs behind a seam rather
  * than in the middle of a 682-line function.
  *
  * The two things it can't own are callbacks:
  *
- * - `loadContent` — what to fetch once the token checks out. That's the content
+ * - `loadContent`, what to fetch once the token checks out. That's the content
  *   model, which stays in `useCms`; a session module that imported it would pull
  *   the whole editor in behind it.
- * - `onSaved` — a successful write invalidates the live preview. The session
+ * - `onSaved`, a successful write invalidates the live preview. The session
  *   doesn't know a preview exists, and shouldn't.
  *
  * Same shape as `useCmsNav`'s `onOpen`: the module owns the mechanism, the caller
@@ -44,7 +44,7 @@ export function useCmsSession(opts: {
    *
    * A rejected token is the ordinary case, not an error: it's what happens on
    * every first visit and every expiry, and the answer is the sign-in gate. So
-   * the catch flips `authed` and says nothing — a toast here would fire on a
+   * the catch flips `authed` and says nothing, a toast here would fire on a
    * cold load, before the visitor has done anything to be told about.
    */
   async function boot() {
@@ -78,7 +78,7 @@ export function useCmsSession(opts: {
    * Run a write, then toast or handle the failure.
    *
    * `Promise<unknown>`, not `Promise<void>`: now that the API client returns real
-   * shapes instead of `any`, every `cms.put(…)` resolves to `{ ok: true }` — and a
+   * shapes instead of `any`, every `cms.put(…)` resolves to `{ ok: true }`, and a
    * `Promise<void>` parameter would have meant twenty call sites each wrapping
    * their own `void (await …)` to throw the value away. `guarded` doesn't read the
    * result; it should say so once rather than make everyone prove it.

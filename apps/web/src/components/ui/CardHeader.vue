@@ -2,7 +2,7 @@
 /**
  * A card's header row: a title on the left, an optional note on the right. Used
  * for a card's own header (Played · "last 14 days") and for a section within a
- * card (Top games, carrying a "← back" control) — the same title/note shape the
+ * card (Top games, carrying a "← back" control), the same title/note shape the
  * module structure repeats, whether it was the inline `.mu-card-h` / `.pt-card-h`
  * or the stacked `.box h3` + `.sub`.
  *
@@ -52,7 +52,7 @@ withDefaults(defineProps<Props>(), { as: "h3", tone: "muted" });
   color: var(--ink-strong);
   /* Titles here are synced data (a game name, an artist), not CMS-curated, so
      length is unpredictable. Truncate rather than wrap or push the sibling
-     note off — a flex item's default min-width is its content size, not 0,
+     note off: a flex item's default min-width is its content size, not 0,
      so without this a long title would widen the row past its container. */
   min-width: 0;
   flex: 1 1 auto;

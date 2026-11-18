@@ -3,14 +3,14 @@
  * The per-row controls of an editable CMS list: move up, move down, delete.
  *
  * Three panels (Now, Links, Hobbies) carried this same four-button row, identical
- * down to the arrow glyphs and the `:disabled` bounds arithmetic — the classic
+ * down to the arrow glyphs and the `:disabled` bounds arithmetic, the classic
  * shape where a fix lands in one copy and not the other two. They all drive the
  * same list helper, so the row takes that helper and the row index and does the
  * rest itself.
  *
  * `list` is typed structurally rather than importing the list composable's return
  * type: what this needs is "something that can move, remove and save". The
- * component is generic in the item type because `save(item: T)` is contravariant —
+ * component is generic in the item type because `save(item: T)` is contravariant,
  * an `EditableList<unknown>` would reject every concrete list.
  */
 interface EditableList<T> {

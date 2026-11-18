@@ -19,12 +19,12 @@ import { seriesRows } from "../lib/analytics-view";
 /**
  * The analytics-dashboard slice of the CMS.
  *
- * Pulled out of `useCms` — the largest cohesive block, and the one with real
+ * Pulled out of `useCms`, the largest cohesive block, and the one with real
  * lifecycle: a poll that runs only while the analytics panel is open *and* the
  * tab is in front. That wiring (a `tab` watcher, a `visibilitychange` listener,
  * and an interval) now lives entirely here; the composable registers its own
  * `onMounted`/`onUnmounted`, so the parent no longer threads the poll through its
- * own lifecycle hooks. Consumption is unchanged — `useCms` spreads this into its
+ * own lifecycle hooks. Consumption is unchanged, `useCms` spreads this into its
  * return, so the analytics panel sees the same members.
  *
  * It's handed the shared `tab` ref (to know when its panel is showing) and the
@@ -73,7 +73,7 @@ function storedZone(): "local" | "utc" {
   }
 }
 
-/** METRIC_KEYS, not `Object.keys(METRIC_LABELS) as MetricKey[]` — a cast is a
+/** METRIC_KEYS, not `Object.keys(METRIC_LABELS) as MetricKey[]`, a cast is a
  *  check that can't fail, and the list already exists. */
 const metricKeys: readonly MetricKey[] = METRIC_KEYS;
 
@@ -119,7 +119,7 @@ const DIMENSION_LABELS: Partial<Record<AnalyticsDimension, string>> = {
 };
 
 /**
- * The filter state as it round-trips through the URL — the CMS hash's own
+ * The filter state as it round-trips through the URL, the CMS hash's own
  * query string (`#analytics?hours=168&dim=referrer&key=Bing`), independent of
  * the `tz`/`dim`/`key` the request itself sends (`windowArgs` below builds
  * that separately from these same refs).
@@ -135,7 +135,7 @@ interface UrlFilters {
 }
 
 /** Parse the hash's query string. Invalid or unknown values fall back to the
- *  default rather than throwing — a hand-typed deep link should render as the
+ *  default rather than throwing, a hand-typed deep link should render as the
  *  closest sane view, not a blank panel. */
 function decodeUrlFilters(p: URLSearchParams): UrlFilters {
   const from = p.get("from");
@@ -159,7 +159,7 @@ function decodeUrlFilters(p: URLSearchParams): UrlFilters {
   return { rangeHours, customRange, zone, metric, at, filterDim, filterKey };
 }
 
-/** The inverse of `decodeUrlFilters` — omits anything at its default so the
+/** The inverse of `decodeUrlFilters`, omits anything at its default so the
  *  common case (no filters) stays a bare `#analytics`. */
 function encodeUrlFilters(f: UrlFilters): URLSearchParams {
   const p = new URLSearchParams();
@@ -194,7 +194,7 @@ function urlFiltersEqual(a: UrlFilters, b: UrlFilters): boolean {
 
 /** Shared bits the analytics slice needs from the parent CMS. */
 export interface AnalyticsDeps {
-  /** Which panel is open — the poll runs only while this is "analytics". */
+  /** Which panel is open, the poll runs only while this is "analytics". */
   tab: Ref<string>;
   cms: {
     analytics: (opts: {
@@ -212,7 +212,7 @@ export interface AnalyticsDeps {
   flash: (msg: string) => void;
   guarded: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
   autosave: Autosave;
-  /** The CMS hash's query string, and how to write it — see `UrlFilters`. */
+  /** The CMS hash's query string, and how to write it, see `UrlFilters`. */
   params: Ref<URLSearchParams>;
   setParams: (next: URLSearchParams, push?: boolean) => void;
 }
@@ -225,7 +225,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
    * string already held when this composable was built. Synchronous, not
    * read inside `onMounted`: the first analytics load fires from
    * `useCmsNav`'s own `onMounted` (via `pick` → `onOpen`), which runs before
-   * any `onMounted` registered here ever would — so by the time that first
+   * any `onMounted` registered here ever would, so by the time that first
    * load's `windowArgs()` runs, these refs need to already hold the restored
    * values, not still be sitting at their defaults.
    */
@@ -234,7 +234,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   const rangeHours = ref(restored.rangeHours);
   /**
    * An arbitrary from/to span, replacing the `rangeHours` presets while set.
-   * Mutually exclusive with `rangeHours` in what's actually queried — picking
+   * Mutually exclusive with `rangeHours` in what's actually queried, picking
    * a preset (`setRange`) clears this, and picking a custom range doesn't
    * touch `rangeHours`, so switching back to presets remembers the last one.
    */
@@ -244,7 +244,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
    *
    * `local` is the browser's zone, `utc` is the raw storage zone. Local is the
    * default because the only reader is the owner, and "yesterday evening" should
-   * mean their evening — the chart used to be UTC-only with a caption admitting
+   * mean their evening, the chart used to be UTC-only with a caption admitting
    * it, which is an offset the reader had to carry in their head.
    */
   const zone = ref<"local" | "utc">(restored.zone);
@@ -257,7 +257,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   /** When the numbers on screen were fetched. Drives the "updated Ns ago" line. */
   const analyticsAt = ref(0);
   /**
-   * True while the CMS's own fetch to the analytics endpoint is failing —
+   * True while the CMS's own fetch to the analytics endpoint is failing,
    * distinct from `analytics.value.ingest`, which reports the *server's*
    * access-log ingest health and can be fine even while this is broken (or
    * vice versa: the API can answer perfectly well while ingest has stalled).
@@ -267,12 +267,12 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   const pollFailing = ref(false);
 
   /**
-   * A single time bucket the LISTS (not the chart) are narrowed to — set by
+   * A single time bucket the LISTS (not the chart) are narrowed to, set by
    * clicking a column in the chart. `null` means the whole window.
    */
   const at = ref<string | null>(restored.at);
   /**
-   * A dimension filter — set by clicking a row in one of the seven top-list
+   * A dimension filter, set by clicking a row in one of the seven top-list
    * cards. Both-or-neither with `filterKey`. Replaces what the chart plots
    * and what one headline tile counts (`analytics.value.filtered`), and the
    * server narrows the other access-log lists to match; the script's
@@ -288,8 +288,8 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
    *  refresh) can't overwrite what a newer one already delivered. */
   let reqId = 0;
 
-  /** The window currently in effect — a custom span if one's set, else the
-   *  selected preset — plus the reader's zone and the active bucket/dimension
+  /** The window currently in effect, a custom span if one's set, else the
+   *  selected preset, plus the reader's zone and the active bucket/dimension
    *  filters, if any. One place that decides what's sent, so the request and
    *  the URL (which mirrors this) can't drift apart. */
   function windowArgs() {
@@ -302,7 +302,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   }
 
   /** The same state `windowArgs` reads, shaped for the URL instead of the
-   *  request — kept as its own function rather than reused from `windowArgs`
+   *  request, kept as its own function rather than reused from `windowArgs`
    *  because the two diverge (the request's `tz` is a resolved IANA zone; the
    *  URL's `zone` is the raw local/utc toggle). */
   function currentUrlFilters(): UrlFilters {
@@ -342,7 +342,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
       analytics.value = result;
       pollFailing.value = false;
       // Hydrate the editor from what's actually in effect, unless the owner is
-      // mid-edit — clobbering half-typed rules on a background poll would be its
+      // mid-edit, clobbering half-typed rules on a background poll would be its
       // own small betrayal.
       if (!autosave.hasUnsaved() && !referrerRules.value.some((r) => !r.match || !r.label)) {
         referrerRules.value = result.referrerRules.map((r) => ({ ...r }));
@@ -350,20 +350,20 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
       }
       analyticsAt.value = Date.now();
     } catch (e) {
-      if (id !== reqId) return; // stale error — a newer request is already in flight
+      if (id !== reqId) return; // stale error, a newer request is already in flight
       if (e instanceof AuthError) {
         authed.value = false;
         stopAnalyticsPoll();
         flash("Session expired — sign in again.");
       } else {
-        // Set regardless of `quiet` — a background poll failing is exactly
+        // Set regardless of `quiet`, a background poll failing is exactly
         // the case this exists to catch. Only the toast is quiet-gated.
         pollFailing.value = true;
         if (!opts.quiet) flash((e as Error).message || "Couldn't load analytics.");
       }
     } finally {
       // Only the request that's still current, and only the load that raised
-      // the spinner, may lower it — a stale or quiet poll landing mid-refresh
+      // the spinner, may lower it, a stale or quiet poll landing mid-refresh
       // used to switch it off while the manual load was still running.
       if (id === reqId && !opts.quiet) loadingA.value = false;
     }
@@ -409,7 +409,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   }
 
   /** Switch to an arbitrary from/to span. Validated shape only (`YYYY-MM-DD`,
-   *  `from` not after `to`) — the server is the real authority on the max
+   *  `from` not after `to`), the server is the real authority on the max
    *  span and rejects anything wider with a flashed error. */
   function setCustomRange(from: string, to: string) {
     if (!from || !to || from > to) {
@@ -422,7 +422,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     refreshAnalytics();
   }
 
-  /** Back to the preset ranges — `rangeHours` was never touched, so this
+  /** Back to the preset ranges, `rangeHours` was never touched, so this
    *  resumes whichever preset was last selected. */
   function clearCustomRange() {
     customRange.value = null;
@@ -478,7 +478,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     clearing.value = true;
     // The endpoint answers with how many rows it removed, and that number is the
     // only confirmation an irreversible delete gets. It used to be discarded,
-    // with an empty success message on top — so clearing everything looked
+    // with an empty success message on top, so clearing everything looked
     // exactly like clearing nothing.
     let removed = 0;
     await guarded(async () => {
@@ -492,7 +492,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
 
   /**
    * Stacked-area geometry for the selected metric. The maths is `@lg/core`'s
-   * `buildStackedChart` — pure, and unit-tested against exact output; this only
+   * `buildStackedChart`, pure, and unit-tested against exact output; this only
    * chooses which rows to hand it.
    */
   const chart = computed(() => {
@@ -501,7 +501,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     // A dimension filter replaces the plotted series: `filtered.series` may
     // carry several distinct stored keys (a referrer label can expand to
     // several raw hosts), but they're all one filter, so they're relabelled
-    // to the filter's own key here — `buildStackedChart` sums same-bucket,
+    // to the filter's own key here, `buildStackedChart` sums same-bucket,
     // same-key rows, so this collapses them into the single band a filter
     // implies rather than drawing them as unrelated legend entries.
     const f = a.filtered;
@@ -529,7 +529,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
 
   /**
    * The bucket the lists underneath the chart are describing, or null for the
-   * whole window. The chart itself keeps showing the full range — losing the
+   * whole window. The chart itself keeps showing the full range, losing the
    * context would make it impossible to click anywhere else, and the point is
    * to move around the graph, not to zoom into it. One request now serves
    * both (see `windowArgs`/the server's `listFromB`/`listToB` split), so
@@ -551,14 +551,14 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   }
 
   /** The chart column `at` currently names, once the chart has geometry for
-   *  it — used for the filter chip's human label. */
+   *  it, used for the filter chip's human label. */
   const atColumn = computed(() =>
     at.value ? (chart.value?.columns.find((c) => c.bucket === at.value) ?? null) : null,
   );
   const atLabel = computed(() => atColumn.value?.label ?? at.value ?? "");
 
   /**
-   * Set (or, clicking the same row again, clear) a dimension filter — what a
+   * Set (or, clicking the same row again, clear) a dimension filter, what a
    * click on a selectable card row sends. See `AnalyticsResponse.filtered`'s
    * doc comment for what this can and can't do.
    */
@@ -579,7 +579,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
     refreshAnalytics();
   }
 
-  /** Everything currently active, as removable chips — the one filter bar
+  /** Everything currently active, as removable chips, the one filter bar
    *  replacing the old scope bar's three differently-behaved reset links. */
   const chips = computed(() => {
     const list: { id: string; label: string; clear: () => void }[] = [];
@@ -624,15 +624,15 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
   // A range or metric change re-lays the axis; a tooltip pinned to the old one
   // would be describing a bucket that's no longer under the pointer. (`at`
   // itself is cleared directly inside `setRange`/`setCustomRange`/`setZone`,
-  // alongside the one refetch each already does — a second watcher here would
+  // alongside the one refetch each already does, a second watcher here would
   // only cost a second, redundant request.)
   watch([metric, rangeHours, customRange], clearHover);
   // The metric selector has no dedicated setter (the template just assigns
   // `metric = k`), so its URL sync lives here rather than inline. Client-only
-  // and display-only, so a replace — not worth a history entry of its own.
+  // and display-only, so a replace, not worth a history entry of its own.
   //
   // Restoring `metric` from an external params change (below) also passes
-  // through this watcher and re-encodes — a second `replaceState` with the
+  // through this watcher and re-encodes, a second `replaceState` with the
   // same content, since the refs already match. Harmless (no second history
   // entry, no second request) and self-terminating: `urlFiltersEqual` catches
   // it on the resulting `params` watcher re-run, so it stops after one bounce
@@ -641,7 +641,7 @@ export function useAnalytics({ tab, cms, authed, flash, guarded, autosave, param
 
   /**
    * The hash's query string changing from outside a call this composable made
-   * itself — Back/Forward, or a reader editing the address bar. `setParams`
+   * itself, Back/Forward, or a reader editing the address bar. `setParams`
    * (called from every setter above) already updated these refs directly and
    * synchronously, so by the time this watcher's queued callback runs, a
    * self-triggered change decodes back to exactly the current state and

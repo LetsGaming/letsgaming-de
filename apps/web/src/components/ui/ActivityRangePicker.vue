@@ -4,7 +4,7 @@
  * and a segmented picker to change it.
  *
  * A viewer control, the same shape as the owner/local timezone toggle it sits
- * beside — picking a value makes the module re-request itself from
+ * beside, picking a value makes the module re-request itself from
  * `/api/module/:id` with that range, and the server rebuilds the totals, the top
  * lists and the ledger over the new span. Nothing is re-sliced client-side except
  * the strip, which follows the same number.
@@ -25,7 +25,7 @@ import SegmentedControl from "./SegmentedControl.vue";
 
 const props = defineProps<{
   /**
-   * The window the *rendered data* covers — not the selection.
+   * The window the *rendered data* covers, not the selection.
    *
    * These differ while a re-fetch is in flight, and the note follows the data on
    * purpose: labelling the rows on screen "last year" a moment before the year's
@@ -57,7 +57,7 @@ const note = computed(() => t(ACTIVITY_RANGE_LABELS[props.windowDays].long));
   align-items: center;
   gap: var(--sp-8);
 }
-/* Matches CardHeader's live note — this replaces that note rather than sitting
+/* Matches CardHeader's live note, this replaces that note rather than sitting
    next to it, so it has to read as the same caption. */
 .arp__note {
   font-family: var(--f-b);

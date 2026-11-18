@@ -3,7 +3,7 @@ import { config } from "@vue/test-utils";
 
 /**
  * Component tests mount pieces of the app directly, without the router Nuxt
- * installs at runtime — so `<NuxtLink>` renders a `<RouterLink>` that can't
+ * installs at runtime, so `<NuxtLink>` renders a `<RouterLink>` that can't
  * resolve, and no anchor reaches the DOM at all.
  *
  * Stubbing it as a plain anchor keeps the assertions meaningful: the nav tests

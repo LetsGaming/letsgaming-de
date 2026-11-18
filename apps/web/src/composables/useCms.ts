@@ -37,7 +37,7 @@ import { useEntityList } from "./useEntityList";
 
 
 /**
- * What the moderation queue shows. This is core's `GuestbookEntry` — it was
+ * What the moderation queue shows. This is core's `GuestbookEntry`, it was
  * re-declared here, field for field, including its own `"pending" | "approved" |
  * "rejected"` beside the `GuestbookStatus` that exists to be the one home for
  * exactly those three strings. A hand-copied shape doesn't fail when the original
@@ -56,12 +56,12 @@ export type ModEntry = GuestbookEntry;
 export function useCms() {
 
 // Routing and the preview dock are their own composables (useCmsNav /
-// useCmsPreview). Opening a panel has effects in three places — lazy-loading a
-// panel's data, moving the preview, and the URL — so `onOpen` is where they meet,
+// useCmsPreview). Opening a panel has effects in three places, lazy-loading a
+// panel's data, moving the preview, and the URL, so `onOpen` is where they meet,
 // rather than a `pick()` that reaches into all of them.
 // Session, routing and preview are each their own composable now; what's left
 // here is the content model and the saves. `loadContent` and `onSaved` are the
-// two things the session can't own — the editor's data, and the fact that a
+// two things the session can't own, the editor's data, and the fact that a
 // preview exists at all.
 const session = useCmsSession({
   loadContent: async () => {
@@ -155,7 +155,7 @@ const nowList = useEntityList<NowItem & { sort?: number }>({
 });
 const now = nowList.items;
 
-  // Presence/playtime settings — extracted composable (see usePresenceSettings).
+  // Presence/playtime settings, extracted composable (see usePresenceSettings).
   const presence = usePresenceSettings({ autosave });
   const {
     PRESENCE_OPTIONS,
@@ -169,12 +169,12 @@ const now = nowList.items;
     hydratePresence,
   } = presence;
 
-  // Listening list-display settings — extracted composable (see useMusicSettings).
+  // Listening list-display settings, extracted composable (see useMusicSettings).
   const music = useMusicSettings({ autosave });
   const { MUSIC_LIST_BOUNDS, musicInitialCount, musicMaxCount, musicDefaultRange, hydrateMusic } =
     music;
-  // Playtime list-display settings — its own stored value, so its limits can differ.
-  // Wrapped's recurring-display schedule — same shape as the two above.
+  // Playtime list-display settings, its own stored value, so its limits can differ.
+  // Wrapped's recurring-display schedule, same shape as the two above.
   const wrapped = useWrappedSettings({ autosave });
 
   const playtime = usePlaytimeSettings({ autosave });
@@ -186,11 +186,11 @@ const now = nowList.items;
     hydratePlaytime,
   } = playtime;
 
-  // Guestbook moderation — extracted composable (see useGuestbookMod).
+  // Guestbook moderation, extracted composable (see useGuestbookMod).
   const gbMod = useGuestbookMod({ cms, authed, tab, flash, guarded });
   const { guestbook, loadingG, loadGuestbook, loadStatus } = gbMod;
 
-  // Analytics dashboard — extracted composable (see useAnalytics). Owns its own
+  // Analytics dashboard, extracted composable (see useAnalytics). Owns its own
   // poll lifecycle; we hand it the shared `tab` ref so it knows when it's showing.
   const {
     METRIC_LABELS,
@@ -324,7 +324,7 @@ function bioImageRef(p: Localized): string {
  * Drop empty `de` keys so we don't persist blank translations.
  *
  * `unknown` walked and narrowed, not `any`: a JSON tree genuinely has no static
- * shape, which is the one place `unknown` is the honest type — `any` here would
+ * shape, which is the one place `unknown` is the honest type, `any` here would
  * be the same claim with the checking switched off.
  */
 function strip<T>(obj: T): T {
@@ -350,11 +350,11 @@ function strip<T>(obj: T): T {
  * the floor, and the gap is people with JS off, people who opted out, and bots
  * that lied about being bots. `bots` is the ones that didn't lie.
  *
- * Still hand-matched to the server's `chart` object — see SWEEP §4. That's the
+ * Still hand-matched to the server's `chart` object, see SWEEP §4. That's the
  * next thing to fix here, not this.
  */
 
-// Layout + gallery + canvas — extracted composable (see useLayoutEditor). It owns
+// Layout + gallery + canvas, extracted composable (see useLayoutEditor). It owns
 // the placement state (modules, layoutAreas, hiddenModules, gallery) and every
 // operation that touches it; useCms hydrates it from loaded content.
 const {
@@ -434,7 +434,7 @@ const dashboard = useDashboard({
 });
 
 // Start/stop the analytics poll as the panel opens and closes. A watcher rather
-// than a hook inside AnalyticsPanel, because the panel is `v-show` — it stays
+// than a hook inside AnalyticsPanel, because the panel is `v-show`, it stays
 // mounted once rendered, so mount/unmount say nothing about whether you can see it.
 // useCmsNav restores the panel from the URL on mount; this is just the session.
 onMounted(() => {

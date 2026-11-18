@@ -3,7 +3,7 @@
  * The row of headline stats a module opens with. Holds `StatTile`s; the only
  * thing that varies is how many fit across, so that's the prop.
  *
- * Activity and Glance each wrote their own grid against a global class — Activity
+ * Activity and Glance each wrote their own grid against a global class, Activity
  * against `.stats` (four up), Glance against `.dash`, which is really the
  * two-card dashboard row and only coincidentally two columns wide. Naming the
  * column count makes each section's intent explicit and stops the two meanings of
@@ -15,8 +15,8 @@ interface Props {
   /**
    * How the children separate.
    *
-   * `tiles` — each child is its own bordered surface, so the grid just spaces them.
-   * `figures` — the children are bare readouts ruled off from each other
+   * `tiles`, each child is its own bordered surface, so the grid just spaces them.
+   * `figures`, the children are bare readouts ruled off from each other
    * (`StatTile size="lead"`), so the column gap closes up and the rule sits in the
    * gutter instead of beside it.
    *
@@ -42,11 +42,11 @@ withDefaults(defineProps<Props>(), { columns: 4, separation: "tiles" });
 }
 /* Lead figures separate with a hairline instead of a box each (see StatTile), so
    the rule wants to sit in the gutter rather than beside it: the column gap goes
-   to zero and each figure carries its own inset. Row gap stays, and grows a little
-   — with vertical rules in play, rows need to read as rows.
+   to zero and each figure carries its own inset. Row gap stays, and grows a little:
+   with vertical rules in play, rows need to read as rows.
  *
  * The first figure in each row owns the left edge and takes no rule. Which children
- * those are depends on the column count, which is this component's business — hence
+ * those are depends on the column count, which is this component's business, hence
  * the exception living here and not in the tile. */
 .statgrid--figures {
   column-gap: 0;
@@ -75,7 +75,7 @@ withDefaults(defineProps<Props>(), { columns: 4, separation: "tiles" });
     grid-template-columns: repeat(2, 1fr);
   }
   /* Two columns now, so the rule falls on even children regardless of the
-     declared count — otherwise a 4-up grid keeps a rule on its third figure and
+     declared count. Otherwise a 4-up grid keeps a rule on its third figure and
      draws it down the left margin of the page. */
   .statgrid--figures.statgrid--4 > :slotted(*),
   .statgrid--figures.statgrid--3 > :slotted(*) {

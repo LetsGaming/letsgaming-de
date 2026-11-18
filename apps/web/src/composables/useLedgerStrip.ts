@@ -9,7 +9,7 @@ import type { HeatCell } from "../components/ui/HeatGrid.vue";
  *
  * Both grew the identical wiring around {@link useDayDrill}: a contiguous
  * last-N-days strip (empty days zero-filled), heat cells bucketed by the day-max,
- * the index of the selected cell, and a click handler that drills into a day —
+ * the index of the selected cell, and a click handler that drills into a day,
  * resolving `[]` with no network for a day known to be empty. This is that wiring,
  * once. It composes {@link useDayDrill} rather than reimplementing it, and stays
  * ignorant of *what* a day contains (tracks vs. games): the caller passes the
@@ -23,12 +23,12 @@ export function useLedgerStrip<T>(opts: {
   ledger: MaybeRefOrGetter<{ day: string; minutes: number }[]>;
   /** Load one day's detail. Only called for days with recorded minutes. */
   fetchDay: (iso: string) => Promise<T>;
-  /** Resolved synchronously for a zero-minute day — no fetch. Typically `[]`. */
+  /** Resolved synchronously for a zero-minute day, no fetch. Typically `[]`. */
   emptyDay: T;
   /** A cell's hover title, e.g. `Mon 3 Mar · 40 min`. */
   title: (day: string, minutes: number) => string;
   /**
-   * Window length in days — reactive, because the viewer picks it. Default 14.
+   * Window length in days, reactive, because the viewer picks it. Default 14.
    *
    * Only the strip's own extent: the top lists and totals beside it are windowed
    * server-side by the same number, which arrives on the module data. Passing the
@@ -36,7 +36,7 @@ export function useLedgerStrip<T>(opts: {
    * question.
    */
   days?: MaybeRefOrGetter<number>;
-  /** The zone the ledger is bucketed in — the strip's window and "today" are
+  /** The zone the ledger is bucketed in, the strip's window and "today" are
    *  computed in it so they line up with the data (owner's by default, the
    *  viewer's when the module is showing local time). */
   timeZone: MaybeRefOrGetter<string>;

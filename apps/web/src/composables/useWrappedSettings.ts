@@ -3,7 +3,7 @@ import { type Autosave, bindAutosave } from "./useAutosave";
 import { defaultWrappedSettings, WRAPPED_BOUNDS, type WrappedSettings } from "@lg/core";
 
 /**
- * The Wrapped slice of the CMS — the recurring-display schedule. Same shape as the
+ * The Wrapped slice of the CMS, the recurring-display schedule. Same shape as the
  * other settings composables: refs + a save + a hydrate, spread into `useCms`'s
  * return so a panel that `inject()`s the context sees them. Bounds come from the
  * shared `WRAPPED_BOUNDS`, the same constant the write schema and server sanitizer

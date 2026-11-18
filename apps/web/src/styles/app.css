@@ -328,7 +328,7 @@ h1 {
   margin-top: var(--sp-18);
 }
 /* The card surface and its header moved to the ModuleCard / CardHeader components.
-   `.sub` stays as the shared muted caption — the "nothing here yet" empty states
+   `.sub` stays as the shared muted caption: the "nothing here yet" empty states
    across the sections use it (previously it only resolved inside `.box`). */
 .sub {
   font-family: var(--f-b);
@@ -658,7 +658,7 @@ footer {
   }
   /* Transforms are deliberately left alone. The only ones on the public site are
      the 2px press offsets on the buttons and the 3px arrow nudge on a project
-     card — states, not journeys. They no longer animate (transform is off the
+     card: states, not journeys. They no longer animate (transform is off the
      transition-property list above), so they apply instantly, which is what
      tactile feedback should do anyway. Resetting them wholesale was the first
      version of this rule and it also flattened the `translateX(-50%)` that
@@ -699,7 +699,7 @@ footer {
 }
 
 /* At a glance: four stat cards became one muted line. They were the same four
-   numbers Code already renders, so the copy on Home was decoration — and
+   numbers Code already renders, so the copy on Home was decoration, and
    accumulated totals are the quietest tier by design, not the loudest. */
 
 

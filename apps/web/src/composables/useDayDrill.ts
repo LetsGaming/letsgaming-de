@@ -3,14 +3,14 @@ import { ref, shallowRef, type Ref } from "vue";
 /**
  * One day's detail, fetched on demand behind a clickable timeline.
  *
- * Playtime and Music grew the identical state machine — a selected day, a
- * fetched-on-click payload, loading/error flags, click-again-to-close — differing
+ * Playtime and Music grew the identical state machine, a selected day, a
+ * fetched-on-click payload, loading/error flags, click-again-to-close, differing
  * only in the endpoint and the row shape. This is that machine, once. The section
  * passes a `loader` per click so the composable stays ignorant of *what* it's
  * loading (games vs. tracks); it only owns the *when*.
  *
  * `select` takes the loader rather than a URL so a day known to be empty (zero
- * minutes) can resolve `[]` synchronously with no network call — the same
+ * minutes) can resolve `[]` synchronously with no network call, the same
  * "a silent day is a real answer" shortcut both sections had, now in one place.
  */
 export interface DayDrill<T> {

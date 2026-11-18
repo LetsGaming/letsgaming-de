@@ -5,8 +5,8 @@ import { PRESENCE_CATEGORIES, RETENTION_OPTIONS, type PresenceCategory } from "@
 /**
  * The presence/playtime settings slice of the CMS.
  *
- * Pulled out of the 1200-line `useCms` monolith: it's a self-contained group —
- * four pieces of state and their toggles/save — that only needs the shared write
+ * Pulled out of the 1200-line `useCms` monolith: it's a self-contained group,
+ * four pieces of state and their toggles/save, that only needs the shared write
  * helpers passed in. `useCms` calls this and spreads the result into its return,
  * so the panels that `inject()` the context see the same members as before; this
  * is purely where the code lives, not how it's consumed.
@@ -40,7 +40,7 @@ export function usePresenceSettings({ autosave }: PresenceDeps) {
     presenceShow.value = s.includes(key) ? s.filter((k) => k !== key) : [...s, key];
   }
 
-  // RECORD axis — independent of display. A category can be sampled but hidden
+  // RECORD axis, independent of display. A category can be sampled but hidden
   // (collect quietly) or shown but not sampled (live only, no history).
   const presenceSample = ref<PresenceCategory[]>([]);
   function toggleSample(key: PresenceCategory) {
@@ -52,7 +52,7 @@ export function usePresenceSettings({ autosave }: PresenceDeps) {
   const presenceRetention = ref<number | null>(null);
 
   // Games recorded but never shown on the public chart. Edited as a textarea, one
-  // per line — the panel splits/joins so the ref stays a clean string[].
+  // per line, the panel splits/joins so the ref stays a clean string[].
   const presenceHidden = ref<string[]>([]);
 
   const confirm = bindAutosave(autosave, {
