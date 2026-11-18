@@ -187,7 +187,7 @@ button.hg-c:focus-visible {
   justify-content: flex-end;
   margin-top: var(--sp-12);
   font-family: var(--f-m);
-  font-size: 10px;
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
 .hg-legend i {

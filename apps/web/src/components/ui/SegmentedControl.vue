@@ -58,7 +58,7 @@ const model = defineModel<T>({ required: true });
   border: 1px solid var(--line-control);
 }
 .seg__opt {
-  font-family: var(--f-m);
+  font-family: var(--f-b);
   color: var(--muted);
   background: none;
   border: none;
@@ -104,7 +104,7 @@ const model = defineModel<T>({ required: true });
   padding: 1px var(--sp-6);
 }
 .seg--sm .seg__opt.on {
-  color: var(--live-ink);
+  color: var(--ink-strong);
   background: var(--surf-2);
 }
 </style>

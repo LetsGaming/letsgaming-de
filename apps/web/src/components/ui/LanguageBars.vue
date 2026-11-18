@@ -36,10 +36,10 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
   gap: 9px;
 }
 .nm {
-  font-size: var(--fs-meta);
+  font-size: var(--fs-small);
   color: var(--ink);
-  width: 88px;
-  font-family: var(--f-m);
+  width: 6rem;
+  font-family: var(--f-b);
 }
 .bar {
   flex: 1;
@@ -59,9 +59,10 @@ defineProps<{ languages: { name: string; pct: number }[] }>();
 }
 .pc {
   font-family: var(--f-m);
-  font-size: var(--fs-micro);
+  font-size: var(--fs-meta);
   color: var(--muted);
-  width: 34px;
+  font-variant-numeric: tabular-nums;
+  width: 3rem;
   text-align: right;
 }
 </style>

@@ -60,8 +60,8 @@ const note = computed(() => t(ACTIVITY_RANGE_LABELS[props.windowDays].long));
 /* Matches CardHeader's live note — this replaces that note rather than sitting
    next to it, so it has to read as the same caption. */
 .arp__note {
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
-  color: var(--live-ink);
+  font-family: var(--f-b);
+  font-size: var(--fs-meta);
+  color: var(--muted);
 }
 </style>

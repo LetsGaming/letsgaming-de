@@ -543,3 +543,11 @@ committed) using the WCAG 2.x formula on the final token values.
   - `fallback-site.json` regenerated with `pnpm --filter web gen:fallback`, not edited by hand.
   - Not done: em dashes inside the German legal text in `datenschutz.vue` (legal wording, owner should review), the Wrapped date range separator (Step 7), and comments in code. Code comments keep their older dashes; only user-visible strings were cleaned.
   - Owner action: paste `docs/research/2026-11-18-copy-sheet.md` into the production CMS. Seed edits do not change the live database.
+- Step 6 done, built by a Sonnet subagent and reviewed by me (diff scan, corruption grep; gates run by the agent, rerun in Step 10). Deviations:
+  - "Heatmap full width" and "bars beside it" conflict in the plan. The heatmap is the wide two-thirds column with the language bars beside it at 720px and up; stacked below that.
+  - `.wrap` is now 1040px for every page.
+  - `ListFooter` ("show more") still uses `--live-ink`. It is an action, not live data. Step 7 owns it.
+  - `ModuleCard` still sets `box-shadow: var(--sh-card)` (now `none`). Step 7 owns it.
+  - `HeatGrid` legend ("less", "more") and `CodingSection` "h tracked" are English-only literals. Not changed. They need message keys.
+  - Global `.dash`, `.grid`, `.card` rules in `app.css` look unused. Step 10 checks and removes them.
+  - Pinned thumbnails show flat placeholders in the dev data (no offline images).

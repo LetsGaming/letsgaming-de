@@ -1,14 +1,16 @@
 <script setup lang="ts">
 /**
- * A project, as a card: title + arrow, a language tag coloured by that language,
- * a description, and a row of meta facts. The whole thing is the link.
+ * A project as one table row: name, description, language, updated. The whole row
+ * is the link. Pinned rows also carry a small screenshot thumbnail.
  *
- * It takes the resolved `ProjectView` whole rather than seven scattered props, so
- * a field added to the contract lands here without touching either caller.
+ * It takes the resolved `ProjectView` whole, so a field added to the contract lands
+ * here without touching the caller.
  */
-import { computed } from "vue";
+import { ref } from "vue";
 import type { ClickAction, ProjectView } from "@lg/core";
-import { langColor, icons } from "../../lib/icons";
+import { langColor } from "../../lib/icons";
+import { presenceMediaUrl } from "../../lib/api";
+import { isGeneratedRepoCard } from "../../lib/repoPreview";
 import { trackClick, trackProject } from "../../lib/track";
 import { useT } from "~/composables/useT";
 import SmartLink from "./SmartLink.vue";
@@ -22,12 +24,10 @@ interface Props {
 }
 const props = defineProps<Props>();
 
-// One derivation for both the text and the border, rather than calling langColor
-// twice in the template on every render.
-const tagStyle = computed(() => {
-  const colour = langColor(props.project.tag);
-  return { color: colour, borderColor: colour };
-});
+const broken = ref(false);
+
+/** Through the server's media proxy, so the visitor's browser never contacts GitHub's CDN. */
+const shot = (url: string, theme?: "dark") => presenceMediaUrl({ url, ...(theme ? { theme } : {}) });
 
 function onClick() {
   trackClick(props.event);
@@ -36,114 +36,142 @@ function onClick() {
 </script>
 
 <template>
-  <SmartLink class="card" :class="{ feature: project.featured }" :href="project.href" @click="onClick">
-    <div class="ptitle">{{ project.name }}<span class="arrow" v-html="icons.arrow" /></div>
-    <span class="tag" :style="tagStyle">{{ project.tag }}</span>
-    <span v-if="project.featured" class="pin">{{ t("featuredPinned") }}</span>
-    <p class="desc">{{ project.description }}</p>
-    <div class="meta"><span v-for="(m, i) in project.meta" :key="i">{{ m }}</span></div>
+  <SmartLink class="prow" :class="{ pinned: project.featured }" :href="project.href" @click="onClick">
+    <span class="p-name">
+      <span v-if="project.featured" class="p-shot" aria-hidden="true">
+        <template v-if="project.image && !broken">
+          <template v-if="isGeneratedRepoCard(project.image)">
+            <img class="theme-light" :src="shot(project.image)" alt="" loading="lazy" decoding="async" @error="broken = true" />
+            <img class="theme-dark" :src="shot(project.image, 'dark')" alt="" loading="lazy" decoding="async" @error="broken = true" />
+          </template>
+          <img v-else :src="shot(project.image)" alt="" loading="lazy" decoding="async" @error="broken = true" />
+        </template>
+      </span>
+      <span class="p-title">
+        <span class="p-link">{{ project.name }}</span>
+        <span v-if="project.featured" class="p-pin">{{ t("featuredPinned") }}</span>
+      </span>
+    </span>
+    <span class="p-desc">{{ project.description }}</span>
+    <span class="p-lang">
+      <template v-if="project.tag">
+        <span class="p-dot" :style="{ background: langColor(project.tag) }" />{{ project.tag }}
+      </template>
+    </span>
+    <span class="p-meta"><span v-for="(m, i) in project.meta" :key="i">{{ m }}</span></span>
   </SmartLink>
 </template>
 
 <style scoped>
-/* Moved out of app.css with the markup: `.ptitle`, `.desc`, `.arrow` and the
-   `.feature` overrides styled these two sections and nothing else, so they belong
-   with the component rather than in the global sheet. `.card`, `.tag` and `.meta`
-   stay global — the CMS panels and the posts list share those. */
-.ptitle {
-  font-family: var(--f-d);
-  font-weight: 600;
-  font-size: clamp(19px, 3vw, 25px);
-  letter-spacing: -0.01em;
-  margin-bottom: 9px;
+.prow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line-1);
+  color: inherit;
+  text-decoration: none;
+}
+.p-name {
   display: flex;
   align-items: center;
-  gap: var(--sp-10);
-  color: var(--ink-strong);
-}
-/* Repo names are synced from GitHub, not CMS-curated — an unbroken long name
-   (no spaces) would otherwise overflow the flex row, since a flex item's default
-   min-width is its content size, not 0. */
-.ptitle span:first-child,
-.ptitle {
+  gap: var(--space-3);
   min-width: 0;
 }
-.ptitle {
-  overflow-wrap: break-word;
+.p-shot {
+  position: relative;
+  flex: none;
+  width: 5.5rem;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border-radius: var(--r-2);
+  background: var(--surf-2);
 }
-.pin {
-  margin-left: var(--sp-8);
-  font-family: var(--f-m);
-  font-size: var(--fs-micro);
+.p-shot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.p-shot img.theme-light {
+  display: var(--shot-light-display);
+}
+.p-shot img.theme-dark {
+  display: var(--shot-dark-display);
+}
+.p-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.p-link {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+.prow:hover .p-link,
+.prow:focus-visible .p-link {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.p-pin {
+  font-size: var(--fs-meta);
   color: var(--muted);
 }
-.desc {
+/* Repo descriptions are synced, up to 350 chars: clamp so one long text cannot
+   stretch its row. */
+.p-desc {
   color: var(--muted);
-  font-size: var(--fs-body);
-  margin: 11px 0 var(--sp-16);
-  max-width: 48ch;
-  /* Repo descriptions are synced, up to 350 chars — clamp so one long
-     description can't blow out this card's height relative to its siblings
-     in the grid. */
+  font-size: var(--fs-small);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.arrow {
-  margin-left: auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--surf-2);
-  display: grid;
-  place-items: center;
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
+.p-desc:empty,
+.p-lang:empty,
+.p-meta:empty {
+  display: none;
 }
-.card:hover .arrow {
-  transform: translateX(3px) rotate(-45deg);
-  background: var(--surf-3);
-}
-/* The glyph arrives via v-html, so it is not compiled with this component's
-   scope attribute and needs :deep() to be reachable. */
-.arrow :deep(svg) {
-  width: 16px;
-  height: 16px;
+.p-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-small);
   color: var(--ink);
 }
-
-/* The pinned card. */
-.card.feature {
-  grid-column: 1 / -1;
-  padding: 32px;
-  background: var(--surf-2);
-  border: 1px solid var(--line-2);
+.p-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-round);
 }
-.card.feature .ptitle {
-  font-size: clamp(24px, 4.5vw, 34px);
-}
-.card.feature .desc {
-  color: var(--ink);
-  font-size: 17px;
-  max-width: 54ch;
-}
-.card.feature .meta {
+.p-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  font-family: var(--f-m);
+  font-size: var(--fs-meta);
   color: var(--muted);
-}
-.card.feature .tag {
-  background: var(--surf-1);
-}
-.card.feature .arrow {
-  background: rgba(255, 255, 255, 0.2);
+  font-variant-numeric: tabular-nums;
 }
 
-/* The grid stays two-up on phones (see app.css); the pinned card spans it either
-   way, so all it needs here is the tighter padding. */
-@media (max-width: 560px) {
-  .card.feature {
-    padding: var(--sp-20);
+@container (min-width: 720px) {
+  .prow {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr) 8rem 10rem;
+    column-gap: var(--space-5);
+    padding: var(--space-4) 0;
+    align-items: center;
+  }
+  .p-meta {
+    justify-content: flex-end;
+    text-align: right;
   }
 }
 </style>

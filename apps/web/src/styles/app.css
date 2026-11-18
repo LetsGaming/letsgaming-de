@@ -38,7 +38,7 @@ a {
   white-space: nowrap;
 }
 .wrap {
-  max-width: 940px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: clamp(var(--sp-22), 5vw, 44px) clamp(var(--sp-18), 5vw, 40px) 80px;
 }
