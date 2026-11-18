@@ -49,7 +49,7 @@ typography:
     letterSpacing: "normal"
   label:
     fontFamily: "Atkinson Hyperlegible Mono, ui-monospace, monospace"
-    fontSize: "0.8125rem"
+    fontSize: "0.9375rem"
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
