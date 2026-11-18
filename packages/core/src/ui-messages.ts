@@ -174,11 +174,6 @@ const EN = {
   footerLabel: "Footer",
   heatLess: "less",
   heatMore: "more",
-  pulseLabel: "Last 28 days",
-  pulseAria: "Activity over the last 28 days. Today: {today}.",
-  pulseNone: "no activity",
-  pulsePlayed: "{time} played",
-  pulseListened: "{time} listened",
   localTime: "Local",
   /** The owner's clock, when the viewer is in a different zone. `{city}` is the
    *  IANA zone's city ("Berlin"), a name, so it isn't translated, only framed. */
@@ -399,11 +394,6 @@ const DE: Messages = {
   footerLabel: "Fußzeile",
   heatLess: "weniger",
   heatMore: "mehr",
-  pulseLabel: "Letzte 28 Tage",
-  pulseAria: "Aktivität der letzten 28 Tage. Heute: {today}.",
-  pulseNone: "keine Aktivität",
-  pulsePlayed: "{time} gespielt",
-  pulseListened: "{time} gehört",
   localTime: "Lokal",
   ownerTime: "Zeit in {city}",
   showTimesIn: "Zeiten anzeigen in",

@@ -1,4 +1,6 @@
-﻿# Live strip: design brief
+> Status: dropped after owner review (2026-11-19). The owner liked the idea but found it out of place in the header, with no clear reason to be there and a meaning nobody would read without hovering. The component and data layer were removed. Kept as a record of the idea and the guardrails.
+
+# Live strip: design brief
 
 Status: built in the hardening workplan, phase 4. This is the identity device chosen by the owner (concept A of three).
 

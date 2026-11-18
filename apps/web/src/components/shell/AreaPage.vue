@@ -19,7 +19,6 @@ import { useRenderedLocale } from "~/composables/useSiteRequest";
 import { SYNCED_RELATIVE_KEY } from "~/composables/syncedContext";
 import SiteChrome from "./SiteChrome.vue";
 import SitePanels from "./SitePanels.vue";
-import LiveStrip from "./LiveStrip.vue";
 import SmartLink from "~/components/ui/SmartLink.vue";
 
 const props = defineProps<{
@@ -86,14 +85,12 @@ provide(SYNCED_RELATIVE_KEY, props.site.syncedRelative);
         <SiteChrome :nav="site.nav" :locale="site.locale" :current="area.id" />
       </div>
 
-      <LiveStrip v-if="site.pulse" :pulse="site.pulse" :synced="site.syncedRelative" />
-
       <div id="content" tabindex="-1">
         <SitePanels :site="site" :area="area.id" />
       </div>
 
       <footer>
-        <p v-if="site.syncedRelative && !site.pulse" class="foot-sync">{{ t("freshFresh", { age: site.syncedRelative }) }}</p>
+        <p v-if="site.syncedRelative" class="foot-sync">{{ t("freshFresh", { age: site.syncedRelative }) }}</p>
         <nav class="foot-links" :aria-label='t("footerLabel")'>
           <span>@{{ site.meta.handle }}</span>
           <SmartLink href="/docs">{{ t("docs") }}</SmartLink>

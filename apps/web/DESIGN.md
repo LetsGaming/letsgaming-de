@@ -252,7 +252,7 @@ Every interactive element has hover, active, focus-visible, and disabled states.
 
 The site needs these and nothing more.
 
-- **Shell:** `AreaPage` (header, footer), `SiteChrome` (tabs, settings), `SettingsModal`, `LiveStrip` (the identity device: 28 days of real activity under the header on every page; the brightest cell is today, and only when today has activity; see `docs/research/2026-11-19-live-strip-brief.md`). The wordmark is the name set in Archivo. The tab strip marks the selected tab with an underline and ink-strong text, never the accent.
+- **Shell:** `AreaPage` (header, footer), `SiteChrome` (tabs, settings), `SettingsModal`. A site-wide 28 day activity strip was built and dropped in review: it had no reason to sit in the header and its meaning was not clear without hovering (`docs/research/2026-11-19-live-strip-brief.md`). The wordmark is the name set in Archivo. The tab strip marks the selected tab with an underline and ink-strong text, never the accent.
 - **Text:** page title; section heading (`ModuleSection` with two variants, `plain` and `ruled`); global `.prose` for Bio, posts, legal, and docs.
 - **Data:** figure (number plus label); ranked row; heat grid and strip; language bars; event row; table row (a CSS pattern, not a component library); segmented control; drill panel; freshness marker.
 - **Media:** project screenshot; gallery tile; cover art.

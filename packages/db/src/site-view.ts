@@ -2,7 +2,6 @@ import {
   ASSET_WIDTHS,
   DEFAULT_ACTIVITY_RANGE,
   MUSIC_TOP_LIMIT,
-  PULSE_DAYS,
   defaultMusicSettings,
   defaultPlaytimeSettings,
   defaultWrappedSettings,
@@ -108,8 +107,6 @@ export async function buildSiteView(store: Store, opts: BuildSiteViewOptions): P
     // module can tell the frontend which span it is showing.
     playtimeWindowDays: playtimeWindow,
     musicWindowDays: musicWindow,
-    // The live strip spans a fixed 28 days whatever the music module is set to.
-    pulse: { music: store.music.dailyTotals(isoDaysAgo(PULSE_DAYS), timeZone), timeZone },
     contact: opts.contact ?? contactFromEnv(),
     // The list cap is the CMS-owned maxCount, applied here as the query LIMIT so
     // the resolved view (and the frontend) never sees more than the top N.
