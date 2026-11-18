@@ -59,7 +59,7 @@
             "highlight": "tinker",
             "after": "."
           },
-          "lede": "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung**. Outside work: plant sensors, LED strips, and a home lab.",
+          "lede": "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung** (software developer apprenticeship). Outside work: plant sensors, LED strips, and a home lab.",
           "status": {
             "verb": "building",
             "now": "plantcare-tracker"

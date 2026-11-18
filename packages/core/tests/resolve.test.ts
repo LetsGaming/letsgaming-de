@@ -13,7 +13,7 @@ test("resolver localizes to the requested locale and falls back to English per-f
       name: "D",
       handle: "LetsGaming",
       location: { en: "Germany", de: "Deutschland" },
-      role: { en: "web developer" }, // no German — must fall back
+      role: { en: "web developer" }, // no German, must fall back
     },
     headline: { before: en("a "), highlight: en("b"), after: en(" c") },
     lede: en("l"),
@@ -109,7 +109,7 @@ test("resolver folds Wakapi into coding and presence config", () => {
   // here: enablement is a CMS display decision, decoupled from whether the server
   // is configured to reach Lanyard.
   assert.equal(presence.data.enabled, true);
-  // Presence is present-tense and entirely live — no history reaches it. The
+  // Presence is present-tense and entirely live, no history reaches it. The
   // recently-played shelf and the ledger live in the playtime module.
   assert.ok(!("recent" in presence.data), "no history in the presence card");
   assert.ok(!("playtime" in presence.data), "no playtime in the presence card");
@@ -301,7 +301,7 @@ test("hero caps its CTAs at 4 (a first-paint decision point); Contact renders ev
     hero.data.links.map((l) => l.label),
     ["Link 0", "Link 1", "Link 2", "Link 3"],
   );
-  assert.equal(contact.data.links.length, 6); // uncapped — Contact's whole job is "every way to reach me"
+  assert.equal(contact.data.links.length, 6); // uncapped, Contact's whole job is "every way to reach me"
 });
 
 test("freshness: data past its source's TTL renders stale, not fresh", () => {
@@ -405,7 +405,7 @@ const baseInput = {
 
 test("an in-page target resolves to the URL that shows it", () => {
   // The seed's hero CTA is `href: "#contact"`, and `contact` is a module in the
-  // `about` area. That's `/about#contact` — a real link, which a browser follows
+  // `about` area. That's `/about#contact`, a real link, which a browser follows
   // with no JavaScript, a person can middle-click, and a crawler can index.
   const view = resolveSiteView({
     ...baseInput,
@@ -428,7 +428,7 @@ test("an in-page target resolves to the URL that shows it", () => {
 test("a fragment is not a script sink, and is not treated as one", () => {
   // `safeHref` used to reject `#contact` because HREF_PATTERN allowed only
   // http(s)/mailto/`/`. It returned "#", so the CMS's own default CTA pointed
-  // nowhere — and HeroSection's click handler swallowed the click, so nobody saw.
+  // nowhere, and HeroSection's click handler swallowed the click, so nobody saw.
   // A fragment has no scheme; it was never what that pattern guards against.
   assert.equal(safeHref("#contact"), "#contact");
   assert.equal(safeHref("javascript:alert(1)"), "#");
@@ -438,10 +438,10 @@ test("a fragment is not a script sink, and is not treated as one", () => {
 
 test("a target in a draft area stays inert rather than 404ing", () => {
   // visibleNav strips hidden nodes before targetHref sees them, so a link into an
-  // unpublished area falls through to `#target` — which goes nowhere, honestly,
+  // unpublished area falls through to `#target`, which goes nowhere, honestly,
   // instead of to a URL that 404s. (The field is `hidden`, not `draft`; my first
   // draft of this test said `draft: true` and the resolver happily produced
-  // `/secret#bio` — an excess property on an object literal in a spread isn't
+  // `/secret#bio`, an excess property on an object literal in a spread isn't
   // checked, so the test lied in the same way the code used to.)
   const view = resolveSiteView({
     ...baseInput,
@@ -484,7 +484,7 @@ test("hidden games are dropped from the recently-played chart but not from the d
     nav,
     modules,
     source: {},
-    // observed games — one of them hidden, matched case-insensitively.
+    // observed games, one of them hidden, matched case-insensitively.
     playtime: [
       { name: "Counter-Strike 2", minutes: 120, sessions: 4, exact: true },
       { name: "Minecraft", minutes: 60, sessions: 2, exact: true },
@@ -612,7 +612,7 @@ test("resolver-emitted chrome follows the locale (stat labels, repo meta, event 
   // The regression this guards: stat labels, "updated … ago" and the activity
   // verbs were English literals in the resolver, so a German page rendered
   // "20 public repos" next to "Auf einen Blick". Content localization already
-  // worked; this is the other half — the words the resolver writes itself.
+  // worked; this is the other half, the words the resolver writes itself.
   const content: SiteContent = {
     meta: { name: "D", handle: "LetsGaming", location: en("DE"), role: en("dev") },
     headline: { before: en("a "), highlight: en("b"), after: en(" c") },
@@ -672,10 +672,10 @@ test("resolver-emitted chrome follows the locale (stat labels, repo meta, event 
   const [starred, unstarred] = projectsDe.data.projects;
   // A star count is social proof; printing it at zero says the opposite once per
   // card, so it's omitted below one. Freshness stays either way.
-  assert.deepEqual(starred?.meta, ["★ 3", "vor 2d aktualisiert"]);
-  assert.deepEqual(unstarred?.meta, ["vor 2d aktualisiert"]);
+  assert.deepEqual(starred?.meta, ["★ 3", "vor 2 T aktualisiert"]);
+  assert.deepEqual(unstarred?.meta, ["vor 2 T aktualisiert"]);
 
-  // Same input, English locale — the numbers don't move, only the words.
+  // Same input, English locale, the numbers don't move, only the words.
   const enView = resolveSiteView({ content, ...at, locale: "en" });
   const glanceEn = enView.modules["glance"];
   if (!glanceEn || glanceEn.kind !== "glance") throw new Error("expected a glance module");
@@ -759,7 +759,7 @@ test("areas builds the site's table of contents from the nav tree", () => {
   const mod = view.modules["toc"];
   if (!mod || mod.kind !== "areas") throw new Error("expected an areas module");
 
-  // Its own area is skipped — a card on Home linking to Home is furniture. Hidden
+  // Its own area is skipped, a card on Home linking to Home is furniture. Hidden
   // nodes are already gone via visibleNav.
   assert.deepEqual(
     mod.data.areas.map((a) => a.id),
@@ -769,7 +769,7 @@ test("areas builds the site's table of contents from the nav tree", () => {
   assert.equal(mod.data.areas[0]?.label, "Code");
   assert.equal(mod.data.areas[0]?.description, "Was ich baue");
   assert.equal(mod.data.areas[0]?.moduleCount, 2);
-  // No description written is absent, not empty — the card drops the line.
+  // No description written is absent, not empty, the card drops the line.
   assert.equal(mod.data.areas[1]?.description, undefined);
   // Real hrefs, so the cards are middle-clickable and crawlable.
   assert.ok(mod.data.areas.every((a) => a.href.startsWith("/")));

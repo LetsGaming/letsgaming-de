@@ -22,7 +22,7 @@ import { iaRepo } from "./ia-repo.js";
  *
  * German is seeded rather than left as a later content task: a site that offers a
  * language switch and then answers half of it in English isn't bilingual, it's
- * broken in two places. Everything here is still fully CMS-editable — this is the
+ * broken in two places. Everything here is still fully CMS-editable, this is the
  * starting text, not the authority. `mergeLocales` in `reconcileIa` is what carries
  * the same guarantee to the module headings and area labels of a store that was
  * seeded before German existed.
@@ -32,7 +32,7 @@ import { iaRepo } from "./ia-repo.js";
  * in German usage (Fachinformatiker, Home Lab, Raspberry Pi) it stays.
  *
  * Prose fields use `**bold**`; the frontend renders it safely. No source data is
- * seeded — repos/stats/graph/feed arrive only from a real sync.
+ * seeded, repos/stats/graph/feed arrive only from a real sync.
  */
 const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
   meta: {
@@ -47,7 +47,7 @@ const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
     after: l(".", " ich."),
   },
   lede: l(
-    "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung**. Outside work: plant sensors, LED strips, and a home lab.",
+    "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung** (software developer apprenticeship). Outside work: plant sensors, LED strips, and a home lab.",
     "Webentwickler in Vollzeit, gelernter **Fachinformatiker Anwendungsentwicklung**. Nach der Arbeit: Pflanzensensoren, LED-Streifen und ein Home Lab.",
   ),
   status: { verb: l("building", "baue"), now: l("plantcare-tracker", "plantcare-tracker") },
@@ -138,7 +138,7 @@ const NOW: NowItem[] = [
  * site_ia, site_presence, and the content-entity tables, and the "already
  * seeded" guard only checks site_content. Without a transaction, a process
  * killed mid-seed (OOM, container restart) leaves site_content populated but
- * site_ia empty — the guard then sees site_content and never retries, and the
+ * site_ia empty, the guard then sees site_content and never retries, and the
  * store is permanently stuck: reconcileIa's getNav() throws, as does every
  * other caller of store.ia.getNav() outside that one try/catch (e.g. SSR's
  * buildSiteView). A transaction makes the boot either fully seed or fully not.
@@ -178,7 +178,7 @@ export function seedIfEmpty(db: DB): { seeded: boolean } {
 /**
  * Idempotent IA reconciliation for an *already-seeded* store. The nav tree and
  * module registry live in the DB (seeded once), but module placement isn't
- * CMS-editable — so a new launch module (e.g. `highlights`) would never reach a
+ * CMS-editable, so a new launch module (e.g. `highlights`) would never reach a
  * DB seeded by an earlier version. This additively:
  *   1. registers any `LAUNCH_MODULES` descriptor the store doesn't have yet, and
  *   2. places each such module into its launch leaf, in launch order, without
@@ -193,7 +193,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
     modules = ia.getModules();
     nav = ia.getNav();
   } catch {
-    return { addedModules: [], placed: [] }; // not seeded yet — seedIfEmpty handles it
+    return { addedModules: [], placed: [] }; // not seeded yet, seedIfEmpty handles it
   }
 
   // 0. Structural drift the additive passes below can't express.
@@ -202,7 +202,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   //    it can't rename a node, delete a retired module, or create a node the
   //    store has never heard of. Those are exactly what an area rename is, so
   //    without this an IA change would live in the code and never reach a store
-  //    that was already seeded — the site would keep serving the old tree.
+  //    that was already seeded, the site would keep serving the old tree.
   //
   //    Each entry is one-shot and idempotent: it only fires while the old shape
   //    is still present.
@@ -273,7 +273,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   //     This used to assign `canon.heading` outright, on the grounds that headings
   //     were code-defined and not CMS-editable. They are editable now, which makes
   //     an unconditional overwrite a reverter: save a heading in the CMS, restart,
-  //     and the code's wording is back. Additive merge instead — a store seeded
+  //     and the code's wording is back. Additive merge instead, a store seeded
   //     before German existed gains the German, an edited English survives, and a
   //     rename in LAUNCH_MODULES no longer reaches a store that already has its own
   //     answer. (That last part is the trade, and it's the right way round: the
@@ -300,7 +300,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   }
 
   // 1c. The same rule for nav labels and area descriptions, which are CMS-owned
-  //     for exactly the same reason and were previously never reconciled at all —
+  //     for exactly the same reason and were previously never reconciled at all, 
   //     so a store seeded before German would have kept English area names forever.
   // Keyed as `string`, not `AreaId`: the store's nav ids are whatever the CMS has
   //     created, so a lookup by a store id has to be expressible.

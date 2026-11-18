@@ -148,6 +148,7 @@ const EN = {
   // segment itself, abbreviated to fit a card header. One pair per
   // ACTIVITY_RANGES entry; `ACTIVITY_RANGE_LABELS` maps between them, so a new
   // range won't compile until both labels exist in both locales.
+  lastDays7: "last 7 days",
   lastDays14: "last 14 days",
   lastDays30: "last 30 days",
   lastDays90: "last 3 months",
@@ -373,6 +374,7 @@ const DE: Messages = {
 
   listening: "Gehört",
   played: "Gespielt",
+  lastDays7: "letzte 7 Tage",
   lastDays14: "letzte 14 Tage",
   lastDays30: "letzte 30 Tage",
   lastDays90: "letzte 3 Monate",
@@ -440,10 +442,10 @@ const DE: Messages = {
   heroLastPlayed: "Zuletzt gespielt: {name} vor {age}",
   heroLastListened: "Zuletzt gehört: {name} vor {age}",
   heroCtaCode: "Das baue ich gerade",
-  waveButton: "Winken",
-  waveLabel: "Hallo winken",
-  waveCount: "{n}-mal gewinkt",
-  waveDone: "Gewinkt",
+  waveButton: "Hallo sagen",
+  waveLabel: "Hallo sagen",
+  waveCount: "{n}-mal Hallo gesagt",
+  waveDone: "Hallo gesagt",
   waveLimited: "Gerade zu oft gewinkt, versuch es später erneut.",
 
   teasersHeading: "Bereiche",
@@ -518,9 +520,10 @@ export function t(
 ): string {
   const message = (CATALOG[locale] ?? CATALOG[DEFAULT_LOCALE])[key];
   if (!vars) return message;
-  return message.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    name in vars ? String(vars[name]) : whole,
-  );
+  // A fractional number follows the locale ("11,4" in German); whole numbers stay plain.
+  const show = (v: string | number): string =>
+    typeof v === "number" && !Number.isInteger(v) ? new Intl.NumberFormat(locale).format(v) : String(v);
+  return message.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? show(vars[name] as string | number) : whole));
 }
 
 /** The correct plural form of a countable noun for the locale. */

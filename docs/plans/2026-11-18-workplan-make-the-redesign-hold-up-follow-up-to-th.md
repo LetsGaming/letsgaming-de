@@ -316,3 +316,9 @@ These refine the phases above. Where a finding contradicts the plan text, the fi
   - `scripts/dev-force-state.mjs` edits only `data/agent-<id>/letsgaming.sqlite`. `empty` and `never` discard the mock data; `POST /api/cms/sync/github` (JSON body `{}`) restores it. Wakapi re-syncs every 30 minutes and overwrites a forced state, so github is the source to use.
   - Edge cases: 60 character names for a repo, a game and a song, an unbroken 70 character token in a description, and a single repo, event and language. One real bug: the Featured lead description overflowed at 1280px with an unbroken token (`overflow-wrap: anywhere` added). The audit passes in every state after that. The 500 item case was not run: the lists are capped by CMS limits server side.
   - The Home page shows one freshness marker in a forced state where two modules read the same source (Glance and Featured); the Featured lead has no marker of its own. Not changed.
+- Phase 8 done. Deviations, with reasons:
+  - Numbers: `compactNumber` and `relativeTime` take a locale; `t()` formats fractional numbers with `Intl.NumberFormat` ("28,3 Std."). German ages carry a spaced unit ("vor 2 T"), so one resolver test expectation changed.
+  - Mock GitHub events now carry `repo`, so German reads "Push nach plantcare-tracker". The legacy `text` field stays as a fallback.
+  - The coding card note moved to the `codingScope` key; the 7 day range is localized by a new `lastDays7` key. Other ranges from a real Wakapi pass through unchanged.
+  - Wave wording changed to "Hallo sagen" and the lede gained an English gloss. Both are listed in the copy sheet for owner confirmation. `gen:fallback` was rerun.
+  - The German lede needs no gloss ("gelernter Fachinformatiker" is the German term).

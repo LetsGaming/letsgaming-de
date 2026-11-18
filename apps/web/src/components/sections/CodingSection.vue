@@ -17,7 +17,7 @@ defineProps<{
   <ModuleSection :id="module.id" :heading="module.data.heading">
     <template #note><Freshness :freshness="module.data.freshness" /></template>
     <ModuleCard v-if="module.data.coding">
-      <CardHeader :note="`${module.data.coding.range}, ${module.data.coding.totalHours}h tracked`" />
+      <CardHeader :note='t("codingScope", { range: module.data.coding.range, hours: module.data.coding.totalHours })' />
       <LanguageBars :languages="module.data.coding.languages" />
     </ModuleCard>
     <p v-else class="sub">{{ t("emptyCoding") }}</p>

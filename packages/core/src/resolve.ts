@@ -403,7 +403,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
    */
   const repoMeta = (stars: number, pushedAt: string | undefined): string[] => [
     ...(stars > 0 ? [`★ ${stars}`] : []),
-    ...(pushedAt ? [T("updatedAgo", { age: relativeTime(pushedAt, now) })] : []),
+    ...(pushedAt ? [T("updatedAgo", { age: relativeTime(pushedAt, now, locale) })] : []),
   ];
 
   const resolveProject = (p: Project): ProjectView => {
@@ -468,10 +468,10 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     if (!gh) return [];
     const s = gh.stats;
     return [
-      { value: compactNumber(s.repos), label: T("statRepos") },
-      { value: compactNumber(s.commitsYear), label: T("statCommitsYear") },
-      { value: compactNumber(s.commitsAllTime), label: T("statCommitsAllTime") },
-      { value: compactNumber(s.longestStreakDays), unit: "d", label: T("statLongestStreak") },
+      { value: compactNumber(s.repos, locale), label: T("statRepos") },
+      { value: compactNumber(s.commitsYear, locale), label: T("statCommitsYear") },
+      { value: compactNumber(s.commitsAllTime, locale), label: T("statCommitsAllTime") },
+      { value: compactNumber(s.longestStreakDays, locale), unit: "d", label: T("statLongestStreak") },
     ];
   };
 
@@ -493,7 +493,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
 
   /** Merge GitHub releases, merged PRs, and gists into one newest-first feed. */
   const highlightViews = (data: GitHubData): HighlightView[] => {
-    const rel = (iso: string) => relativeTime(iso, now);
+    const rel = (iso: string) => relativeTime(iso, now, locale);
     const releases: HighlightView[] = (data.releases ?? []).map((r) => ({
       type: "release",
       text: T("eventRelease", { repo: r.repo, name: r.name || r.tagName }),
@@ -531,7 +531,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     if (!at) return { state: "never", source: sourceId };
     const ttl = input.freshness?.ttl[sourceId];
     const age = now.getTime() - new Date(at).getTime();
-    const relative = relativeTime(at, now);
+    const relative = relativeTime(at, now, locale);
     if (!hasData) return { state: "empty", syncedAt: at, relative, source: sourceId };
     // The last attempt failed, so what is shown is the last good copy. It says so
     // instead of aging quietly into "stale", which would blame the clock.
@@ -564,7 +564,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         slug,
         title: fm.title,
         at: fm.date,
-        relative: relativeTime(fm.date, now),
+        relative: relativeTime(fm.date, now, locale),
         // Always give OG something to quote: an explicit excerpt, else the
         // opening paragraph.
         excerpt: fm.excerpt ?? firstParagraph(body),
@@ -595,7 +595,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           ? {
               detail: T("teaserLatest", {
                 text: eventText(latest),
-                age: relativeTime(latest.at, now),
+                age: relativeTime(latest.at, now, locale),
               }),
             }
           : projects[0]?.meta[0]
@@ -743,7 +743,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             status: { verb: L(content.status.verb), now: L(content.status.now) },
             links: heroLinks.slice(0, heroLinkCap),
             presenceEnabled: show.length > 0,
-            ...(last ? { lastActivity: { ...last, relative: relativeTime(last.at, now) } } : {}),
+            ...(last ? { lastActivity: { ...last, relative: relativeTime(last.at, now, locale) } } : {}),
             waves: input.reactions?.wave ?? 0,
             ...(avatar && (avatar.kind === "image" || avatar.kind === "gif")
               ? { avatar }
@@ -799,7 +799,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
                     type: latest.type,
                     text: eventText(latest),
                     at: latest.at,
-                    relative: relativeTime(latest.at, now),
+                    relative: relativeTime(latest.at, now, locale),
                   },
                 }
               : {}),
@@ -828,7 +828,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
                     text: eventText(e),
                     meta: e.meta,
                     at: e.at,
-                    relative: relativeTime(e.at, now),
+                    relative: relativeTime(e.at, now, locale),
                   })),
                   ...highlightViews(gh),
                 ]
@@ -847,7 +847,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         const w = source.wakapi;
         const coding: CodingView | null = w
           ? {
-              range: w.range,
+              range: /^last[ _]7[ _]days$/i.test(w.range.trim()) ? T("lastDays7") : w.range,
               totalHours: Math.round((w.totalSeconds / 3600) * 10) / 10,
               languages: w.languages.map((l) => ({
                 name: l.name,
@@ -871,7 +871,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             heading,
             note:
               note ??
-              (repoCount != null ? T("repoCount", { n: compactNumber(repoCount) }) : undefined),
+              (repoCount != null ? T("repoCount", { n: compactNumber(repoCount, locale) }) : undefined),
             freshness: freshnessOf("github", projectList.length > 0),
             projects: projectList,
             githubUrl,
@@ -910,7 +910,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           name: e.name,
           message: e.message,
           at: e.createdAt,
-          relative: relativeTime(e.createdAt, now),
+          relative: relativeTime(e.createdAt, now, locale),
         }));
         return { id: descriptor.id, kind: "guestbook", data: { heading, note, entries } };
       }
@@ -1128,7 +1128,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
     nav: localizeNav(visibleNav(input.nav)),
     modules,
     syncedAt: input.syncedAt,
-    syncedRelative: input.syncedAt ? relativeTime(input.syncedAt, now) : undefined,
+    syncedRelative: input.syncedAt ? relativeTime(input.syncedAt, now, locale) : undefined,
     ...(pulse ? { pulse } : {}),
   };
 }

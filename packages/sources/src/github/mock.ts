@@ -1,7 +1,7 @@
 /**
  * A stand-in GitHub source for local dev when no token is set. It returns the
  * normalized shape directly (identity normalize), so the site renders end-to-end
- * offline. Data is deterministic — no randomness — so dev builds are stable.
+ * offline. Data is deterministic, no randomness, so dev builds are stable.
  *
  * This is dev scaffolding, clearly labelled: production registers the real
  * `githubSource`, which requires a token for the contribution calendar.
@@ -12,7 +12,7 @@ import type { ContributionDay, GitHubData, Source } from "@lg/core";
 
 /** A stable 182-day contribution ramp so the heatmap looks alive without RNG.
  *  Dated back from "now" (module load time), the same way `daysAgo` below
- *  dates the other demo fields — this is dev scaffolding, not a source of
+ *  dates the other demo fields, this is dev scaffolding, not a source of
  *  truth, so a process left running for days drifting slightly stale is fine. */
 function demoContributions(): ContributionDay[] {
   const days: ContributionDay[] = [];
@@ -87,18 +87,18 @@ const DEMO: GitHubData = {
   events: [
     {
       type: "commit",
-      text: "Pushed 3 commits to plantcare-tracker",
+      repo: "plantcare-tracker",
       meta: "refactor watering schedule",
       at: daysAgo(2),
     },
     {
       type: "pr",
-      text: "Opened a PR in LED-Controller-Websocket",
+      repo: "LED-Controller-Websocket",
       meta: "add effects API",
       at: daysAgo(6),
     },
-    { type: "star", text: "Starred tsparticles", at: daysAgo(9) },
-    { type: "repo", text: "Created dotfiles", meta: "initial commit", at: daysAgo(16) },
+    { type: "star", repo: "tsparticles", at: daysAgo(9) },
+    { type: "repo", repo: "dotfiles", meta: "initial commit", at: daysAgo(16) },
   ],
   releases: [
     {
