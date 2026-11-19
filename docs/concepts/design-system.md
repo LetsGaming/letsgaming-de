@@ -184,7 +184,9 @@ one adapter + one registry line + one `SourceData` field."
 | Module | Source | States beyond `fresh` |
 |---|---|---|
 | `hero` | CMS | No avatar · no status line |
-| `glance` | GitHub + sync | `never` (first boot) · `stale` · `failed` |
+| `week` | Wakapi, GitHub, observed play | A clause is dropped when its source is `stale` or `failed` (the module says so); nothing left, the module is absent |
+| `recent` | GitHub | `empty` (no events) · `stale` · `failed` · one event |
+| `playing` | Observed play and listening | One group missing · neither, the module is absent |
 | `featured` | GitHub | `empty` (none pinned) · no description · `stale` |
 | `activity` | GitHub | `empty` (no events) · `stale` · `failed` · one event · 500 events |
 | `coding` | Wakapi | `empty` ✓ exists · zero hours this week · `failed` |

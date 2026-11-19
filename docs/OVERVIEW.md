@@ -71,7 +71,7 @@ does not grow the nav.
 
 | Area | Answers | Holds today |
 |---|---|---|
-| Home | who is this? | hero, the pulse, featured project |
+| Home | who is this, and is the site alive? | hero, this week, featured project, games and music, latest on GitHub, guestbook |
 | Code | what do you build? | activity (GitHub), coding time (Wakapi), projects |
 | Life | who are you outside that? | presence, hobbies, galleries, "lately", guestbook |
 | About | the longer story, and how to reach you | bio, contact |
@@ -122,9 +122,9 @@ return. Hover is +1 surface on interactive elements only; press is
 `translateY(2px)`. There is no tilt: it advertised interactivity on `<div>`s that
 did nothing. Glow exists on the live dot and the freshness dot, and nowhere else.
 
-Type is Fredoka for display, Inter for body, Space Mono for data, all self-hosted.
-Fredoka reaches exactly four roles: wordmark, H1, section headings, card titles.
-It has no body design in it.
+Type is Archivo for display, Atkinson Hyperlegible Next for body and Atkinson
+Hyperlegible Mono for synced numbers only, all self-hosted. Archivo carries the
+wordmark, H1, section headings and big figures.
 
 **Staleness is a first-class state.** A synced module renders `fresh`, `stale`,
 `empty`, `failed`, or `never`, and must never render as if fresh when it isn't.

@@ -67,7 +67,7 @@ Method: greps over public source (CMS excluded), a contrast script that reads th
 | 9 | No scroll entrance animation | Pass. Only analytics uses `IntersectionObserver`. |
 | 10 | No `backdrop-filter` outside the docs top bar | Pass. |
 | 11 | Body 17px, prose at most 66ch | Pass (measured 17px; `.prose` is 66ch). |
-| 12 | No layout family repeats, at most two `ModuleCard` per page, no eyebrow labels | Pass (2026-11-19). `ModuleCard` is used once on the whole site (Coding, on Code), counted by grep. Layout families: Home has five (hero type, Areas index, Glance margin column, Featured image lead with unruled grid, Guestbook quote column). Life has three distinct forms (cover wall, typographic list, Wrapped poster). Judged on screenshots of Home, Code and Life. |
+| 12 | No layout family repeats, at most two `ModuleCard` per page, no eyebrow labels | Pass (2026-11-19). `ModuleCard` is used once on the whole site (Coding, on Code), counted by grep. Layout families: Home has six (hero type, one running sentence, Featured image lead with unruled grid, cover wall, dated feed, Guestbook quote column). Life has three distinct forms (cover wall, typographic list, Wrapped poster). Judged on screenshots of Home, Code and Life. |
 | 13 | Hero at most four text elements; H1 two lines at 1280px | Pass. Hero has title, lede, status line, button row. H1 is two lines at 1280px in EN and DE (DE wraps to three at 390px). |
 | 14 | Squint test | Judgment. Primary, secondary and groups were nameable on the Home, Code and Life screenshots. |
 | 15 | Cover-the-name test | Judgment. The first viewport states the role, the apprenticeship and what the owner builds. |
@@ -87,5 +87,5 @@ Method: greps over public source (CMS excluded), a contrast script that reads th
 6. Check the Featured screenshot slots and the Wrapped genre list on the live site (the dev data has neither).
 7. ~~Forced states~~ Done (checklist item 16).
 8. Wrapped top genres rendered nowhere in dev (the seed has no genres): check them on the live site.
-9. The Glance figures are still a separate module from the Areas index (merging needs a resolver change and breaks the CMS module mapping). Decide whether that is worth a larger change.
+9. ~~Glance and Areas~~ Retired in the Home rebuild: their facts moved into the week sentence, the games and music wall and the GitHub feed. Home is 3297px tall at 1280px, about 100px over the 3200px budget.
 10. The hero lede is now h2 size and wraps to about five lines at 390px. Say if it should be smaller.

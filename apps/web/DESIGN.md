@@ -282,7 +282,7 @@ Removed: hobby gradient tile, teaser box, round arrow badge, pill-shaped "Pinned
 
 Layout differs between pages on purpose, so no single arrangement becomes the identity.
 
-- **Home:** text block, ruled index list, one large figure, one asymmetric feature, a running quote column.
+- **Home:** a type block, one sentence of live data, one asymmetric feature, a cover wall, a dated feed, a running quote column.
 - **Code:** dense data in a wide container: figure row, full-width heatmap, dated list, table rows, one card.
 - **Life:** imported color leads; one anchor widget; a poster-style Wrapped; a varied gallery.
 - **About and posts:** one reading column, no containers.

@@ -34,13 +34,12 @@ The other three items had no tell and stay as they are.
 
 | Module | EN | DE |
 |---|---|---|
-| teasers | `Areas` | `Bereiche` |
 | projects | `Projects` | `Projekte` |
 | hobbies | `Hobbies` | `Hobbys` |
 | gallery | `Photos` | `Fotos` |
 | contact | `Contact` | `Kontakt` |
 
-Other headings stay (At a glance, Featured, Recent, This week, Right now, Time played, Listening, Wrapped, Lately, Guestbook, About, Blog).
+The Areas and At a glance modules were retired in the Home rebuild (see the section at the end). Other headings stay (Featured, Recent, This week, Right now, Time played, Listening, Wrapped, Lately, Guestbook, About, Blog).
 
 ## Not changed on purpose
 

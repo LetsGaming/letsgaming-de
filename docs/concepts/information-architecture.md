@@ -24,8 +24,8 @@ The launch tree is one level, four areas:
 Within Code, activity sits above projects.
 
 Modules are defined in `packages/core/src/modules.ts` as a `ModuleKind` union:
-`hero`, `glance`, `featured`, `activity`, `coding`, `projects`, `presence`,
-`wrapped`,
+`hero`, `week`, `featured`, `playing`, `recent`, `activity`, `coding`, `projects`,
+`presence`, `wrapped`,
 `hobbies`, `gallery`, `now`, `guestbook`, `bio`, `contact`, `posts`.
 
 Listed flat, deliberately. They used to be grouped by area in comments, which

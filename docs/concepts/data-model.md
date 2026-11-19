@@ -159,8 +159,9 @@ Fully resolved means: strings already localized for the requested locale (no
 pre-computed, asset references turned into renderable image views. Its shape is
 `{ locale, meta, nav, modules, syncedAt }`, where `modules` is a map from id to a
 `ResolvedModule` discriminated by `kind`. The kinds match the `ModuleKind` union
-(hero, featured, glance, activity, highlights, coding, projects, hobbies, now,
-guestbook, presence, gallery, bio, contact). The frontend walks `nav`, looks up
+(hero, week, areas, featured, playing, recent, activity, coding, projects,
+hobbies, now, guestbook, presence, gallery, bio, contact, posts, playtime, music,
+wrapped). The frontend walks `nav`, looks up
 each leaf's module ids in `modules`, and switches on `kind`. It never learns
 where a module's data came from.
 
