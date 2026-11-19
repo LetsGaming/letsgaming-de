@@ -47,8 +47,8 @@ const SEED: Omit<SiteContent, "projects" | "hobbies" | "links" | "now"> = {
     after: l(".", " ich."),
   },
   lede: l(
-    "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung** (software developer apprenticeship). Outside work: plant sensors, LED strips, and a home lab.",
-    "Webentwickler in Vollzeit, gelernter **Fachinformatiker Anwendungsentwicklung**. Nach der Arbeit: Pflanzensensoren, LED-Streifen und ein Home Lab.",
+    "I'm a full-time web developer in Germany. Outside work I build plant sensors, LED strips and a home lab.",
+    "Ich bin Webentwickler in Vollzeit. Nach der Arbeit baue ich Pflanzensensoren, LED-Streifen und ein Home Lab.",
   ),
   status: { verb: l("building", "baue"), now: l("plantcare-tracker", "plantcare-tracker") },
   bio: [
@@ -210,7 +210,7 @@ export function reconcileIa(db: DB): { addedModules: string[]; placed: string[] 
   /** Modules that moved area. Additive reconcile can't express a move: it would
    *  see the module already placed and leave it. */
   const movedModules: Record<string, string> = { guestbook: "home" };
-  const retiredModules = new Set(["highlights"]);
+  const retiredModules = new Set(["highlights", "glance", "teasers"]);
   let structuralChange = false;
 
   const renameNodes = (nodes: NavNode[]): void => {

@@ -207,14 +207,16 @@ export interface HeroView {
   waves: number;
 }
 
-/** One card of the home page's teaser grid: a preview that links into an area. */
-export interface TeaserView {
-  /** The area the card points at. */
-  id: string;
-  label: string;
-  value: string;
-  detail?: string;
-  href: string;
+/**
+ * One run of text in the "this week" sentence. The sentence is assembled in the
+ * resolver, in the visitor's language, from the message templates, so word order
+ * can differ per locale. A part with an `href` is rendered as a link.
+ */
+export interface WeekPart {
+  text: string;
+  href?: string;
+  /** Which fact a linked part states, so a click can be counted per fact. */
+  role?: "code" | "games" | "event";
 }
 
 export interface ActivityView extends SectionMeta {
@@ -257,14 +259,15 @@ export interface SectionMeta {
 /** Discriminated by `kind`; the frontend maps kind -> component. */
 export type ResolvedModule =
   | { id: string; kind: "hero"; data: HeroView }
-  | { id: string; kind: "teasers"; data: SectionMeta & { teasers: TeaserView[] } }
+  | { id: string; kind: "week"; data: SectionMeta & { parts: WeekPart[] } }
   | { id: string; kind: "areas"; data: SectionMeta & { areas: AreaCardView[] } }
   | { id: string; kind: "featured"; data: SectionMeta & { projects: ProjectView[]; moreHref: string } }
   | {
       id: string;
-      kind: "glance";
-      data: SectionMeta & { stats: StatView[]; latest?: EventView; moreHref: string };
+      kind: "playing";
+      data: SectionMeta & { games: PlaytimeView[]; songs: MusicRankView[]; moreHref: string };
     }
+  | { id: string; kind: "recent"; data: SectionMeta & { events: EventView[]; moreHref: string } }
   | { id: string; kind: "activity"; data: ActivityView }
   | { id: string; kind: "posts"; data: SectionMeta & { posts: PostView[] } }
   | { id: string; kind: "coding"; data: SectionMeta & { coding: CodingView | null } }

@@ -4,9 +4,10 @@ import type { Localized, ModuleDescriptor, ModuleKind } from "@lg/core";
 export const KIND_LABELS: Record<ModuleKind, string> = {
   hero: "Hero",
   areas: "Pages overview",
-  teasers: "Teasers",
+  week: "This week",
   featured: "Featured",
-  glance: "At a glance",
+  playing: "Playing",
+  recent: "Recent",
   activity: "Activity",
   coding: "Coding",
   projects: "Projects",

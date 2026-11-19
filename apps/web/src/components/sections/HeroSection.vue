@@ -57,7 +57,6 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
       <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" loading="eager" />
       <h1>{{ module.data.headline.before }}{{ module.data.headline.highlight }}{{ module.data.headline.after }}</h1>
     </div>
-    <p class="lede" v-html="mdBold(module.data.lede)" />
     <div class="status" aria-live="polite">
       <template v-if="module.data.presenceEnabled && liveText">
         <span class="dot" :class="{ on: liveParts.length > 0 }" />
@@ -68,19 +67,22 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
         <span v-if="waves > 0" class="wave-count">{{ waves }}</span>
       </button>
     </div>
+    <p class="lede" v-html="mdBold(module.data.lede)" />
     <div class="links">
       <SmartLink
         v-for="l in module.data.links"
         :key="l.id"
-        class="btn"
-        :class="l.primary ? 'btn-primary' : 'btn-ghost'"
+        :class="l.primary ? 'btn btn-primary' : 'quiet'"
         :href="l.href"
         @click="onLink(l)"
       >
-        <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span
-          v-else-if="l.icon"
-          v-html="icons[l.icon]"
-        />{{ l.label }}
+        <template v-if="l.primary"
+          ><span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span
+            v-else-if="l.icon"
+            v-html="icons[l.icon]"
+          />{{ l.label }}</template
+        >
+        <template v-else>{{ l.label }}</template>
       </SmartLink>
     </div>
   </section>
@@ -129,7 +131,7 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
-  margin-top: var(--space-4);
+  margin: 0 0 var(--space-3);
   font-size: var(--fs-body);
   color: var(--ink);
 }
@@ -185,7 +187,30 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   color: var(--ink);
 }
 .links {
-  margin-top: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-5);
+}
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: var(--space-1) 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+.quiet:hover {
+  color: var(--ink-strong);
+  text-decoration-thickness: 2px;
+}
+@media (pointer: coarse) {
+  .quiet {
+    min-height: 44px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .status .dot.on {

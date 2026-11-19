@@ -259,7 +259,7 @@ h1 {
 }
 
 /* The section shell + heading + note now live in the ModuleSection component.
-   `.more` (below) is still a shared text-link, used by Glance and the Activity feed. */
+   `.more` (below) is still a shared text-link, used by the Activity feed. */
 .more {
   display: inline-flex;
   align-items: center;
@@ -697,11 +697,6 @@ footer {
     opacity: 0.32;
   }
 }
-
-/* At a glance: four stat cards became one muted line. They were the same four
-   numbers Code already renders, so the copy on Home was decoration, and
-   accumulated totals are the quietest tier by design, not the loudest. */
-
 
 /* Blog index. Prose, not cards: a post is a title and a promise, and a grid of
    boxes would make ten of them look like a product listing. */

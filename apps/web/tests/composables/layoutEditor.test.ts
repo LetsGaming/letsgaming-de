@@ -20,7 +20,7 @@ function editor(preview: () => Promise<unknown> = async () => null, tabName = "d
     cms: { preview } as never,
   });
   e.layoutAreas.value = [
-    { id: "home", label: { en: "Home" }, description: { en: "" }, modules: ["hero", "glance"] },
+    { id: "home", label: { en: "Home" }, description: { en: "" }, modules: ["hero", "week"] },
     { id: "about", label: { en: "About" }, description: { en: "" }, modules: ["bio"] },
   ];
   return { e, previewArea };
@@ -29,7 +29,7 @@ function editor(preview: () => Promise<unknown> = async () => null, tabName = "d
 describe("canvas selection", () => {
   it("is cleared when the selected module is not on the newly shown page", async () => {
     const { e, previewArea } = editor();
-    e.canvasSelected.value = "glance";
+    e.canvasSelected.value = "week";
     previewArea.value = "about";
     await nextTick();
     expect(e.canvasSelected.value).toBeUndefined();
@@ -45,7 +45,7 @@ describe("canvas selection", () => {
 
   it("is cleared when the selected module is moved off the current page", async () => {
     const { e } = editor();
-    e.canvasSelected.value = "glance";
+    e.canvasSelected.value = "week";
     e.layoutAreas.value[0]!.modules = ["hero"];
     await nextTick();
     expect(e.canvasSelected.value).toBeUndefined();
@@ -112,8 +112,8 @@ describe("canvas refresh after a save", () => {
 describe("module heading", () => {
   it("falls back to the friendly kind name, not the raw id, when the heading is empty", () => {
     const { e } = editor();
-    e.modules.value = [{ id: "glance", kind: "glance", heading: { en: "" } }] as never;
-    expect(e.moduleHeading("glance")).toBe("At a glance");
+    e.modules.value = [{ id: "week", kind: "week", heading: { en: "" } }] as never;
+    expect(e.moduleHeading("week")).toBe("This week");
     expect(e.moduleHeading("unknown-id")).toBe("unknown-id");
   });
 });

@@ -146,6 +146,11 @@ export const CLICK_ACTIONS = [
   "teaser-life",
   "teaser-blog",
   "teaser-about",
+  "week-code",
+  "week-games",
+  "week-event",
+  "playing-more",
+  "recent-more",
 ] as const;
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 

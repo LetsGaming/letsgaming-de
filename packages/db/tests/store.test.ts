@@ -231,6 +231,40 @@ test("reconcileIa migrates an already-seeded store to the new tree (rename, reti
   db.close();
 });
 
+test("reconcileIa turns the old Home (Areas, At a glance) into the current one without orphans", () => {
+  const db = openDatabase(":memory:");
+  seedIfEmpty(db);
+  const ia = iaRepo(db);
+
+  ia.setNav(
+    ia.getNav().map((n) =>
+      n.id === "home" ? { ...n, modules: ["hero", "teasers", "glance", "featured", "guestbook"] } : n,
+    ),
+  );
+  ia.setModules([
+    ...ia.getModules().filter((m) => !["week", "playing", "recent"].includes(m.id)),
+    { id: "teasers", kind: "teasers", heading: { en: "Areas" } },
+    { id: "glance", kind: "glance", heading: { en: "At a glance" } },
+  ] as never);
+
+  reconcileIa(db);
+
+  const home = ia.getNav().find((n) => n.id === "home");
+  assert.deepEqual(home?.modules, ["hero", "week", "featured", "playing", "recent", "guestbook"]);
+  const ids = new Set(ia.getModules().map((m) => m.id));
+  assert.ok(!ids.has("teasers") && !ids.has("glance"), "the retired descriptors are gone");
+  const lint = lintNav(ia.getNav(), { knownModuleIds: [...ids] });
+  assert.deepEqual(
+    lint.violations.filter((v) => v.code === "DANGLING_MODULE" || v.code === "ORPHAN_MODULE"),
+    [],
+    "no placed module is unregistered and no registered module is unplaced",
+  );
+
+  reconcileIa(db);
+  assert.deepEqual(ia.getNav().find((n) => n.id === "home")?.modules, home?.modules, "a second boot changes nothing");
+  db.close();
+});
+
 test("recording a snapshot updates current and appends history", () => {
   const store = openStore(":memory:");
   store.source.record("github", "2026-01-01T00:00:00.000Z", sampleGitHub);

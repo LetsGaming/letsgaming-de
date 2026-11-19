@@ -15,8 +15,9 @@ export interface SyncedInfo {
 
 export const SYNCED_INFO: Partial<Record<ModuleKind, SyncedInfo>> = {
   areas: { source: null, from: "Built from the site's pages. Rename a page or edit its description to change a card." },
-  teasers: { source: null, from: "Built from the other modules on the site; it updates when they do." },
-  glance: { source: "github", from: "Stats and the latest event come from GitHub." },
+  week: { source: null, from: "One sentence built from coding time, play time and the latest GitHub event." },
+  playing: { source: "presence", from: "Top games and songs come from the play and listening history the presence sampler records." },
+  recent: { source: "github", from: "The latest events come from GitHub." },
   activity: { source: "github", from: "The contribution calendar comes from GitHub." },
   coding: { source: "wakapi", from: "Coding time and languages come from Wakapi." },
   projects: { source: "github", from: "The project list comes from your GitHub repositories." },

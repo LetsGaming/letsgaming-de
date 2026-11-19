@@ -94,9 +94,10 @@ export const PANEL_FOR_KIND: Record<ModuleKind, string | null> = {
      no panel of its own to open. Renaming an area or writing its description is
      what changes this module. */
   areas: null,
-  teasers: null,
+  week: null,
   featured: "featured",
-  glance: null,
+  playing: null,
+  recent: null,
   activity: null,
   coding: null,
   projects: null,

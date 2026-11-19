@@ -23,9 +23,9 @@ function editor() {
     cms: {} as never,
   });
   e.hydrateLayout({
-    modules: ["hero", "glance", "now", "gallery"].map((id) => ({ id, kind: id as never })),
+    modules: ["hero", "week", "now", "gallery"].map((id) => ({ id, kind: id as never })),
     nav: [
-      { id: "home", label: { en: "Home" }, modules: ["hero", "glance"] },
+      { id: "home", label: { en: "Home" }, modules: ["hero", "week"] },
       { id: "life", label: { en: "Life" }, modules: ["now"] },
     ] as never,
   });
@@ -40,15 +40,15 @@ describe("tree moves", () => {
   it("moves a module between pages at a position", () => {
     const e = editor();
     e.moveModuleTo("home", 1, "life", 0);
-    expect(e.layoutAreas.value.map((a) => a.modules)).toEqual([["hero"], ["glance", "now"]]);
+    expect(e.layoutAreas.value.map((a) => a.modules)).toEqual([["hero"], ["week", "now"]]);
   });
 
   it("nudges within a page and stops at the ends", () => {
     const e = editor();
     e.nudgeModule("hero", 1);
-    expect(e.layoutAreas.value[0]!.modules).toEqual(["glance", "hero"]);
+    expect(e.layoutAreas.value[0]!.modules).toEqual(["week", "hero"]);
     e.nudgeModule("hero", 1);
-    expect(e.layoutAreas.value[0]!.modules).toEqual(["glance", "hero"]);
+    expect(e.layoutAreas.value[0]!.modules).toEqual(["week", "hero"]);
     e.nudgeModule("gallery", -1);
     expect(e.hiddenModules.value).toEqual(["gallery"]);
   });

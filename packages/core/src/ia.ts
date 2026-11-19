@@ -94,7 +94,7 @@ export const PREVIEW_PARAM = "preview";
 /** Launch tree. Ids are constrained to {@link AreaId}, so the tree and AREA are
  *  checked against each other by the compiler rather than by convention. */
 export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
-  { id: "home", label: l("Home", "Start"), modules: ["hero", "teasers", "glance", "featured", "guestbook"] },
+  { id: "home", label: l("Home", "Start"), modules: ["hero", "week", "featured", "playing", "recent", "guestbook"] },
   { id: "code", label: l("Code", "Code"), modules: ["activity", "coding", "projects"] },
   {
     id: "life",
@@ -116,9 +116,10 @@ export const LAUNCH_NAV: (NavNode & { id: AreaId })[] = [
  */
 export const LAUNCH_MODULES: ModuleDescriptor[] = [
   { id: "hero", kind: "hero" },
-  { id: "teasers", kind: "teasers", heading: l("Areas", "Bereiche") },
-  { id: "glance", kind: "glance", heading: l("At a glance", "Auf einen Blick") },
+  { id: "week", kind: "week", heading: l("This week", "Diese Woche") },
   { id: "featured", kind: "featured", heading: l("Featured", "Ausgewählt") },
+  { id: "playing", kind: "playing", heading: l("Games and music", "Spiele und Musik") },
+  { id: "recent", kind: "recent", heading: l("Latest on GitHub", "Neu auf GitHub") },
   // One stream. A release is an event, and "Recently shipped" was a second
   // lookalike box sorted by the same key, so `highlights` folded in here.
   { id: "activity", kind: "activity", heading: l("Recent", "Zuletzt") },

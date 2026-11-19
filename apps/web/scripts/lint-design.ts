@@ -32,12 +32,11 @@ const EXTRA_FILES = ["packages/core/src/ui-messages.ts", "packages/core/src/reso
  * number or a timestamp. A caption, a label or a sentence uses the body face.
  */
 const MONO_MAX: Record<string, number> = {
-  "apps/web/src/components/sections/ActivitySection.vue": 1, // relative age of an event
-  "apps/web/src/components/sections/GlanceSection.vue": 1, // relative age
   "apps/web/src/components/sections/GuestbookSection.vue": 1, // entry age
   "apps/web/src/components/sections/HeroSection.vue": 1, // wave count
   "apps/web/src/components/sections/PlaytimeSection.vue": 1, // hour axis ticks
   "apps/web/src/components/sections/PostsSection.vue": 1, // post date
+  "apps/web/src/components/ui/EventRow.vue": 1, // relative age of an event
   "apps/web/src/components/ui/LanguageBars.vue": 1, // percentages
   "apps/web/src/components/ui/RankedRow.vue": 1, // row value
   "apps/web/src/pages/docs/api.vue": 6, // API reference: code, verbs, paths

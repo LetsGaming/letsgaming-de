@@ -31,7 +31,7 @@ import {
   type SourceData,
   type SourceId,
 } from "./source.js";
-import type { FreshnessView, PostView, TeaserView, WrappedRankView } from "./view.js";
+import type { EventView, FreshnessView, PostView, WeekPart, WrappedRankView } from "./view.js";
 import { firstParagraph, parsePost, POST_PREFIX } from "./frontmatter.js";
 import type { PublicGuestbookEntry } from "./guestbook.js";
 import {
@@ -215,6 +215,11 @@ const FEED = {
   projects: 12,
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
+  /** Events in the short feed on Home. */
+  recentEvents: 5,
+  /** Cover tiles and song rows in the Home games and music module. */
+  playingGames: 4,
+  playingSongs: 4,
   /**
    * CTAs in the hero. Unlike Contact (the "how to reach you" section, which
    * renders every link in `content.links` on purpose), the hero is a first-paint
@@ -521,81 +526,41 @@ export function resolveSiteView(input: ResolveInput): SiteView {
    * something to say. Blog stays out until there is a post, and Life's figures
    * respect the same Show switches the live widget does.
    */
-  const teaserViews = (): TeaserView[] => {
-    const cards: TeaserView[] = [];
-    const area = (id: string) => navView.find((a) => a.id === id);
-    const show = content.presence?.show ?? defaultPresenceSettings().show;
+  const eventFeed = (): EventView[] =>
+    gh
+      ? [
+          ...gh.events.map((e) => ({
+            type: e.type,
+            text: eventText(e),
+            meta: e.meta,
+            at: e.at,
+            relative: relativeTime(e.at, now, locale),
+          })),
+          ...highlightViews(gh),
+        ].sort((a, b) => b.at.localeCompare(a.at))
+      : [];
 
-    const code = area(AREA.code);
-    const lead = projectList.filter((p) => p.featured).slice(0, 2);
-    const projects = lead.length > 0 ? lead : projectList.slice(0, 1);
-    if (code && projects.length > 0) {
-      const latest = gh?.events[0];
-      cards.push({
-        id: code.id,
-        label: code.label,
-        value: projects.map((p) => p.name).join(", "),
-        ...(latest
-          ? {
-              detail: T("teaserLatest", {
-                text: eventText(latest),
-                age: relativeTime(latest.at, now, locale),
-              }),
-            }
-          : projects[0]?.meta[0]
-            ? { detail: projects[0].meta[0] }
-            : {}),
-        href: areaHref(navView, code.id),
-      });
-    }
+  const rankView = (e: MusicRankEntry): MusicRankView => ({
+    name: e.name,
+    minutes: e.minutes,
+    plays: e.plays,
+    ...(e.by ? { by: e.by } : {}),
+    ...(e.artUrl ? { artUrl: e.artUrl } : {}),
+  });
 
-    const life = area(AREA.life);
-    if (life) {
-      const weekMinutes = show.includes("game")
-        ? windowLedger(input.playHistory?.ledger ?? [], 7, now).reduce((sum, d) => sum + d.minutes, 0)
-        : 0;
-      const topArtist = show.includes("music") ? input.musicHistory?.topArtists[0] : undefined;
-      if (weekMinutes > 0 || topArtist) {
-        cards.push({
-          id: life.id,
-          label: life.label,
-          value:
-            weekMinutes > 0
-              ? T("teaserHoursWeek", { n: Math.round(weekMinutes / 6) / 10 })
-              : T("teaserTopArtist", { name: topArtist!.name }),
-          ...(weekMinutes > 0 && topArtist
-            ? { detail: T("teaserTopArtist", { name: topArtist.name }) }
-            : {}),
-          href: areaHref(navView, life.id),
-        });
-      }
+  const linked = (key: MessageKey, vars: Record<string, string | WeekPart>): WeekPart[] => {
+    const out: WeekPart[] = [];
+    for (const piece of uiText(key, locale).split(/(\{\w+\})/)) {
+      if (!piece) continue;
+      const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+      const v = name ? vars[name] : undefined;
+      if (v === undefined) out.push({ text: piece });
+      else if (typeof v === "string") {
+        if (v) out.push({ text: v });
+      } else out.push(v);
     }
-
-    const blog = area(AREA.blog);
-    const post = postViews()[0];
-    if (blog && post) {
-      cards.push({
-        id: blog.id,
-        label: blog.label,
-        value: post.title,
-        detail: T("ago", { age: post.relative }),
-        href: areaHref(navView, blog.id),
-      });
-    }
-
-    const about = area(AREA.about);
-    if (about) {
-      cards.push({
-        id: about.id,
-        label: about.label,
-        value: L(content.meta.role),
-        detail: L(content.meta.location),
-        href: areaHref(navView, about.id),
-      });
-    }
-    return cards;
+    return out;
   };
-
   /** Resolve one module, or `null` when it shouldn't appear at all (currently
    *  only Wrapped, which is visible on a schedule). A null is dropped from the
    *  view entirely, so an out-of-window module is absent rather than hidden. */
@@ -695,11 +660,83 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           },
         };
       }
-      case "teasers": {
-        const teasers = teaserViews();
-        return teasers.length > 0
-          ? { id: descriptor.id, kind: "teasers", data: { heading, note, teasers } }
-          : null;
+      case "week": {
+        const codeHref = targetHref(navView, AREA.code);
+        const lifeHref = targetHref(navView, AREA.life);
+        const w = source.wakapi;
+        const wakapi = freshnessOf("wakapi", Boolean(w));
+        const github = freshnessOf("github", Boolean(gh));
+        const weekOfCode = w && wakapi.state === "fresh" && /^last[ _]7[ _]days$/i.test(w.range.trim());
+        const codeHours = weekOfCode ? Math.round(w.totalSeconds / 360) / 10 : 0;
+        const topLanguage = weekOfCode ? w.languages[0] : undefined;
+        const showsGames = (content.presence?.show ?? defaultPresenceSettings().show).includes("game");
+        const gameMinutes = showsGames
+          ? windowLedger(input.playHistory?.ledger ?? [], 7, now).reduce((sum, d) => sum + d.minutes, 0)
+          : 0;
+        const gameHours = Math.round(gameMinutes / 6) / 10;
+        const hours = (n: number) => T(n === 1 ? "weekHour" : "weekHours", { n });
+        const share =
+          codeHours > 0 && topLanguage
+            ? ` ${T("weekShare", { pct: Math.round(topLanguage.pct), language: topLanguage.name })}`
+            : "";
+        const code: WeekPart | undefined =
+          codeHours > 0 ? { text: hours(codeHours), href: codeHref, role: "code" } : undefined;
+        const games: WeekPart | undefined =
+          gameHours > 0 ? { text: hours(gameHours), href: lifeHref, role: "games" } : undefined;
+        const body = code && games
+          ? linked("weekBoth", { code, share, games })
+          : code
+            ? linked("weekCodeOnly", { code, share })
+            : games
+              ? linked("weekGamesOnly", { games })
+              : [];
+        const latest = github.state === "fresh" ? eventFeed()[0] : undefined;
+        const tail = latest
+          ? linked("weekLatest", {
+              event: { text: latest.text, href: codeHref, role: "event" },
+              age: relativeTime(latest.at, now, locale),
+            })
+          : [];
+        const parts = [...body, ...(body.length > 0 && tail.length > 0 ? [{ text: " " }] : []), ...tail];
+        if (parts.length === 0) return null;
+        const untrusted = [wakapi, github].find((f) => f.state === "stale" || f.state === "failed");
+        return {
+          id: descriptor.id,
+          kind: "week",
+          data: { heading, note, parts, ...(untrusted ? { freshness: untrusted } : {}) },
+        };
+      }
+      case "playing": {
+        const pShow = content.presence?.show ?? defaultPresenceSettings().show;
+        const games = pShow.includes("game")
+          ? playtimeRows(input.playtime ?? [], input.gameMeta)
+              .filter((g) => !isHidden(g.name, content.presence?.hidden ?? []))
+              .slice(0, FEED.playingGames)
+          : [];
+        const songs = pShow.includes("music")
+          ? (input.musicHistory?.topSongs ?? []).slice(0, FEED.playingSongs).map(rankView)
+          : [];
+        if (games.length === 0 && songs.length === 0) return null;
+        return {
+          id: descriptor.id,
+          kind: "playing",
+          data: { heading, note, games, songs, moreHref: targetHref(navView, AREA.life) },
+        };
+      }
+      case "recent": {
+        const events = eventFeed().slice(0, FEED.recentEvents);
+        if (events.length === 0) return null;
+        return {
+          id: descriptor.id,
+          kind: "recent",
+          data: {
+            heading,
+            note,
+            freshness: freshnessOf("github", Boolean(gh)),
+            events,
+            moreHref: targetHref(navView, AREA.code),
+          },
+        };
       }
       case "featured": {
         const settings = descriptor.settings ?? DEFAULT_FEATURED_SETTINGS;
@@ -726,30 +763,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
           data: { heading, note, projects: featured, moreHref: targetHref(navView, AREA.code) },
         };
       }
-      case "glance": {
-        const latest = gh?.events[0];
-        return {
-          id: descriptor.id,
-          kind: "glance",
-          data: {
-            heading,
-            note,
-            freshness: freshnessOf("github", Boolean(gh)),
-            stats: statViews(),
-            moreHref: targetHref(navView, AREA.code),
-            ...(latest
-              ? {
-                  latest: {
-                    type: latest.type,
-                    text: eventText(latest),
-                    at: latest.at,
-                    relative: relativeTime(latest.at, now, locale),
-                  },
-                }
-              : {}),
-          },
-        };
-      }
       case "activity": {
         // The last 26 weeks, so the calendar stays readable (see FEED.heatDays, 
         // .heat in app.css sizes its grid to the same number).
@@ -765,21 +778,7 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             stats: statViews(),
             contributions: heat,
             languages: gh ? gh.languages.map((l) => ({ name: l.name, pct: l.pct })) : [],
-            events: gh
-              ? [
-                  ...gh.events.map((e) => ({
-                    type: e.type,
-                    text: eventText(e),
-                    meta: e.meta,
-                    at: e.at,
-                    relative: relativeTime(e.at, now, locale),
-                  })),
-                  ...highlightViews(gh),
-                ]
-                  // ISO timestamps sort lexicographically == chronologically.
-                  .sort((a, b) => b.at.localeCompare(a.at))
-                  .slice(0, FEED.events)
-              : [],
+            events: eventFeed().slice(0, FEED.events),
             sources: activeSources(),
           },
         };
@@ -973,13 +972,6 @@ export function resolveSiteView(input: ResolveInput): SiteView {
         // maxCount server-side (the query LIMIT), so this only carries the numbers
         // the frontend needs to collapse/expand, never uncapped data.
         const musicSettings = content.music ?? defaultMusicSettings();
-        const rank = (e: MusicRankEntry): MusicRankView => ({
-          name: e.name,
-          minutes: e.minutes,
-          plays: e.plays,
-          ...(e.by ? { by: e.by } : {}),
-          ...(e.artUrl ? { artUrl: e.artUrl } : {}),
-        });
         return {
           id: descriptor.id,
           kind: "music",
@@ -989,9 +981,9 @@ export function resolveSiteView(input: ResolveInput): SiteView {
             totalHours: Math.round(totalMinutes / 60),
             trackCount: m?.trackCount ?? 0,
             artistCount: m?.artistCount ?? 0,
-            topSongs: (m?.topSongs ?? []).map(rank),
-            topArtists: (m?.topArtists ?? []).map(rank),
-            topAlbums: (m?.topAlbums ?? []).map(rank),
+            topSongs: (m?.topSongs ?? []).map(rankView),
+            topArtists: (m?.topArtists ?? []).map(rankView),
+            topAlbums: (m?.topAlbums ?? []).map(rankView),
             ledger,
             timeZone: m?.timeZone ?? DEFAULT_TIMEZONE,
             ...(m?.since ? { since: m.since } : {}),

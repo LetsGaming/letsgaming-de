@@ -20,7 +20,8 @@ describe("module inspectors", () => {
     expect(SYNCED_INFO.coding?.source).toBe("wakapi");
     expect(SYNCED_INFO.activity?.source).toBe("github");
     expect(SYNCED_INFO.projects?.source).toBe("github");
-    expect(SYNCED_INFO.teasers?.source).toBeNull();
+    expect(SYNCED_INFO.week?.source).toBeNull();
+    expect(SYNCED_INFO.recent?.source).toBe("github");
   });
 });
 

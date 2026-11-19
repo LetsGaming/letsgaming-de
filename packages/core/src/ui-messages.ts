@@ -105,6 +105,7 @@ const EN = {
   recentEvents: "Recent events",
   newestFirst: "newest first",
   fullActivity: "All activity",
+  allGamesMusic: "All games and music",
 
   // Glance stats. These were literals in `resolve.ts`, the numbers are synced,
   // but the words around them are chrome, and chrome belongs here. It's why a
@@ -231,11 +232,15 @@ const EN = {
   waveDone: "Waved",
   waveLimited: "Too many waves for now, try again later.",
 
-  // Teaser cards on the home page.
-  teasersHeading: "Areas",
-  teaserHoursWeek: "{n} h played this week",
-  teaserTopArtist: "Top artist: {name}",
-  teaserLatest: "{text}, {age} ago",
+  // The "this week" sentence on the home page. `{code}`, `{games}` and `{event}`
+  // are linked, so the word order stays inside the template, per language.
+  weekHour: "{n} hour",
+  weekHours: "{n} hours",
+  weekShare: "({pct}% {language})",
+  weekBoth: "I coded for {code}{share} and played for {games}.",
+  weekCodeOnly: "I coded for {code}{share}.",
+  weekGamesOnly: "I played for {games}.",
+  weekLatest: "{event}, {age} ago.",
 
   freshFresh: "synced {age} ago",
   freshStale: "{age} old",
@@ -340,6 +345,7 @@ const DE: Messages = {
   recentEvents: "Letzte Aktivitäten",
   newestFirst: "neueste zuerst",
   fullActivity: "Gesamte Aktivität",
+  allGamesMusic: "Alle Spiele und Musik",
 
   areasHeading: "Wo es weitergeht",
   areaModules: "{n} Bereiche",
@@ -440,10 +446,13 @@ const DE: Messages = {
   waveDone: "Hallo gesagt",
   waveLimited: "Gerade zu oft gewinkt, versuch es später erneut.",
 
-  teasersHeading: "Bereiche",
-  teaserHoursWeek: "{n} Std. diese Woche gespielt",
-  teaserTopArtist: "Top-Künstler: {name}",
-  teaserLatest: "{text}, vor {age}",
+  weekHour: "{n} Stunde",
+  weekHours: "{n} Stunden",
+  weekShare: "({pct} % {language})",
+  weekBoth: "Ich habe {code}{share} programmiert und {games} gespielt.",
+  weekCodeOnly: "Ich habe {code}{share} programmiert.",
+  weekGamesOnly: "Ich habe {games} gespielt.",
+  weekLatest: "{event}, vor {age}.",
 
   freshFresh: "vor {age} synchronisiert",
   freshStale: "{age} alt",

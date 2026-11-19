@@ -316,8 +316,8 @@ test("freshness: data past its source's TTL renders stale, not fresh", () => {
     hobbies: [],
     now: [],
   };
-  const nav: NavNode[] = [{ id: "home", label: en("Home"), modules: ["glance"] }];
-  const modules: ModuleDescriptor[] = [{ id: "glance", kind: "glance", heading: en("At a glance") }];
+  const nav: NavNode[] = [{ id: "home", label: en("Home"), modules: ["activity"] }];
+  const modules: ModuleDescriptor[] = [{ id: "activity", kind: "activity", heading: en("Recent") }];
   const github: GitHubData = {
     stats: { repos: 1, commitsYear: 1, commitsAllTime: 1, longestStreakDays: 1 },
     languages: [],
@@ -336,13 +336,13 @@ test("freshness: data past its source's TTL renders stale, not fresh", () => {
     });
 
   const fresh = build("2026-01-10T11:30:00Z"); // 30m old, TTL 1h
-  const g1 = fresh.modules["glance"];
-  if (!g1 || g1.kind !== "glance") throw new Error("expected glance");
+  const g1 = fresh.modules["activity"];
+  if (!g1 || g1.kind !== "activity") throw new Error("expected activity");
   assert.equal(g1.data.freshness?.state, "fresh");
 
   const stale = build("2026-01-10T09:00:00Z"); // 3h old, TTL 1h
-  const g2 = stale.modules["glance"];
-  if (!g2 || g2.kind !== "glance") throw new Error("expected glance");
+  const g2 = stale.modules["activity"];
+  if (!g2 || g2.kind !== "activity") throw new Error("expected activity");
   // The site's claim is that it updates itself, so old data must say so rather
   // than wear the fresh state.
   assert.equal(g2.data.freshness?.state, "stale");
@@ -357,8 +357,8 @@ test("freshness: data past its source's TTL renders stale, not fresh", () => {
       modules,
       now,
       freshness: { syncedAt: { github: syncedAt }, ttl: { github: 60 * 60 * 1000 }, failedAt: { github: failedAt } },
-    }).modules["glance"];
-    if (!v || v.kind !== "glance") throw new Error("expected glance");
+    }).modules["activity"];
+    if (!v || v.kind !== "activity") throw new Error("expected activity");
     return v.data.freshness;
   };
   assert.equal(failedState("2026-01-10T11:45:00Z")?.state, "failed");
@@ -370,8 +370,8 @@ test("freshness: data past its source's TTL renders stale, not fresh", () => {
 
   // No sync has ever landed: a real state, not an error.
   const never = resolveSiteView({ content, source: {}, nav, modules, now });
-  const g3 = never.modules["glance"];
-  if (!g3 || g3.kind !== "glance") throw new Error("expected glance");
+  const g3 = never.modules["activity"];
+  if (!g3 || g3.kind !== "activity") throw new Error("expected activity");
   assert.equal(g3.data.freshness?.state, "never");
 });
 
@@ -624,9 +624,9 @@ test("resolver-emitted chrome follows the locale (stat labels, repo meta, event 
     hobbies: [],
     now: [],
   };
-  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["glance", "projects"] }];
+  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["activity", "projects"] }];
   const modules: ModuleDescriptor[] = [
-    { id: "glance", kind: "glance", heading: en("Glance") },
+    { id: "activity", kind: "activity", heading: en("Recent") },
     { id: "projects", kind: "projects", heading: en("Projects") },
   ];
   const github: GitHubData = {
@@ -658,13 +658,13 @@ test("resolver-emitted chrome follows the locale (stat labels, repo meta, event 
   const at = { source: { github }, nav, modules, now: new Date("2026-01-10T00:00:00Z") };
 
   const de = resolveSiteView({ content, ...at, locale: "de" });
-  const glanceDe = de.modules["glance"];
-  if (!glanceDe || glanceDe.kind !== "glance") throw new Error("expected a glance module");
+  const activityDe = de.modules["activity"];
+  if (!activityDe || activityDe.kind !== "activity") throw new Error("expected an activity module");
   assert.deepEqual(
-    glanceDe.data.stats.map((s) => s.label),
+    activityDe.data.stats.map((s) => s.label),
     ["öffentliche Repos", "Commits dieses Jahr", "Commits insgesamt", "längste Serie"],
   );
-  assert.equal(glanceDe.data.latest?.text, "Push nach letsgaming-de");
+  assert.equal(activityDe.data.events[0]?.text, "Push nach letsgaming-de");
 
   const projectsDe = de.modules["projects"];
   if (!projectsDe || projectsDe.kind !== "projects") throw new Error("expected a projects module");
@@ -677,11 +677,11 @@ test("resolver-emitted chrome follows the locale (stat labels, repo meta, event 
 
   // Same input, English locale, the numbers don't move, only the words.
   const enView = resolveSiteView({ content, ...at, locale: "en" });
-  const glanceEn = enView.modules["glance"];
-  if (!glanceEn || glanceEn.kind !== "glance") throw new Error("expected a glance module");
-  assert.equal(glanceEn.data.stats[0]?.label, "public repos");
-  assert.equal(glanceEn.data.stats[0]?.value, glanceDe.data.stats[0]?.value);
-  assert.equal(glanceEn.data.latest?.text, "Pushed to letsgaming-de");
+  const activityEn = enView.modules["activity"];
+  if (!activityEn || activityEn.kind !== "activity") throw new Error("expected an activity module");
+  assert.equal(activityEn.data.stats[0]?.label, "public repos");
+  assert.equal(activityEn.data.stats[0]?.value, activityDe.data.stats[0]?.value);
+  assert.equal(activityEn.data.events[0]?.text, "Pushed to letsgaming-de");
 });
 
 test("events cached before the structured-repo change still render", () => {
@@ -699,8 +699,8 @@ test("events cached before the structured-repo change still render", () => {
     hobbies: [],
     now: [],
   };
-  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["glance"] }];
-  const modules: ModuleDescriptor[] = [{ id: "glance", kind: "glance", heading: en("Glance") }];
+  const nav: NavNode[] = [{ id: "code", label: en("Code"), modules: ["activity"] }];
+  const modules: ModuleDescriptor[] = [{ id: "activity", kind: "activity", heading: en("Recent") }];
   const github: GitHubData = {
     stats: { repos: 1, commitsYear: 1, commitsAllTime: 1, longestStreakDays: 1 },
     languages: [],
@@ -716,13 +716,13 @@ test("events cached before the structured-repo change still render", () => {
     locale: "de",
     now: new Date("2026-01-10T00:00:00Z"),
   });
-  const glance = view.modules["glance"];
-  if (!glance || glance.kind !== "glance") throw new Error("expected a glance module");
-  assert.equal(glance.data.latest?.text, "Pushed to legacy");
+  const activity = view.modules["activity"];
+  if (!activity || activity.kind !== "activity") throw new Error("expected an activity module");
+  assert.equal(activity.data.events[0]?.text, "Pushed to legacy");
 });
 
 test("areas builds the site's table of contents from the nav tree", () => {
-  // Home previewed one area (glance and featured are both GitHub), so this module
+  // Home previewed one area (featured and recent are both GitHub), so this module
   // exists to say the rest of the site is there. It reads the nav tree rather than
   // its own content, so adding an area in the CMS can't leave it stale.
   const content: SiteContent = {
@@ -749,7 +749,7 @@ test("areas builds the site's table of contents from the nav tree", () => {
   ];
   const modules: ModuleDescriptor[] = [
     { id: "toc", kind: "areas" },
-    { id: "a", kind: "glance" },
+    { id: "a", kind: "coding" },
     { id: "b", kind: "projects" },
     { id: "c", kind: "hobbies" },
     { id: "d", kind: "bio" },

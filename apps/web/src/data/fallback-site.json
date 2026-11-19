@@ -13,8 +13,6 @@
         "label": "Home",
         "modules": [
           "hero",
-          "teasers",
-          "glance",
           "featured",
           "guestbook"
         ]
@@ -59,7 +57,7 @@
             "highlight": "tinker",
             "after": "."
           },
-          "lede": "Full-time web developer, trained as a **Fachinformatiker Anwendungsentwicklung** (software developer apprenticeship). Outside work: plant sensors, LED strips, and a home lab.",
+          "lede": "I'm a full-time web developer in Germany. Outside work I build plant sensors, LED strips and a home lab.",
           "status": {
             "verb": "building",
             "now": "plantcare-tracker"
@@ -88,35 +86,6 @@
           ],
           "presenceEnabled": true,
           "waves": 0
-        }
-      },
-      "teasers": {
-        "id": "teasers",
-        "kind": "teasers",
-        "data": {
-          "heading": "Areas",
-          "teasers": [
-            {
-              "id": "about",
-              "label": "About",
-              "value": "web developer",
-              "detail": "Germany",
-              "href": "/about"
-            }
-          ]
-        }
-      },
-      "glance": {
-        "id": "glance",
-        "kind": "glance",
-        "data": {
-          "heading": "At a glance",
-          "freshness": {
-            "state": "never",
-            "source": "github"
-          },
-          "stats": [],
-          "moreHref": "/code"
         }
       },
       "featured": {
@@ -363,8 +332,6 @@
         "label": "Start",
         "modules": [
           "hero",
-          "teasers",
-          "glance",
           "featured",
           "guestbook"
         ]
@@ -409,7 +376,7 @@
             "highlight": "bastle",
             "after": " ich."
           },
-          "lede": "Webentwickler in Vollzeit, gelernter **Fachinformatiker Anwendungsentwicklung**. Nach der Arbeit: Pflanzensensoren, LED-Streifen und ein Home Lab.",
+          "lede": "Ich bin Webentwickler in Vollzeit. Nach der Arbeit baue ich Pflanzensensoren, LED-Streifen und ein Home Lab.",
           "status": {
             "verb": "baue",
             "now": "plantcare-tracker"
@@ -438,35 +405,6 @@
           ],
           "presenceEnabled": true,
           "waves": 0
-        }
-      },
-      "teasers": {
-        "id": "teasers",
-        "kind": "teasers",
-        "data": {
-          "heading": "Bereiche",
-          "teasers": [
-            {
-              "id": "about",
-              "label": "Über mich",
-              "value": "Webentwickler",
-              "detail": "Deutschland",
-              "href": "/about"
-            }
-          ]
-        }
-      },
-      "glance": {
-        "id": "glance",
-        "kind": "glance",
-        "data": {
-          "heading": "Auf einen Blick",
-          "freshness": {
-            "state": "never",
-            "source": "github"
-          },
-          "stats": [],
-          "moreHref": "/code"
         }
       },
       "featured": {

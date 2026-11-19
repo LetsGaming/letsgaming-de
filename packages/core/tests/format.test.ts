@@ -40,7 +40,7 @@ test("compact numbers and ages follow the locale", () => {
 });
 
 test("a fractional number in a message follows the locale; a whole one stays plain", () => {
-  assert.match(t("teaserHoursWeek", "en", { n: 11.4 }), /11\.4/);
-  assert.match(t("teaserHoursWeek", "de", { n: 11.4 }), /11,4/);
-  assert.match(t("teaserHoursWeek", "de", { n: 12 }), /12/);
+  assert.match(t("weekHours", "en", { n: 11.4 }), /11\.4/);
+  assert.match(t("weekHours", "de", { n: 11.4 }), /11,4/);
+  assert.match(t("weekHours", "de", { n: 12 }), /12/);
 });

@@ -129,7 +129,9 @@ test("analytics: the click allow-list has no dead or missing entries", () => {
   const emitted = [
     "contact-cta", "contact-submit", "guestbook-submit", "project", "project-more",
     "featured", "github-profile", "glance-more", "social", "theme-toggle",
-    "nav", "hero-cta", "teaser",
+    "nav", "hero-cta", "teaser", "hero-github", "hero-contact",
+    "teaser-code", "teaser-life", "teaser-blog", "teaser-about",
+    "week-code", "week-games", "week-event", "playing-more", "recent-more",
   ];
   for (const k of emitted) {
     assert.ok(validateTrackEvent({ d: "click", k }, sections), `${k} should be accepted`);
