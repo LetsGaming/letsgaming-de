@@ -35,6 +35,33 @@ describe("WeekSection", () => {
 		expect(wrapper.find("ul, ol").exists()).toBe(false);
 	});
 
+	it("puts the latest event on its own line, so it never wraps off the sentence", () => {
+		const wrapper = mount(WeekSection, {
+			props: {
+				module: week([
+					{ text: "I coded " },
+					{ text: "12.5 hours", href: "/code", role: "code" },
+					{ text: ". " },
+					{ text: "Pushed to plantcare-tracker", href: "/code", role: "event" },
+					{ text: ", 2d ago." },
+				]),
+			},
+		});
+		const lines = wrapper.findAll("p");
+		expect(lines).toHaveLength(2);
+		expect(lines[0]!.text()).toBe("I coded 12.5 hours.");
+		expect(lines[1]!.text()).toBe("Pushed to plantcare-tracker, 2d ago.");
+		expect(lines[1]!.find("a").text()).toBe("Pushed to plantcare-tracker");
+	});
+
+	it("shows an event alone as the main line when nothing else has data", () => {
+		const wrapper = mount(WeekSection, {
+			props: { module: week([{ text: "Pushed to x", href: "/code", role: "event" }, { text: ", 2d ago." }]) },
+		});
+		expect(wrapper.findAll("p")).toHaveLength(1);
+		expect(wrapper.find("p").classes()).toContain("alone");
+	});
+
 	it("renders a text-only sentence without links", () => {
 		const wrapper = mount(WeekSection, { props: { module: week([{ text: "A quiet week." }]) } });
 		expect(wrapper.find("p").text()).toBe("A quiet week.");

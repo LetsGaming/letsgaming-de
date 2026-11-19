@@ -125,18 +125,17 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   color: inherit;
 }
 .status {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
   margin: 0 0 var(--space-4);
   font-size: var(--fs-h3);
   line-height: 1.3;
   color: var(--ink-strong);
 }
 .status .dot {
-  flex: none;
-  align-self: center;
+  margin-top: 0.5em;
   width: 11px;
   height: 11px;
   border-radius: var(--r-round);
@@ -155,15 +154,14 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   display: inline-flex;
   gap: var(--space-2);
   align-items: center;
-  min-height: 24px;
-  padding: var(--space-1) 0;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
   font: inherit;
+  font-size: var(--fs-small);
   color: var(--ink);
-  background: none;
-  border: 0;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.25em;
+  background: var(--surf-1);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-2);
   cursor: pointer;
 }
 @media (pointer: coarse) {
@@ -175,12 +173,12 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
 }
 .wave:hover:not(:disabled) {
   color: var(--ink-strong);
-  text-decoration-thickness: 2px;
+  background: var(--surf-2);
 }
 .wave:disabled {
   cursor: default;
-  text-decoration: none;
   color: var(--muted);
+  background: none;
 }
 .wave-count {
   font-family: var(--f-m);
