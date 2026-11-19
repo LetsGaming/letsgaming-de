@@ -1,6 +1,73 @@
 # Changelog
 
-## Unreleased
+## 3.0.0
+
+A rework of how the site looks and reads, with Home rebuilt to carry the page. This
+is a major release because two module kinds are gone and the Home layout is migrated
+on the first boot (see "Home carries the page").
+
+### Home carries the page
+
+- **One scroll, in three beats.** Hero, a "This week" sentence, Featured, games and
+  music, the latest GitHub events, then the guestbook. The sentence is built from
+  live data in the visitor's language ("I coded for 28.3 hours (46% TypeScript) and
+  played for 11.4 hours."), with each number linked on. A clause whose source is
+  stale, failed or empty is left out, and the module says why.
+- **Breaking: the `teasers` (Areas) and `glance` (At a glance) module kinds are
+  removed.** Their facts moved into the new `week`, `playing` and `recent` modules.
+  The first boot with this version drops the two from a stored layout and adds the
+  three. A Home order customised in the CMS is reset to the new order.
+- **The hero leads with the live status**, one primary button, GitHub and Contact as
+  quiet links, and the wave as a bordered button. The lede is shorter and no longer
+  carries the apprenticeship title (the About bio still does).
+- **Contact sits beside the bio on About**, the Code "This week" card puts its summary
+  beside the bars, and the Life modules are grouped by meaning.
+
+### A design system that is checked
+
+- **One violet hue in three tiers** (room, data, signal), AA contrast in both themes.
+  The signal colour means "now" and nothing else.
+- **`pnpm lint:design` runs in the build** and fails on the rules a grep can decide:
+  no middle dots, uppercase labels or arrows on links, mono only for synced numbers,
+  and the accent held to a per-file allowance. Comment dashes are checked too.
+- **Accessibility pass.** Skip link, 24px targets for a pointer and 44px on touch,
+  a settings modal that traps and returns focus, and `pnpm --filter web audit:a11y`
+  to measure all of it in a real browser.
+- **Fonts: Archivo, Atkinson Hyperlegible Next and Atkinson Hyperlegible Mono.**
+
+### Life in three forms
+
+- **Time played is a cover wall**, **Listening is a typographic list**, and **Wrapped
+  is a poster**. The weekday by hour heatmap sits behind a disclosure.
+
+### Every data state is real
+
+- **A `failed` state exists and is produced.** The resolver reads `sync_status`, so a
+  module whose last sync failed shows the last good copy and says so.
+  `scripts/dev-force-state.mjs` forces any state in a dev session.
+- **Found and fixed:** the Code feed's "show more" control had stopped rendering
+  because of a malformed tag. It has a test now.
+
+### German reads as German
+
+- **Numbers and ages follow the locale** ("28,3 Std.", "vor 2 T"), the coding range
+  and event text are translated, and the wave reads "Hallo sagen".
+
+### Measurement that can answer "do visitors leave Home"
+
+- **The hero is tracked** like every other module, and the hero and Areas clicks are
+  split per destination. The old `hero-cta` and `teaser` keys stay valid.
+- **The CMS analytics panel shows** the share of completed visits that reached a
+  second area, where visitors go next, and where visits end. The data was collected
+  before and never shown.
+
+### Housekeeping
+
+- Comments, docs and this changelog no longer use em or en dashes.
+- `apps/web/DESIGN.md` is the written design system, and `docs/research` holds the
+  research, the copy sheet and the critique behind it.
+
+### Earlier work in this release
 
 ### Two "see all" links start counting
 
