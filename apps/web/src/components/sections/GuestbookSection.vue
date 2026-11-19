@@ -18,7 +18,7 @@ const props = defineProps<{
 // further server page beyond the 100-entry fetch.
 const { shown, expanded, moreCount } = useLimitedList({
   rows: () => props.module.data.entries,
-  initial: 6,
+  initial: 4,
   max: () => props.module.data.entries.length,
 });
 </script>

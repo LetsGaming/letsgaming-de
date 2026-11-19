@@ -110,6 +110,27 @@ function open(name: string) {
 .lead-type:hover {
   border-color: var(--line-2);
 }
+@container (min-width: 720px) {
+  .lead-type .body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-8);
+    align-items: end;
+  }
+  .lead-type .name,
+  .lead-type .facts {
+    grid-column: 1;
+  }
+  .lead-type .desc {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin: 0;
+    align-self: end;
+  }
+  .lead-type .meta {
+    grid-column: 1 / -1;
+  }
+}
 .body {
   min-width: 0;
 }

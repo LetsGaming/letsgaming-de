@@ -36,9 +36,21 @@ const { t } = useT();
   color: var(--muted);
 }
 .feed {
-  max-width: 48rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 var(--space-8);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+@container (min-width: 900px) {
+  .feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 899px) {
+  .feed {
+    max-width: 48rem;
+  }
 }
 </style>

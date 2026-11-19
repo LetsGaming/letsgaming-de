@@ -27,7 +27,7 @@ const track = (role: WeekPart["role"]) => {
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading">
+  <ModuleSection :id="module.id" :heading="module.data.heading" gap="tight">
     <template #note>
       <span v-if="module.data.note" class="note">{{ module.data.note }}</span>
       <Freshness :freshness="module.data.freshness" />

@@ -23,8 +23,8 @@ interface Props {
   note?: string;
   /** `ruled` opens the section with a hairline, to start a new group. */
   variant?: "plain" | "ruled";
-  /** `group` leaves the larger gap before an unrelated group of modules. */
-  gap?: "related" | "group";
+  /** `group` leaves the larger gap before an unrelated group of modules; `tight` pulls a module up under the one it continues. */
+  gap?: "tight" | "related" | "group";
 }
 withDefaults(defineProps<Props>(), { variant: "plain", gap: "related" });
 </script>
@@ -48,6 +48,9 @@ withDefaults(defineProps<Props>(), { variant: "plain", gap: "related" });
 }
 .module-section.gap-group {
   margin-top: var(--space-9);
+}
+.module-section.gap-tight {
+  margin-top: var(--space-5);
 }
 .module-section:first-child {
   margin-top: var(--space-2);
