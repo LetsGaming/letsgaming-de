@@ -18,12 +18,15 @@ let sent: TrackEvent[][] = [];
 let pending: Promise<void>[] = [];
 let observerCb: ((entries: Entry[]) => void) | undefined;
 let visibility = "visible";
+let observed: string[] = [];
 
 class FakeObserver {
   constructor(cb: (entries: Entry[]) => void) {
     observerCb = cb;
   }
-  observe() {}
+  observe(el: Element) {
+    observed.push(el.id);
+  }
   disconnect() {}
 }
 
@@ -62,6 +65,7 @@ beforeEach(() => {
   sent = [];
   pending = [];
   observerCb = undefined;
+  observed = [];
   visibility = "visible";
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility });
   Object.defineProperty(navigator, "sendBeacon", {
@@ -84,6 +88,20 @@ afterEach(() => {
   window.dispatchEvent(new Event("pagehide"));
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe("module observation", () => {
+  it("observes the hero, which is a plain section.hero and not a module-section", async () => {
+    document.body.innerHTML = `
+      <section class="hero" id="hero"></section>
+      <section class="module-section" id="featured"></section>
+      <section class="elsewhere" id="stray"></section>`;
+    const { initTracking } = await load();
+    initTracking("home", "dark");
+    expect(observed.sort()).toEqual(["featured", "hero"]);
+    show("hero");
+    expect((await batches()).flat()).toContainEqual({ d: "module", k: "hero" });
+  });
 });
 
 describe("visit confirmation", () => {

@@ -4,7 +4,12 @@ import { describe, expect, it } from "vitest";
 import type { AnalyticsSectionModule, HeadlineMetric, QualityFunnel } from "@lg/core";
 import {
   EXCLUSION_LABELS,
+  areaLabel,
   areaScrollFunnels,
+  secondAreaView,
+  topAreaRows,
+  topTransitionRows,
+  transitionLabel,
   bucketBars,
   comparisonCaption,
   deltaView,
@@ -239,5 +244,47 @@ describe("section rows", () => {
     expect(sectionsEmpty({ ...base, loads: 0 })).toBe(true);
     expect(sectionsEmpty({ ...base, modules: [mod({ seen: 0 })] })).toBe(true);
     expect(sectionsEmpty({ ...base, modules: [] })).toBe(true);
+  });
+});
+
+describe("area moves", () => {
+  it("shows the second-area share with its counts", () => {
+    expect(secondAreaView({ visits: 10, reached: 4, rate: 0.4 })).toEqual({
+      state: "value",
+      text: "40%",
+      caption: "4 of 10 completed visits",
+    });
+    expect(secondAreaView({ visits: 1, reached: 0, rate: 0 }).text).toBe("0%");
+  });
+
+  it("says no data instead of a zero share", () => {
+    const v = secondAreaView({ visits: 0, reached: 0, rate: null });
+    expect(v.state).toBe("empty");
+    expect(v.text).toBe("");
+  });
+
+  it("ranks, caps and drops empty rows", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({ key: `home>a${i}`, count: i }));
+    const top = topTransitionRows(rows);
+    expect(top).toHaveLength(8);
+    expect(top[0]).toEqual({ key: "home>a11", count: 11 });
+    expect(top.every((r) => r.count > 0)).toBe(true);
+    expect(topTransitionRows([])).toEqual([]);
+  });
+
+  it("handles a single area", () => {
+    expect(topAreaRows([{ key: "home", count: 3 }])).toEqual([{ key: "home", count: 3 }]);
+    expect(topTransitionRows([{ key: "home>home", count: 5 }])).toEqual([]);
+  });
+
+  it("labels known and unknown area ids", () => {
+    expect(transitionLabel("home>code")).toBe("Home -> Code");
+    expect(transitionLabel("home>ghost-area")).toBe("Home -> Ghost area");
+    expect(transitionLabel("nonsense")).toBe("Nonsense");
+    expect(areaLabel("play-time")).toBe("Play time");
+  });
+
+  it("breaks count ties by key", () => {
+    expect(topAreaRows([{ key: "b", count: 1 }, { key: "a", count: 1 }]).map((r) => r.key)).toEqual(["a", "b"]);
   });
 });

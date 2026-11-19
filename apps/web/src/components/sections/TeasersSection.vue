@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ResolvedModule } from "@lg/core";
+import type { ClickAction, ResolvedModule } from "@lg/core";
 import { trackClick } from "../../lib/track";
 import ModuleSection from "../ui/ModuleSection.vue";
 import SmartLink from "../ui/SmartLink.vue";
@@ -7,13 +7,21 @@ import SmartLink from "../ui/SmartLink.vue";
 defineProps<{
   module: Extract<ResolvedModule, { kind: "teasers" }>;
 }>();
+
+const ACTION_BY_AREA: Record<string, ClickAction> = {
+  code: "teaser-code",
+  life: "teaser-life",
+  blog: "teaser-blog",
+  about: "teaser-about",
+};
+const actionFor = (id: string): ClickAction => ACTION_BY_AREA[id] ?? "teaser";
 </script>
 
 <template>
   <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="group">
     <ul class="index">
       <li v-for="c in module.data.teasers" :key="c.id">
-        <SmartLink class="row" :href="c.href" @click="trackClick('teaser')">
+        <SmartLink class="row" :href="c.href" @click="trackClick(actionFor(c.id))">
           <span class="row__name">{{ c.label }}</span>
           <span class="row__facts">
             <span class="row__value">{{ c.value }}</span>

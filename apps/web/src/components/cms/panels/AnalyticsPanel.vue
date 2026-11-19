@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
-import type { AnalyticsCardId } from "@lg/core";
+import { secondPageFigure, type AnalyticsCardId } from "@lg/core";
 import { useCmsContext } from "../../../composables/cmsContext";
 import { STACK_COLORS } from "../../../composables/useAnalytics";
 import {
 	HEADLINE_TILES,
 	HEADLINE_TILE_IDS,
+	SECOND_AREA_SPEC,
+	areaLabel,
 	comparisonCaption,
 	deltaView,
 	formatTileValue,
 	sparkLabel,
 	sparkValues,
+	secondAreaView,
+	topAreaRows,
+	topTransitionRows,
+	transitionLabel,
 } from "../../../lib/analytics-view";
 import AnalyticsCard from "../AnalyticsCard.vue";
 import HelpTip from "../HelpTip.vue";
@@ -167,6 +173,10 @@ const tiles = computed(() => {
 		};
 	});
 });
+
+const secondArea = computed(() => (analytics.value ? secondAreaView(secondPageFigure(analytics.value.engagement.sessionTabs)) : null));
+const nextRows = computed(() => topTransitionRows(analytics.value?.engagement.transitions ?? []));
+const exitRows = computed(() => topAreaRows(analytics.value?.engagement.exits ?? []));
 
 const confirmedUnmeasured = computed(() => analytics.value?.headline.confirmedVisits.measured === false);
 
@@ -629,7 +639,39 @@ const ingestStatus = computed(() => {
           </details>
           <template v-if="analytics?.engagement">
             <h3 class="desk-only" style="margin-top: 8px">Engagement details <span class="muted">(cookieless, in-page script)</span></h3>
+            <ul v-if="secondArea" class="tilegrid desk-only" aria-label="Engagement headline">
+              <li class="tile">
+                <div class="tile-top">
+                  <span class="slabel">{{ SECOND_AREA_SPEC.label }}</span>
+                  <HelpTip :text="SECOND_AREA_SPEC.explainer" />
+                </div>
+                <div class="tile-value">
+                  <span v-if="secondArea.state === 'empty'" class="sval muted">No data</span>
+                  <span v-else class="sval">{{ secondArea.text }}</span>
+                </div>
+                <p class="muted tile-cap">{{ secondArea.caption }}</p>
+                <p class="muted tile-cap">Completed visits that viewed two or more areas.</p>
+              </li>
+            </ul>
             <div class="cols desk-only">
+              <AnalyticsCard
+                title="Where visitors go next"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="nextRows"
+                :format="transitionLabel"
+                :initial="8"
+                empty="Recorded when a visitor moves from one area to another."
+              />
+              <AnalyticsCard
+                title="Where visits end"
+                :note="scriptNote"
+                :note-title="scriptNoteTitle"
+                :rows="exitRows"
+                :format="areaLabel"
+                :initial="8"
+                empty="Recorded when a visit ends: the last area the visitor was in."
+              />
               <AnalyticsCard
                 title="Clicks"
                 :note="scriptNote"

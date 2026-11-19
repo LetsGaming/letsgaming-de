@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ResolvedModule } from "@lg/core";
+import type { ClickAction, ResolvedModule } from "@lg/core";
 import { icons } from "../../lib/icons";
 import SmartLink from "../ui/SmartLink.vue";
 import { mdBold } from "../../lib/text";
@@ -42,7 +42,12 @@ const liveText = computed(() => {
 const { count: waves, waved, wave } = useWave(props.module.data.waves);
 
 // Report the click, do not intercept it: the browser already follows `/about#contact`.
-const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsWith("#") ? "hero-cta" : "social");
+const heroAction = (l: { href: string; primary?: boolean }): ClickAction => {
+  if (!l.href.startsWith("/") && !l.href.startsWith("#")) return /^https?:\/\/(www\.)?github\.com\//.test(l.href) ? "hero-github" : "social";
+  if (l.primary) return "hero-cta";
+  return /contact/i.test(l.href) ? "hero-contact" : "hero-cta";
+};
+const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction(l));
 </script>
 
 <template>
@@ -70,7 +75,7 @@ const onLink = (href: string) => trackClick(href.startsWith("/") || href.startsW
         class="btn"
         :class="l.primary ? 'btn-primary' : 'btn-ghost'"
         :href="l.href"
-        @click="onLink(l.href)"
+        @click="onLink(l)"
       >
         <span v-if="l.iconSvg" class="lico" v-html="l.iconSvg" /><span
           v-else-if="l.icon"

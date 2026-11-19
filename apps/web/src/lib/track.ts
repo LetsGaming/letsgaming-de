@@ -50,7 +50,7 @@ let clicked = false;
 let dwellTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Module focus, tracked with its own visible-time clock.
-const MODULE_SELECTOR = "section.module-section[id]";
+const MODULE_SELECTOR = "section.module-section[id], section.hero[id]";
 let moduleObserver: IntersectionObserver | undefined;
 let qualified: string[] = []; // modules currently >=50% visible, most recent last
 let focusModule = "";

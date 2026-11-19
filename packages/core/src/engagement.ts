@@ -121,6 +121,9 @@ export function visitTrigger(s: VisitState): VisitTrigger | null {
  *
  * A "see all" link gets its own key rather than sharing a generic `more`: the
  * CMS lists these raw, and one shared bucket can't say which link earned it.
+ * The same applies to the hero's links and the Areas rows: `hero-cta` and `teaser`
+ * lumped every destination together, so the per-destination keys below replace
+ * them for new clicks. The old keys stay valid so stored history still reads.
  */
 export const CLICK_ACTIONS = [
   "contact-cta",
@@ -136,7 +139,13 @@ export const CLICK_ACTIONS = [
   "theme-toggle",
   "nav",
   "hero-cta",
+  "hero-github",
+  "hero-contact",
   "teaser",
+  "teaser-code",
+  "teaser-life",
+  "teaser-blog",
+  "teaser-about",
 ] as const;
 export type ClickAction = (typeof CLICK_ACTIONS)[number];
 

@@ -389,6 +389,63 @@ export function areaScrollFunnels(areas: readonly AnalyticsAreaScroll[]): Scroll
     .sort((a, b) => b.entered - a.entered || a.section.localeCompare(b.section));
 }
 
+// ── area moves ───────────────────────────────────────────────────────────────
+
+export const AREA_MOVE_LIMIT = 8;
+
+export const SECOND_AREA_SPEC: HeadlineTileSpec = {
+  label: "Reached a second area",
+  explainer:
+    "Share of completed visits that viewed two or more areas. A language switch reloads the page and starts a new visit, following an external link ends a visit, and this is not a bounce rate.",
+};
+
+export interface SecondAreaView {
+  state: "value" | "empty";
+  /** "40%"; empty unless `state` is "value". */
+  text: string;
+  /** "4 of 10 completed visits", or why there is no figure. */
+  caption: string;
+}
+
+export function secondAreaView(f: { visits: number; reached: number; rate: number | null }): SecondAreaView {
+  if (f.rate === null || f.visits <= 0) {
+    return { state: "empty", text: "", caption: "No completed visits in this range." };
+  }
+  const visits = `${f.visits.toLocaleString("en-US")} completed ${f.visits === 1 ? "visit" : "visits"}`;
+  return { state: "value", text: formatPercent(f.rate), caption: `${f.reached.toLocaleString("en-US")} of ${visits}` };
+}
+
+export function areaLabel(id: string): string {
+  return prettifyId(id);
+}
+
+/** A `<from>><to>` key as "Home -> Code". A key without an arrow is shown whole. */
+export function transitionLabel(key: string): string {
+  const i = key.indexOf(">");
+  if (i < 0) return areaLabel(key);
+  return `${areaLabel(key.slice(0, i))} -> ${areaLabel(key.slice(i + 1))}`;
+}
+
+/** Highest counts first, zero rows dropped, capped. Keys stay raw so the card can show the id on hover. */
+export function topAreaRows(rows: readonly AnalyticsRow[], limit = AREA_MOVE_LIMIT): AnalyticsRow[] {
+  return rows
+    .filter((r) => r.count > 0)
+    .map((r) => ({ key: r.key, count: r.count }))
+    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+    .slice(0, limit);
+}
+
+/** Moves that leave an area for another one; a self move carries no information. */
+export function topTransitionRows(rows: readonly AnalyticsRow[], limit = AREA_MOVE_LIMIT): AnalyticsRow[] {
+  return topAreaRows(
+    rows.filter((r) => {
+      const i = r.key.indexOf(">");
+      return i < 0 || r.key.slice(0, i) !== r.key.slice(i + 1);
+    }),
+    limit,
+  );
+}
+
 /** No module has been seen yet: collection has not run, or nothing was loaded. */
 export function sectionsEmpty(s: AnalyticsSections): boolean {
   return s.loads === 0 || s.modules.every((m) => m.seen === 0);
