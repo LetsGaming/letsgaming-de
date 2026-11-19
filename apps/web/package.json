@@ -21,7 +21,7 @@
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
-    "marked": "^18.1.2",
+    "marked": "^18.2.1",
     "nuxt": "^4.6.3",
     "sortablejs": "^1.15.7",
     "vue": "^3.5.44"
