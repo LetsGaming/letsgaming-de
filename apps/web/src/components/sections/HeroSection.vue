@@ -57,16 +57,10 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
       <AssetPicture v-if="module.data.avatar" :view="module.data.avatar" class="avatar" loading="eager" />
       <h1>{{ module.data.headline.before }}{{ module.data.headline.highlight }}{{ module.data.headline.after }}</h1>
     </div>
-    <div class="status" aria-live="polite">
-      <template v-if="module.data.presenceEnabled && liveText">
-        <span class="dot" :class="{ on: liveParts.length > 0 }" />
-        <span class="status-text">{{ liveText }}</span>
-      </template>
-      <button type="button" class="wave" :disabled="waved" :aria-label="t('waveLabel')" @click="wave">
-        {{ waved ? t("waveDone") : t("waveButton") }}
-        <span v-if="waves > 0" class="wave-count">{{ waves }}</span>
-      </button>
-    </div>
+    <p v-if="module.data.presenceEnabled && liveText" class="status" aria-live="polite">
+      <span class="dot" :class="{ on: liveParts.length > 0 }" />
+      <span class="status-text">{{ liveText }}</span>
+    </p>
     <p class="lede" v-html="mdBold(module.data.lede)" />
     <div class="links">
       <SmartLink
@@ -84,6 +78,10 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
         >
         <template v-else>{{ l.label }}</template>
       </SmartLink>
+      <button type="button" class="wave" :disabled="waved" :aria-label="t('waveLabel')" @click="wave">
+        {{ waved ? t("waveDone") : t("waveButton") }}
+        <span v-if="waves > 0" class="wave-count">{{ waves }}</span>
+      </button>
     </div>
   </section>
 </template>
@@ -131,15 +129,16 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-3);
-  font-size: var(--fs-body);
-  color: var(--ink);
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-h3);
+  line-height: 1.3;
+  color: var(--ink-strong);
 }
 .status .dot {
   flex: none;
   align-self: center;
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   border-radius: var(--r-round);
   background: var(--muted);
 }
@@ -159,12 +158,12 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   min-height: 24px;
   padding: var(--space-1) 0;
   font: inherit;
-  font-size: var(--fs-small);
-  color: var(--muted);
+  color: var(--ink);
   background: none;
   border: 0;
   text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
   cursor: pointer;
 }
 @media (pointer: coarse) {
@@ -175,7 +174,8 @@ const onLink = (l: { href: string; primary?: boolean }) => trackClick(heroAction
   }
 }
 .wave:hover:not(:disabled) {
-  color: var(--ink);
+  color: var(--ink-strong);
+  text-decoration-thickness: 2px;
 }
 .wave:disabled {
   cursor: default;

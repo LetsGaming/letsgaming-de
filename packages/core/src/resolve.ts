@@ -216,7 +216,7 @@ const FEED = {
   /** Merged commit/release/PR/gist events on Recent. */
   events: 12,
   /** Events in the short feed on Home. */
-  recentEvents: 5,
+  recentEvents: 4,
   /** Cover tiles and song rows in the Home games and music module. */
   playingGames: 4,
   playingSongs: 4,

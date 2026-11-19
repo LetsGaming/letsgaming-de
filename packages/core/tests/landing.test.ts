@@ -253,15 +253,15 @@ test("playing: top games and songs, capped, with hidden games and switched-off c
   assert.equal(playing(), undefined);
 });
 
-test("recent: the newest events first, at most five, with the GitHub freshness state", () => {
+test("recent: the newest events first, at most four, with the GitHub freshness state", () => {
   const events = Array.from({ length: 8 }, (_, i) => ({
     type: "commit" as const,
     repo: `repo-${i}`,
     at: hoursAgo(i + 1),
   }));
   const v = recent({ source: { github: { ...github, events } }, freshness: freshInput() });
-  assert.equal(v?.events.length, 5);
-  assert.deepEqual(v?.events.map((e) => e.text), [0, 1, 2, 3, 4].map((i) => `Pushed to repo-${i}`));
+  assert.equal(v?.events.length, 4);
+  assert.deepEqual(v?.events.map((e) => e.text), [0, 1, 2, 3].map((i) => `Pushed to repo-${i}`));
   assert.equal(v?.freshness?.state, "fresh");
   assert.equal(v?.moreHref, "/code");
 

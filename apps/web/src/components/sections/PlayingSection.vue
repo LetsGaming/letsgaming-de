@@ -26,6 +26,7 @@ const artSrc = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
       <Freshness :freshness="module.data.freshness" />
       <SmartLink class="more" :href="module.data.moreHref" @click="() => trackClick('playing-more')">{{ t("allGamesMusic") }}</SmartLink>
     </template>
+    <div class="pl-body">
     <div v-if="module.data.games.length" class="pl-group">
       <h3 class="pl-title">{{ t("topGames") }}</h3>
       <ol class="pl-wall">
@@ -55,6 +56,7 @@ const artSrc = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
       >
         {{ s.plays }}×
       </RankedRow>
+    </div>
     </div>
   </ModuleSection>
 </template>
@@ -86,6 +88,20 @@ const artSrc = (url?: string) => (url ? presenceMediaUrl({ url }) : undefined);
 @container (min-width: 720px) {
   .pl-wall {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container (min-width: 900px) {
+  .pl-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--space-7);
+    align-items: start;
+  }
+  .pl-body .pl-group + .pl-group {
+    margin-top: 0;
+  }
+  .pl-wall {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .pl-songs {
