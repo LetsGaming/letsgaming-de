@@ -53,5 +53,5 @@ const sections: Record<ResolvedModule["kind"], Component> = {
 </script>
 
 <template>
-  <component :is="sections[module.kind]" :module="module" />
+  <component :is="sections[module.kind]" :module="module" :data-kind="module.kind" />
 </template>

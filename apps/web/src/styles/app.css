@@ -181,6 +181,21 @@ a {
 .panel {
   animation: fade 0.4s ease;
 }
+/* About: the contact module is an aside to the bio it follows, not a second
+   section stacked under it. Only when both are placed next to each other. */
+@media (min-width: 1000px) {
+  .panel:has(> [data-kind="bio"] + [data-kind="contact"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+    column-gap: var(--space-9);
+    align-items: start;
+  }
+  .panel > .module-section[data-kind="bio"] + .module-section[data-kind="contact"] {
+    margin-top: var(--space-2);
+    position: sticky;
+    top: var(--space-4);
+  }
+}
 @keyframes fade {
   from {
     opacity: 0;

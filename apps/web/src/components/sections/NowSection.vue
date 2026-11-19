@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="tight">
     <p v-if="!module.data.items.length" class="sub">{{ t("emptyNow") }}</p>
     <div v-else class="nowledger">
       <div v-for="n in module.data.items" :key="n.id" class="nowrow">

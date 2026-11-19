@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="tight">
     <div v-if="module.data.images.length" class="gal">
       <figure v-for="img in module.data.images" :key="img.id" class="gal-item">
         <AssetPicture :view="img.image" />

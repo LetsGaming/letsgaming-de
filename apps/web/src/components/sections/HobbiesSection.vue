@@ -12,7 +12,7 @@ defineProps<{
 </script>
 
 <template>
-  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note">
+  <ModuleSection :id="module.id" :heading="module.data.heading" :note="module.data.note" gap="group">
     <p v-if="!module.data.hobbies.length" class="sub">{{ t("nothingHere") }}</p>
     <ul v-else class="hobbies">
       <li v-for="h in module.data.hobbies" :key="h.id" class="hobby">

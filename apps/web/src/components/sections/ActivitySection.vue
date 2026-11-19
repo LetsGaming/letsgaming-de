@@ -68,7 +68,7 @@ const contributionCells = computed<HeatCell[]>(() => {
             <EventRow :event="e" />
           </li>
         </ul>
-        <ListFooter:more-count="hidden" :expanded="expanded" @toggle="expanded = !expanded" />
+        <ListFooter :more-count="hidden" :expanded="expanded" @toggle="expanded = !expanded" />
       </div>
       <div class="dash2__side">
         <CardHeader :title='t("languages")' :note='t("languagesScope")' />
